@@ -50,10 +50,10 @@ struct Material {
 };
 
 struct Materials {
-	vector<Material> materials;
+	vector<Handle<Material>> materials;
 
 	REFLECT()
 };
 
-Material* material_by_name(vector<Material>&, const std::string&);
-vector<Param> make_SubstanceMaterial(World& world, const std::string& folder, const std::string& name);
+Handle<Material> material_by_name(vector<Handle<Material>>&, const std::string&);
+vector<Param> make_SubstanceMaterial(const std::string& folder, const std::string& name);

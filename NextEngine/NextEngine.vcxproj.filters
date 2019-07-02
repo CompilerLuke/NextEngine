@@ -439,5 +439,8 @@
     <ClInclude Include="include\editor\assetTab.h">
       <Filter>include\editor</Filter>
     </ClInclude>
+    <ClInclude Include="materialManager.h">
+      <Filter>include\graphics</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

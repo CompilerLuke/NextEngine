@@ -30,8 +30,8 @@ void ModelRendererSystem::render(World& world, RenderParams& params) {
 	}
 }
 
-void ModelRenderer::set_materials(World& world, vector<Material>& materials) {
-	vector<Material> materials_in_order;
+void ModelRenderer::set_materials(World& world, vector<Handle<Material>>& materials) {
+	vector<Handle<Material>> materials_in_order;
 
 	if (this->model_id.id == INVALID_HANDLE) return;
 	
@@ -40,9 +40,9 @@ void ModelRenderer::set_materials(World& world, vector<Material>& materials) {
 
 	for (auto& mat_name : model->materials) {
 		auto mat = material_by_name(materials, mat_name);
-		if (!mat) throw "Missing material";
+		if (mat.id == INVALID_HANDLE) throw "Missing material";
 
-		materials_in_order.append(*mat);
+		materials_in_order.append(mat);
 	}
 
 	auto this_id = world.id_of(this);

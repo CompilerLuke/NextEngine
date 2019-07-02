@@ -3,6 +3,7 @@
 #include "ecs/ecs.h"
 #include "core/temporary.h"
 #include "graphics/draw.h"
+#include "graphics/rhi.h"
 
 REFLECT_STRUCT_BEGIN(Vertex)
 REFLECT_STRUCT_MEMBER(position)
@@ -34,8 +35,8 @@ void Mesh::submit() {
 	new (&this->buffer) VertexBuffer(vertices, indices, attribs);
 }
 
-void Mesh::render(ID id, glm::mat4* model, vector<Material>& materials, RenderParams& params) {
-	auto material = &materials[material_id];
+void Mesh::render(ID id, glm::mat4* model, vector<Handle<Material>>& materials, RenderParams& params) {
+	auto material = RHI::material_manager.get(materials[material_id]);
 	auto aabb = TEMPORARY_ALLOC(AABB);
 	*aabb = this->aabb.apply(*model);
 

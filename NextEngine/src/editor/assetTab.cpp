@@ -10,9 +10,13 @@
 #include "model/model.h"
 #include "graphics/texture.h"
 #include "graphics/shader.h"
-
+#include "graphics/draw.h"
+#include "components/transform.h"
+#include "components/camera.h"
+#include <algorithm>
 #include <locale>
 #include <codecvt>
+#include "graphics/primitives.h"
 
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3.h>
@@ -21,7 +25,7 @@
 #include <WinBase.h>
 
 void AssetTab::register_callbacks(Window& window, Editor& editor) {
-
+	
 }
 
 void render_assets(AssetFolder& folder, Editor& editor, World& world, const std::string& filter) {
@@ -35,7 +39,10 @@ void render_assets(AssetFolder& folder, Editor& editor, World& world, const std:
 
 	for (auto& mod : folder.models) {
 		Model* model = RHI::model_manager.get(mod.handle);
+		Texture* tex = RHI::texture_manager.get(mod.preview);
+
 		ImGui::Button(model->path.c_str());
+		ImGui::Image((ImTextureID)tex->texture_id, ImVec2(256, 256));
 	}
 }
 
@@ -78,18 +85,112 @@ std::wstring open_dialog(Editor& editor) {
 	return L"";
 }
 
-Handle<Texture> render_preview_for(AssetTab& self, Handle<Model> handle) {
-	return { INVALID_HANDLE };
+void render_preview_for(World& world, AssetTab& self, ModelAsset& asset, RenderParams& old_params) {
+	self.preview_fbo.bind();
+	self.preview_fbo.clear_color(glm::vec4(0,0,0,1));
+	self.preview_fbo.clear_depth(glm::vec4(0,0,0,1));
+
+	Handle<Shader> tone_map = load_Shader("shaders/screenspace.vert", "shaders/preview.frag");
+
+	ID id = world.make_ID();
+	Entity* entity = world.make<Entity>(id);
+	Transform* trans = world.make<Transform>(id);
+	Camera* cam = world.make<Camera>(id);
+	
+	Model* model = RHI::model_manager.get(asset.handle);
+	AABB aabb;
+	for (Mesh& sub_mesh : model->meshes) {
+		aabb.update_aabb(sub_mesh.aabb);
+	}
+
+	float max_z = std::max(aabb.max.y, aabb.max.z * 1.2f);
+	
+	//trans->position.z = 3;
+
+	trans->position.z = max_z * 1.2;
+	trans->position.y = aabb.min.y * 0.3 + aabb.max.y * 0.7;
+	//trans->rotation = glm::quat(glm::radians(180.0f), glm::vec3(0, 0, 1));
+
+	CommandBuffer cmd_buffer;
+	RenderParams render_params = old_params;
+	render_params.width = self.preview_fbo.width;
+	render_params.height = self.preview_fbo.height;
+	render_params.command_buffer = &cmd_buffer;
+
+	cam->fov = 60;
+	cam->update_matrices(world, render_params);
+
+	glm::mat4 identity(1.0);
+	model->render(0, &identity, asset.materials, render_params);
+
+	cmd_buffer.submit_to_gpu(world, render_params);
+
+	self.preview_fbo.unbind();
+	self.preview_tonemapped_fbo.bind();
+	self.preview_tonemapped_fbo.clear_color(glm::vec4(0,0,0,1));
+	self.preview_tonemapped_fbo.clear_depth(glm::vec4(0, 0, 0, 1));
+
+	shader::bind(tone_map);
+	shader::set_int(tone_map, "frameMap", 0);
+	shader::set_mat4(tone_map, "model", identity);
+	texture::bind_to(self.preview_map, 0);
+
+	render_quad();
+
+	unsigned int texture_id;
+	glGenTextures(1, &texture_id);
+	glBindTexture(GL_TEXTURE_2D, texture_id);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, self.preview_fbo.width, self.preview_fbo.height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+	glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, self.preview_fbo.width, self.preview_fbo.height);
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	Texture tex;
+	tex.filename = "asset preview";
+	tex.texture_id = texture_id;
+
+	log("created asset");
+
+	world.free_by_id(id);
+
+	self.preview_tonemapped_fbo.unbind();
+
+	asset.preview = self.preview_tonemapped_map; //RHI::texture_manager.make(std::move(tex));
 }
 
-void import_model(Editor& editor, AssetTab& self, std::string& filename) {	
+void import_model(World& world, Editor& editor, AssetTab& self, RenderParams& params, std::string& filename) {	
 	Handle<Model> handle = load_Model(filename);
+	Model* model = RHI::model_manager.get(handle);
+	Handle<Shader> shader = load_Shader("shaders/pbr.vert", "shaders/pbr.frag");
 
-	self.assets.models.append({
-		handle,
-		{},
-		render_preview_for(self, handle)
-	});
+	auto default_params = make_SubstanceMaterial("wood_2", "Stylized_Wood");
+
+	vector<Handle<Material>> materials;
+	for (std::string& name : model->materials) {
+		Material mat = {
+			name,
+			shader,
+			default_params,
+			&default_draw_state
+		};
+		
+		materials.append(RHI::material_manager.make(std::move(mat)));
+	}
+
+	ModelAsset model_asset;
+	model_asset.handle = handle;
+	model_asset.materials = std::move(materials);
+	
+	render_preview_for(world, self, model_asset, params);
+
+	self.assets.models.append(model_asset);
 }
 
 void import_texture(Editor& editor, AssetTab& self, std::string& filename) {
@@ -100,7 +201,7 @@ void import_shader(Editor& editor, AssetTab& self, std::string& filename) {
 
 }
 
-void import_filename(Editor& editor, AssetTab& self, std::wstring& w_filename) {
+void import_filename(Editor& editor, World& world, RenderParams& params, AssetTab& self, std::wstring& w_filename) {
 	std::string filename = std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(w_filename);
 		
 	std::string asset_path;
@@ -118,7 +219,7 @@ void import_filename(Editor& editor, AssetTab& self, std::wstring& w_filename) {
 	log(asset_path);
 
 	if (endsWith(asset_path, ".fbx")) {
-		import_model(editor, self, asset_path);
+		import_model(world, editor, self, params, asset_path);
 	}
 	else if (endsWith(asset_path, ".jpg") || endsWith(asset_path, ".png")) {
 		import_texture(editor, self, asset_path);
@@ -131,13 +232,38 @@ void import_filename(Editor& editor, AssetTab& self, std::wstring& w_filename) {
 	}
 }
 
+AssetTab::AssetTab() {
+	{
+		AttachmentSettings attachment(this->preview_map);
+
+		FramebufferSettings settings;
+		settings.width = 256;
+		settings.height = 256;
+		settings.color_attachments.append(attachment);
+
+		this->preview_fbo = Framebuffer(settings);
+	}
+
+	{
+		AttachmentSettings attachment(this->preview_tonemapped_map);
+
+		FramebufferSettings settings;
+		settings.width = 256;
+		settings.height = 256;
+		settings.color_attachments.append(attachment);
+
+		this->preview_tonemapped_fbo = Framebuffer(settings);
+	}
+	
+}
+
 void AssetTab::render(World& world, Editor& editor, RenderParams& params) {
 	if (ImGui::Begin("Assets")) {
 
 		if (ImGui::Button("Import")) {
 			std::wstring filename = open_dialog(editor);
 			if (filename != L"") 
-				import_filename(editor, *this, filename);
+				import_filename(editor, world, params, *this, filename);
 		}
 
 		{

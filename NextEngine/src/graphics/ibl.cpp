@@ -308,7 +308,8 @@ Skybox* load_Skybox(World& world, const std::string& filename) {
 	model_renderer->model_id = cube_model;
 
 	auto materials = world.make<Materials>(id);
-	materials->materials.append(mat);
+	
+	materials->materials.append(RHI::material_manager.make(std::move(mat)));
 
 	auto trans = world.make<Transform>(id);
 

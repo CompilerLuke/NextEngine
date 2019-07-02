@@ -214,6 +214,7 @@
     <ClInclude Include="include\physics\btWrapper.h" />
     <ClInclude Include="include\physics\physics.h" />
     <ClInclude Include="include\reflection\reflection.h" />
+    <ClInclude Include="materialManager.h" />
     <ClInclude Include="src\core\eventDispatcher.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />

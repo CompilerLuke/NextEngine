@@ -17,7 +17,7 @@ void Model::on_load() {
 	}
 }
 
-void Model::render(ID id, glm::mat4* model, vector<Material>& materials, RenderParams& params) {
+void Model::render(ID id, glm::mat4* model, vector<Handle<Material>>& materials, RenderParams& params) {
 	for (auto& mesh : meshes) {
 		mesh.render(id, model, materials, params);
 	}

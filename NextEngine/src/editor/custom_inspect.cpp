@@ -72,7 +72,8 @@ bool Materials_inspect(void* data, reflect::TypeDescriptor* type, const std::str
 			prefix += std::to_string(i);
 			prefix += " :";
 
-			Material_inspect(&materials->materials[i], reflect::TypeResolver<Material>::get(), prefix, world);
+			Material* mat = RHI::material_manager.get(materials->materials[i]);
+			Material_inspect(mat, reflect::TypeResolver<Material>::get(), prefix, world);
 		}
 		return true;
 	}

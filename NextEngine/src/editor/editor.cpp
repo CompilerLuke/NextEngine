@@ -259,7 +259,7 @@ void Editor::run() {
 		name->name = "Main camera";
 	}
 
-	vector<Param> params = make_SubstanceMaterial(world, "wood_2", "Stylized_Wood");
+	vector<Param> params = make_SubstanceMaterial("wood_2", "Stylized_Wood");
 
 	Material material = {
 		std::string("DefaultMaterial"),
@@ -267,7 +267,8 @@ void Editor::run() {
 		params,
 		&default_draw_state
 	};
-	vector<Material> materials = { material };
+
+	vector<Handle<Material>> materials = { RHI::material_manager.make(std::move(material)) };
 
 	auto model_render = world.make<ModelRenderer>(model_renderer_id);
 	model_render->model_id = model;

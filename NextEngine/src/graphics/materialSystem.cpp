@@ -1,6 +1,11 @@
 #include "stdafx.h"
 #include "graphics/materialSystem.h"
 #include "graphics/texture.h"
+#include "graphics/rhi.h"
+
+REFLECT_GENERIC_STRUCT_BEGIN(Handle<Material>)
+REFLECT_STRUCT_MEMBER(id)
+REFLECT_STRUCT_END()
 
 REFLECT_UNION_BEGIN(Param)
 REFLECT_UNION_FIELD(loc)
@@ -23,11 +28,12 @@ REFLECT_STRUCT_BEGIN(Materials)
 REFLECT_STRUCT_MEMBER(materials)
 REFLECT_STRUCT_END()
 
-Material* material_by_name(vector<Material>& materials, const std::string& name) {
+Handle<Material> material_by_name(vector<Handle<Material>>& materials, const std::string& name) {
 	for (int i = 0; i < materials.length; i++) {
-		if (materials[i].name == name) return &materials[i];
+		Material* mat = RHI::material_manager.get(materials[i]);
+		if (mat->name == name) return materials[i];
 	}
-	return NULL;
+	return { INVALID_HANDLE };
 }
 
 Param::Param() {};
@@ -72,7 +78,7 @@ Param make_Param_Image(Handle<Uniform> loc, Handle<Texture> id) {
 	return param;
 }
 
-vector<Param> make_SubstanceMaterial(World& world, const std::string& folder, const std::string& name) {
+vector<Param> make_SubstanceMaterial(const std::string& folder, const std::string& name) {
 	auto shad = load_Shader("shaders/pbr.vert", "shaders/pbr.frag");
 	
 	return {

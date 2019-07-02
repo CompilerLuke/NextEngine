@@ -30,7 +30,7 @@ struct Mesh {
 
 	Mesh() {};
 	void submit();
-	void render(ID, glm::mat4*, vector<Material>&, RenderParams&);
+	void render(ID, glm::mat4*, vector<Handle<Material>>&, RenderParams&);
 
 	REFLECT()
 };
@@ -42,7 +42,7 @@ struct Model {
 
 	void on_load();
 	void load_in_place();
-	void render(ID, glm::mat4*, vector<Material>&, RenderParams&);
+	void render(ID, glm::mat4*, vector<Handle<Material>>&, RenderParams&);
 
 	REFLECT()
 };
@@ -53,7 +53,7 @@ struct ModelRenderer {
 	bool visible = true;
 	Handle<Model> model_id;
 
-	void set_materials(World&, vector<Material>& materials);
+	void set_materials(World&, vector<Handle<Material>>& materials);
 
 	REFLECT()
 };

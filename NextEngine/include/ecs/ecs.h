@@ -187,8 +187,8 @@ struct World {
 		this->get<T>()->free_by_id(id);
 	}
 
-	template<>
-	void free_by_id<Entity>(ID id) {
+	
+	void free_by_id(ID id) {
 		for (int i = 0; i < components_hash_size; i++) {
 			if (components[i] == NULL) continue;
 			components[i]->free_by_id(id);
