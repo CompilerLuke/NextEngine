@@ -1,0 +1,22 @@
+.ProjectName 			= "UnpluggingExecutable"
+.ProjectSourcesPath 	= "./UnpluggingExecutable"
+
+
+.ProjectNames 			= .ProjectName
+
+.CompilerConfigs =
+{
+
+}
+
+.DefaultCompilerConfig = {
+
+}
+
+.ProjectDependencies =
+{
+
+}
+
+#include "C:\Users\User\Desktop\FastbuildHelper/ProjectTemplates/ExecutableProject.bff"
+#include "C:\Users\User\Desktop\FastbuildHelper/VisualStudioTemplates/VisualStudioProject.bff"
