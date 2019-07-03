@@ -7,21 +7,25 @@
 
 struct TextureAsset {
 	Handle<struct Texture> handle;
+	std::string name;
 };
 
 struct ModelAsset {
 	Handle<struct Model> handle = { INVALID_HANDLE };
 	vector<Handle<struct Material>> materials;
 	Handle<struct Texture> preview = { INVALID_HANDLE };
+	std::string name;
 };
 
 struct ShaderAsset {
 	Handle<struct Shader> handle = { INVALID_HANDLE };
+	std::string name;
 };
 
 struct MaterialAsset {
 	Handle<struct Material> handle = { INVALID_HANDLE };
 	Handle<struct Texture> preview = { INVALID_HANDLE };
+	std::string name;
 };
 
 struct AssetFolder {

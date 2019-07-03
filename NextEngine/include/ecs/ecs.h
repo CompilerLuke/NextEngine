@@ -33,7 +33,7 @@ struct Slot {
 	}
 };
 
-constexpr unsigned int max_entities = 1000;
+constexpr unsigned int max_entities = 2000000;
 
 struct Component {
 	reflect::TypeDescriptor* type;
@@ -47,15 +47,19 @@ struct ComponentStore {
 	virtual ~ComponentStore() {};
 };
 
-extern int global_type_id;
 using typeid_t = int;
 
+/*
 template <typename T>
 constexpr typeid_t type_id() noexcept
 {
 	static int const type_id = global_type_id++;
 	return type_id;
 }
+*/
+
+template<typename T>
+constexpr typeid_t type_id();
 
 template<typename T>
 struct Store : ComponentStore {
@@ -179,8 +183,8 @@ struct World {
 		return this->get<T>()->make(id);
 	}
 
-	ID make_ID();
-	void free_ID(ID);
+	ID ENGINE_API make_ID();
+	void ENGINE_API free_ID(ID);
 
 	template<typename T>
 	void free_by_id(ID id) {
@@ -251,16 +255,13 @@ struct World {
 	typename std::enable_if<(sizeof...(Args) > 0), vector <ID> >::type
 		filter(Layermask layermask) {
 		vector<ID> ids;
-		Store<Entity>* entity_store = get<Entity>();
-
 		ids.allocator = &temporary_allocator;
+		vector<A*> filter_by = filter<A>(layermask);
 
-		for (int i = 0; i < max_entities; i++) {
-			if (has_component<A, Args...>(i)) {
-				auto entity = entity_store->by_id(i);
-				if (entity && entity->enabled && entity->layermask & layermask) {
-					ids.append(i);
-				}
+		for (int i = 0; i < filter_by.length; i++) {
+			int id = id_of(filter_by[i]);
+			if (has_component<Args...>(id)) {
+				ids.append(id);
 			}
 		}
 

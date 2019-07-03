@@ -37,6 +37,7 @@ void AABB::update_aabb(AABB& other) {
 	}
 }
 
+
 void AABB::update(const glm::vec3& v) {
 	this->max.x = std::max(this->max.x, v.x);
 	this->max.y = std::max(this->max.y, v.y);

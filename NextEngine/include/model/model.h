@@ -42,18 +42,18 @@ struct Model {
 
 	void on_load();
 	void load_in_place();
-	void render(ID, glm::mat4*, vector<Handle<Material>>&, RenderParams&);
+	void ENGINE_API render(ID, glm::mat4*, vector<Handle<Material>>&, RenderParams&);
 
 	REFLECT()
 };
 
-Handle<Model> load_Model(const std::string&);
+Handle<Model> ENGINE_API load_Model(const std::string&);
 
 struct ModelRenderer {
 	bool visible = true;
 	Handle<Model> model_id;
 
-	void set_materials(World&, vector<Handle<Material>>& materials);
+	void ENGINE_API set_materials(World&, vector<Handle<Material>>& materials);
 
 	REFLECT()
 };

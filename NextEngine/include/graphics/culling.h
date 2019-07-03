@@ -9,6 +9,7 @@ struct AABB {
 	glm::vec3 max = glm::vec3(-FLT_MAX);
 
 	void update(const glm::vec3&);
+
 	AABB apply(const glm::mat4&);
 	void update_aabb(AABB&);
 };

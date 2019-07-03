@@ -27,6 +27,8 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
+DEFINE_COMPONENT_ID(EntityEditor, 15)
+
 //theme by Derydoca 
 void set_darcula_theme() {
 	ImGuiStyle* style = &ImGui::GetStyle();

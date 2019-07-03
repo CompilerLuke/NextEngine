@@ -38,3 +38,7 @@ struct System {
 };
 
 void ENGINE_API register_default_systems_and_components(World& world);
+
+#define DEFINE_COMPONENT_ID(type, id) \
+template<> \
+typeid_t constexpr ENGINE_API type_id<type>() { return id; }

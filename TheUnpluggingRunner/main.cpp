@@ -12,7 +12,11 @@ int main() {
 	std::string level = "C:\\Users\\User\\Desktop\\TopCCompiler\\TopCompiler\\Fernix\\assets\\level2\\";
 	Level::set_level(level);
 
+
 	Editor editor("C:\\Users\\User\\source\\repos\\NextEngine\\x64\\Debug\\TheUnpluggingGame.dll", window);
+
+	//Editor editor("C:\\Users\\User\\source\\repos\\NextEngine\\x64\\Release\\TheUnpluggingGame.dll", window);
+
 	editor.run();
 
 	return 0;

@@ -29,7 +29,7 @@ Handle<Shader> load_Shader(const std::string& vfilename, const std::string& ffil
 		if (existing_shaders[i].generation == INVALID_SLOT) continue;
 		auto& existing_shader = existing_shaders[i].obj;
 
-		if (existing_shader.v_filename == vfilename && existing_shader.f_filename == ffilename) {
+		if (existing_shader.v_filename == vfilename && existing_shader.f_filename == ffilename && (!supports_instancing || supports_instancing == existing_shader.supports_instancing)) {
 				return RHI::shader_manager.index_to_handle(i);
 		}
 	}

@@ -7,6 +7,7 @@
 #include "ecs/ecs.h"
 #include "reflection/reflection.h"
 #include "core/handle.h"
+#include "core/core.h"
 
 struct Shader;
 
@@ -60,5 +61,5 @@ struct Shader {
 	REFLECT()
 };
 
-Handle<Shader> load_Shader(const std::string& vfilename, const std::string& ffilename, bool supports_instancing = false, bool instanced = false);
-Handle<Uniform> location(Handle<Shader>, const std::string&);
+Handle<Shader> ENGINE_API load_Shader(const std::string& vfilename, const std::string& ffilename, bool supports_instancing = false, bool instanced = false);
+Handle<Uniform> ENGINE_API location(Handle<Shader>, const std::string&);

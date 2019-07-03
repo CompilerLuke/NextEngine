@@ -135,9 +135,6 @@
     <ClCompile Include="src\editor\lister.cpp">
       <Filter>src\editor</Filter>
     </ClCompile>
-    <ClCompile Include="src\editor\picking.cpp">
-      <Filter>src\editor</Filter>
-    </ClCompile>
     <ClCompile Include="src\graphics\buffer.cpp">
       <Filter>src\graphics</Filter>
     </ClCompile>
@@ -145,9 +142,6 @@
       <Filter>src\graphics</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\device.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\draw.cpp">
       <Filter>src\graphics</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\frameBuffer.cpp">
@@ -236,6 +230,12 @@
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="src\editor\assetTab.cpp">
       <Filter>src\editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\draw.cpp">
+      <Filter>src\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\picking.cpp">
+      <Filter>src\graphics</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

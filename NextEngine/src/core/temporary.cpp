@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "core/temporary.h"
+#include <memory>
 
 void TemporaryAllocator::clear() {
 	this->occupied = 0;
@@ -16,11 +17,16 @@ TemporaryAllocator::~TemporaryAllocator() {
 }
 
 void* TemporaryAllocator::allocate(size_t size) {
-	auto occupied = this->occupied;
-	this->occupied += size;
 	if (this->occupied > this->max_size) {
 		throw "Temporary allocator out of memory";
 	}
-	return this->memory + occupied;
+	
+	void* ptr = this->memory + occupied;
+	size_t space = this->max_size - occupied;
+	ptr = std::align(16, size, ptr, space);
+	space -= size;
+	this->occupied = this->max_size - space;
+
+	return ptr;
 }
 

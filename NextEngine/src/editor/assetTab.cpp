@@ -24,26 +24,50 @@
 
 #include <WinBase.h>
 
+#include <iostream>
+
 void AssetTab::register_callbacks(Window& window, Editor& editor) {
 	
 }
 
-void render_assets(AssetFolder& folder, Editor& editor, World& world, const std::string& filter) {
-	for (auto& tex : folder.textures) {
+void render_name(std::string& name) {
+	char buff[50];
+	memcpy(buff, name.c_str(), name.size() + 1);
 
+	ImGui::PushItemWidth(-1);
+	ImGui::PushID((void*)&name);
+	ImGui::InputText("##", buff, 50);
+	ImGui::PopItemWidth();
+	name = buff;
+	ImGui::PopID();
+
+}
+
+void render_assets(AssetFolder& folder, Editor& editor, World& world, const std::string& filter) {
+	ImGui::Columns(10);
+	for (auto& tex : folder.textures) {
+		Texture* texture = RHI::texture_manager.get(tex.handle);
+
+		render_name(tex.name);
+		ImGui::Image((ImTextureID)texture->texture_id, ImVec2(256, 256));
+		ImGui::NextColumn();
 	}
 
 	for (auto& shad : folder.shaders) {
-
+		render_name(shad.name);
+		ImGui::NextColumn();
 	}
 
 	for (auto& mod : folder.models) {
 		Model* model = RHI::model_manager.get(mod.handle);
 		Texture* tex = RHI::texture_manager.get(mod.preview);
 
-		ImGui::Button(model->path.c_str());
+		render_name(mod.name);
 		ImGui::Image((ImTextureID)tex->texture_id, ImVec2(256, 256));
+		ImGui::NextColumn();
 	}
+
+	ImGui::Columns(1);
 }
 
 wchar_t* to_wide_char(const char* orig);
@@ -162,7 +186,11 @@ void render_preview_for(World& world, AssetTab& self, ModelAsset& asset, RenderP
 
 	self.preview_tonemapped_fbo.unbind();
 
-	asset.preview = self.preview_tonemapped_map; //RHI::texture_manager.make(std::move(tex));
+	asset.preview = RHI::texture_manager.make(std::move(tex));
+}
+
+std::string name_from_filename(std::string& filename) {
+	return filename.substr(filename.find_last_of("\\") + 1, filename.size() - filename.find_last_of("."));
 }
 
 void import_model(World& world, Editor& editor, AssetTab& self, RenderParams& params, std::string& filename) {	
@@ -187,6 +215,7 @@ void import_model(World& world, Editor& editor, AssetTab& self, RenderParams& pa
 	ModelAsset model_asset;
 	model_asset.handle = handle;
 	model_asset.materials = std::move(materials);
+	model_asset.name = name_from_filename(filename);
 	
 	render_preview_for(world, self, model_asset, params);
 
@@ -194,11 +223,24 @@ void import_model(World& world, Editor& editor, AssetTab& self, RenderParams& pa
 }
 
 void import_texture(Editor& editor, AssetTab& self, std::string& filename) {
+	Handle<Texture> handle = load_Texture(filename);
 
+	self.assets.textures.append({
+		handle,
+		name_from_filename(filename)
+	});
 }
 
 void import_shader(Editor& editor, AssetTab& self, std::string& filename) {
+	std::string frag_filename = filename.substr(0, filename.find(".vert"));
+	frag_filename += ".frag";
 
+	Handle<Shader> handle = load_Shader(filename, frag_filename);
+	
+	self.assets.shaders.append({
+		handle,
+		name_from_filename(filename)
+	});
 }
 
 void import_filename(Editor& editor, World& world, RenderParams& params, AssetTab& self, std::wstring& w_filename) {

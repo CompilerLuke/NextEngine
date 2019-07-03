@@ -4,11 +4,12 @@
 #include "textureManager.h"
 #include "model/modelManager.h"
 #include "materialManager.h"
+#include "core/core.h"
 
 namespace RHI {
-	extern ShaderManager shader_manager;
-	extern TextureManager texture_manager;
-	extern CubemapManager cubemap_manager;
-	extern ModelManager model_manager;
-	extern MaterialManager material_manager;
+	extern ShaderManager ENGINE_API shader_manager;
+	extern TextureManager ENGINE_API texture_manager;
+	extern CubemapManager ENGINE_API cubemap_manager;
+	extern ModelManager ENGINE_API model_manager;
+	extern MaterialManager ENGINE_API material_manager;
 };

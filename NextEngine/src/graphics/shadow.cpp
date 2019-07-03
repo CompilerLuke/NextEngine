@@ -157,6 +157,7 @@ void DepthMap::render_maps(World& world, RenderParams& params, glm::mat4 project
 	new_params.command_buffer = &command_buffer;
 	new_params.view = view_m;
 	new_params.projection = projection_m;
+	new_params.pass = this;
 
 	this->depth_map_FBO.bind();
 	glEnable(GL_DEPTH_TEST);

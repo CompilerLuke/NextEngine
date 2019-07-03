@@ -5,6 +5,7 @@
 #include "core/input.h"
 #include "GLFW/glfw3.h"
 #include <ImGuizmo.h>
+#include <glm/gtc/matrix_transform.hpp>
 #include "components/transform.h"
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/matrix_decompose.hpp>

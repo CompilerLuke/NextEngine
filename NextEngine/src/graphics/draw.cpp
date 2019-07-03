@@ -107,6 +107,7 @@ void switch_shader(World& world, RenderParams& params, Handle<Shader> shader_id,
 
 	if (instanced) {
 		auto instanced_shader = shader->instanced_version;
+		shader_id = instanced_shader;
 		shader = RHI::shader_manager.get(instanced_shader);
 	}
 
@@ -222,6 +223,8 @@ bool operator!=(Material& mat1, Material& mat2) {
 
 #include <iostream>
 
+std::unordered_map<DrawSortKey, int> CommandBuffer::instanced_buffers;
+
 void CommandBuffer::submit_to_gpu(World& world, RenderParams& render_params) {
 	//todo culling
 	for (auto &cmd : commands) {
@@ -240,7 +243,7 @@ void CommandBuffer::submit_to_gpu(World& world, RenderParams& render_params) {
 		auto& cmd = commands[i];
 		auto& mat = *cmd.material;
 
-		auto num_instanceable = can_instance(commands, i, world);
+		auto num_instanceable = cmd.num_instances; //can_instance(commands, i, world);
 		auto instanced = num_instanceable > 2;
 
 		if (i == 0) {
@@ -263,7 +266,7 @@ void CommandBuffer::submit_to_gpu(World& world, RenderParams& render_params) {
 			auto& last_cmd = commands[i - 1];
 			auto& last_mat = *last_cmd.material;
 
-			if ((last_mat.shader.id != mat.shader.id) || last_was_instanced) {
+			if ((last_mat.shader.id != mat.shader.id) || last_was_instanced != instanced) {
 				switch_shader(world, render_params, mat.shader, instanced);
 			}
 
@@ -306,7 +309,7 @@ void CommandBuffer::submit_to_gpu(World& world, RenderParams& render_params) {
 
 		if (instanced) {
 			auto vao = cmd.buffer->vao;
-			auto instance_buffer = this->instanced_buffers[cmd.key];
+			auto instance_buffer = instanced_buffers[cmd.key];
 
 			if (instance_buffer == 0) {
 				unsigned int buff;
@@ -330,16 +333,11 @@ void CommandBuffer::submit_to_gpu(World& world, RenderParams& render_params) {
 
 				instance_buffer = buff;
 
-				auto transforms = TEMPORARY_ARRAY(glm::mat4, num_instanceable);
-
-				for (int c = 0; c < num_instanceable; c++) {
-					transforms[i] = *commands[i].model_m;
-					i += 1;
-				}
-
-				glBindBuffer(GL_ARRAY_BUFFER, instance_buffer);
-				glBufferData(GL_ARRAY_BUFFER, num_instanceable * sizeof(glm::mat4), transforms, GL_STREAM_DRAW);
+				glBufferSubData(GL_ARRAY_BUFFER, 0, num_instanceable * sizeof(glm::mat4), cmd.model_m);
 			}
+
+			glBindBuffer(GL_ARRAY_BUFFER, instance_buffer);
+			glDrawElementsInstanced(GL_TRIANGLES, cmd.buffer->length, GL_UNSIGNED_INT, NULL, num_instanceable);
 		}
 		else {
 			shader::set_mat4(mat.shader, "model", *cmd.model_m); //todo cache model uniform lookup
@@ -351,8 +349,8 @@ void CommandBuffer::submit_to_gpu(World& world, RenderParams& render_params) {
 				glDrawElements(GL_TRIANGLES, cmd.buffer->length, GL_UNSIGNED_INT, NULL);
 				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 			}
-			i += 1;
 		}
 		last_was_instanced = instanced;
+		i += 1;
 	}
 }

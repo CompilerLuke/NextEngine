@@ -48,12 +48,14 @@ void MainPass::render(World& world, RenderParams& params) {
 
 	world.render(params);
 
-	depth_prepass.render_maps(world, params, params.projection, params.view);
-	shadow_pass.render(world, params);
+	//depth_prepass.render_maps(world, params, params.projection, params.view);
+	//shadow_pass.render(world, params);
 
 	current_frame.bind();
 	current_frame.clear_color(glm::vec4(0, 0, 0, 1));
 	current_frame.clear_depth(glm::vec4(0, 0, 0, 1));
+
+	//glBlitNamedFramebuffer(depth_prepass.depth_map_FBO.fbo, current_frame.fbo, 0, 0, current_frame.width, current_frame.height, 0, 0, current_frame.width, current_frame.height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 
 	params.command_buffer->submit_to_gpu(world, params);
 

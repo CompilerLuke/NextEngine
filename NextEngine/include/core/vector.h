@@ -5,7 +5,9 @@
 #include <memory.h>
 #include <type_traits>
 
+#ifdef _DEBUG
 #define BOUNDS_CHECKING
+#endif 
 
 #include <iterator>
 
@@ -74,7 +76,7 @@ struct vector {
 	}
 
 	inline void append(T&& element) {
-		if (length + 1 > capacity) {
+		if (length >= capacity) {
 			if (capacity == 0) reserve(2);
 			else reserve(capacity * 2);
 		}
@@ -82,7 +84,7 @@ struct vector {
 	}
 
 	inline void append(const T& element) {
-		if (length + 1 > capacity) {
+		if (length >= capacity) {
 			if (capacity == 0) reserve(2);
 			else reserve(capacity * 2);
 		}

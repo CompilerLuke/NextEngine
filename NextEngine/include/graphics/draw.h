@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include "ecs/ecs.h"
 #include "reflection/reflection.h"
+#include "core/core.h"
 
 enum Cull {Cull_Front, Cull_Back, Cull_None};
 enum DepthFunc {DepthFunc_Less, DepthFunc_Lequal, DepthFunc_None};
@@ -38,7 +39,7 @@ struct DrawCommandState {
 	REFLECT()
 };
 
-extern DrawCommandState default_draw_state;
+extern DrawCommandState ENGINE_API default_draw_state;
 
 #include "materialSystem.h"
 
@@ -51,13 +52,15 @@ struct DrawCommand {
 	AABB* aabb;
 	VertexBuffer* buffer;
 	struct Material* material;
+	int num_instances = 1;
 
 	DrawCommand(ID, glm::mat4*, AABB*, VertexBuffer*, Material*);
 };
 
 struct CommandBuffer {
 	vector<DrawCommand> commands;
-	std::unordered_map<DrawSortKey, int> instanced_buffers;
+
+	static std::unordered_map<DrawSortKey, int> instanced_buffers;
 
 	unsigned int current_texture_index = 0;
 

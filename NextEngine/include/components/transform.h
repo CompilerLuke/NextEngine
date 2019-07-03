@@ -10,7 +10,13 @@ struct Transform {
 	glm::quat rotation;
 	glm::vec3 scale = glm::vec3(1.0f);
 	
-	glm::mat4 compute_model_matrix();
+	glm::mat4 ENGINE_API compute_model_matrix();
+
+	REFLECT()
+};
+
+struct StaticTransform {
+	glm::mat4 model_matrix;
 
 	REFLECT()
 };
@@ -21,7 +27,7 @@ struct LocalTransform {
 	glm::vec3 scale = glm::vec3(1.0f);
 	ID owner;
 
-	void calc_global_transform(struct World&);
+	void ENGINE_API calc_global_transform(struct World&);
 
 	REFLECT()
 };

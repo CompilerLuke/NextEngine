@@ -13,6 +13,7 @@
 #include "editor/editor.h"
 #include "graphics/window.h"
 #include "logger/logger.h"
+#include "graphics/rhi.h"
 
 PickingPass::PickingPass(Window& params)
 : picking_shader(load_Shader("shaders/picking.vert", "shaders/picking.frag")) {
@@ -55,7 +56,7 @@ int PickingPass::pick(World& world, UpdateParams& params) {
 
 void PickingPass::render(World& world, RenderParams& params) {
 	if (!params.layermask & editor_layer) return;
-	
+
 	CommandBuffer cmd_buffer;
 	RenderParams new_params(&cmd_buffer, this);
 	new_params.width = framebuffer.width;
@@ -127,9 +128,11 @@ void PickingSystem::render(World& world, RenderParams& params) {
 		if (cmd.id != selected) continue;
 
 		{
-			Material* mat = TEMPORARY_ALLOC(Material, *cmd.material);
-			mat->state = TEMPORARY_ALLOC(DrawCommandState, object_state);
+			Shader* shad = RHI::shader_manager.get(cmd.material->shader);
+			Material* mat = TEMPORARY_ALLOC(Material, *cmd.material); //todo LEAKS MEMORY
+			mat->state = &object_state;
 			cmd.material = mat;
+			
 		}
 
 		{
