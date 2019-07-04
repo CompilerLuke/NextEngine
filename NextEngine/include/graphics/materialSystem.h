@@ -37,8 +37,10 @@ struct Param {
 };
 
 Param make_Param_Int(Handle<Uniform> loc, int);
+Param make_Param_Vec2(Handle<Uniform> loc, glm::vec2);
 Param make_Param_Vec3(Handle<Uniform> loc, glm::vec3);
 Param make_Param_Cubemap(Handle<Uniform> loc, Handle<struct Cubemap>);
+Param make_Param_Image(Handle<Uniform> loc, Handle<struct Texture>);
 
 struct Material {
 	std::string name;

@@ -29,12 +29,12 @@ DEFINE_COMPONENT_ID(RigidBody, 13)
 DEFINE_COMPONENT_ID(StaticTransform, 14)
 
 void register_default_systems_and_components(World& world) {
-	world.add(new Store<Entity>(1000000 + 100));
-	world.add(new Store<Transform>(1000000 + 10));
+	world.add(new Store<Entity>(100));
+	world.add(new Store<Transform>(100));
 	world.add(new Store<LocalTransform>(10));
-	world.add(new Store<StaticTransform>(1000000));
-	world.add(new Store<Materials>(1000000 + 10));
-	world.add(new Store<ModelRenderer>(1000000 + 10));
+	world.add(new Store<StaticTransform>(100));
+	world.add(new Store<Materials>(100));
+	world.add(new Store<ModelRenderer>(100));
 	world.add(new Store<Camera>(3));
 	world.add(new Store<Flyover>(1));
 	world.add(new Store<DirLight>(2));

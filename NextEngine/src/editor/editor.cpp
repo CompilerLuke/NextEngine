@@ -207,7 +207,9 @@ void Editor::run() {
 	Time time;
 
 	icons = {
-		{"play", load_Texture("editor/play_button3.png")}
+		{"play", load_Texture("editor/play_button3.png")},
+		{"folder", load_Texture("editor/folder_icon.png")},
+		{"shader", load_Texture("editor/shader_icon.png")}
 	};
 
 	auto shader = load_Shader("shaders/pbr.vert", "shaders/gizmo.frag");

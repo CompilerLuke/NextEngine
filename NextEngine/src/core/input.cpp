@@ -83,4 +83,10 @@ void Input::clear() {
 			this->keys[pair.first] = GLFW_REPEAT; 
 		}
 	}
+
+	for (unsigned int i = 0; i < 3; i++) {
+		if (this->mouse_button_state[i] == GLFW_PRESS) {
+			this->mouse_button_state[i] = GLFW_REPEAT;
+		}
+	}
 }

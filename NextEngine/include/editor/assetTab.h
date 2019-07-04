@@ -4,10 +4,13 @@
 #include "core/handle.h"
 #include <string>
 #include "graphics/frameBuffer.h"
+#include "ecs/ecs.h"
 
 struct TextureAsset {
 	Handle<struct Texture> handle;
 	std::string name;
+
+	REFLECT()
 };
 
 struct ModelAsset {
@@ -15,26 +18,29 @@ struct ModelAsset {
 	vector<Handle<struct Material>> materials;
 	Handle<struct Texture> preview = { INVALID_HANDLE };
 	std::string name;
+
+	REFLECT()
 };
 
 struct ShaderAsset {
 	Handle<struct Shader> handle = { INVALID_HANDLE };
 	std::string name;
+
+	REFLECT()
 };
 
 struct MaterialAsset {
 	Handle<struct Material> handle = { INVALID_HANDLE };
 	Handle<struct Texture> preview = { INVALID_HANDLE };
 	std::string name;
+
+	REFLECT()
 };
 
 struct AssetFolder {
-	vector<TextureAsset> textures;
-	vector<ModelAsset> models;
-	vector<ShaderAsset> shaders;
-	vector<MaterialAsset> materials;
+	vector<unsigned int> contents;
 
-	vector<AssetFolder> sub_folders;
+	REFLECT()
 };
 
 struct AssetTab {
@@ -43,7 +49,11 @@ struct AssetTab {
 	Handle<struct Texture> preview_map;
 	Handle<struct Texture> preview_tonemapped_map;
 
-	AssetFolder assets;
+	World assets;
+	ID toplevel;
+	ID current_folder;
+	int selected = -1;
+	
 	std::string filter;
 
 	AssetTab();

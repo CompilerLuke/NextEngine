@@ -193,11 +193,12 @@ void DisplayComponents::render(World& world, RenderParams& params, Editor& edito
 	//ImGui::SetNextWindowPos(ImVec2(0, 0));
 
 	if (ImGui::Begin("Properties", NULL)) {
+		int selected_id = editor.selected_id;
 
-		if (editor.selected_id >= 0) {
-			auto name_and_id = std::string("Entity #") + std::to_string(editor.selected_id);
+		if (selected_id >= 0) {
+			auto name_and_id = std::string("Entity #") + std::to_string(selected_id);
 
-			auto meta = world.by_id<EntityEditor>(editor.selected_id);
+			auto meta = world.by_id<EntityEditor>(selected_id);
 			if (meta) {
 				char buff[50];
 				memcpy(buff, meta->name.c_str(), meta->name.size() + 1);
@@ -210,7 +211,7 @@ void DisplayComponents::render(World& world, RenderParams& params, Editor& edito
 
 			bool uncollapse = ImGui::Button("uncollapse all");
 
-			auto components = world.components_by_id(editor.selected_id);
+			auto components = world.components_by_id(selected_id);
 
 			for (auto& comp : components) {
 				ImGui::BeginGroup();

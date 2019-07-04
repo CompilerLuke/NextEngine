@@ -33,7 +33,7 @@ struct Slot {
 	}
 };
 
-constexpr unsigned int max_entities = 2000000;
+constexpr unsigned int max_entities = 20000;
 
 struct Component {
 	reflect::TypeDescriptor* type;
