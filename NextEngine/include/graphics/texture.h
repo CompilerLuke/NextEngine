@@ -17,6 +17,7 @@ struct Texture {
 
 namespace texture {
 	void bind_to(Handle<Texture>, unsigned int);
+	unsigned int id_of(Handle<Texture>);
 };
 
 struct Cubemap {

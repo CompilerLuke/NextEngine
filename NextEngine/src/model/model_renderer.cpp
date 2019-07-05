@@ -117,7 +117,8 @@ void ModelRendererSystem::render(World& world, RenderParams& params) { //HOTSPOT
 	}
 }
 
-void ModelRenderer::set_materials(World& world, vector<Handle<Material>>& materials) {
+
+void ModelRenderer::set_materials(World& world, vector<Handle<Material>>& materials) { //todo DEPRECATE
 	vector<Handle<Material>> materials_in_order;
 
 	if (this->model_id.id == INVALID_HANDLE) return;

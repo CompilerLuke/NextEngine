@@ -4,6 +4,7 @@
 #include "graphics/rhi.h"
 #include "imgui.h"
 #include "logger/logger.h"
+#include "editor/assetTab.h"
 
 //Shaders
 bool Shader_inspect(void* data, struct reflect::TypeDescriptor* type, const std::string& prefix, struct World& world) {
@@ -61,46 +62,18 @@ bool EntityEditor_inspect(void* data, reflect::TypeDescriptor* type, const std::
 
 //Materials
 bool Material_inspect(void* data, reflect::TypeDescriptor* type, const std::string& prefix, World& world) {
-	Material* material = (Material*)data;
-	auto material_type = (reflect::TypeDescriptor_Struct*)type;
+	Handle<Material> material = *(Handle<Material>*)data;
 
-	auto name = prefix + std::string(" ") + material->name;
+	MaterialAsset* material_asset = AssetTab::material_handle_to_asset[material.id];
 
-	if (ImGui::TreeNode(name.c_str())) {
-		for (auto field : material_type->members) {
-			if (field.name == "name");
-			else if (field.name == "params") {
-				//if (ImGui::TreeNode("params")) {
-				for (auto& param : material->params) {
-					auto shader = RHI::shader_manager.get(material->shader);
-					auto& uniform = shader->uniforms[param.loc.id];
+	auto name = prefix + std::string(" ") + material_asset->name;
 
-					if (param.type == Param_Vec2) {
-						ImGui::InputFloat2(uniform.name.c_str(), &param.vec2.x);
-					}
-					if (param.type == Param_Vec3) {
-						ImGui::ColorPicker3(uniform.name.c_str(), &param.vec3.x);
-					}
-					if (param.type == Param_Image) {
-						Texture* tex = RHI::texture_manager.get(param.image);
-						ImGui::Image((ImTextureID)tex->texture_id, ImVec2(200, 200));
-						ImGui::SameLine();
-						ImGui::Text(uniform.name.c_str());
-					}
-					if (param.type == Param_Int) {
-						ImGui::InputInt(uniform.name.c_str(), &param.integer);
-					}
-				}
-				//ImGui::TreePop();
 
-			}
-			else {
-				field.type->render_fields((char*)data + field.offset, field.name, world);
-			}
-		}
-		ImGui::TreePop();
-		return true;
-	}
+
+	Texture* tex = RHI::texture_manager.get(material_asset->preview);
+	ImGui::Image((ImTextureID)tex->texture_id, ImVec2(128, 128), ImVec2(0, 1), ImVec2(1, 0));
+	ImGui::SameLine();
+	ImGui::Text(name.c_str());
 
 	return false;
 }
@@ -115,8 +88,7 @@ bool Materials_inspect(void* data, reflect::TypeDescriptor* type, const std::str
 			prefix += std::to_string(i);
 			prefix += " :";
 
-			Material* mat = RHI::material_manager.get(materials->materials[i]);
-			Material_inspect(mat, reflect::TypeResolver<Material>::get(), prefix, world);
+			Material_inspect(&materials->materials[i], reflect::TypeResolver<Material>::get(), prefix, world);
 		}
 		return true;
 	}

@@ -6,6 +6,8 @@
 #include "graphics/frameBuffer.h"
 #include "components/lights.h"
 #include "graphics/ibl.h"
+#include "components/transform.h"
+#include "components/camera.h"
 
 MainPass::MainPass(World& world, Window& window)
 	: depth_prepass(window.width, window.height, world),
@@ -28,6 +30,14 @@ MainPass::MainPass(World& world, Window& window)
 }
 
 void MainPass::set_shader_params(Handle<Shader> shader, World& world, RenderParams& params) {
+	if (params.cam) {
+		Transform* trans = world.by_id<Transform>(world.id_of(params.cam));
+		shader::set_vec3(shader, "viewPos", trans->position);
+	}
+	else {
+		throw "What are you doing!";
+	}
+	
 	shader::set_mat4(shader, "projection", params.projection);
 	shader::set_mat4(shader, "view", params.view);
 

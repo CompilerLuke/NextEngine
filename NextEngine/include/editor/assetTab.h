@@ -5,6 +5,8 @@
 #include <string>
 #include "graphics/frameBuffer.h"
 #include "ecs/ecs.h"
+#include <glm/gtc/quaternion.hpp>
+#include <unordered_map>
 
 struct TextureAsset {
 	Handle<struct Texture> handle;
@@ -33,6 +35,10 @@ struct MaterialAsset {
 	Handle<struct Material> handle = { INVALID_HANDLE };
 	Handle<struct Texture> preview = { INVALID_HANDLE };
 	std::string name;
+	glm::vec2 current;
+	glm::vec2 previous;
+	glm::vec2 rot_deg;
+	glm::quat rot;
 
 	REFLECT()
 };
@@ -49,6 +55,9 @@ struct AssetTab {
 	Handle<struct Texture> preview_map;
 	Handle<struct Texture> preview_tonemapped_map;
 
+	static vector<MaterialAsset*> material_handle_to_asset; 
+	static void insert_material_asset(MaterialAsset*);
+
 	World assets;
 	ID toplevel;
 	ID current_folder;
@@ -61,3 +70,5 @@ struct AssetTab {
 	void register_callbacks(struct Window&, struct Editor&);
 	void render(struct World&, struct Editor&, struct RenderParams&);
 };
+
+MaterialAsset* create_new_material(struct World& world, struct AssetTab& self, struct Editor& editor, struct RenderParams& params);

@@ -72,7 +72,7 @@ void render_name(std::string& name) {
 
 void render_asset(ImTextureID texture_id, std::string& name, AssetTab& tab, ID id) {
 	bool selected = id == tab.selected;
-	if (selected) ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 5);
+	if (selected) ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 3);
 
 	if (ImGui::ImageButton((ImTextureID)texture_id, ImVec2(128, 128), ImVec2(0, 1), ImVec2(1, 0))) {
 		tab.selected = id;
@@ -81,6 +81,7 @@ void render_asset(ImTextureID texture_id, std::string& name, AssetTab& tab, ID i
 	if (selected) ImGui::PopStyleVar(1);
 
 	render_name(name);
+
 	ImGui::NextColumn();
 }
 
@@ -100,8 +101,29 @@ void render_assets(ID folder_handle, Editor& editor, AssetTab& asset_tab, const 
 		auto mat = world.by_id<MaterialAsset>(handle);
 
 		if (tex) {
-			Texture* texture = RHI::texture_manager.get(tex->handle);
-			render_asset((ImTextureID)texture->texture_id, tex->name, asset_tab, handle);
+			{
+				bool selected = handle == asset_tab.selected;
+				if (selected) ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 3);
+
+				bool is_clicked = ImGui::ImageButton((ImTextureID)texture::id_of(tex->handle), ImVec2(128, 128), ImVec2(0, 1), ImVec2(1, 0));
+
+				if (selected) ImGui::PopStyleVar(1);
+
+				if (ImGui::BeginDragDropSource())
+				{
+					ImGui::Image((ImTextureID)texture->texture_id, ImVec2(128, 128), ImVec2(0, 1), ImVec2(1, 0));
+					ImGui::SetDragDropPayload("DRAG_AND_DROP_IMAGE", &tex->handle, sizeof(int));
+					ImGui::EndDragDropSource();
+				}
+				else if (is_clicked) {
+					asset_tab.selected = handle;
+				}
+
+				render_name(tex->name);
+
+
+				ImGui::NextColumn();
+			}
 		}
 
 		if (shad) {
@@ -109,13 +131,11 @@ void render_assets(ID folder_handle, Editor& editor, AssetTab& asset_tab, const 
 		}
 
 		if (mod) {
-			Texture* tex = RHI::texture_manager.get(mod->preview);
-			render_asset((ImTextureID)tex->texture_id, mod->name, asset_tab, handle);
+			render_asset((ImTextureID)texture::id_of(mod->preview), mod->name, asset_tab, handle);
 		}
 
 		if (mat) {
-			Texture* tex = RHI::texture_manager.get(mat->preview);
-			render_asset((ImTextureID)tex->texture_id, mat->name, asset_tab, handle);
+			render_asset((ImTextureID)texture::id_of(mat->preview), mat->name, asset_tab, handle);
 		}
 	}
 
@@ -133,58 +153,6 @@ void asset_properties(ShaderAsset* tex, Editor& editor, World& world, AssetTab& 
 
 }
 
-void asset_properties(MaterialAsset* mat_asset, Editor& editor, World& world, AssetTab& self, RenderParams& params) {
-	Material* material = RHI::material_manager.get(mat_asset->handle);
-	void* data = material;
-
-	reflect::TypeDescriptor_Struct* material_type = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<Material>::get();
-
-	auto& name = material->name;
-
-	render_name(name);
-
-	ImGui::SetNextTreeNodeOpen(true);
-	ImGui::CollapsingHeader("Material");
-
-	for (auto field : material_type->members) {
-		if (field.name == "name");
-		else if (field.name == "params") {
-			//if (ImGui::TreeNode("params")) {
-			for (auto& param : material->params) {
-				auto shader = RHI::shader_manager.get(material->shader);
-				auto& uniform = shader->uniforms[param.loc.id];
-
-				if (param.type == Param_Vec2) {
-					ImGui::InputFloat2(uniform.name.c_str(), &param.vec2.x);
-				}
-				if (param.type == Param_Vec3) {
-					ImGui::ColorPicker3(uniform.name.c_str(), &param.vec3.x);
-				}
-				if (param.type == Param_Image) {
-					Texture* tex = RHI::texture_manager.get(param.image);
-					ImGui::Image((ImTextureID)tex->texture_id, ImVec2(200, 200)); //todo refactor get_id into function
-					ImGui::SameLine();
-					ImGui::Text(uniform.name.c_str());
-				}
-				if (param.type == Param_Int) {
-					ImGui::InputInt(uniform.name.c_str(), &param.integer);
-				}
-			}
-			//ImGui::TreePop();
-
-		}
-		else {
-			field.type->render_fields((char*)data + field.offset, field.name, world);
-		}
-	}
-
-	ImGui::SetNextTreeNodeOpen(true);
-	ImGui::CollapsingHeader("Preview");
-
-	Texture* tex = RHI::texture_manager.get(mat_asset->preview);
-	ImGui::Image((ImTextureID)tex->texture_id, ImVec2(512, 512));
-
-}
 
 void asset_properties(ModelAsset* tex, Editor& editor, World& world, AssetTab& self, RenderParams& params) {
 
@@ -260,6 +228,7 @@ void render_preview_for(World& world, AssetTab& self, ModelAsset& asset, RenderP
 	render_params.width = self.preview_fbo.width;
 	render_params.height = self.preview_fbo.height;
 	render_params.command_buffer = &cmd_buffer;
+	render_params.cam = cam;
 
 	cam->fov = 60;
 	cam->update_matrices(world, render_params);
@@ -269,6 +238,7 @@ void render_preview_for(World& world, AssetTab& self, ModelAsset& asset, RenderP
 
 	cmd_buffer.submit_to_gpu(world, render_params);
 
+	
 	self.preview_fbo.unbind();
 	self.preview_tonemapped_fbo.bind();
 	self.preview_tonemapped_fbo.clear_color(glm::vec4(0,0,0,1));
@@ -280,6 +250,7 @@ void render_preview_for(World& world, AssetTab& self, ModelAsset& asset, RenderP
 	texture::bind_to(self.preview_map, 0);
 
 	render_quad();
+	
 
 	unsigned int texture_id;
 	glGenTextures(1, &texture_id);
@@ -326,20 +297,25 @@ void render_preview_for(World& world, AssetTab& self, MaterialAsset& asset, Rend
 	Model* model = RHI::model_manager.get(handle_sphere);
 
 	trans->position.z = 2.5;
-
+	
 	CommandBuffer cmd_buffer;
 	RenderParams render_params = old_params;
 	render_params.width = self.preview_fbo.width;
 	render_params.height = self.preview_fbo.height;
 	render_params.command_buffer = &cmd_buffer;
+	render_params.cam = cam;
 
 	cam->fov = 60;
 	cam->update_matrices(world, render_params);
 
 	vector<Handle<Material>> materials = { asset.handle };
 
-	glm::mat4 identity(1.0);
-	model->render(0, &identity, materials, render_params);
+	Transform trans_of_sphere;
+	trans_of_sphere.rotation = asset.rot;
+
+	glm::mat4 model_m = trans_of_sphere.compute_model_matrix();
+
+	model->render(0, &model_m, materials, render_params);
 
 	cmd_buffer.submit_to_gpu(world, render_params);
 
@@ -347,6 +323,8 @@ void render_preview_for(World& world, AssetTab& self, MaterialAsset& asset, Rend
 	self.preview_tonemapped_fbo.bind();
 	self.preview_tonemapped_fbo.clear_color(glm::vec4(0, 0, 0, 1));
 	self.preview_tonemapped_fbo.clear_depth(glm::vec4(0, 0, 0, 1));
+
+	glm::mat4 identity(1.0);
 
 	shader::bind(tone_map);
 	shader::set_int(tone_map, "frameMap", 0);
@@ -356,31 +334,109 @@ void render_preview_for(World& world, AssetTab& self, MaterialAsset& asset, Rend
 	render_quad();
 
 	unsigned int texture_id;
-	glGenTextures(1, &texture_id);
-	glBindTexture(GL_TEXTURE_2D, texture_id);
+	if (asset.preview.id == INVALID_HANDLE) {
+		glGenTextures(1, &texture_id);
+		glBindTexture(GL_TEXTURE_2D, texture_id);
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, self.preview_fbo.width, self.preview_fbo.height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, self.preview_fbo.width, self.preview_fbo.height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+
+		Texture tex;
+		tex.filename = "asset preview";
+		tex.texture_id = texture_id;
+		asset.preview = RHI::texture_manager.make(std::move(tex));
+	}
+	else {
+		texture::bind_to(asset.preview, 0);
+	}
+
 	glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, self.preview_fbo.width, self.preview_fbo.height);
 	glGenerateMipmap(GL_TEXTURE_2D);
 
 	glBindTexture(GL_TEXTURE_2D, 0);
 
-	Texture tex;
-	tex.filename = "asset preview";
-	tex.texture_id = texture_id;
-
-	log("created asset");
-
 	world.free_by_id(id);
 
 	self.preview_tonemapped_fbo.unbind();
 
-	asset.preview = RHI::texture_manager.make(std::move(tex));
+}
+
+void asset_properties(MaterialAsset* mat_asset, Editor& editor, World& world, AssetTab& self, RenderParams& params) {
+	Material* material = RHI::material_manager.get(mat_asset->handle);
+	void* data = material;
+
+	reflect::TypeDescriptor_Struct* material_type = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<Material>::get();
+
+	auto& name = material->name;
+
+	render_name(name);
+
+	ImGui::SetNextTreeNodeOpen(true);
+	ImGui::CollapsingHeader("Material");
+
+	for (auto field : material_type->members) {
+		if (field.name == "name");
+		else if (field.name == "params") {
+			//if (ImGui::TreeNode("params")) {
+			for (auto& param : material->params) {
+				auto shader = RHI::shader_manager.get(material->shader);
+				auto& uniform = shader->uniforms[param.loc.id];
+
+				if (param.type == Param_Vec2) {
+					ImGui::InputFloat2(uniform.name.c_str(), &param.vec2.x);
+				}
+				if (param.type == Param_Vec3) {
+					ImGui::ColorPicker3(uniform.name.c_str(), &param.vec3.x);
+				}
+				if (param.type == Param_Image) {
+					ImGui::Image((ImTextureID)texture::id_of(param.image), ImVec2(200, 200)); //todo refactor get_id into function
+
+					if (ImGui::BeginDragDropTarget()) {
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DRAG_AND_DROP_IMAGE")) {
+							param.image = *(Handle<Texture>*)(payload->Data);
+						}
+						ImGui::EndDragDropTarget();
+					}
+
+					ImGui::SameLine();
+					ImGui::Text(uniform.name.c_str());
+				}
+				if (param.type == Param_Int) {
+					ImGui::InputInt(uniform.name.c_str(), &param.integer);
+				}
+			}
+			//ImGui::TreePop();
+
+		}
+		else {
+			field.type->render_fields((char*)data + field.offset, field.name, world);
+		}
+	}
+
+	ImGui::SetNextTreeNodeOpen(true);
+	ImGui::CollapsingHeader("Preview");
+
+	Texture* tex = RHI::texture_manager.get(mat_asset->preview);
+	ImGui::Image((ImTextureID)tex->texture_id, ImVec2(512, 512), ImVec2(0, 1), ImVec2(1, 0));
+
+	if (ImGui::IsItemHovered() && ImGui::IsMouseDragging()) {
+		mat_asset->previous = mat_asset->current;
+		mat_asset->current = glm::vec2(ImGui::GetMouseDragDelta().x, ImGui::GetMouseDragDelta().y);
+
+		glm::vec2 diff = mat_asset->current - mat_asset->previous;
+
+		mat_asset->rot_deg += diff;
+		mat_asset->rot = glm::quat(glm::vec3(glm::radians(mat_asset->rot_deg.y), 0, 0)) * glm::quat(glm::vec3(0, glm::radians(mat_asset->rot_deg.x), 0));
+	}
+	else {
+		mat_asset->previous = glm::vec2(0);
+	}
+
+	render_preview_for(world, self, *mat_asset, params);
 }
 
 std::string name_from_filename(std::string& filename) {
@@ -475,7 +531,9 @@ void import_filename(Editor& editor, World& world, RenderParams& params, AssetTa
 	}
 }
 
-void create_new_material(World& world, AssetTab& self, Editor& editor, RenderParams& params) {
+vector<MaterialAsset*> AssetTab::material_handle_to_asset;
+
+MaterialAsset* create_new_material(World& world, AssetTab& self, Editor& editor, RenderParams& params) {
 	Handle<Shader> pbr = load_Shader("shaders/pbr.vert", "shaders/pbr.frag");
 	
 	Handle<Material> mat_handle = RHI::material_manager.make({
@@ -498,6 +556,15 @@ void create_new_material(World& world, AssetTab& self, Editor& editor, RenderPar
 	
 	render_preview_for(world, self, *asset, params);
 	add_asset(self, id);
+
+	int diff = asset->handle.id - self.material_handle_to_asset.length + 1;
+
+	for (int i = 0; i < diff; i++) {
+		self.material_handle_to_asset.append(NULL);
+	}
+	self.material_handle_to_asset[asset->handle.id] = asset;
+
+	return asset;
 }
 
 AssetTab::AssetTab() {
@@ -548,11 +615,6 @@ void AssetTab::render(World& world, Editor& editor, RenderParams& params) {
 			ImGui::EndPopup();
 		}
 
-		if (ImGui::IsWindowHovered()) {
-			if (ImGui::GetIO().MouseClicked[0]) selected = -1;
-			if (ImGui::GetIO().MouseClicked[1]) ImGui::OpenPopup("CreateAsset");
-		}
-
 		if (ImGui::Button("Import")) {
 			std::wstring filename = open_dialog(editor);
 			if (filename != L"") 
@@ -570,6 +632,11 @@ void AssetTab::render(World& world, Editor& editor, RenderParams& params) {
 		ImGui::Separator();
 
 		render_assets(toplevel, editor, *this, filter);
+
+		if (ImGui::IsWindowHovered()) {
+			//if (ImGui::GetIO().MouseClicked[0] && ImGui::IsAnyItemActive()) selected = -1;
+			if (ImGui::GetIO().MouseClicked[1]) ImGui::OpenPopup("CreateAsset");
+		}
 	}
 
 	ImGui::End();

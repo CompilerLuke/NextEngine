@@ -69,6 +69,10 @@ namespace texture {
 		glActiveTexture(GL_TEXTURE0 + num);
 		glBindTexture(GL_TEXTURE_2D, tex->texture_id);
 	}
+
+	unsigned int id_of(Handle<Texture> handle) {
+		return RHI::texture_manager.get(handle)->texture_id;
+	}
 }
 
 namespace cubemap {

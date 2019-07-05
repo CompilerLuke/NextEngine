@@ -23,6 +23,7 @@
 #include "editor/custom_inspect.h"
 #include "editor/picking.h"
 #include "core/vfs.h"
+#include "graphics/materialSystem.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
@@ -265,18 +266,26 @@ void Editor::run() {
 
 	vector<Param> params = make_SubstanceMaterial("wood_2", "Stylized_Wood");
 
-	Material material = {
+	/*Material material = {
 		std::string("DefaultMaterial"),
 		load_Shader("shaders/pbr.vert", "shaders/pbr.frag"),
 		params,
 		&default_draw_state
 	};
 
-	vector<Handle<Material>> materials = { RHI::material_manager.make(std::move(material)) };
+	*/
+
+	render_params.layermask = game_layer | editor_layer;
+	render_params.width = window.width;
+	render_params.height = window.height;
+	render_params.dir_light = get_dir_light(world, render_params.layermask);
+	render_params.skybox = skybox;
 
 	auto model_render = world.make<ModelRenderer>(model_renderer_id);
 	model_render->model_id = model;
-	model_render->set_materials(world, materials);
+	
+	auto materials = world.make<Materials>(model_renderer_id);
+	materials->materials.append(create_new_material(world, this->asset_tab, *this, render_params)->handle);
 
 	while (!window.should_close() && !exit) {
 		temporary_allocator.clear();
