@@ -12,6 +12,7 @@
 #include "editor/gizmo.h"
 #include "editor/picking.h"
 #include "graphics/renderPass.h"
+#include "editor/diffUtil.h"
 
 struct DroppableField {
 	void* ptr;
@@ -56,6 +57,11 @@ struct Editor {
 	bool exit = false;
 
 	vector<Icon> icons;
+
+	vector<Diff> undos;
+	vector<Diff> redos;
+
+	void submit_diff(Diff&&);
 
 	ImTextureID get_icon(const std::string& name);
 	

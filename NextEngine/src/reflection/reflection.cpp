@@ -6,9 +6,9 @@
 #include <glm/gtc/quaternion.hpp>
 #include "editor/displayComponents.h"
 
-#define PRIMITIVE_TYPE_DESCRIPTOR(type) \
+#define PRIMITIVE_TYPE_DESCRIPTOR(kind, type) \
 struct TypeDescriptor_##type : TypeDescriptor { \
-	TypeDescriptor_##type() : TypeDescriptor{ #type , sizeof(type) } {}; \
+	TypeDescriptor_##type() : TypeDescriptor{ kind, #type , sizeof(type) } {}; \
 	bool render_fields(void* data, const std::string& prefix, struct World& world) { \
 		return render_fields_primitive((type*)data, prefix); \
 	} \
@@ -26,18 +26,18 @@ namespace reflect {
 	// A type descriptor for int
 	//--------------------------------------------------------
 
-	PRIMITIVE_TYPE_DESCRIPTOR(float);
-	PRIMITIVE_TYPE_DESCRIPTOR(bool);
-	PRIMITIVE_TYPE_DESCRIPTOR(int);
+	PRIMITIVE_TYPE_DESCRIPTOR(Float_Kind, float);
+	PRIMITIVE_TYPE_DESCRIPTOR(Bool_Kind, bool);
+	PRIMITIVE_TYPE_DESCRIPTOR(Int_Kind, int);
 	
 	using UINT = unsigned int;
-	PRIMITIVE_TYPE_DESCRIPTOR(UINT);
+	PRIMITIVE_TYPE_DESCRIPTOR(Unsigned_Int_Kind, UINT);
 	//--------------------------------------------------------
 	// A type descriptor for std::string
 	//--------------------------------------------------------
 
 	struct TypeDescriptor_StdString : TypeDescriptor {
-		TypeDescriptor_StdString() : TypeDescriptor{ "std::string", sizeof(std::string) } {
+		TypeDescriptor_StdString() : TypeDescriptor{ StdString_Kind, "std::string", sizeof(std::string) } {
 		}
 		bool render_fields(void* data, const std::string& prefix, struct World& world) {
 			render_fields_primitive((std::string*)data, prefix); 
@@ -51,59 +51,51 @@ namespace reflect {
 		return &typeDesc;
 	}
 
-	struct TypeDescriptor_GlmVec3 : TypeDescriptor {
-		TypeDescriptor_GlmVec3() : TypeDescriptor{ "glm::vec3", sizeof(glm::vec3) } {
-
-		}
-		bool render_fields(void* data, const std::string& prefix, struct World& world) {
-			return render_fields_primitive((glm::vec3*)data, prefix);
-		}
-	};
-
 	template<>
 	TypeDescriptor* getPrimitiveDescriptor<glm::vec3>() {
-		static TypeDescriptor_GlmVec3 typeDesc;
+		static TypeDescriptor_Struct typeDesc("glm::vec3", sizeof(glm::vec3), {
+			{ "x", offsetof(glm::vec3, x), reflect::TypeResolver<float>::get(), reflect::NoTag },
+			{ "y", offsetof(glm::vec3, y), reflect::TypeResolver<float>::get(), reflect::NoTag },
+			{ "z", offsetof(glm::vec3, z), reflect::TypeResolver<float>::get(), reflect::NoTag }
+		});
 		return &typeDesc;
 	}
-
-	struct TypeDescriptor_GlmVec2 : TypeDescriptor {
-		TypeDescriptor_GlmVec2() : TypeDescriptor{ "glm::vec2", sizeof(glm::vec2) } {}
-	
-		bool render_fields(void* data, const std::string& prefix, struct World& world) {
-			return render_fields_primitive((glm::vec2*)data, prefix);
-		}
-	};
 
 	template<>
 	TypeDescriptor* getPrimitiveDescriptor<glm::vec2>() {
-		static TypeDescriptor_GlmVec2 typeDesc;
+		static TypeDescriptor_Struct typeDesc("glm::vec", sizeof(glm::vec2), {
+			{ "x", offsetof(glm::vec2, x), reflect::TypeResolver<float>::get(), reflect::NoTag },
+			{ "y", offsetof(glm::vec2, y), reflect::TypeResolver<float>::get(), reflect::NoTag }
+		});
 		return &typeDesc;
 	}
 
-	struct TypeDescriptor_Mat4 : TypeDescriptor {
-		TypeDescriptor_Mat4() : TypeDescriptor{ "glm::mat4", sizeof(glm::vec3)} {}
-		bool render_fields(void* data, const std::string& prefix, struct World& world) {
-			return render_fields_primitive((glm::mat4*)data, prefix);
+	void init_mat4_type(TypeDescriptor_Struct* type) {
+		type->size = sizeof(glm::vec2);
+		type->name = "glm::mat4";
+		for (int i = 0; i < 16; i++) {
+			type->members.push_back({ "mat_field", i * sizeof(float), reflect::TypeResolver<float>::get(), reflect::NoTag });
 		}
-	};
+	}
 
 	template<>
 	TypeDescriptor* getPrimitiveDescriptor<glm::mat4>() {
-		static TypeDescriptor_Mat4 typeDesc;
+		static TypeDescriptor_Struct typeDesc(init_mat4_type);
 		return &typeDesc;
 	}
 
-	struct TypeDescriptor_GlmQuat : TypeDescriptor {
-		TypeDescriptor_GlmQuat() : TypeDescriptor{ "glm::quat", sizeof(glm::quat) } {}
-
-		bool render_fields(void* data, const std::string& prefix, struct World& world) {
-			return render_fields_primitive((glm::quat*)data, prefix);
-		}
-	};
+	void init_quat_type(TypeDescriptor_Struct* type) {
+		type->size = sizeof(glm::vec2);
+		type->name = "glm::quat";
+		type->members.push_back({ "x", offsetof(glm::quat, x), reflect::TypeResolver<float>::get(), reflect::NoTag });
+		type->members.push_back({ "y", offsetof(glm::quat, y), reflect::TypeResolver<float>::get(), reflect::NoTag });
+		type->members.push_back({ "z", offsetof(glm::quat, z), reflect::TypeResolver<float>::get(), reflect::NoTag });
+		type->members.push_back({ "w", offsetof(glm::quat, w), reflect::TypeResolver<float>::get(), reflect::NoTag });
+	}
 
 	template<>
 	TypeDescriptor* getPrimitiveDescriptor<glm::quat>() {
-		static TypeDescriptor_GlmQuat typeDesc;
+		static TypeDescriptor_Struct typeDesc(init_quat_type);
 		return &typeDesc;
 	}
 } // namespace reflect

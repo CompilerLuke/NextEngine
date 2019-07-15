@@ -337,6 +337,45 @@ void Editor::run() {
 	}
 }
 
+constexpr unsigned int max_undos = 20;
+constexpr unsigned int max_redos = 10;
+
+void push_undo(Editor& editor, Diff&& diff) {
+	editor.undos.append(std::move(diff));
+	if (editor.undos.length > max_undos) {
+		editor.undos.shift(1);
+	}
+}
+
+void push_redo(Editor& editor, Diff&& diff) {
+	editor.redos.append(std::move(diff));
+	if (editor.redos.length > max_redos) {
+		editor.redos.shift(1);
+	}
+}
+
+void Editor::submit_diff(Diff&& diff) {
+	push_undo(*this, std::move(diff));
+}
+
+void on_undo(Editor& editor) {
+	if (editor.undos.length > 0) {
+		Diff diff = editor.undos.pop();
+		diff.undo();
+
+		push_redo(editor, std::move(diff));
+	}
+}
+
+void on_redo(Editor& editor) {
+	if (editor.redos.length > 0) {
+		Diff diff = editor.redos.pop();
+		diff.redo();
+
+		push_undo(editor, std::move(diff));
+	}
+}
+
 void Editor::update(UpdateParams& params) {
 	if (params.input.key_pressed(GLFW_KEY_X)) {
 		if (this->selected_id >= 0) {
@@ -353,10 +392,14 @@ void Editor::update(UpdateParams& params) {
 		this->selected_id = picking_pass.pick(world, params);
 	}
 
+	if (params.input.key_pressed(89, true) && params.input.key_down(GLFW_KEY_LEFT_CONTROL, true)) on_undo(*this);
+	if (params.input.key_pressed('R', true) && params.input.key_down(GLFW_KEY_LEFT_CONTROL, true)) on_redo(*this);
+
 	display_components.update(world, params);
 	gizmo.update(world, *this, params);
 	asset_tab.update(world, *this, params);
 }
+
 
 void Editor::render(RenderParams& params) {
 	ImGui_ImplOpenGL3_NewFrame();
@@ -404,6 +447,9 @@ void Editor::render(RenderParams& params) {
 	}
 	
 	if (ImGui::BeginMenu("Edit")) {
+		if (ImGui::MenuItem("Undo", "CTRL+Z")) on_undo(*this);
+		if (ImGui::MenuItem("Redo", "CTRL+R")) on_redo(*this);
+
 		ImGui::MenuItem("Copy", "CTRL+C");
 		ImGui::MenuItem("Paste", "CTRL+V");
 		ImGui::MenuItem("Duplicate", "CTRL+D");

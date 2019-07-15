@@ -4,41 +4,17 @@
 #include "editor/editor.h"
 #include "ecs/system.h"
 #include "ecs/ecs.h"
-#include <glm/gtc/type_ptr.hpp>
 #include <tuple>
 #include "graphics/rhi.h"
 
 std::unordered_map <std::string, OnInspectGUICallback> override_inspect;
 
+OnInspectGUICallback get_on_inspect_gui(const std::string& on_type) {
+	return override_inspect[on_type];
+}
+
 void register_on_inspect_gui(const std::string& on_type, OnInspectGUICallback func) {
 	override_inspect[on_type] = func;
-}
-
-bool render_fields_primitive(glm::quat* ptr, const std::string& prefix) {
-	glm::vec3 euler = glm::eulerAngles(*ptr);
-	glm::vec3 previous = euler;
-	euler = glm::degrees(euler);
-
-	ImGui::InputFloat3(prefix.c_str(), glm::value_ptr(euler));
-	euler = glm::radians(euler);
-	if (glm::abs(glm::length(previous - euler)) > 0.001) 
-		*ptr = glm::quat(euler);
-	return true;
-}
-
-bool render_fields_primitive(glm::vec3* ptr, const std::string& prefix) {
-	ImGui::InputFloat3(prefix.c_str(), glm::value_ptr(*ptr));
-	return true;
-}
-
-bool render_fields_primitive(glm::vec2* ptr, const std::string& prefix) {
-	ImGui::InputFloat2(prefix.c_str(), glm::value_ptr(*ptr));
-	return true;
-}
-
-bool render_fields_primitive(glm::mat4* ptr, const std::string& prefix) {
-	ImGui::LabelText("Matrix", prefix.c_str());
-	return true;
 }
 
 bool render_fields_primitive(int* ptr, const std::string& prefix) {
@@ -72,42 +48,38 @@ bool render_fields_primitive(bool* ptr, const std::string& prefix) {
 	return true;
 }
 
-bool reflect::TypeDescriptor::render_fields(void* data, const std::string& prefix, World& world) {
-	return false;
-}
-
-bool reflect::TypeDescriptor_Struct::render_fields(void* data, const std::string& prefix, World& world) {
-	if (override_inspect.find(this->getFullName()) != override_inspect.end()) {
-		return override_inspect[this->getFullName()](data, this, prefix, world);
+bool render_fields_struct(reflect::TypeDescriptor_Struct* self, void* data, const std::string& prefix, World& world) {
+	if (override_inspect.find(self->name) != override_inspect.end()) {
+		return override_inspect[self->name](data, prefix, world);
 	}
 	
-	auto name = prefix + " : " + this->getFullName();
+	auto name = prefix + " : " + self->name;
 
 	auto id = ImGui::GetID(name.c_str());
 
-	if (this->members.size() == 1) {
-		auto& field = members[0];
-		field.type->render_fields((char*)data + field.offset, field.name, world);
+	if (self->members.size() == 1) {
+		auto& field = self->members[0];
+		render_fields(field.type, (char*)data + field.offset, field.name, world);
 		return true;
 	}
 
 	bool open;
 	if (prefix == "Component") {
-		open = ImGui::CollapsingHeader(this->getFullName().c_str(), ImGuiTreeNodeFlags_Framed);
+		open = ImGui::CollapsingHeader(self->name, ImGuiTreeNodeFlags_Framed);
 	}
 	else {
 		open = ImGui::TreeNode(name.c_str());
 	}
 
 	if (open) {
-		for (auto field : this->members) {
+		for (auto field : self->members) {
 			auto offset_ptr = (char*)data + field.offset;
 			
-			if (field.tag == LayermaskTag) {
-				override_inspect["Layermask"](data, this, prefix, world);
+			if (field.tag == reflect::LayermaskTag) {
+				override_inspect["Layermask"](data, prefix, world);
 			}
 			else {
-				field.type->render_fields(offset_ptr, field.name, world);
+				render_fields(field.type, offset_ptr, field.name, world);
 			}
 		}
 		if (prefix != "Component") ImGui::TreePop();
@@ -115,26 +87,26 @@ bool reflect::TypeDescriptor_Struct::render_fields(void* data, const std::string
 	return open;
 }
 
-bool reflect::TypeDescriptor_Union::render_fields(void* data, const std::string& prefix, struct World& world) {
+bool render_fields_union(reflect::TypeDescriptor_Union* self, void* data, const std::string& prefix, struct World& world) {
 
-	int tag = *((char*)data + this->tag_offset);
+	int tag = *((char*)data + self->tag_offset);
 
-	auto name = prefix + " : " + this->getFullName();
+	auto name = prefix + " : " + self->name;
 
 	if (ImGui::TreeNode(name.c_str())) {
 		int i = 0;
-		for (auto& member : cases) {
+		for (auto& member : self->cases) {
 			if (i > 0) ImGui::SameLine();
 			ImGui::RadioButton(member.name, tag == i);
 			i++;
 		}
 
-		for (auto field : members) {
-			field.type->render_fields((char*)data + field.offset, field.name, world);
+		for (auto field : self->members) {
+			render_fields(field.type, (char*)data + field.offset, field.name, world);
 		}
 
-		auto& union_case = cases[tag];
-		union_case.type->render_fields((char*)data + union_case.offset, "", world);
+		auto& union_case = self->cases[tag];
+		render_fields(union_case.type, (char*)data + union_case.offset, "", world);
 
 		ImGui::TreePop();
 		return true;
@@ -142,11 +114,11 @@ bool reflect::TypeDescriptor_Union::render_fields(void* data, const std::string&
 	return false;
 }
 
-bool reflect::TypeDescriptor_Enum::render_fields(void* data, const std::string& prefix, struct World& world) {
+bool render_fields_enum(reflect::TypeDescriptor_Enum* self, void* data, const std::string& prefix, struct World& world) {
 	int tag = *((int*)data);
 
 	int i = 0;
-	for (auto& value : values) {
+	for (auto& value : self->values) {
 		if (i > 0) ImGui::SameLine();
 		ImGui::RadioButton(value.first.c_str(), value.second == tag);
 		i++;
@@ -158,28 +130,40 @@ bool reflect::TypeDescriptor_Enum::render_fields(void* data, const std::string& 
 	return true;
 }
 
-bool reflect::TypeDescriptor_Pointer::render_fields(void* data, const std::string& prefix, struct World& world) {
+bool render_fields_ptr(reflect::TypeDescriptor_Pointer* self, void* data, const std::string& prefix, struct World& world) {
 	if (*(void**)data == NULL) {
 		ImGui::LabelText(prefix.c_str(), "NULL");
 		return false;
 	}
-	return this->itemType->render_fields(*(void**)data, prefix, world);
+	return render_fields(self->itemType, *(void**)data, prefix, world);
 }
 
-bool reflect::TypeDescriptor_Vector::render_fields(void* data, const std::string& prefix, struct World& world) {
+bool render_fields_vector(reflect::TypeDescriptor_Vector* self, void* data, const std::string& prefix, struct World& world) {
 	auto ptr = (vector<char>*)data;
 	data = ptr->data;
 
-	auto name = prefix + " : " + this->getFullName();
+	auto name = prefix + " : " + self->name;
 	if (ImGui::TreeNode(name.c_str())) {
 		for (unsigned int i = 0; i < ptr->length; i++) {
 			auto name = "[" + std::to_string(i) + "]";
-			this->itemType->render_fields((char*)data + (i * this->itemType->size), name.c_str(), world);
+			render_fields(self->itemType, (char*)data + (i * self->itemType->size), name.c_str(), world);
 		}
 		ImGui::TreePop();
 		return true;
 	}
 	return false;
+}
+
+bool render_fields(reflect::TypeDescriptor* type, void* data, const std::string& prefix, World& world) {
+	if (type->kind == reflect::Struct_Kind) return render_fields_struct((reflect::TypeDescriptor_Struct*)type, data, prefix, world);
+	else if (type->kind == reflect::Union_Kind) return render_fields_union((reflect::TypeDescriptor_Union*)type, data, prefix, world);
+	else if (type->kind == reflect::Vector_Kind) return render_fields_vector((reflect::TypeDescriptor_Vector*)type, data, prefix, world);
+	else if (type->kind == reflect::Enum_Kind) return render_fields_enum((reflect::TypeDescriptor_Enum*)type, data, prefix, world);
+	else if (type->kind == reflect::Float_Kind) return render_fields_primitive((float*)data, prefix);
+	else if (type->kind == reflect::Int_Kind) return render_fields_primitive((int*)data, prefix);
+	else if (type->kind == reflect::Bool_Kind) return render_fields_primitive((bool*)data, prefix);
+	else if (type->kind == reflect::Unsigned_Int_Kind) return render_fields_primitive((unsigned int*)data, prefix);
+	else if (type->kind == reflect::StdString_Kind) return render_fields_primitive((std::string*)data, prefix);
 }
 
 void DisplayComponents::update(World& world, UpdateParams& params) {
@@ -219,10 +203,14 @@ void DisplayComponents::render(World& world, RenderParams& params, Editor& edito
 				if (uncollapse)
 					ImGui::SetNextTreeNodeOpen(true);
 
-				bool open = comp.type->render_fields(comp.data, "Component", world);
+				DiffUtil diff_util(comp.data, comp.type, &temporary_allocator);
+
+				bool open = render_fields(comp.type, comp.data, "Component", world);
 				if (open) {
 					ImGui::Dummy(ImVec2(10, 20));
 				}
+
+				diff_util.submit(editor, "Edited Property");
 
 				ImGui::EndGroup();
 			}

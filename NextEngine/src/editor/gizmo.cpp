@@ -37,6 +37,10 @@ void Gizmo::update(World& world, Editor& editor, UpdateParams& params) {
 	}
 }
 
+Gizmo::~Gizmo() {
+	delete this->diff_util;
+}
+
 void Gizmo::render(World& world, Editor& editor, RenderParams& params) {
 	if (editor.selected_id == -1) return;
 
@@ -59,7 +63,21 @@ void Gizmo::render(World& world, Editor& editor, RenderParams& params) {
 
 	ImGuizmo::BeginFrame();
 	ImGuizmo::Enable(true);
+
+	bool was_using = ImGuizmo::IsUsing();
+
+	if (diff_util == NULL) {
+		diff_util = new DiffUtil(trans, &default_allocator);
+	}
+
 	ImGuizmo::Manipulate(glm::value_ptr(params.view), glm::value_ptr(params.projection), guizmo_operation, guizmo_mode, glm::value_ptr(model_matrix), NULL, snap ? glm::value_ptr(snap_vec) : NULL);
+
+	if (was_using != ImGuizmo::IsUsing()) {
+		if (diff_util->submit(editor, "Transformed")) {
+			delete diff_util;
+			diff_util = new DiffUtil(trans, &default_allocator);
+		}
+	}
 
 	glm::mat4 transformation = model_matrix; // your transformation matrix.
 	glm::vec3 scale;

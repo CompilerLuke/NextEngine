@@ -40,12 +40,20 @@ Input::Input(Window& window) {
 	this->window_ptr = window.window_ptr;
 }
 
-bool Input::key_down(Key key) {
+bool is_mod_down(Input* input) {
+	return input->keys[GLFW_KEY_LEFT_CONTROL] != GLFW_RELEASE;
+}
+
+bool Input::key_down(Key key, bool allow_mod) {
+	if (!allow_mod && is_mod_down(this)) return false;
+
 	auto state = this->keys[key];
 	return state == GLFW_PRESS || state == GLFW_REPEAT;
 }
 
-bool Input::key_pressed(Key key) {
+bool Input::key_pressed(Key key, bool allow_mod) {
+	if (!allow_mod && is_mod_down(this)) return false;
+
 	return this->keys[key] == GLFW_PRESS;
 }
 

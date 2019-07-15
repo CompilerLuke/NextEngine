@@ -5,9 +5,40 @@
 #include "imgui.h"
 #include "logger/logger.h"
 #include "editor/assetTab.h"
+#include <glm/gtc/type_ptr.hpp>
+
+bool Quat_inspect(void* data, const std::string& prefix, struct World& world) {
+	glm::quat* ptr = (glm::quat*)data;
+	glm::vec3 euler = glm::eulerAngles(*ptr);
+	glm::vec3 previous = euler;
+	euler = glm::degrees(euler);
+
+	ImGui::InputFloat3(prefix.c_str(), glm::value_ptr(euler));
+	euler = glm::radians(euler);
+	if (glm::abs(glm::length(previous - euler)) > 0.001)
+		*ptr = glm::quat(euler);
+	return true;
+}
+
+bool Vec3_inspect(void* data, const std::string& prefix, struct World& world) {
+	glm::vec3* ptr = (glm::vec3*)data;
+	ImGui::InputFloat3(prefix.c_str(), glm::value_ptr(*ptr));
+	return true;
+}
+
+bool Vec2_inspect(void* data, const std::string& prefix, struct World& world) {
+	glm::vec2* ptr = (glm::vec2*)data;
+	ImGui::InputFloat2(prefix.c_str(), glm::value_ptr(*ptr));
+	return true;
+}
+
+bool Mat4_inspect(void* data, const std::string& prefix, struct World& world) {
+	ImGui::LabelText("Matrix", prefix.c_str());
+	return true;
+}
 
 //Shaders
-bool Shader_inspect(void* data, struct reflect::TypeDescriptor* type, const std::string& prefix, struct World& world) {
+bool Shader_inspect(void* data, const std::string& prefix, struct World& world) {
 	auto handle_shader = (Handle<Shader>*)data;
 	auto shader = RHI::shader_manager.get(*handle_shader);
 
@@ -17,7 +48,7 @@ bool Shader_inspect(void* data, struct reflect::TypeDescriptor* type, const std:
 	return true;
 }
 
-bool Model_inspect(void* data, reflect::TypeDescriptor* type, const std::string& prefix, World& world) {
+bool Model_inspect(void* data, const std::string& prefix, World& world) {
 	Handle<Model> model_id = *(Handle<Model>*)(data);
 	if (model_id.id == INVALID_HANDLE) {
 		ImGui::LabelText("name", "unselected");
@@ -35,7 +66,7 @@ bool Model_inspect(void* data, reflect::TypeDescriptor* type, const std::string&
 	return true;
 }
 
-bool Layermask_inspect(void* data, reflect::TypeDescriptor* type, const std::string& prefix, World& world) {
+bool Layermask_inspect(void* data, const std::string& prefix, World& world) {
 	Layermask* mask_ptr = (Layermask*)(data);
 	Layermask mask = *mask_ptr;
 
@@ -56,7 +87,7 @@ bool Layermask_inspect(void* data, reflect::TypeDescriptor* type, const std::str
 	return true;
 }
 
-bool EntityEditor_inspect(void* data, reflect::TypeDescriptor* type, const std::string& prefix, World& world) {
+bool EntityEditor_inspect(void* data, const std::string& prefix, World& world) {
 	return false;
 }
 
@@ -70,11 +101,11 @@ void accept_drop(const char* drop_type, void* ptr, unsigned int size) {
 }
 
 //Materials
-bool Material_inspect(void* data, reflect::TypeDescriptor* type, const std::string& prefix, World& world) {
+bool Material_inspect(void* data, const std::string& prefix, World& world) {
 	Handle<Material>* handle_ptr = (Handle <Material>*)data;
 	Handle<Material> material = *handle_ptr;
 
-	MaterialAsset* material_asset = AssetTab::material_handle_to_asset[material.id];
+	MaterialAsset* material_asset = AssetTab::material_handle_to_asset[material.id]; //todo probably want reference to editor
 
 	auto name = prefix + std::string(" ") + material_asset->name;
 
@@ -88,9 +119,9 @@ bool Material_inspect(void* data, reflect::TypeDescriptor* type, const std::stri
 	return false;
 }
 
-bool Materials_inspect(void* data, reflect::TypeDescriptor* type, const std::string& prefix, World& world) {
+bool Materials_inspect(void* data, const std::string& prefix, World& world) {
 	Materials* materials = (Materials*)data;
-	auto material_type = (reflect::TypeDescriptor_Struct*)type;
+	auto material_type = reflect::TypeResolver<Material>::get();
 
 	if (ImGui::CollapsingHeader("Materials")) {
 		for (unsigned int i = 0; i < materials->materials.length; i++) {
@@ -98,7 +129,7 @@ bool Materials_inspect(void* data, reflect::TypeDescriptor* type, const std::str
 			prefix += std::to_string(i);
 			prefix += " :";
 
-			Material_inspect(&materials->materials[i], reflect::TypeResolver<Material>::get(), prefix, world);
+			Material_inspect(&materials->materials[i], prefix, world);
 		}
 		return true;
 	}
@@ -113,5 +144,9 @@ void register_on_inspect_callbacks() {
 	register_on_inspect_gui("Handle<Model>", Model_inspect);
 	register_on_inspect_gui("Layermask", Layermask_inspect);
 	register_on_inspect_gui("EntityEditor", EntityEditor_inspect);
+	
+	register_on_inspect_gui("glm::vec2", Vec2_inspect);
+	register_on_inspect_gui("glm::quat", Quat_inspect);
+	register_on_inspect_gui("glm::vec3", Vec3_inspect);
 }
 

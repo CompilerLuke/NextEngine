@@ -166,11 +166,13 @@ struct vector {
 #endif
 
 		this->length -= amount;
-		
-		memcpy(this->data, &this->data[amount], sizeof(T) * this->length);
+
+		for (int i = 0; i < length; i++) {
+			memcpy(this->data + i, this->data + i + amount, sizeof(T));
+		}
 	}
 
-	vector<T>& operator=(vector<T>&& other) {
+	inline vector<T>& operator=(vector<T>&& other) {
 		this->~vector();
 
 		this->length = other.length;
@@ -185,7 +187,7 @@ struct vector {
 		return *this;
 	}
 	
-	void free_data() {
+	inline void free_data() {
 		for (unsigned int i = 0; i < length; i++) {
 			data[i].~T();
 		}
@@ -194,8 +196,8 @@ struct vector {
 	inline vector<T>& operator=(const vector<T>& other) {
 		free_data();
 
-		this->reserve(other.length);
 		this->allocator = other.allocator;
+		this->reserve(other.length);
 		this->length = other.length;
 
 		for (int i = 0; i < other.length; i++) {

@@ -135,6 +135,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;NEXTENGINE_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -156,6 +157,7 @@
       <PreprocessorDefinitions>NDEBUG;NEXTENGINE_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -224,6 +226,8 @@
     <ClInclude Include="materialManager.h" />
     <ClInclude Include="src\core\eventDispatcher.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="string_buffer.h" />
+    <ClInclude Include="string_id.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="vendor\ImGuizmo\ImGuizmo.h" />
     <ClInclude Include="vendor\ImGuizmo\ImSequencer.h" />

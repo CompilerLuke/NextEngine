@@ -449,5 +449,11 @@
     <ClInclude Include="core.h">
       <Filter>include\core</Filter>
     </ClInclude>
+    <ClInclude Include="string_buffer.h">
+      <Filter>include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="string_id.h">
+      <Filter>include\core</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

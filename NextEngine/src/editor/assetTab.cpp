@@ -447,6 +447,7 @@ void rot_preview(RotatablePreview& self) {
 }
 
 void asset_properties(MaterialAsset* mat_asset, Editor& editor, World& world, AssetTab& self, RenderParams& params) {
+
 	Material* material = RHI::material_manager.get(mat_asset->handle);
 	void* data = material;
 
@@ -463,7 +464,11 @@ void asset_properties(MaterialAsset* mat_asset, Editor& editor, World& world, As
 		if (field.name == "name");
 		else if (field.name == "params") {
 			//if (ImGui::TreeNode("params")) {
+
+
 			for (auto& param : material->params) {
+				DiffUtil diff_util(&param, &temporary_allocator);
+
 				auto shader = RHI::shader_manager.get(material->shader);
 				auto& uniform = shader->uniforms[param.loc.id];
 
@@ -484,10 +489,12 @@ void asset_properties(MaterialAsset* mat_asset, Editor& editor, World& world, As
 				if (param.type == Param_Int) {
 					ImGui::InputInt(uniform.name.c_str(), &param.integer);
 				}
+				
+				diff_util.submit(editor, "Material property");
 			}
 		}
 		else {
-			field.type->render_fields((char*)data + field.offset, field.name, world);
+			render_fields(field.type, (char*)data + field.offset, field.name, world);
 		}
 	}
 
@@ -501,11 +508,15 @@ void asset_properties(ModelAsset* mod_asset, Editor& editor, World& world, Asset
 
 	render_name(mod_asset->name, self.default_font);
 
+	DiffUtil diff_util(&mod_asset->trans, &temporary_allocator);
+
 	ImGui::SetNextTreeNodeOpen(true);
 	ImGui::CollapsingHeader("Transform");
 	ImGui::InputFloat3("position", &mod_asset->trans.position.x);
-	render_fields_primitive(&mod_asset->trans.rotation, "rotation");
+	get_on_inspect_gui("glm::quat")(&mod_asset->trans.rotation, "rotation", world);
 	ImGui::InputFloat3("scale", &mod_asset->trans.scale.x);
+
+	diff_util.submit(editor, "Properties Material");
 
 	if (ImGui::Button("Apply")) {
 		model->load_in_place(mod_asset->trans.compute_model_matrix());
@@ -520,8 +531,11 @@ void asset_properties(ModelAsset* mod_asset, Editor& editor, World& world, Asset
 
 	for (int i = 0; i < mod_asset->materials.length; i++) {
 		std::string prefix = model->materials[i] + " : ";
-		Material_inspect(&mod_asset->materials[i], reflect::TypeResolver<Material>::get(), prefix, world);
+		
+		get_on_inspect_gui("Material")(&mod_asset->materials[i], prefix, world);
 	}
+
+	diff_util.submit(editor, "Asset Properties");
 
 	rot_preview(mod_asset->rot_preview);
 

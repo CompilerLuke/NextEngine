@@ -24,8 +24,8 @@ struct Input {
 
 	int mouse_button_state[3] = { 0, 0, 0 };
 
-	bool key_down(Key);
-	bool key_pressed(Key);
+	bool key_down(Key, bool allow_mod = false);
+	bool key_pressed(Key, bool allow_mod = false);
 
 	bool mouse_button_down(MouseButton);
 	bool mouse_button_pressed(MouseButton);
@@ -39,4 +39,3 @@ struct Input {
 
 	Input(Window&);
 };
-

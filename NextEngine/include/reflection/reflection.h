@@ -15,14 +15,23 @@ namespace reflect {
 	// Base class of all type descriptors
 	//--------------------------------------------------------
 
+	enum TypeDescriptor_Kind {
+		Ptr_Kind,
+		Vector_Kind,
+		Struct_Kind,
+		Enum_Kind,
+		Union_Kind,
+		Bool_Kind,
+		Int_Kind,
+		Unsigned_Int_Kind,
+		Float_Kind,
+		StdString_Kind
+	};
+
 	struct TypeDescriptor {
+		TypeDescriptor_Kind kind;
 		const char* name;
 		size_t size;
-
-		TypeDescriptor(const char* name, size_t size) : name{ name }, size{ size } {}
-		virtual ~TypeDescriptor() {}
-		virtual std::string getFullName() const { return name; }
-		virtual bool render_fields(void* data, const std::string& prefix, struct World& world);
 	};
 
 	//--------------------------------------------------------
@@ -88,12 +97,11 @@ namespace reflect {
 
 		std::vector<Member> members;
 
-		TypeDescriptor_Struct(void(*init)(TypeDescriptor_Struct*)) : TypeDescriptor{ nullptr, 0 } {
+		TypeDescriptor_Struct(void(*init)(TypeDescriptor_Struct*)) : TypeDescriptor{ Struct_Kind, nullptr, 0 } {
 			init(this);
 		}
-		TypeDescriptor_Struct(const char* name, size_t size, const std::initializer_list<Member>& init) : TypeDescriptor{ nullptr, 0 }, members{ init } {
+		TypeDescriptor_Struct(const char* name, size_t size, const std::initializer_list<Member>& init) : TypeDescriptor{ Struct_Kind, name, size }, members{ init } {
 		}
-		virtual bool render_fields(void* data, const std::string& prefix, struct World& world);
 	};
 
 	struct TypeDescriptor_Union : TypeDescriptor {
@@ -109,22 +117,18 @@ namespace reflect {
 		std::vector<Member> cases;
 		std::vector<Member> members;
 
-		TypeDescriptor_Union(void(*init)(TypeDescriptor_Union*)) : TypeDescriptor{ nullptr, 0 } {
+		TypeDescriptor_Union(void(*init)(TypeDescriptor_Union*)) : TypeDescriptor{ Union_Kind, nullptr, 0 } {
 			init(this);
 		}
-
-		virtual bool render_fields(void* data, const std::string& prefix, struct World& world);
 	};
 
 	struct TypeDescriptor_Enum : TypeDescriptor {
-	std::vector<std::pair<std::string, int>> values;
+		std::vector<std::pair<std::string, int>> values;
 
-	TypeDescriptor_Enum(void(*init)(TypeDescriptor_Enum*)) : TypeDescriptor{ nullptr, 0 } {
-		init(this);
-	}
-
-	virtual bool render_fields(void* data, const std::string& prefix, struct World& world);
-};
+		TypeDescriptor_Enum(void(*init)(TypeDescriptor_Enum*)) : TypeDescriptor{ Enum_Kind, nullptr, 0 } {
+			init(this);
+		}
+	};
 
 
 #define REFLECT() \
@@ -204,27 +208,16 @@ namespace reflect {
 
 struct TypeDescriptor_Vector : TypeDescriptor {
     TypeDescriptor* itemType;
-    size_t (*getSize)(const void*);
-    const void* (*getItem)(const void*, size_t);
+	std::string name_buffer;
 
     template <typename ItemType>
     TypeDescriptor_Vector(ItemType*)
-        : TypeDescriptor{"vector<>", sizeof(vector<ItemType>)},
+        : TypeDescriptor{Vector_Kind, "vector<>", sizeof(vector<ItemType>)},
                          itemType{TypeResolver<ItemType>::get()} {
-        getSize = [](const void* vecPtr) -> size_t {
-            const vector<ItemType>& vec = *(const vector<ItemType>*) vecPtr;
-            return vec.length;
-        };
-        getItem = [](const void* vecPtr, size_t index) -> const void* {
-            const vector<ItemType>& vec = *(const vector<ItemType>*) vecPtr;
-            return &vec[index];
-        };
+        
+		this->name_buffer = std::string("vector<") + std::string(itemType->name) + std::string(">");
+		this->name = this->name_buffer.c_str();
     }
-    virtual std::string getFullName() const override {
-        return std::string("vector<") + itemType->getFullName() + ">";
-    }
-
-	virtual bool render_fields(void* data, const std::string& prefix, struct World& world);
 };
 
 // Partially specialize TypeResolver<> for vectors:
@@ -240,19 +233,16 @@ public:
 
 struct TypeDescriptor_Pointer : TypeDescriptor {
 	TypeDescriptor* itemType;
+	std::string name_buffer;
 
 	template <typename ItemType>
 	TypeDescriptor_Pointer(ItemType*) :
-		TypeDescriptor{ "*", sizeof(void*) },
+		TypeDescriptor{ Ptr_Kind, "*", sizeof(void*) },
 		itemType{ TypeResolver<ItemType>::get() } {
 
+		this->name_buffer = std::string(itemType->name) + "*";
+		this->name = this->name_buffer.c_str();
 	}
-
-	virtual std::string getFullName() const override {
-		return itemType->getFullName() + "*";
-	}
-
-	virtual bool render_fields(void* data, const std::string& prefix, struct World& world);
 };
 
 // Partially specialize TypeResolver<> for pointer:
