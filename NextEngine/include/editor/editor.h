@@ -11,6 +11,7 @@
 #include "ecs/ecs.h"
 #include "editor/gizmo.h"
 #include "editor/picking.h"
+#include "graphics/renderPass.h"
 
 struct DroppableField {
 	void* ptr;
@@ -46,6 +47,7 @@ struct Editor {
 	std::string game_code;
 
 	PickingPass picking_pass;
+	MainPass main_pass;
 
 	int selected_id = -1;
 	float editor_tab_width = 0.25f;

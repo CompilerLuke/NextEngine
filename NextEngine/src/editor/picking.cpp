@@ -100,7 +100,6 @@ PickingSystem::PickingSystem(Editor& editor) : editor(editor) {
 	outline_state.stencil_func = StencilFunc_NotEqual;
 	outline_state.stencil_op = Stencil_Keep_Replace;
 	outline_state.stencil_mask = 0x00;
-	outline_state.depth_func = DepthFunc_None;
 
 	object_state.order = (DrawOrder)3;
 	object_state.stencil_func = StencilFunc_Always;

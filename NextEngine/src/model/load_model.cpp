@@ -8,7 +8,9 @@
 #include "graphics/rhi.h"
 #include "core/vfs.h"
 
-Mesh process_mesh(aiMesh* mesh, const aiScene* scene, vector<std::string>& materials) {
+Mesh process_mesh(aiMesh* mesh, const aiScene* scene, vector<std::string>& materials, const glm::mat4& apply_transform) {
+	glm::mat3 apply_trans3 = glm::mat3(apply_transform);
+	
 	auto vertices = vector<Vertex>();
 	vertices.reserve(mesh->mNumVertices);
 
@@ -31,11 +33,11 @@ Mesh process_mesh(aiMesh* mesh, const aiScene* scene, vector<std::string>& mater
 		auto normals = mesh->mNormals[i];
 
 		Vertex v = {
-			glm::vec3(position.x, position.y, position.z),
-			glm::vec3(normals.x, normals.y, normals.z),
+			glm::vec3(position.x, position.y, position.z) * apply_trans3,
+			glm::vec3(normals.x, normals.y, normals.z) * apply_trans3,
 			glm::vec2(first_coords.x, first_coords.y),
-			glm::vec3(tangent.x, tangent.y, tangent.z),
-			glm::vec3(bitangent.x, bitangent.y, bitangent.z)
+			glm::vec3(tangent.x, tangent.y, tangent.z) * apply_trans3,
+			glm::vec3(bitangent.x, bitangent.y, bitangent.z) * apply_trans3
 		};
 
 		vertices.append(v);
@@ -82,21 +84,21 @@ Mesh process_mesh(aiMesh* mesh, const aiScene* scene, vector<std::string>& mater
 	return new_mesh;
 }
 
-void process_node(aiNode* node, const aiScene* scene, vector<Mesh>& meshes, vector<std::string>& materials) {
+void process_node(aiNode* node, const aiScene* scene, vector<Mesh>& meshes, vector<std::string>& materials, const glm::mat4& apply_transform) {
 	meshes.reserve(meshes.length + node->mNumMeshes);
 
 	for (int i = 0; i < node->mNumMeshes; i++) {
 		auto mesh_id = node->mMeshes[i];
 		auto mesh = scene->mMeshes[mesh_id];
-		meshes.append(process_mesh(mesh, scene, materials));
+		meshes.append(process_mesh(mesh, scene, materials, apply_transform));
 	}
 
 	for (int i = 0; i < node->mNumChildren; i++) {
-		process_node(node->mChildren[i], scene, meshes, materials);
+		process_node(node->mChildren[i], scene, meshes, materials, apply_transform);
 	}
 }
 
-void Model::load_in_place() {
+void Model::load_in_place(const glm::mat4& apply_transform) {
 	auto real_path = Level::asset_path(this->path);
 	
 	Assimp::Importer importer;
@@ -106,7 +108,7 @@ void Model::load_in_place() {
 	vector<Mesh> meshes;
 	vector<std::string> materials;
 
-	process_node(scene->mRootNode, scene, meshes, materials);
+	process_node(scene->mRootNode, scene, meshes, materials, apply_transform);
 
 	this->meshes = std::move(meshes);
 	this->materials = std::move(materials);

@@ -51,6 +51,7 @@ void countSort(T arr[], int n, long long exp, F func) //todo allow different all
 template<typename T, typename F>
 void radixsort(T arr[], int n, F f)
 {
+	if (n == 0) return;
 	// Find the maximum number to know number of digits 
 	long long m = getMax(arr, n, f);
 

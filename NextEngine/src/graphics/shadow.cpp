@@ -160,8 +160,6 @@ void DepthMap::render_maps(World& world, RenderParams& params, glm::mat4 project
 	new_params.pass = this;
 
 	this->depth_map_FBO.bind();
-	glEnable(GL_DEPTH_TEST);
-
 	this->depth_map_FBO.clear_depth(glm::vec4(0, 0, 0, 1));
 	
 	new_params.pass = this;

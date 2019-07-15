@@ -41,7 +41,7 @@ struct Model {
 	vector<std::string> materials;
 
 	void on_load();
-	void load_in_place();
+	void load_in_place(const glm::mat4& apply_transform = glm::mat4(1.0));
 	void ENGINE_API render(ID, glm::mat4*, vector<Handle<Material>>&, RenderParams&);
 
 	REFLECT()

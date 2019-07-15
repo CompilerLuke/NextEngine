@@ -9,11 +9,13 @@ REFLECT_STRUCT_MEMBER(mouse_sensitivity)
 REFLECT_STRUCT_MEMBER(movement_speed)
 REFLECT_STRUCT_END()
 
-float get_speed(Flyover& self, UpdateParams& params) {
+float get_speed(Flyover& self, UpdateParams& params, float height) {
+	auto height_multiplier = 1.0f + height / 10.0f; 
+	
 	if (params.input.key_down(GLFW_KEY_LEFT_SHIFT))
-		return self.movement_speed * 2.0f * params.delta_time;
+		return self.movement_speed * 2.0f * height_multiplier * params.delta_time;
 
-	return (float)(self.movement_speed * params.delta_time);
+	return (float)(self.movement_speed * height_multiplier * params.delta_time);
 }
 
 void FlyOverSystem::update(World& world, UpdateParams& params) {
@@ -30,7 +32,9 @@ void FlyOverSystem::update(World& world, UpdateParams& params) {
 		float vertical_axis = params.input.get_vertical_axis();
 		float horizontal_axis = params.input.get_horizontal_axis();
 
-		float speed = get_speed(*self, params);
+		float speed = get_speed(*self, params, trans->position.y
+		
+		);
 		trans->position += forward * speed * vertical_axis;
 		trans->position += right * speed * horizontal_axis;
 

@@ -1,13 +1,8 @@
 #pragma once
 
-#include "ecs/ecs.h"
+#include "ecs/id.h"
 #include <glm/mat4x4.hpp>
-#include "culling.h"
-#include "buffer.h"
-#include <vector>
-#include "core/temporary.h"
 #include <unordered_map>
-#include "ecs/ecs.h"
 #include "reflection/reflection.h"
 #include "core/core.h"
 
@@ -41,20 +36,18 @@ struct DrawCommandState {
 
 extern DrawCommandState ENGINE_API default_draw_state;
 
-#include "materialSystem.h"
-
 using DrawSortKey = long long;
 
 struct DrawCommand {
 	DrawSortKey key = 0;
 	ID id;
 	glm::mat4* model_m;
-	AABB* aabb;
-	VertexBuffer* buffer;
+	struct AABB* aabb;
+	struct VertexBuffer* buffer;
 	struct Material* material;
 	int num_instances = 1;
 
-	DrawCommand(ID, glm::mat4*, AABB*, VertexBuffer*, Material*);
+	DrawCommand(ID, glm::mat4*, struct AABB*, struct VertexBuffer*, struct Material*);
 };
 
 struct CommandBuffer {

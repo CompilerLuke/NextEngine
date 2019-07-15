@@ -16,12 +16,13 @@ void register_on_inspect_gui(const std::string& on_type, OnInspectGUICallback fu
 
 bool render_fields_primitive(glm::quat* ptr, const std::string& prefix) {
 	glm::vec3 euler = glm::eulerAngles(*ptr);
+	glm::vec3 previous = euler;
 	euler = glm::degrees(euler);
 
 	ImGui::InputFloat3(prefix.c_str(), glm::value_ptr(euler));
 	euler = glm::radians(euler);
-
-	*ptr = glm::quat(euler);
+	if (glm::abs(glm::length(previous - euler)) > 0.001) 
+		*ptr = glm::quat(euler);
 	return true;
 }
 

@@ -60,18 +60,28 @@ bool EntityEditor_inspect(void* data, reflect::TypeDescriptor* type, const std::
 	return false;
 }
 
+void accept_drop(const char* drop_type, void* ptr, unsigned int size) {
+	if (ImGui::BeginDragDropTarget()) {
+		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(drop_type)) {
+			memcpy(ptr, payload->Data, size);
+		}
+		ImGui::EndDragDropTarget();
+	}
+}
+
 //Materials
 bool Material_inspect(void* data, reflect::TypeDescriptor* type, const std::string& prefix, World& world) {
-	Handle<Material> material = *(Handle<Material>*)data;
+	Handle<Material>* handle_ptr = (Handle <Material>*)data;
+	Handle<Material> material = *handle_ptr;
 
 	MaterialAsset* material_asset = AssetTab::material_handle_to_asset[material.id];
 
 	auto name = prefix + std::string(" ") + material_asset->name;
 
-
-
-	Texture* tex = RHI::texture_manager.get(material_asset->preview);
-	ImGui::Image((ImTextureID)tex->texture_id, ImVec2(128, 128), ImVec2(0, 1), ImVec2(1, 0));
+	ImGui::Image((ImTextureID)texture::id_of(material_asset->rot_preview.preview), ImVec2(128, 128), ImVec2(0, 1), ImVec2(1, 0));
+	
+	accept_drop("DRAG_AND_DROP_MATERIAL", handle_ptr, sizeof(Handle<Material>));
+	
 	ImGui::SameLine();
 	ImGui::Text(name.c_str());
 

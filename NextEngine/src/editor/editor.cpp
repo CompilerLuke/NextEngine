@@ -155,7 +155,7 @@ register_components_and_systems_t load_register_components_and_systems(const cha
 }
 
 Editor::Editor(const char* game_code, Window& window)
-: window(window), picking_pass(window), game_code(game_code) {
+: window(window), picking_pass(window), game_code(game_code), main_pass(world, window) {
 	
 	load_register_components_and_systems(game_code)(world);
 	world.add(new Store<EntityEditor>(100));
@@ -178,6 +178,8 @@ void Editor::init_imgui() {
 
 	auto font_path = Level::asset_path("fonts/segoeui.ttf");
 	ImFont* font = io.Fonts->AddFontFromFileTTF(font_path.c_str(), 32.0f, &icons_config, io.Fonts->GetGlyphRangesDefault());
+	asset_tab.filename_font = io.Fonts->AddFontFromFileTTF(font_path.c_str(), 26.0f, &icons_config, io.Fonts->GetGlyphRangesDefault());
+	asset_tab.default_font = font;
 
 	set_darcula_theme();
 
@@ -192,7 +194,7 @@ void Editor::init_imgui() {
 ImTextureID Editor::get_icon(const std::string& name) {
 	for (auto icon : icons) {
 		if (icon.name == name) {
-			return (ImTextureID) RHI::texture_manager.get(icon.texture_id)->texture_id;
+			return (ImTextureID) texture::id_of(icon.texture_id);
 		}
 	}
 	
@@ -229,7 +231,6 @@ void Editor::run() {
 	}
 
 	CommandBuffer cmd_buffer;
-	MainPass main_pass(world, window);
 	RenderParams render_params(&cmd_buffer, &main_pass);
 
 	main_pass.post_process.append(&picking_pass);
@@ -264,6 +265,8 @@ void Editor::run() {
 		name->name = "Main camera";
 	}
 
+	//Create grid
+
 	vector<Param> params = make_SubstanceMaterial("wood_2", "Stylized_Wood");
 
 	/*Material material = {
@@ -281,11 +284,30 @@ void Editor::run() {
 	render_params.dir_light = get_dir_light(world, render_params.layermask);
 	render_params.skybox = skybox;
 
+	asset_tab.default_material = create_new_material(world, this->asset_tab, *this, render_params)->handle;
+
 	auto model_render = world.make<ModelRenderer>(model_renderer_id);
 	model_render->model_id = model;
 	
 	auto materials = world.make<Materials>(model_renderer_id);
-	materials->materials.append(create_new_material(world, this->asset_tab, *this, render_params)->handle);
+	materials->materials.append(asset_tab.default_material);
+
+	//Ground Plane
+	{
+		auto id = world.make_ID();
+		auto e = world.make<Entity>(id);
+		auto name = world.make<EntityEditor>(id);
+		name->name = "Ground";
+
+		auto trans = world.make<Transform>(id);
+		trans->position = glm::vec3(-5, 0, 0);
+		trans->scale = glm::vec3(5);
+		auto mr = world.make<ModelRenderer>(id);
+		mr->model_id = load_Model("subdivided_plane8.fbx");
+
+		auto materials = world.make<Materials>(id);
+		materials->materials.append(asset_tab.default_material);
+	}
 
 	while (!window.should_close() && !exit) {
 		temporary_allocator.clear();
@@ -333,6 +355,7 @@ void Editor::update(UpdateParams& params) {
 
 	display_components.update(world, params);
 	gizmo.update(world, *this, params);
+	asset_tab.update(world, *this, params);
 }
 
 void Editor::render(RenderParams& params) {
@@ -347,6 +370,7 @@ void Editor::render(RenderParams& params) {
 
 	ImGui::PushFont(atlas->Fonts[0]);
 
+	
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
 	ImGui::SetNextWindowPos(viewport->Pos);
 	ImGui::SetNextWindowSize(viewport->Size);
@@ -359,6 +383,7 @@ void Editor::render(RenderParams& params) {
 
 	bool p_open;
 
+	
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
@@ -391,18 +416,13 @@ void Editor::render(RenderParams& params) {
 
 	ImGui::EndMainMenuBar();
 
-
 	ImGuiID dockspace_id = ImGui::GetID("MyDockspace");
 	ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
 	ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
 	ImGui::End();
 
-	ImGui::Begin("Controls", &p_open, ImGuiWindowFlags_NoDecoration);
-	
+	ImGui::Begin("Game");
 	ImGui::ImageButton(get_icon("play"), ImVec2(40, 40));
-	ImGui::Button("Play");
-	ImGui::SameLine();
-	ImGui::Button("Pause");
 	ImGui::End();
 
 	//==========================

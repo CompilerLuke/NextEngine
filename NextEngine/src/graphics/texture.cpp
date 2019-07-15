@@ -65,9 +65,8 @@ Handle<Cubemap> make_Cubemap(Cubemap&& tex) {
 
 namespace texture {
 	void bind_to(Handle<Texture> handle, unsigned int num) {
-		Texture* tex = RHI::texture_manager.get(handle);
 		glActiveTexture(GL_TEXTURE0 + num);
-		glBindTexture(GL_TEXTURE_2D, tex->texture_id);
+		glBindTexture(GL_TEXTURE_2D, id_of(handle));
 	}
 
 	unsigned int id_of(Handle<Texture> handle) {

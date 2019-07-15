@@ -13,3 +13,5 @@ struct AABB {
 	AABB apply(const glm::mat4&);
 	void update_aabb(AABB&);
 };
+
+void aabb_to_verts(AABB* self, glm::vec4* verts);

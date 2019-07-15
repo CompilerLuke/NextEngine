@@ -2,76 +2,79 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="src\benchmark">
-      <UniqueIdentifier>{bc912104-3460-41f9-b6dc-8c2c8f074d15}</UniqueIdentifier>
+      <UniqueIdentifier>{24174a97-553c-430b-bf83-b9ab648dcf6e}</UniqueIdentifier>
     </Filter>
     <Filter Include="src">
-      <UniqueIdentifier>{a0823cc7-8b74-4a71-9884-55a62b6bbb51}</UniqueIdentifier>
+      <UniqueIdentifier>{67665b13-d203-41db-bfda-ab74f1d94d27}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\components">
-      <UniqueIdentifier>{aa88bfd6-3c63-4a6c-a974-edad81f1b76d}</UniqueIdentifier>
+      <UniqueIdentifier>{7c70ffc5-dcb0-4331-b371-864514714851}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\core">
-      <UniqueIdentifier>{4c2ebaf1-4211-4b0d-b1a1-c4cc18304dbd}</UniqueIdentifier>
+      <UniqueIdentifier>{e7f757f6-5841-480a-9d08-63e05d59878d}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\ecs">
-      <UniqueIdentifier>{602b0056-c764-4dd2-a6f0-3d28982a5f96}</UniqueIdentifier>
+      <UniqueIdentifier>{4c7aea28-8067-4087-9fa9-d98721e7a0e7}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\editor">
-      <UniqueIdentifier>{a5fd1234-a7ce-4442-a0c3-937448bb4524}</UniqueIdentifier>
+      <UniqueIdentifier>{e4a0e162-a41b-4ed8-8eb4-0c9b7fca1acf}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\graphics">
-      <UniqueIdentifier>{d656798d-a646-450d-b36b-fd19836d5613}</UniqueIdentifier>
+      <UniqueIdentifier>{7d905409-7fbc-4dc3-a429-e39e0aeea46a}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\logger">
-      <UniqueIdentifier>{d1d841bb-40c8-4b02-8d49-fa2384dd7611}</UniqueIdentifier>
+      <UniqueIdentifier>{461bd896-6e10-42ea-b0ee-3ca08ea68e1d}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\model">
-      <UniqueIdentifier>{9ccf403a-7739-41ab-8728-90f6c434f507}</UniqueIdentifier>
+      <UniqueIdentifier>{ca507bfa-e228-4ea5-ba5c-8aa7ba0affdb}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\physics">
-      <UniqueIdentifier>{ed40cd4e-4cd5-47a0-a8da-c536227f1d81}</UniqueIdentifier>
+      <UniqueIdentifier>{a7614668-9056-4e21-8766-f569be6f6051}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\reflection">
-      <UniqueIdentifier>{3db6b92a-053b-4d5b-880e-40f4e7ba0cd6}</UniqueIdentifier>
+      <UniqueIdentifier>{07e5050b-f8cb-4b4b-829a-af6e87c5f973}</UniqueIdentifier>
     </Filter>
     <Filter Include="vendor\imgui">
-      <UniqueIdentifier>{f9108db3-bda3-444e-bdc5-e477fd6ab33c}</UniqueIdentifier>
+      <UniqueIdentifier>{04312198-b21b-4cd2-890d-f197c3f4182e}</UniqueIdentifier>
     </Filter>
     <Filter Include="vendor">
-      <UniqueIdentifier>{1b5a6c11-e012-4ae8-9626-dd2535c0d3cf}</UniqueIdentifier>
+      <UniqueIdentifier>{17eec0c7-8e64-4aa9-a7ef-f915edc54744}</UniqueIdentifier>
     </Filter>
     <Filter Include="vendor\ImGuizmo">
-      <UniqueIdentifier>{1fc18f4d-6bfe-47a1-9ee5-faab6e0da066}</UniqueIdentifier>
+      <UniqueIdentifier>{e6b869e6-019e-4701-b3d9-15c168e862b0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="vendor\imgui\examples">
+      <UniqueIdentifier>{5ffde7eb-3356-4d49-98ea-250655b000a4}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\components">
-      <UniqueIdentifier>{c4e20aad-0565-41ad-8292-423f0e2abfab}</UniqueIdentifier>
+      <UniqueIdentifier>{be9dea71-e59b-419c-a106-5f3b154b80ce}</UniqueIdentifier>
     </Filter>
     <Filter Include="include">
-      <UniqueIdentifier>{66532f10-1af7-4e4f-b773-41e95c3d4ef0}</UniqueIdentifier>
+      <UniqueIdentifier>{69c72fff-57cd-4cbd-b6a5-0c7feafdea24}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\core">
-      <UniqueIdentifier>{3702759e-d33b-4650-8ca2-05834a78659c}</UniqueIdentifier>
+      <UniqueIdentifier>{451f0092-2f53-4c84-8653-189ae9193aa9}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\ecs">
-      <UniqueIdentifier>{1384067a-b565-4f02-acf9-9f4135db2061}</UniqueIdentifier>
+      <UniqueIdentifier>{961da5a8-ee62-4521-958a-824d73bc7804}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\editor">
-      <UniqueIdentifier>{1924a4b9-fee5-4163-9669-c7f713b4f6b6}</UniqueIdentifier>
+      <UniqueIdentifier>{3eb42f6d-8c20-42a9-8945-084a12ab14ba}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\graphics">
-      <UniqueIdentifier>{d5bdbf9a-a202-48e1-9048-bd42e7c21725}</UniqueIdentifier>
+      <UniqueIdentifier>{6831e121-d64b-408d-be3f-cec3b4c5fdb5}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\logger">
-      <UniqueIdentifier>{f0df30a6-139d-4dd9-9e09-cfcb151c112d}</UniqueIdentifier>
+      <UniqueIdentifier>{f9c960e4-34a0-4f80-9d4e-19fc61f0f9e2}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\model">
-      <UniqueIdentifier>{a95fc8c8-9810-4656-9e56-b99fdb7b5b4d}</UniqueIdentifier>
+      <UniqueIdentifier>{d855736e-7ffd-44c4-9d1b-e7af5e46300f}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\physics">
-      <UniqueIdentifier>{a98d80af-ab3e-4502-a6bd-5b5e08f906ec}</UniqueIdentifier>
+      <UniqueIdentifier>{801dcce1-addd-4ea6-a3e4-a048566c43d0}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\reflection">
-      <UniqueIdentifier>{7e2db912-006f-439f-a832-5b158faf85d2}</UniqueIdentifier>
+      <UniqueIdentifier>{d1f5618c-0d67-4b6e-afa2-31872463ac97}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -135,6 +138,12 @@
     <ClCompile Include="src\editor\lister.cpp">
       <Filter>src\editor</Filter>
     </ClCompile>
+    <ClCompile Include="src\editor\assetTab.cpp">
+      <Filter>src\editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\picking.cpp">
+      <Filter>src\editor</Filter>
+    </ClCompile>
     <ClCompile Include="src\graphics\buffer.cpp">
       <Filter>src\graphics</Filter>
     </ClCompile>
@@ -142,6 +151,9 @@
       <Filter>src\graphics</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\device.cpp">
+      <Filter>src\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\draw.cpp">
       <Filter>src\graphics</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\frameBuffer.cpp">
@@ -210,6 +222,12 @@
     <ClCompile Include="vendor\imgui\imgui_draw.cpp">
       <Filter>vendor\imgui</Filter>
     </ClCompile>
+    <ClCompile Include="vendor\imgui\imgui_impl_glfw.cpp">
+      <Filter>vendor\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\imgui_impl_opengl3.cpp">
+      <Filter>vendor\imgui</Filter>
+    </ClCompile>
     <ClCompile Include="vendor\imgui\imgui_widgets.cpp">
       <Filter>vendor\imgui</Filter>
     </ClCompile>
@@ -219,24 +237,12 @@
     <ClCompile Include="vendor\ImGuizmo\ImSequencer.cpp">
       <Filter>vendor\ImGuizmo</Filter>
     </ClCompile>
-    <ClCompile Include="vendor\imgui\imgui_impl_glfw.cpp">
-      <Filter>vendor\imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="vendor\imgui\imgui_impl_opengl3.cpp">
-      <Filter>vendor\imgui</Filter>
+    <ClCompile Include="src\editor\diffUtil.cpp">
+      <Filter>src\editor</Filter>
     </ClCompile>
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="NextEngine.cpp" />
     <ClCompile Include="stdafx.cpp" />
-    <ClCompile Include="src\editor\assetTab.cpp">
-      <Filter>src\editor</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\draw.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\editor\picking.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\core\eventDispatcher.h">
@@ -246,6 +252,12 @@
       <Filter>vendor\imgui</Filter>
     </ClInclude>
     <ClInclude Include="vendor\imgui\imgui.h">
+      <Filter>vendor\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\imgui\imgui_impl_glfw.h">
+      <Filter>vendor\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\imgui\imgui_impl_opengl3.h">
       <Filter>vendor\imgui</Filter>
     </ClInclude>
     <ClInclude Include="vendor\imgui\imgui_internal.h">
@@ -259,6 +271,12 @@
     </ClInclude>
     <ClInclude Include="vendor\imgui\imstb_truetype.h">
       <Filter>vendor\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\imgui\examples\imgui_impl_glfw.h">
+      <Filter>vendor\imgui\examples</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\imgui\examples\imgui_impl_opengl3.h">
+      <Filter>vendor\imgui\examples</Filter>
     </ClInclude>
     <ClInclude Include="vendor\ImGuizmo\ImGuizmo.h">
       <Filter>vendor\ImGuizmo</Filter>
@@ -344,6 +362,9 @@
     <ClInclude Include="include\editor\lister.h">
       <Filter>include\editor</Filter>
     </ClInclude>
+    <ClInclude Include="include\editor\assetTab.h">
+      <Filter>include\editor</Filter>
+    </ClInclude>
     <ClInclude Include="include\editor\picking.h">
       <Filter>include\editor</Filter>
     </ClInclude>
@@ -419,28 +440,14 @@
     <ClInclude Include="include\reflection\reflection.h">
       <Filter>include\reflection</Filter>
     </ClInclude>
-    <ClInclude Include="vendor\imgui\imgui_impl_glfw.h">
-      <Filter>vendor\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="vendor\imgui\imgui_impl_opengl3.h">
-      <Filter>vendor\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="stdafx.h" />
-    <ClInclude Include="targetver.h" />
-    <ClInclude Include="vendor\imgui\examples\imgui_impl_glfw.h">
-      <Filter>vendor\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="vendor\imgui\examples\imgui_impl_opengl3.h">
-      <Filter>vendor\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="core.h">
-      <Filter>include\core</Filter>
-    </ClInclude>
-    <ClInclude Include="include\editor\assetTab.h">
+    <ClInclude Include="include\editor\diffUtil.h">
       <Filter>include\editor</Filter>
     </ClInclude>
-    <ClInclude Include="materialManager.h">
-      <Filter>include\graphics</Filter>
+    <ClInclude Include="materialManager.h" />
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="targetver.h" />
+    <ClInclude Include="core.h">
+      <Filter>include\core</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

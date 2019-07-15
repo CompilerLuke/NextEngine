@@ -103,7 +103,7 @@ struct vector {
 #ifdef BOUNDS_CHECKING
 		if (this->length == 0) abort();
 #endif
-		return std::move(this->data[this->length - 1]);
+		return std::move(this->data[--this->length]);
 	}
 
 	inline void clear() {

@@ -190,6 +190,7 @@
     <ClInclude Include="include\ecs\new_ecs.h" />
     <ClInclude Include="include\ecs\system.h" />
     <ClInclude Include="include\editor\custom_inspect.h" />
+    <ClInclude Include="include\editor\diffUtil.h" />
     <ClInclude Include="include\editor\displayComponents.h" />
     <ClInclude Include="include\editor\editor.h" />
     <ClInclude Include="include\editor\gizmo.h" />
@@ -256,6 +257,7 @@
     <ClCompile Include="src\ecs\system.cpp" />
     <ClCompile Include="src\ecs\update_params.cpp" />
     <ClCompile Include="src\editor\custom_inspect.cpp" />
+    <ClCompile Include="src\editor\diffUtil.cpp" />
     <ClCompile Include="src\editor\displayComponents.cpp" />
     <ClCompile Include="src\editor\editor.cpp" />
     <ClCompile Include="src\editor\gizmo.cpp" />

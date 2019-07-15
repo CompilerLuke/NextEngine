@@ -16,3 +16,4 @@ struct CameraSystem : System {
 	void render(World&, RenderParams&) override;
 };
 
+Camera* get_camera(World& world, Layermask layermask);
