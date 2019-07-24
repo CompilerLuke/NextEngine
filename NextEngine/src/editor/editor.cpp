@@ -24,6 +24,8 @@
 #include "editor/picking.h"
 #include "core/vfs.h"
 #include "graphics/materialSystem.h"
+#include "serialization/serializer.h"
+#include "editor/terrain.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
@@ -159,7 +161,7 @@ Editor::Editor(const char* game_code, Window& window)
 	
 	load_register_components_and_systems(game_code)(world);
 	world.add(new Store<EntityEditor>(100));
-	
+
 	register_on_inspect_callbacks();
 }
 
@@ -191,7 +193,7 @@ void Editor::init_imgui() {
 	glfwSetMouseButtonCallback(window.window_ptr, override_mouse_button_callback);
 }
 
-ImTextureID Editor::get_icon(const std::string& name) {
+ImTextureID Editor::get_icon(StringView name) {
 	for (auto icon : icons) {
 		if (icon.name == name) {
 			return (ImTextureID) texture::id_of(icon.texture_id);
@@ -199,6 +201,128 @@ ImTextureID Editor::get_icon(const std::string& name) {
 	}
 	
 	throw "Could not find icon";
+}
+
+void default_scene(Editor& editor, RenderParams& params) {
+	World& world = editor.world;
+
+	editor.asset_tab.default_material = create_new_material(world, editor.asset_tab, editor, params)->handle;
+
+	auto model_renderer_id = world.make_ID();
+
+	{
+		auto id = model_renderer_id;
+		auto e = world.make<Entity>(id);
+		auto trans = world.make<Transform>(id);
+		trans->position.z = -5;
+
+		editor.select(id);
+
+		auto name = world.make<EntityEditor>(id);
+		name->name = "Plane";
+	}
+
+	auto model_render = world.make<ModelRenderer>(model_renderer_id);
+	model_render->model_id = load_Model("HOVERTANK.fbx");
+
+	auto materials = world.make<Materials>(model_renderer_id);
+	materials->materials.append(editor.asset_tab.default_material);
+
+	//Ground Plane
+	{
+		auto id = world.make_ID();
+		auto e = world.make<Entity>(id);
+		auto name = world.make<EntityEditor>(id);
+		name->name = "Ground";
+
+		auto trans = world.make<Transform>(id);
+		trans->position = glm::vec3(-5, 0, 0);
+		trans->scale = glm::vec3(5);
+		auto mr = world.make<ModelRenderer>(id);
+		mr->model_id = load_Model("subdivided_plane8.fbx");
+
+		auto materials = world.make<Materials>(id);
+		materials->materials.append(editor.asset_tab.default_material);
+	}
+
+	//Light
+	{
+		auto id = world.make_ID();
+		auto e = world.make<Entity>(id);
+		auto trans = world.make<Transform>(id);
+		auto dir_light = world.make<DirLight>(id);
+		auto entity_editor = world.make<EntityEditor>(id);
+		entity_editor->name = "Sun Light";
+	}
+}
+
+StringBuffer save_component_to(ComponentStore* store) {
+	return StringBuffer("data/") + store->get_component_type()->name + ".ne";
+}
+
+void on_load(Editor& editor, RenderParams& params) {
+	unsigned int save_files_available = 0;
+
+	for (int i = 0; i < editor.world.components_hash_size; i++) {
+		auto store = editor.world.components[i].get();
+		if (store != NULL) {
+			File file;
+			if (!file.open(save_component_to(store).view(), File::ReadFileB)) continue;
+
+			char* data_buffer = NULL;
+			unsigned int data_length = file.read_binary(&data_buffer);
+
+			DeserializerBuffer buffer(data_buffer, data_length);
+			reflect::TypeDescriptor* component_type = store->get_component_type();
+
+			unsigned num_components = buffer.read_int();
+			for (unsigned int i = 0; i < num_components; i++) {
+				unsigned int id = buffer.read_int();
+				void* ptr = store->make_by_id(id);
+			
+				buffer.read(component_type, ptr);
+				editor.world.skipped_ids.append(id);
+			}
+
+			save_files_available++;
+		}
+	}
+
+	editor.asset_tab.on_load(editor.world, params);
+
+	if (save_files_available == 0) default_scene(editor, params);
+
+}
+
+void on_save(Editor& editor) {
+	for (int i = 0; i < editor.world.components_hash_size; i++) {
+		auto store = editor.world.components[i].get();
+		if (store != NULL) {
+			SerializerBuffer buffer;
+
+			vector<Component> filtered;
+			for (Component& comp : store->filter_untyped()) {
+				if (editor.world.by_id<EntityEditor>(comp.id))
+					filtered.append(comp);
+			}
+
+			buffer.write_int(filtered.length);
+
+			log("Serialized ", filtered.length, " ", store->get_component_type()->name);
+
+			for (Component& comp : filtered) {
+				buffer.write_int(comp.id);
+				buffer.write(comp.type, comp.data);
+			}
+
+			File file;
+
+			if (!file.open(save_component_to(store).view(), File::WriteFileB)) throw "Could not save data";
+			file.write({ buffer.data, buffer.index });
+		}
+	}
+
+	editor.asset_tab.on_save();
 }
 
 void Editor::run() {
@@ -218,17 +342,9 @@ void Editor::run() {
 	auto shader = load_Shader("shaders/pbr.vert", "shaders/gizmo.frag");
 	auto texture = load_Texture("normal.jpg");
 	auto model = load_Model("HOVERTANK.fbx");
-	auto skybox = load_Skybox(world, "Tropical_Beach_3k.hdr");
+	auto skybox = load_Skybox(world, "Topanga_Forest_B_3k.hdr");
 
-	{
-		auto id = world.make_ID();
-		auto e = world.make<Entity>(id);
-		auto trans = world.make<Transform>(id);
-		auto dir_light = world.make<DirLight>(id);
-
-		auto name = world.make<EntityEditor>(id);
-		name->name = "Light";
-	}
+	load_Model("subdivided_plane8.fbx");
 
 	CommandBuffer cmd_buffer;
 	RenderParams render_params(&cmd_buffer, &main_pass);
@@ -237,33 +353,7 @@ void Editor::run() {
 
 	PickingSystem* picking_system = new PickingSystem(*this);
 
-	world.add(picking_system);
-	
 	UpdateParams update_params(input);
-
-	auto model_renderer_id = world.make_ID();
-
-	{
-		auto id = model_renderer_id;
-		auto e = world.make<Entity>(id);
-		auto trans = world.make<Transform>(id);
-		trans->position.z = -5;
-
-		select(id);
-
-		auto name = world.make<EntityEditor>(id);
-		name->name = "Plane";
-	}
-
-	{
-		auto id = world.make_ID();
-		auto e = world.make<Entity>(id);
-		auto trans = world.make<Transform>(id);
-		auto camera = world.make <Camera>(id);
-		auto flyover = world.make<Flyover>(id);
-		auto name = world.make<EntityEditor>(id);
-		name->name = "Main camera";
-	}
 
 	//Create grid
 
@@ -281,33 +371,28 @@ void Editor::run() {
 	render_params.layermask = game_layer | editor_layer;
 	render_params.width = window.width;
 	render_params.height = window.height;
-	render_params.dir_light = get_dir_light(world, render_params.layermask);
 	render_params.skybox = skybox;
 
-	asset_tab.default_material = create_new_material(world, this->asset_tab, *this, render_params)->handle;
-
-	auto model_render = world.make<ModelRenderer>(model_renderer_id);
-	model_render->model_id = model;
-	
-	auto materials = world.make<Materials>(model_renderer_id);
-	materials->materials.append(asset_tab.default_material);
-
-	//Ground Plane
 	{
 		auto id = world.make_ID();
 		auto e = world.make<Entity>(id);
-		auto name = world.make<EntityEditor>(id);
-		name->name = "Ground";
-
 		auto trans = world.make<Transform>(id);
-		trans->position = glm::vec3(-5, 0, 0);
-		trans->scale = glm::vec3(5);
-		auto mr = world.make<ModelRenderer>(id);
-		mr->model_id = load_Model("subdivided_plane8.fbx");
-
-		auto materials = world.make<Materials>(id);
-		materials->materials.append(asset_tab.default_material);
+		auto camera = world.make <Camera>(id);
+		auto flyover = world.make<Flyover>(id);
 	}
+
+	//default_scene(*this, render_params);
+	
+	on_load(*this, render_params);
+
+	world.add(new DebugLightSystem());
+	world.add(new DebugShaderReloadSystem());
+	world.add(new TerrainSystem());
+	world.add(picking_system);
+
+	load_Shader("shaders/pbr.vert", "shaders/paralax_pbr.frag");
+
+	render_params.dir_light = get_dir_light(world, render_params.layermask);
 
 	while (!window.should_close() && !exit) {
 		temporary_allocator.clear();
@@ -335,51 +420,54 @@ void Editor::run() {
 
 		window.swap_buffers();
 	}
+
+	on_save(*this);
 }
 
 constexpr unsigned int max_undos = 20;
 constexpr unsigned int max_redos = 10;
 
-void push_undo(Editor& editor, Diff&& diff) {
+void push_undo(Editor& editor, std::unique_ptr<EditorAction> diff) {
 	editor.undos.append(std::move(diff));
 	if (editor.undos.length > max_undos) {
 		editor.undos.shift(1);
 	}
 }
 
-void push_redo(Editor& editor, Diff&& diff) {
+void push_redo(Editor& editor, std::unique_ptr<EditorAction> diff) {
 	editor.redos.append(std::move(diff));
 	if (editor.redos.length > max_redos) {
 		editor.redos.shift(1);
 	}
 }
 
-void Editor::submit_diff(Diff&& diff) {
-	push_undo(*this, std::move(diff));
+void Editor::submit_action(EditorAction* diff) {
+	push_undo(*this, std::unique_ptr<EditorAction>(diff));
 }
 
 void on_undo(Editor& editor) {
 	if (editor.undos.length > 0) {
-		Diff diff = editor.undos.pop();
-		diff.undo();
+		std::unique_ptr<EditorAction> action = editor.undos.pop();
+		action->undo();
 
-		push_redo(editor, std::move(diff));
+		push_redo(editor, std::move(action));
 	}
 }
 
 void on_redo(Editor& editor) {
 	if (editor.redos.length > 0) {
-		Diff diff = editor.redos.pop();
-		diff.redo();
+		std::unique_ptr<EditorAction> action = editor.redos.pop();
+		action->redo();
 
-		push_undo(editor, std::move(diff));
+		push_undo(editor, std::move(action));
 	}
 }
 
 void Editor::update(UpdateParams& params) {
 	if (params.input.key_pressed(GLFW_KEY_X)) {
 		if (this->selected_id >= 0) {
-			world.free_by_id<Entity>(this->selected_id);
+			submit_action(new DestroyAction(world, this->selected_id));
+
 			this->selected_id = -1;
 		}
 	}
@@ -394,6 +482,7 @@ void Editor::update(UpdateParams& params) {
 
 	if (params.input.key_pressed(89, true) && params.input.key_down(GLFW_KEY_LEFT_CONTROL, true)) on_undo(*this);
 	if (params.input.key_pressed('R', true) && params.input.key_down(GLFW_KEY_LEFT_CONTROL, true)) on_redo(*this);
+	if (params.input.key_pressed('S', true) && params.input.key_down(GLFW_KEY_LEFT_CONTROL, true)) on_save(*this);
 
 	display_components.update(world, params);
 	gizmo.update(world, *this, params);
@@ -438,7 +527,9 @@ void Editor::render(RenderParams& params) {
 		ImGui::MenuItem("New Scene", "CTRL+N");
 		ImGui::MenuItem("Open Scene");
 		ImGui::MenuItem("Recents");
-		ImGui::MenuItem("Save", "CTRL+S");
+		if (ImGui::MenuItem("Save", "CTRL+S")) {
+			on_save(*this);
+		}
 		if (ImGui::MenuItem("Exit", "ALT+F4")) {
 			log("Exiting");
 			this->exit = true;

@@ -10,11 +10,11 @@ void framebuffer_size_callback(GLFWwindow* window_ptr, int width, int height) {
 }
 
 void cursor_pos_callback(GLFWwindow* window_ptr, double x, double y) {
-	//int width, height;
-	//glfwGetWindowSize(window_ptr, &width, &height);
+	int width, height;
+	glfwGetWindowSize(window_ptr, &width, &height);
 
 	auto window = (Window*)glfwGetWindowUserPointer(window_ptr);
-	window->on_cursor_pos.broadcast(glm::vec2(x, y));
+	window->on_cursor_pos.broadcast(glm::vec2(x, y + (window->height - height)));
 }
 
 void key_callback(GLFWwindow* window_ptr, int key, int scancode, int action, int mods) {
@@ -31,7 +31,7 @@ void drop_callback(GLFWwindow* window_ptr, int count, const char** paths) {
 	auto window = (Window*)glfwGetWindowUserPointer(window_ptr);
 	
 	for (int i = 0; i < count; i++) {
-		window->on_drop.broadcast(std::string(paths[i]));
+		window->on_drop.broadcast(StringBuffer(paths[i]));
 	}
 }
 
@@ -78,7 +78,7 @@ void Window::init() {
 	}
 
 	//glEnable(GL_DEBUG_OUTPUT);
-	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+	//glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 	glDebugMessageCallback((GLDEBUGPROC)gl_error_callback, this); 
 
 	if (vSync) {

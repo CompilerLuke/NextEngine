@@ -175,14 +175,18 @@
     <ClInclude Include="include\components\lights.h" />
     <ClInclude Include="include\components\transform.h" />
     <ClInclude Include="include\core\allocator.h" />
+    <ClInclude Include="include\core\core.h" />
     <ClInclude Include="include\core\eventDispatcher.h" />
     <ClInclude Include="include\core\game_time.h" />
     <ClInclude Include="include\core\handle.h" />
     <ClInclude Include="include\core\HandleManager.h" />
     <ClInclude Include="include\core\input.h" />
+    <ClInclude Include="include\core\platform.h" />
     <ClInclude Include="include\core\resource.h" />
     <ClInclude Include="include\core\resourceManager.h" />
     <ClInclude Include="include\core\sort.h" />
+    <ClInclude Include="include\core\string_buffer.h" />
+    <ClInclude Include="include\core\string_view.h" />
     <ClInclude Include="include\core\temporary.h" />
     <ClInclude Include="include\core\vector.h" />
     <ClInclude Include="include\core\vfs.h" />
@@ -199,6 +203,7 @@
     <ClInclude Include="include\editor\lister.h" />
     <ClInclude Include="include\editor\assetTab.h" />
     <ClInclude Include="include\editor\picking.h" />
+    <ClInclude Include="include\editor\terrain.h" />
     <ClInclude Include="include\graphics\buffer.h" />
     <ClInclude Include="include\graphics\culling.h" />
     <ClInclude Include="include\graphics\device.h" />
@@ -224,10 +229,9 @@
     <ClInclude Include="include\physics\physics.h" />
     <ClInclude Include="include\reflection\reflection.h" />
     <ClInclude Include="materialManager.h" />
+    <ClInclude Include="platform.h" />
     <ClInclude Include="src\core\eventDispatcher.h" />
     <ClInclude Include="stdafx.h" />
-    <ClInclude Include="string_buffer.h" />
-    <ClInclude Include="string_id.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="vendor\ImGuizmo\ImGuizmo.h" />
     <ClInclude Include="vendor\ImGuizmo\ImSequencer.h" />
@@ -253,6 +257,7 @@
     <ClCompile Include="src\core\allocator.cpp" />
     <ClCompile Include="src\core\input.cpp" />
     <ClCompile Include="src\core\static_vector.cpp" />
+    <ClCompile Include="src\core\string_view.cpp" />
     <ClCompile Include="src\core\temporary.cpp" />
     <ClCompile Include="src\core\time.cpp" />
     <ClCompile Include="src\core\vfs.cpp" />
@@ -281,7 +286,12 @@
     <ClCompile Include="src\graphics\rhi.cpp" />
     <ClCompile Include="src\graphics\shader.cpp" />
     <ClCompile Include="src\graphics\shadow.cpp" />
-    <ClCompile Include="src\graphics\texture.cpp" />
+    <ClCompile Include="src\graphics\texture.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">MaxSpeed</Optimization>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Default</BasicRuntimeChecks>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</BasicRuntimeChecks>
+    </ClCompile>
     <ClCompile Include="src\graphics\volumetric.cpp" />
     <ClCompile Include="src\graphics\window.cpp" />
     <ClCompile Include="src\logger\logger.cpp" />
@@ -292,12 +302,14 @@
     <ClCompile Include="src\physics\btWrapper.cpp" />
     <ClCompile Include="src\physics\physics.cpp" />
     <ClCompile Include="src\reflection\reflection.cpp" />
+    <ClCompile Include="src\serialization\serializer.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="terrain.cpp" />
     <ClCompile Include="vendor\ImGuizmo\ImGuizmo.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>

@@ -6,17 +6,16 @@
 #include "graphics/rhi.h"
 #include "logger/logger.h"
 #include <chrono>
-#include <iostream>
 
 REFLECT_STRUCT_BEGIN(ModelRenderer)
 REFLECT_STRUCT_MEMBER(visible)
-REFLECT_STRUCT_MEMBER_TAG(model_id, reflect::ModelIDTag)
+REFLECT_STRUCT_MEMBER_TAG(model_id)
 REFLECT_STRUCT_END()
 
 struct Instance {
 	vector<glm::mat4> transforms;
 	vector<AABB> aabbs;
-	ID id = 0;
+	vector<ID> ids;
 	VertexBuffer* buffer;
 };
 
@@ -26,32 +25,24 @@ struct Instance {
 #define PROFILE_BEGIN()  { auto start = std::chrono::high_resolution_clock::now();
 #define PROFILE_END(name) auto end = std::chrono::high_resolution_clock::now(); \
 std::chrono::duration<double, std::milli> delta = end - start; \
-std::cout << name << delta.count() << "ms" << std::endl; }
+log(name, delta.count(), "ms");
 #endif 
 #ifndef PROFILING
 #define PROFILE_BEGIN()
 #define PROFILE_END()
 #endif
 
-vector<Instance> instances; //todo move into system, 
+constexpr unsigned MAX_VAO = 30;
+constexpr unsigned int NUM_INSTANCES = MAX_VAO * RHI::material_manager.MAX_HANDLES;
+Instance instances[NUM_INSTANCES]; //todo move into system, 
 //one possibility is splitting dynamic and static meshes
 
 void ModelRendererSystem::render(World& world, RenderParams& params) { //HOTSPOT
 	auto filtered = world.filter<ModelRenderer, Materials, Transform>(params.layermask);
 
-	constexpr unsigned max_vao = 30;
-	unsigned int num_instances = max_vao * RHI::material_manager.slots.length;
-
-	if (instances.length < num_instances) {
-		instances.reserve(num_instances);
-		int diff = num_instances - instances.length;
-		for (int i = 0; i < diff; i++) {
-			instances.append(Instance());
-		}
-	}
-
-	for (int i = 0; i < num_instances; i++) {
+	for (int i = 0; i < NUM_INSTANCES; i++) {
 		instances[i].transforms.clear();
+		instances[i].ids.clear();
 	}
 
 	glm::mat4 identity(1.0);
@@ -76,9 +67,9 @@ void ModelRendererSystem::render(World& world, RenderParams& params) { //HOTSPOT
 		for (Mesh& mesh : model->meshes) {
 			Handle<Material> mat = materials->materials[mesh.material_id];
 
-			unsigned int mat_index = RHI::material_manager.get_index(mat);
+			unsigned int mat_index = mat.id - 1;
 			
-			auto& instance = instances[mesh.buffer.vao + max_vao * mat_index];
+			auto& instance = instances[mesh.buffer.vao + MAX_VAO * mat_index];
 			auto trans = world.by_id<Transform>(filtered[i]);
 
 			if (static_trans) {
@@ -92,28 +83,40 @@ void ModelRendererSystem::render(World& world, RenderParams& params) { //HOTSPOT
 				instance.transforms.append(scale * rotation);
 			}
 			instance.buffer = &mesh.buffer;
-			instance.id = id; //make ids an array
+			instance.ids.append(id); //make ids an array
 		}
 	}
 
 	
-	for (unsigned int i = 0; i < num_instances; i++) {
+	for (unsigned int i = 0; i < NUM_INSTANCES; i++) {
 		unsigned int length = instances[i].transforms.length;
 		if (length == 0) continue;
 		
-		unsigned int vao = i % max_vao;
-		unsigned int mat_index = i / max_vao;
+		unsigned int vao = i % MAX_VAO;
+		unsigned int mat_index = i / MAX_VAO;
 
-		Material* mat = RHI::material_manager.get(RHI::material_manager.index_to_handle(mat_index));
+		Material* mat = RHI::material_manager.get({ mat_index + 1 });
+		if (mat == NULL) continue;
 
 		auto& instance = instances[i];
 
 		auto transforms = instance.transforms.data;
 		auto aabbs = instance.aabbs.data;
 
-		DrawCommand cmd(instance.id, transforms, aabbs, instance.buffer, mat);
-		cmd.num_instances = instance.transforms.length;
-		params.command_buffer->submit(cmd);
+		auto shad = RHI::shader_manager.get(mat->shader);
+
+		if (shad->supports_instancing && false) {
+			DrawCommand cmd(instance.ids[i], transforms, aabbs, instance.buffer, mat);
+			cmd.num_instances = instance.transforms.length;
+			params.command_buffer->submit(cmd);
+		}
+		else {
+			for (int i = 0; i < instance.transforms.length; i++) {
+				DrawCommand cmd(instance.ids[i], &transforms[i], &aabbs[i], instance.buffer, mat);
+
+				params.command_buffer->submit(cmd);
+			}
+		}
 	}
 }
 

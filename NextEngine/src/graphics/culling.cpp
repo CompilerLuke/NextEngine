@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "graphics/culling.h"
 #include <glm/vec4.hpp>
-#include <algorithm>
+#include <glm/glm.hpp>
 
 void aabb_to_verts(AABB* self, glm::vec4* verts) {
 	verts[0] = glm::vec4(self->max.x, self->max.y, self->max.z, 1);
@@ -39,13 +39,8 @@ void AABB::update_aabb(AABB& other) {
 
 
 void AABB::update(const glm::vec3& v) {
-	this->max.x = std::max(this->max.x, v.x);
-	this->max.y = std::max(this->max.y, v.y);
-	this->max.z = std::max(this->max.z, v.z);
-
-	this->min.x = std::min(this->min.x, v.x);
-	this->min.y = std::min(this->min.y, v.y);
-	this->min.z = std::min(this->min.z, v.z);
+	this->max = glm::max(this->max, v);
+	this->min = glm::min(this->min, v);
 }
 
 

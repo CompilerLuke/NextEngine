@@ -5,13 +5,11 @@
 #include <glm/mat4x4.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include "editor/displayComponents.h"
+#include "core/string_buffer.h"
 
 #define PRIMITIVE_TYPE_DESCRIPTOR(kind, type) \
 struct TypeDescriptor_##type : TypeDescriptor { \
 	TypeDescriptor_##type() : TypeDescriptor{ kind, #type , sizeof(type) } {}; \
-	bool render_fields(void* data, const std::string& prefix, struct World& world) { \
-		return render_fields_primitive((type*)data, prefix); \
-	} \
 }; \
 \
 template<> \
@@ -36,18 +34,14 @@ namespace reflect {
 	// A type descriptor for std::string
 	//--------------------------------------------------------
 
-	struct TypeDescriptor_StdString : TypeDescriptor {
-		TypeDescriptor_StdString() : TypeDescriptor{ StdString_Kind, "std::string", sizeof(std::string) } {
+	struct TypeDescriptor_StringBuffer : TypeDescriptor {
+		TypeDescriptor_StringBuffer() : TypeDescriptor{ StringBuffer_Kind, "StringBuffer", sizeof(StringBuffer) } {
 		}
-		bool render_fields(void* data, const std::string& prefix, struct World& world) {
-			render_fields_primitive((std::string*)data, prefix); 
-			return true;
-		} 
 	};
 
 	template <>
-	TypeDescriptor* getPrimitiveDescriptor<std::string>() {
-		static TypeDescriptor_StdString typeDesc;
+	TypeDescriptor* getPrimitiveDescriptor<StringBuffer>() {
+		static TypeDescriptor_StringBuffer typeDesc;
 		return &typeDesc;
 	}
 
@@ -85,7 +79,7 @@ namespace reflect {
 	}
 
 	void init_quat_type(TypeDescriptor_Struct* type) {
-		type->size = sizeof(glm::vec2);
+		type->size = sizeof(glm::quat);
 		type->name = "glm::quat";
 		type->members.push_back({ "x", offsetof(glm::quat, x), reflect::TypeResolver<float>::get(), reflect::NoTag });
 		type->members.push_back({ "y", offsetof(glm::quat, y), reflect::TypeResolver<float>::get(), reflect::NoTag });

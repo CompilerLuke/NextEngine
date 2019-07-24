@@ -35,6 +35,7 @@ struct DrawCommandState {
 };
 
 extern DrawCommandState ENGINE_API default_draw_state;
+extern DrawCommandState ENGINE_API draw_draw_over;
 
 using DrawSortKey = long long;
 

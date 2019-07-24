@@ -5,9 +5,10 @@
 #include <string>
 #include "reflection/reflection.h"
 #include "core/handle.h"
+#include "core/string_buffer.h"
 
 struct Skybox {
-	std::string filename;
+	StringBuffer filename;
 
 	Handle<struct Cubemap> env_cubemap;
 	Handle<struct Cubemap> irradiance_cubemap;
@@ -20,4 +21,4 @@ struct Skybox {
 	REFLECT()
 };
 
-Skybox* load_Skybox(struct World&, const std::string&);
+Skybox* load_Skybox(struct World&, StringView);

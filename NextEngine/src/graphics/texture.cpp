@@ -26,7 +26,9 @@ REFLECT_STRUCT_END()
 void Texture::on_load() {
 	auto real_filename = Level::asset_path(filename);
 
-	stbi_set_flip_vertically_on_load(true);
+
+	if (filename.starts_with("Aset") || filename.starts_with("tgh") || filename.starts_with("ta")) stbi_set_flip_vertically_on_load(false);
+	else stbi_set_flip_vertically_on_load(true);
 
 	int width = 0;
 	int height = 0;
@@ -82,10 +84,10 @@ namespace cubemap {
 	}
 }
 
-Handle<Texture> load_Texture(const std::string& filename) {
+Handle<Texture> load_Texture(StringView filename) {
 	for (int i = 0; i < RHI::texture_manager.slots.length; i++) { //todo move out into Texture manager
 		auto& slot = RHI::texture_manager.slots[i];
-		if (slot.generation != INVALID_HANDLE && slot.obj.filename == filename) {
+		if (slot.filename == filename) {
 			return RHI::texture_manager.index_to_handle(i);
 		}
 	}

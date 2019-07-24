@@ -2,7 +2,7 @@
 #include "physics/physics.h"
 #include "ecs/ecs.h"
 #include "components/transform.h"
-#include <algorithm>
+#include <glm/glm.hpp>
 
 REFLECT_STRUCT_BEGIN(CapsuleCollider)
 REFLECT_STRUCT_MEMBER(radius)
@@ -67,7 +67,7 @@ void PhysicsSystem::update(World& world, UpdateParams& params) {
 				glm::vec3 size = collider->scale * trans->scale;
 				shape = make_BoxShape(size);
 				if (rb->continous) {
-					settings.sweep_radius = std::max(size.z, std::max(size.x, size.y));
+					settings.sweep_radius = glm::max(size.z, glm::max(size.x, size.y));
 				}
 			}
 			else if (world.by_id<CapsuleCollider>(id)) {
@@ -82,6 +82,8 @@ void PhysicsSystem::update(World& world, UpdateParams& params) {
 				shape = make_PlaneShape(collider->normal);
 			}
 			
+
+
 			settings.id = id;
 			settings.mass = rb->mass;
 			settings.lock_rotation = rb->override_rotation;

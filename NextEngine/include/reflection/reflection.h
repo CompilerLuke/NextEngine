@@ -25,7 +25,7 @@ namespace reflect {
 		Int_Kind,
 		Unsigned_Int_Kind,
 		Float_Kind,
-		StdString_Kind
+		StringBuffer_Kind
 	};
 
 	struct TypeDescriptor {
@@ -81,10 +81,7 @@ namespace reflect {
 	enum TypeTag {
 		NoTag,
 		LayermaskTag,
-		ModelIDTag,
-		ShaderIDTag,
-		TextureIDTag,
-		CubemapIDTag,
+		HideInInspectorTag
 	};
 
 	struct TypeDescriptor_Struct : TypeDescriptor {
@@ -215,9 +212,15 @@ struct TypeDescriptor_Vector : TypeDescriptor {
         : TypeDescriptor{Vector_Kind, "vector<>", sizeof(vector<ItemType>)},
                          itemType{TypeResolver<ItemType>::get()} {
         
-		this->name_buffer = std::string("vector<") + std::string(itemType->name) + std::string(">");
-		this->name = this->name_buffer.c_str();
+		this->name = "vector";
     }
+
+	const char* get_name() {
+		if (this->name_buffer.size() == 0) 
+			this->name_buffer = std::string("vector<") + std::string(itemType->name) + std::string(">");
+
+		return this->name_buffer.c_str();
+	}
 };
 
 // Partially specialize TypeResolver<> for vectors:

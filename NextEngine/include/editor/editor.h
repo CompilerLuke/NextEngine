@@ -16,7 +16,7 @@
 
 struct DroppableField {
 	void* ptr;
-	std::string typ;
+	StringBuffer typ;
 	ID id;
 };
 
@@ -38,14 +38,14 @@ struct DeleteComponent {
 };
 
 struct Icon {
-	std::string name;
+	StringBuffer name;
 	Handle<struct Texture> texture_id;
 };
 
 struct Editor {
 	World world;
 	Window& window;
-	std::string game_code;
+	StringView game_code;
 
 	PickingPass picking_pass;
 	MainPass main_pass;
@@ -58,12 +58,12 @@ struct Editor {
 
 	vector<Icon> icons;
 
-	vector<Diff> undos;
-	vector<Diff> redos;
+	vector<std::unique_ptr<EditorAction>> undos;
+	vector<std::unique_ptr<EditorAction>> redos;
 
-	void submit_diff(Diff&&);
+	void submit_action(EditorAction*);
 
-	ImTextureID get_icon(const std::string& name);
+	ImTextureID get_icon(StringView name);
 	
 	AssetTab asset_tab;
 	Lister lister;

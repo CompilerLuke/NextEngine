@@ -71,7 +71,6 @@ btRigidBody* make_RigidBody(BulletWrapper* self, RigidBodySettings* settings) {
 	if (settings->sweep_radius > 0) {
 		body->setCcdMotionThreshold(1e-7f);
 		body->setCcdSweptSphereRadius(settings->sweep_radius);
-		std::cout << "set continous collision" << std::endl;
 	}
 
 	btVector3 velocity(settings->velocity.x, settings->velocity.y, settings->velocity.z);

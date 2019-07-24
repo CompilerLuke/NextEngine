@@ -9,94 +9,74 @@ constexpr unsigned int INVALID_SLOT = 0;
 template<typename T>
 struct HandleManager {
 	unsigned int generation_counter = 0;
+	vector<unsigned int> free_ids;
 
-	struct Slot {
-		union {
-			struct {
-				unsigned int generation;
-				T obj;
-			};
-			Handle<T> next_free_slot;
-		};
+	static constexpr unsigned int MAX_HANDLES = 100;
 
-		~Slot() {}
-	};
-	
-	vector<Slot> slots;
-	Handle<T> next_free_slot = { INVALID_SLOT };
+	vector<T> slots;
+	vector<unsigned int> id_of_slots;
+	T* by_handle[MAX_HANDLES];
 
-	unsigned int next_generation() {
-		unsigned int generation = generation_counter++;
-		generation_counter %= (2 << 11);
-		return generation + 1;
+	unsigned int handle_to_index(Handle<T> handle) {
+		return 
+			
+			handle.id - 1;
 	}
 
 	Handle<T> make(T&& obj) {
-		unsigned int generation = next_generation();
-		unsigned int next_free_slot = this->next_free_slot.id;
+		slots.append(std::move(obj));
+		
+		unsigned int handle = free_ids.pop();
+		id_of_slots.append(handle);
+		by_handle[handle- 1] = &slots[slots.length - 1];
+		return { handle };
+	}
 
-		if (next_free_slot == INVALID_SLOT) {
-			slots.reserve(slots.length + 1);
-			slots.length++;
-
-			next_free_slot = slots.length;
-			slots[next_free_slot - 1].next_free_slot = { INVALID_SLOT };
+	void make(Handle<T> handle, T&& obj) {
+		for (int i = 0; i < free_ids.length; i++) {
+			if (free_ids[i] == handle.id) {
+				auto popped = free_ids.pop();
+				if (i != free_ids.length) free_ids[i] = popped; //poped is the element we are trying to delete
+			}
 		}
+		
+		slots.append(std::move(obj));
 
-		Slot& slot = slots[next_free_slot - 1];
-
-		this->next_free_slot = slot.next_free_slot;
-		new (&slot.obj) T(std::move(obj));
-		slot.generation = 1; //generation;
-
-		return index_to_handle(next_free_slot - 1);
+		id_of_slots.append(handle.id);
+		by_handle[handle.id - 1] = &slots[slots.length - 1];
 	}
 
 	Handle<T> index_to_handle(unsigned index) {
-		return { index + 1 };
-		return { (slots[index].generation << 19) | index + 1 };
-	}
-
-	unsigned get_index(Handle<T> handle) {
-		return handle.id - 1;
-		//return (handle.id & ((1 << 20) - 1)) - 1; //1- since the index is shifted to support 0 being an invalid state
-	}
-
-	unsigned int get_generation(Handle<T> handle) {
-		return 1;
-		return handle.id >> 19;
+		return { id_of_slots[index] };
 	}
 
 	T* get(Handle<T> handle) {
-		unsigned int index = get_index(handle);
-		unsigned int generation = get_generation(handle);
-
-		if (index >= slots.length) return NULL;
-
-		Slot* slot = &slots[index];
-		
-		if (slot->generation == generation) return &slot->obj;
-		else return NULL;
+		if (handle.id == INVALID_HANDLE || handle.id > MAX_HANDLES) return NULL;
+		return by_handle[handle.id - 1];
 	}
 
 	void free(Handle<T> handle) {
-		unsigned int index = get_index(handle);
-		unsigned int generation = get_generation(handle);
+		unsigned int index = handle_to_index(handle);
+		auto last_id = id_of_slots.pop();
+		auto popped = slots.pop();
 
-		if (index >= slots.length) return;
-
-		Slot* slot = &slots[index];
-
-		if (slot->generation == generation) {
-			slot->generation = INVALID_SLOT;
-			slot->obj.~T();
+		if (index != slots.length) { //poped is the element we are trying to delete
+			slots[index] = std::move(popped);
+			by_handle[last_id - 1] = &slots[index];
 		}
+		by_handle[handle.id - 1] = NULL;
 	}
 
-	~HandleManager() {
-		for (int i = 0; i < slots.length; i++) {
-			if (slots[i].generation != INVALID_SLOT) slots[i].obj.~T();
+	HandleManager() {
+		for (int i = 0; i < MAX_HANDLES; i++) {
+			by_handle[i] = NULL;
 		}
+
+		for (int i = MAX_HANDLES; i > 0; i--) {
+			free_ids.append(i);
+		}
+
+		slots.reserve(MAX_HANDLES);
 	}
 };
 

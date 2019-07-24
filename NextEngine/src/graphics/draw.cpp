@@ -47,14 +47,14 @@ REFLECT_STRUCT_END()
 DrawCommandState default_draw_state = {
 	Cull_None,
 	DepthFunc_Lequal,
-	true,
+	false,
 	draw_opaque
 };
 
 DrawCommandState draw_draw_over = {
 	Cull_None,
-	DepthFunc_Lequal,
-	true,
+	DepthFunc_None,
+	false,
 	draw_over,
 };
 
@@ -210,6 +210,10 @@ void set_params(CommandBuffer& command_buffer, Material& mat, World& world) {
 		}
 		case Param_Int:
 			shader::set_int(shader, param.loc, param.integer);
+			break;
+
+		case Param_Float:
+			shader::set_float(shader, param.loc, param.real);
 			break;
 		}
 	}

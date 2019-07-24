@@ -8,13 +8,14 @@
 #include "reflection/reflection.h"
 #include "core/handle.h"
 #include "core/core.h"
+#include "core/string_buffer.h"
 
 struct Shader;
 
 struct Uniform {
-	Uniform(const std::string& name = "", int id = 0);
+	Uniform(StringView name = "", int id = 0);
 
-	std::string name;
+	StringBuffer name;
 	int id;
 
 	REFLECT()
@@ -37,8 +38,8 @@ namespace shader {
 }
 
 struct Shader {
-	std::string v_filename;
-	std::string f_filename;
+	StringBuffer v_filename;
+	StringBuffer f_filename;
 	int id;
 
 	vector<Uniform> uniforms;
@@ -61,5 +62,9 @@ struct Shader {
 	REFLECT()
 };
 
-Handle<Shader> ENGINE_API load_Shader(const std::string& vfilename, const std::string& ffilename, bool supports_instancing = false, bool instanced = false);
-Handle<Uniform> ENGINE_API location(Handle<Shader>, const std::string&);
+Handle<Shader> ENGINE_API load_Shader(StringView vfilename, StringView ffilename, bool supports_instancing = false, bool instanced = false);
+Handle<Uniform> ENGINE_API location(Handle<Shader>, StringView);
+
+struct DebugShaderReloadSystem : System {
+	void update(World&, UpdateParams&) override;
+};

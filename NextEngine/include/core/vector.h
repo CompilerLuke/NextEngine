@@ -196,7 +196,6 @@ struct vector {
 	inline vector<T>& operator=(const vector<T>& other) {
 		free_data();
 
-		this->allocator = other.allocator;
 		this->reserve(other.length);
 		this->length = other.length;
 

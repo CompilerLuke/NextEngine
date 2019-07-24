@@ -8,6 +8,7 @@
 #include <string>
 #include <glm/mat4x4.hpp>
 #include "reflection/reflection.h"
+#include "core/string_view.h"
 
 struct DisplayComponents {
 	vector<float> fps_times;
@@ -16,15 +17,15 @@ struct DisplayComponents {
 	void render(struct World& world, struct RenderParams& params, struct Editor& editor);
 };
 
-bool render_fields_primitive(int*, const std::string&);
-bool render_fields_primitive(unsigned int*, const std::string&);
-bool render_fields_primitive(float*, const std::string&);
-bool render_fields_primitive(std::string*, const std::string&);
-bool render_fields_primitive(bool*, const std::string&);
+bool render_fields_primitive(int*, StringView);
+bool render_fields_primitive(unsigned int*, StringView);
+bool render_fields_primitive(float*, StringView);
+bool render_fields_primitive(StringBuffer*, StringView);
+bool render_fields_primitive(bool*, StringView);
 
-bool render_fields(reflect::TypeDescriptor*, void*, const std::string&, World&);
+bool render_fields(reflect::TypeDescriptor*, void*, StringView, World&);
 
-using OnInspectGUICallback = bool(*)(void*, const std::string&, World&);
+using OnInspectGUICallback = bool(*)(void*, StringView, World&);
 
-void register_on_inspect_gui(const std::string&, OnInspectGUICallback);
-OnInspectGUICallback get_on_inspect_gui(const std::string& on_type);
+void register_on_inspect_gui(StringView, OnInspectGUICallback);
+OnInspectGUICallback get_on_inspect_gui(StringView on_type);

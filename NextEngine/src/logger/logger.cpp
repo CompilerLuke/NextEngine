@@ -1,27 +1,36 @@
 #include "stdafx.h"
 #include "logger/logger.h"
-#include <iostream>
+#include <stdio.h>
 
-std::string format(std::string& str) {
-	return str;
+void format_intern(StringBuffer& buffer, const StringBuffer& str) {
+	buffer += str;
 }
 
-std::string format(const char* str) {
-	return std::string(str);
+
+void format_intern(StringBuffer& buffer, StringView str) {
+	buffer += str;
 }
 
-std::string format(int num) {
-	return std::to_string(num);
+void format_intern(StringBuffer& buffer, char* str) {
+	buffer += (const char*)str;
 }
 
-std::string format(unsigned int num) {
-	return std::to_string(num);
+void format_intern(StringBuffer& buffer, const char* str) {
+	buffer += str;
 }
 
-void log_string(const std::string& s) {
-	std::cout << s << std::endl;
+void format_intern(StringBuffer& buffer, int num) {
+	buffer += std::to_string(num).c_str();
+}
+
+void format_intern(StringBuffer& buffer, unsigned int num) {
+	buffer += std::to_string(num).c_str();
+}
+
+void log_string(StringView s) {
+	printf("%s\n", s.c_str());
 }
 
 void log(const char* s) {
-	std::cout << s << "\n";
+	printf("%s\n", s);
 }

@@ -36,9 +36,9 @@ struct Mesh {
 };
 
 struct Model {
-	std::string path;
+	StringBuffer path;
 	vector<Mesh> meshes;
-	vector<std::string> materials;
+	vector<StringBuffer> materials;
 
 	void on_load();
 	void load_in_place(const glm::mat4& apply_transform = glm::mat4(1.0));
@@ -47,7 +47,7 @@ struct Model {
 	REFLECT()
 };
 
-Handle<Model> ENGINE_API load_Model(const std::string&);
+Handle<Model> ENGINE_API load_Model(StringView);
 
 struct ModelRenderer {
 	bool visible = true;

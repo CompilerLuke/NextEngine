@@ -31,5 +31,5 @@ struct VolumetricPass {
 	void clear();
 
 	void render_with_cascade(struct World&, struct RenderParams&, ShadowParams& shadow_params);
-	void render_upsampled(struct World&, Handle<struct Texture>);
+	void render_upsampled(struct World&, Handle<struct Texture>, glm::mat4& proj_matrix);
 };

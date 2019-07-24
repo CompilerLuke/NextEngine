@@ -7,7 +7,7 @@
 #include "editor/assetTab.h"
 #include <glm/gtc/type_ptr.hpp>
 
-bool Quat_inspect(void* data, const std::string& prefix, struct World& world) {
+bool Quat_inspect(void* data, StringView prefix, struct World& world) {
 	glm::quat* ptr = (glm::quat*)data;
 	glm::vec3 euler = glm::eulerAngles(*ptr);
 	glm::vec3 previous = euler;
@@ -20,35 +20,35 @@ bool Quat_inspect(void* data, const std::string& prefix, struct World& world) {
 	return true;
 }
 
-bool Vec3_inspect(void* data, const std::string& prefix, struct World& world) {
+bool Vec3_inspect(void* data, StringView prefix, struct World& world) {
 	glm::vec3* ptr = (glm::vec3*)data;
 	ImGui::InputFloat3(prefix.c_str(), glm::value_ptr(*ptr));
 	return true;
 }
 
-bool Vec2_inspect(void* data, const std::string& prefix, struct World& world) {
+bool Vec2_inspect(void* data, StringView prefix, struct World& world) {
 	glm::vec2* ptr = (glm::vec2*)data;
 	ImGui::InputFloat2(prefix.c_str(), glm::value_ptr(*ptr));
 	return true;
 }
 
-bool Mat4_inspect(void* data, const std::string& prefix, struct World& world) {
+bool Mat4_inspect(void* data, StringView prefix, struct World& world) {
 	ImGui::LabelText("Matrix", prefix.c_str());
 	return true;
 }
 
 //Shaders
-bool Shader_inspect(void* data, const std::string& prefix, struct World& world) {
+bool Shader_inspect(void* data, StringView prefix, struct World& world) {
 	auto handle_shader = (Handle<Shader>*)data;
 	auto shader = RHI::shader_manager.get(*handle_shader);
 
-	auto name = shader->v_filename + std::string(", ") + shader->f_filename;
+	auto name = format(shader->v_filename, ", ", shader->f_filename);
 	ImGui::LabelText(prefix.c_str(), name.c_str());
 
 	return true;
 }
 
-bool Model_inspect(void* data, const std::string& prefix, World& world) {
+bool Model_inspect(void* data, StringView prefix, World& world) {
 	Handle<Model> model_id = *(Handle<Model>*)(data);
 	if (model_id.id == INVALID_HANDLE) {
 		ImGui::LabelText("name", "unselected");
@@ -57,7 +57,7 @@ bool Model_inspect(void* data, const std::string& prefix, World& world) {
 
 	Model* model = RHI::model_manager.get(model_id);
 	if (model) {
-		auto quoted = "\"" + model->path + "\"";
+		auto quoted = format("\"", model->path, "\"");
 		ImGui::LabelText("name", quoted.c_str());
 	}
 	else {
@@ -66,7 +66,7 @@ bool Model_inspect(void* data, const std::string& prefix, World& world) {
 	return true;
 }
 
-bool Layermask_inspect(void* data, const std::string& prefix, World& world) {
+bool Layermask_inspect(void* data, StringView prefix, World& world) {
 	Layermask* mask_ptr = (Layermask*)(data);
 	Layermask mask = *mask_ptr;
 
@@ -87,7 +87,7 @@ bool Layermask_inspect(void* data, const std::string& prefix, World& world) {
 	return true;
 }
 
-bool EntityEditor_inspect(void* data, const std::string& prefix, World& world) {
+bool EntityEditor_inspect(void* data, StringView prefix, World& world) {
 	return false;
 }
 
@@ -101,13 +101,13 @@ void accept_drop(const char* drop_type, void* ptr, unsigned int size) {
 }
 
 //Materials
-bool Material_inspect(void* data, const std::string& prefix, World& world) {
+bool Material_inspect(void* data, StringView prefix, World& world) {
 	Handle<Material>* handle_ptr = (Handle <Material>*)data;
 	Handle<Material> material = *handle_ptr;
 
 	MaterialAsset* material_asset = AssetTab::material_handle_to_asset[material.id]; //todo probably want reference to editor
 
-	auto name = prefix + std::string(" ") + material_asset->name;
+	auto name = tformat(prefix, " ", material_asset->name);
 
 	ImGui::Image((ImTextureID)texture::id_of(material_asset->rot_preview.preview), ImVec2(128, 128), ImVec2(0, 1), ImVec2(1, 0));
 	
@@ -119,17 +119,13 @@ bool Material_inspect(void* data, const std::string& prefix, World& world) {
 	return false;
 }
 
-bool Materials_inspect(void* data, const std::string& prefix, World& world) {
+bool Materials_inspect(void* data, StringView prefix, World& world) {
 	Materials* materials = (Materials*)data;
 	auto material_type = reflect::TypeResolver<Material>::get();
 
 	if (ImGui::CollapsingHeader("Materials")) {
 		for (unsigned int i = 0; i < materials->materials.length; i++) {
-			std::string prefix = "Element ";
-			prefix += std::to_string(i);
-			prefix += " :";
-
-			Material_inspect(&materials->materials[i], prefix, world);
+			Material_inspect(&materials->materials[i], tformat("Elemenet ", i, " :"), world);
 		}
 		return true;
 	}

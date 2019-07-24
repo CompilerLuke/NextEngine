@@ -34,12 +34,12 @@ void MainPass::set_shader_params(Handle<Shader> shader, World& world, RenderPara
 		Transform* trans = world.by_id<Transform>(world.id_of(params.cam));
 		shader::set_vec3(shader, "viewPos", trans->position);
 	}
-	else {
-		throw "What are you doing!";
-	}
 	
 	shader::set_mat4(shader, "projection", params.projection);
 	shader::set_mat4(shader, "view", params.view);
+
+	shader::set_float(shader, "window_width", params.width);
+	shader::set_float(shader, "window_height", params.height);
 
 	shadow_pass.set_shadow_params(shader, world, params);
 	
@@ -50,6 +50,8 @@ void MainPass::set_shader_params(Handle<Shader> shader, World& world, RenderPara
 	}
 }
 
+#include "graphics/primitives.h"
+
 void MainPass::render(World& world, RenderParams& params) {
 	device.width = params.width;
 	device.height = params.height;
@@ -57,9 +59,9 @@ void MainPass::render(World& world, RenderParams& params) {
 	params.command_buffer->clear();
 
 	world.render(params);
-
-	//depth_prepass.render_maps(world, params, params.projection, params.view);
-	//shadow_pass.render(world, params);
+	
+	depth_prepass.render_maps(world, params, params.projection, params.view);
+	shadow_pass.render(world, params);
 
 	current_frame.bind();
 	current_frame.clear_color(glm::vec4(0, 0, 0, 1));
@@ -76,5 +78,5 @@ void MainPass::render(World& world, RenderParams& params) {
 	}
 
 	device.bind();
-	shadow_pass.volumetric.render_upsampled(world, frame_map);
+	shadow_pass.volumetric.render_upsampled(world, frame_map, params.projection);
 }

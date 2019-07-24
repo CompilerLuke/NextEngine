@@ -38,7 +38,7 @@ VolumetricPass::VolumetricPass( Window& window, Handle<Texture> depth_prepass)
 
 void VolumetricPass::clear() {
 	calc_fog.fbo.bind();
-	calc_fog.fbo.clear_color(glm::vec4(1, 1, 1, 1));
+	calc_fog.fbo.clear_color(glm::vec4(0, 0, 0, 1));
 	calc_fog.fbo.unbind();
 }
 
@@ -61,7 +61,7 @@ void VolumetricPass::render_with_cascade(World& world, RenderParams& render_para
 	texture::bind_to(depth_prepass, 0);
 	shader::set_int(volume_shader, "depthPrepass", 0);
 
-	texture::bind_to(params.depth_map, 0);
+	texture::bind_to(params.depth_map, 1);
 	shader::set_int(volume_shader, "depthMap", 1);
 
 	auto cam_trans = world.by_id<Transform>(world.id_of(render_params.cam));
@@ -78,6 +78,7 @@ void VolumetricPass::render_with_cascade(World& world, RenderParams& render_para
 	shader::set_mat4(volume_shader, "toLight", params.to_light);
 	shader::set_mat4(volume_shader, "toWorld", params.to_world);
 
+
 	shader::set_int(volume_shader, "cascadeLevel", params.cascade);
 	shader::set_float(volume_shader, "endCascade", render_params.cam->far_plane);
 
@@ -92,7 +93,7 @@ void VolumetricPass::render_with_cascade(World& world, RenderParams& render_para
 	calc_fog.fbo.unbind();
 }
 
-void VolumetricPass::render_upsampled(World& world, Handle<Texture> current_frame_id) {
+void VolumetricPass::render_upsampled(World& world, Handle<Texture> current_frame_id, glm::mat4& proj_matrix) {
 	auto volumetric_map = calc_fog.map;
 	auto current_frame = current_frame_id;
 	
@@ -111,6 +112,9 @@ void VolumetricPass::render_upsampled(World& world, Handle<Texture> current_fram
 
 	glm::mat4 ident(1.0);
 	shader::set_mat4(upsample_shader, "model", ident);
+
+	glm::mat4 depth_proj = glm::inverse(proj_matrix);
+	shader::set_mat4(upsample_shader, "depthProj", depth_proj);
 
 	render_quad();
 

@@ -1,97 +1,97 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="src\benchmark">
-      <UniqueIdentifier>{24174a97-553c-430b-bf83-b9ab648dcf6e}</UniqueIdentifier>
+    <Filter Include="src\ecs">
+      <UniqueIdentifier>{138949f1-d8ef-4c63-8102-023e4e0ecc6c}</UniqueIdentifier>
     </Filter>
     <Filter Include="src">
-      <UniqueIdentifier>{67665b13-d203-41db-bfda-ab74f1d94d27}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\components">
-      <UniqueIdentifier>{7c70ffc5-dcb0-4331-b371-864514714851}</UniqueIdentifier>
+      <UniqueIdentifier>{eb211f9d-a8d2-4cd9-bc6c-f23779c94e9c}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\core">
-      <UniqueIdentifier>{e7f757f6-5841-480a-9d08-63e05d59878d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\ecs">
-      <UniqueIdentifier>{4c7aea28-8067-4087-9fa9-d98721e7a0e7}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\editor">
-      <UniqueIdentifier>{e4a0e162-a41b-4ed8-8eb4-0c9b7fca1acf}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\graphics">
-      <UniqueIdentifier>{7d905409-7fbc-4dc3-a429-e39e0aeea46a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\logger">
-      <UniqueIdentifier>{461bd896-6e10-42ea-b0ee-3ca08ea68e1d}</UniqueIdentifier>
+      <UniqueIdentifier>{b5ddc6c0-987c-4228-8e31-659a0e745b05}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\model">
-      <UniqueIdentifier>{ca507bfa-e228-4ea5-ba5c-8aa7ba0affdb}</UniqueIdentifier>
+      <UniqueIdentifier>{59b02b36-c1df-497d-9357-6f63061f5639}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\editor">
+      <UniqueIdentifier>{7e6df144-bef2-4ed1-b4e6-274562c81b9f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\logger">
+      <UniqueIdentifier>{d3d82caf-ee06-4add-bba8-45a1315a18b5}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\physics">
-      <UniqueIdentifier>{a7614668-9056-4e21-8766-f569be6f6051}</UniqueIdentifier>
+      <UniqueIdentifier>{32e37b85-9979-4a11-be21-c3395c97aaa0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\graphics">
+      <UniqueIdentifier>{d2db2b74-3adc-4e78-bbd7-78d56f291c5b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\benchmark">
+      <UniqueIdentifier>{3db19ac6-1c93-49db-bc4a-97906544ef46}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\components">
+      <UniqueIdentifier>{1c182d8d-2793-438f-99bf-19645c37631b}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\reflection">
-      <UniqueIdentifier>{07e5050b-f8cb-4b4b-829a-af6e87c5f973}</UniqueIdentifier>
+      <UniqueIdentifier>{b51a0c55-75a3-4786-8274-4ce22cf5a978}</UniqueIdentifier>
     </Filter>
     <Filter Include="vendor\imgui">
-      <UniqueIdentifier>{04312198-b21b-4cd2-890d-f197c3f4182e}</UniqueIdentifier>
+      <UniqueIdentifier>{d1b08849-013a-4bff-b8ca-a7be5161195e}</UniqueIdentifier>
     </Filter>
     <Filter Include="vendor">
-      <UniqueIdentifier>{17eec0c7-8e64-4aa9-a7ef-f915edc54744}</UniqueIdentifier>
+      <UniqueIdentifier>{559747ad-9a97-4cc1-abdf-10b46e999097}</UniqueIdentifier>
     </Filter>
     <Filter Include="vendor\ImGuizmo">
-      <UniqueIdentifier>{e6b869e6-019e-4701-b3d9-15c168e862b0}</UniqueIdentifier>
+      <UniqueIdentifier>{23f6a53b-bef3-42a7-93d1-fbe636e04f13}</UniqueIdentifier>
     </Filter>
     <Filter Include="vendor\imgui\examples">
-      <UniqueIdentifier>{5ffde7eb-3356-4d49-98ea-250655b000a4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="include\components">
-      <UniqueIdentifier>{be9dea71-e59b-419c-a106-5f3b154b80ce}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="include">
-      <UniqueIdentifier>{69c72fff-57cd-4cbd-b6a5-0c7feafdea24}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="include\core">
-      <UniqueIdentifier>{451f0092-2f53-4c84-8653-189ae9193aa9}</UniqueIdentifier>
+      <UniqueIdentifier>{e9d1319d-959c-4b65-9635-b42a587b9810}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\ecs">
-      <UniqueIdentifier>{961da5a8-ee62-4521-958a-824d73bc7804}</UniqueIdentifier>
+      <UniqueIdentifier>{2db57b3b-a071-411d-a746-39703e18ed79}</UniqueIdentifier>
     </Filter>
-    <Filter Include="include\editor">
-      <UniqueIdentifier>{3eb42f6d-8c20-42a9-8945-084a12ab14ba}</UniqueIdentifier>
+    <Filter Include="include">
+      <UniqueIdentifier>{3a26ccce-17b0-4bfa-95ec-0148e93de98b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="include\graphics">
-      <UniqueIdentifier>{6831e121-d64b-408d-be3f-cec3b4c5fdb5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="include\logger">
-      <UniqueIdentifier>{f9c960e4-34a0-4f80-9d4e-19fc61f0f9e2}</UniqueIdentifier>
+    <Filter Include="include\core">
+      <UniqueIdentifier>{913c2523-e316-42f0-8068-ea0d7710e500}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\model">
-      <UniqueIdentifier>{d855736e-7ffd-44c4-9d1b-e7af5e46300f}</UniqueIdentifier>
+      <UniqueIdentifier>{0b441075-1cda-458d-85ca-bf972342020e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\editor">
+      <UniqueIdentifier>{fd1b87c6-2417-4f22-b513-9a01a6870add}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\logger">
+      <UniqueIdentifier>{a07169df-b02a-4346-8e0d-9be03ca23200}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\physics">
-      <UniqueIdentifier>{801dcce1-addd-4ea6-a3e4-a048566c43d0}</UniqueIdentifier>
+      <UniqueIdentifier>{009d2858-faee-4349-889f-25952a02f16c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\graphics">
+      <UniqueIdentifier>{1e77f89c-34f2-4b58-a774-4c0f334c0958}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\components">
+      <UniqueIdentifier>{3277a2bd-3918-422e-a0e4-1035cd6d1a85}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\reflection">
-      <UniqueIdentifier>{d1f5618c-0d67-4b6e-afa2-31872463ac97}</UniqueIdentifier>
+      <UniqueIdentifier>{32b09c0d-cef9-4d71-ac4f-e8ba3b466611}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\serialization">
+      <UniqueIdentifier>{a1725504-e90e-4cf9-89fc-1930d68dc386}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\benchmark\benchmark.cpp">
-      <Filter>src\benchmark</Filter>
+    <ClCompile Include="src\ecs\ecs.cpp">
+      <Filter>src\ecs</Filter>
     </ClCompile>
-    <ClCompile Include="src\components\camera.cpp">
-      <Filter>src\components</Filter>
+    <ClCompile Include="src\ecs\new_ecs.cpp">
+      <Filter>src\ecs</Filter>
     </ClCompile>
-    <ClCompile Include="src\components\flyover.cpp">
-      <Filter>src\components</Filter>
+    <ClCompile Include="src\ecs\system.cpp">
+      <Filter>src\ecs</Filter>
     </ClCompile>
-    <ClCompile Include="src\components\lights.cpp">
-      <Filter>src\components</Filter>
-    </ClCompile>
-    <ClCompile Include="src\components\transforms.cpp">
-      <Filter>src\components</Filter>
+    <ClCompile Include="src\ecs\update_params.cpp">
+      <Filter>src\ecs</Filter>
     </ClCompile>
     <ClCompile Include="src\core\allocator.cpp">
       <Filter>src\core</Filter>
@@ -111,19 +111,22 @@
     <ClCompile Include="src\core\vfs.cpp">
       <Filter>src\core</Filter>
     </ClCompile>
-    <ClCompile Include="src\ecs\ecs.cpp">
-      <Filter>src\ecs</Filter>
+    <ClCompile Include="src\model\load_model.cpp">
+      <Filter>src\model</Filter>
     </ClCompile>
-    <ClCompile Include="src\ecs\new_ecs.cpp">
-      <Filter>src\ecs</Filter>
+    <ClCompile Include="src\model\mesh.cpp">
+      <Filter>src\model</Filter>
     </ClCompile>
-    <ClCompile Include="src\ecs\system.cpp">
-      <Filter>src\ecs</Filter>
+    <ClCompile Include="src\model\model.cpp">
+      <Filter>src\model</Filter>
     </ClCompile>
-    <ClCompile Include="src\ecs\update_params.cpp">
-      <Filter>src\ecs</Filter>
+    <ClCompile Include="src\model\model_renderer.cpp">
+      <Filter>src\model</Filter>
     </ClCompile>
     <ClCompile Include="src\editor\custom_inspect.cpp">
+      <Filter>src\editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\diffUtil.cpp">
       <Filter>src\editor</Filter>
     </ClCompile>
     <ClCompile Include="src\editor\displayComponents.cpp">
@@ -143,6 +146,15 @@
     </ClCompile>
     <ClCompile Include="src\editor\picking.cpp">
       <Filter>src\editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\logger\logger.cpp">
+      <Filter>src\logger</Filter>
+    </ClCompile>
+    <ClCompile Include="src\physics\btWrapper.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\physics\physics.cpp">
+      <Filter>src\physics</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\buffer.cpp">
       <Filter>src\graphics</Filter>
@@ -192,26 +204,20 @@
     <ClCompile Include="src\graphics\window.cpp">
       <Filter>src\graphics</Filter>
     </ClCompile>
-    <ClCompile Include="src\logger\logger.cpp">
-      <Filter>src\logger</Filter>
+    <ClCompile Include="src\benchmark\benchmark.cpp">
+      <Filter>src\benchmark</Filter>
     </ClCompile>
-    <ClCompile Include="src\model\load_model.cpp">
-      <Filter>src\model</Filter>
+    <ClCompile Include="src\components\camera.cpp">
+      <Filter>src\components</Filter>
     </ClCompile>
-    <ClCompile Include="src\model\mesh.cpp">
-      <Filter>src\model</Filter>
+    <ClCompile Include="src\components\flyover.cpp">
+      <Filter>src\components</Filter>
     </ClCompile>
-    <ClCompile Include="src\model\model.cpp">
-      <Filter>src\model</Filter>
+    <ClCompile Include="src\components\lights.cpp">
+      <Filter>src\components</Filter>
     </ClCompile>
-    <ClCompile Include="src\model\model_renderer.cpp">
-      <Filter>src\model</Filter>
-    </ClCompile>
-    <ClCompile Include="src\physics\btWrapper.cpp">
-      <Filter>src\physics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\physics\physics.cpp">
-      <Filter>src\physics</Filter>
+    <ClCompile Include="src\components\transforms.cpp">
+      <Filter>src\components</Filter>
     </ClCompile>
     <ClCompile Include="src\reflection\reflection.cpp">
       <Filter>src\reflection</Filter>
@@ -237,16 +243,28 @@
     <ClCompile Include="vendor\ImGuizmo\ImSequencer.cpp">
       <Filter>vendor\ImGuizmo</Filter>
     </ClCompile>
-    <ClCompile Include="src\editor\diffUtil.cpp">
-      <Filter>src\editor</Filter>
-    </ClCompile>
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="NextEngine.cpp" />
     <ClCompile Include="stdafx.cpp" />
+    <ClCompile Include="src\core\string_view.cpp">
+      <Filter>src\core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\serialization\serializer.cpp">
+      <Filter>src\serialization</Filter>
+    </ClCompile>
+    <ClCompile Include="terrain.cpp">
+      <Filter>src\editor</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\core\eventDispatcher.h">
       <Filter>src\core</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\imgui\examples\imgui_impl_glfw.h">
+      <Filter>vendor\imgui\examples</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\imgui\examples\imgui_impl_opengl3.h">
+      <Filter>vendor\imgui\examples</Filter>
     </ClInclude>
     <ClInclude Include="vendor\imgui\imconfig.h">
       <Filter>vendor\imgui</Filter>
@@ -272,29 +290,26 @@
     <ClInclude Include="vendor\imgui\imstb_truetype.h">
       <Filter>vendor\imgui</Filter>
     </ClInclude>
-    <ClInclude Include="vendor\imgui\examples\imgui_impl_glfw.h">
-      <Filter>vendor\imgui\examples</Filter>
-    </ClInclude>
-    <ClInclude Include="vendor\imgui\examples\imgui_impl_opengl3.h">
-      <Filter>vendor\imgui\examples</Filter>
-    </ClInclude>
     <ClInclude Include="vendor\ImGuizmo\ImGuizmo.h">
       <Filter>vendor\ImGuizmo</Filter>
     </ClInclude>
     <ClInclude Include="vendor\ImGuizmo\ImSequencer.h">
       <Filter>vendor\ImGuizmo</Filter>
     </ClInclude>
-    <ClInclude Include="include\components\camera.h">
-      <Filter>include\components</Filter>
+    <ClInclude Include="include\ecs\ecs.h">
+      <Filter>include\ecs</Filter>
     </ClInclude>
-    <ClInclude Include="include\components\flyover.h">
-      <Filter>include\components</Filter>
+    <ClInclude Include="include\ecs\id.h">
+      <Filter>include\ecs</Filter>
     </ClInclude>
-    <ClInclude Include="include\components\lights.h">
-      <Filter>include\components</Filter>
+    <ClInclude Include="include\ecs\layermask.h">
+      <Filter>include\ecs</Filter>
     </ClInclude>
-    <ClInclude Include="include\components\transform.h">
-      <Filter>include\components</Filter>
+    <ClInclude Include="include\ecs\new_ecs.h">
+      <Filter>include\ecs</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ecs\system.h">
+      <Filter>include\ecs</Filter>
     </ClInclude>
     <ClInclude Include="include\core\allocator.h">
       <Filter>include\core</Filter>
@@ -323,6 +338,9 @@
     <ClInclude Include="include\core\sort.h">
       <Filter>include\core</Filter>
     </ClInclude>
+    <ClInclude Include="include\core\string_buffer.h">
+      <Filter>include\core</Filter>
+    </ClInclude>
     <ClInclude Include="include\core\temporary.h">
       <Filter>include\core</Filter>
     </ClInclude>
@@ -332,22 +350,16 @@
     <ClInclude Include="include\core\vfs.h">
       <Filter>include\core</Filter>
     </ClInclude>
-    <ClInclude Include="include\ecs\ecs.h">
-      <Filter>include\ecs</Filter>
+    <ClInclude Include="include\model\model.h">
+      <Filter>include\model</Filter>
     </ClInclude>
-    <ClInclude Include="include\ecs\id.h">
-      <Filter>include\ecs</Filter>
-    </ClInclude>
-    <ClInclude Include="include\ecs\layermask.h">
-      <Filter>include\ecs</Filter>
-    </ClInclude>
-    <ClInclude Include="include\ecs\new_ecs.h">
-      <Filter>include\ecs</Filter>
-    </ClInclude>
-    <ClInclude Include="include\ecs\system.h">
-      <Filter>include\ecs</Filter>
+    <ClInclude Include="include\model\modelManager.h">
+      <Filter>include\model</Filter>
     </ClInclude>
     <ClInclude Include="include\editor\custom_inspect.h">
+      <Filter>include\editor</Filter>
+    </ClInclude>
+    <ClInclude Include="include\editor\diffUtil.h">
       <Filter>include\editor</Filter>
     </ClInclude>
     <ClInclude Include="include\editor\displayComponents.h">
@@ -367,6 +379,15 @@
     </ClInclude>
     <ClInclude Include="include\editor\picking.h">
       <Filter>include\editor</Filter>
+    </ClInclude>
+    <ClInclude Include="include\logger\logger.h">
+      <Filter>include\logger</Filter>
+    </ClInclude>
+    <ClInclude Include="include\physics\btWrapper.h">
+      <Filter>include\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\physics\physics.h">
+      <Filter>include\physics</Filter>
     </ClInclude>
     <ClInclude Include="include\graphics\buffer.h">
       <Filter>include\graphics</Filter>
@@ -422,38 +443,41 @@
     <ClInclude Include="include\graphics\window.h">
       <Filter>include\graphics</Filter>
     </ClInclude>
-    <ClInclude Include="include\logger\logger.h">
-      <Filter>include\logger</Filter>
+    <ClInclude Include="include\components\camera.h">
+      <Filter>include\components</Filter>
     </ClInclude>
-    <ClInclude Include="include\model\model.h">
-      <Filter>include\model</Filter>
+    <ClInclude Include="include\components\flyover.h">
+      <Filter>include\components</Filter>
     </ClInclude>
-    <ClInclude Include="include\model\modelManager.h">
-      <Filter>include\model</Filter>
+    <ClInclude Include="include\components\lights.h">
+      <Filter>include\components</Filter>
     </ClInclude>
-    <ClInclude Include="include\physics\btWrapper.h">
-      <Filter>include\physics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\physics\physics.h">
-      <Filter>include\physics</Filter>
+    <ClInclude Include="include\components\transform.h">
+      <Filter>include\components</Filter>
     </ClInclude>
     <ClInclude Include="include\reflection\reflection.h">
       <Filter>include\reflection</Filter>
     </ClInclude>
-    <ClInclude Include="include\editor\diffUtil.h">
-      <Filter>include\editor</Filter>
-    </ClInclude>
-    <ClInclude Include="materialManager.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="platform.h">
+      <Filter>include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="materialManager.h">
+      <Filter>include\graphics</Filter>
+    </ClInclude>
     <ClInclude Include="core.h">
       <Filter>include\core</Filter>
     </ClInclude>
-    <ClInclude Include="string_buffer.h">
+    <ClInclude Include="include\core\platform.h" />
+    <ClInclude Include="include\core\core.h">
       <Filter>include\core</Filter>
     </ClInclude>
-    <ClInclude Include="string_id.h">
+    <ClInclude Include="include\core\string_view.h">
       <Filter>include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="include\editor\terrain.h">
+      <Filter>include\editor</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -29,7 +29,7 @@ void Gizmo::update(World& world, Editor& editor, UpdateParams& params) {
 	else if (params.input.key_down(GLFW_KEY_ESCAPE)) {
 		this->mode = GizmoMode::DisabledGizmo;
 	}
-	else if (params.input.key_down(GLFW_KEY_LEFT_CONTROL)) {
+	else if (params.input.key_down(GLFW_KEY_LEFT_CONTROL, true)) {
 		this->snap = true;
 	} 
 	else {

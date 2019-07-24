@@ -11,6 +11,7 @@
 #include "components/lights.h"
 #include "graphics/ibl.h"
 #include "physics/physics.h"
+#include "editor/terrain.h"
 
 DEFINE_COMPONENT_ID(Entity, 0)
 DEFINE_COMPONENT_ID(Transform, 1)
@@ -27,6 +28,8 @@ DEFINE_COMPONENT_ID(BoxCollider, 11)
 DEFINE_COMPONENT_ID(PlaneCollider, 12)
 DEFINE_COMPONENT_ID(RigidBody, 13)
 DEFINE_COMPONENT_ID(StaticTransform, 14)
+DEFINE_COMPONENT_ID(Terrain, 16)
+DEFINE_COMPONENT_ID(TerrainControlPoint, 17)
 
 void register_default_systems_and_components(World& world) {
 	world.add(new Store<Entity>(100));
@@ -39,6 +42,8 @@ void register_default_systems_and_components(World& world) {
 	world.add(new Store<Flyover>(1));
 	world.add(new Store<DirLight>(2));
 	world.add(new Store<Skybox>(1));
+	world.add(new Store<Terrain>(1));
+	world.add(new Store<TerrainControlPoint>(100));
 
 	world.add(new Store<CapsuleCollider>(10));
 	world.add(new Store<SphereCollider>(10));

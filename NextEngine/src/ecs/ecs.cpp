@@ -17,7 +17,15 @@ ID World::make_ID() {
 	if (freed_entities.length > 0) {
 		return freed_entities.pop();
 	}
-	return current_id++;
+
+	while (true) {
+		ID new_id = current_id++;
+		bool skip_this_id = false;
+		for (ID skip : skipped_ids) {
+			if (new_id == skip) skip_this_id = true;
+		}
+		if (!skip_this_id) return new_id;
+	}
 }
 
 void World::free_ID(ID id) {

@@ -3,6 +3,13 @@
 #include "ecs/id.h"
 #include "reflection/reflection.h"
 #include "core/vector.h"
+#include "ecs/ecs.h"
+
+struct EditorAction {
+	virtual void undo() {};
+	virtual void redo() {};
+	virtual ~EditorAction() {};
+};
 
 struct DiffUtil {
 	void* real_ptr;
@@ -21,7 +28,7 @@ struct DiffUtil {
 	//todo add templatized version which automatically gets type
 };
 
-struct Diff {
+struct Diff : EditorAction {
 	void* target;
 	void* undo_buffer;
 	void* redo_buffer;
@@ -31,10 +38,31 @@ struct Diff {
 	vector<unsigned int> sizes;
 	vector<void*> data;
 
-	void undo();
-	void redo();
+	void undo() override;
+	void redo() override;
 
 	Diff(unsigned int);
 	Diff(Diff&&);
 	~Diff();
+};
+
+struct CreateAction : EditorAction {
+	World& world;
+	ID id;
+	vector<Component> components;
+	bool undid = false;
+
+	CreateAction(World&, ID);
+
+	void undo() override;
+	void redo() override;
+
+	~CreateAction();
+};
+
+struct DestroyAction : CreateAction {
+	DestroyAction(World&, ID);
+
+	void undo() override;
+	void redo() override;
 };

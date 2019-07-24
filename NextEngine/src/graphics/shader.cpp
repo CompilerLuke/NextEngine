@@ -22,15 +22,14 @@ REFLECT_STRUCT_MEMBER(f_filename)
 REFLECT_STRUCT_MEMBER(supports_instancing)
 REFLECT_STRUCT_END()
 
-Handle<Shader> load_Shader(const std::string& vfilename, const std::string& ffilename, bool supports_instancing, bool instanced) {
+Handle<Shader> load_Shader(StringView vfilename, StringView ffilename, bool supports_instancing, bool instanced) {
 	auto& existing_shaders = RHI::shader_manager.slots;
 
 	for (int i = 0; i < existing_shaders.length; i++) { //todo move to ShaderManager
-		if (existing_shaders[i].generation == INVALID_SLOT) continue;
-		auto& existing_shader = existing_shaders[i].obj;
+		auto& existing_shader = existing_shaders[i];
 
-		if (existing_shader.v_filename == vfilename && existing_shader.f_filename == ffilename && (!supports_instancing || supports_instancing == existing_shader.supports_instancing)) {
-				return RHI::shader_manager.index_to_handle(i);
+		if (vfilename == existing_shader.v_filename && ffilename == existing_shader.f_filename && (!supports_instancing || supports_instancing == existing_shader.supports_instancing)) {
+			return RHI::shader_manager.index_to_handle(i);
 		}
 	}
 
@@ -68,7 +67,7 @@ Shader::~Shader() {
 	glDeleteProgram(id);
 }
 
-GLint make_shader(const std::string& filename, const std::string& source, GLenum kind, char* info_log) {
+bool make_shader(StringView filename, StringView source, GLenum kind, char* info_log, GLint* result) {
 	auto c_source = source.c_str();
 	auto shader = glCreateShader(kind);
 
@@ -81,22 +80,25 @@ GLint make_shader(const std::string& filename, const std::string& source, GLenum
 	if (!sucess) {
 		glGetShaderInfoLog(shader, 512, NULL, info_log);
 		if (kind == GL_VERTEX_SHADER) {
-			throw std::string("(") + filename + std::string(") Vertex shader compilation: ") + std::string(info_log);
+			return false;
+			//throw format("(", filename, ") Vertex shader compilation: ", info_log);
 		}
 		else {
-			throw std::string("(") + filename + std::string(") Fragment shader compilation: ") + std::string(info_log);
+			return false;
+			//throw format("(", filename, ") Fragment shader compilation: ", info_log);
 		}
 	}
-
-	return shader;
+	
+	*result = shader;
+	return true;
 }
 
-void Shader::load_in_place() {
-	std::string vshader_source;
-	std::string fshader_source;
+bool load_in_place_with_err(Shader* self, StringBuffer* err) {
+	StringBuffer vshader_source;
+	StringBuffer fshader_source;
 
-	std::string prefix;
-	if (this->instanced) prefix = "#version 440 core\n#define IS_INSTANCED\n#line 0\n";
+	StringView prefix;
+	if (self->instanced) prefix = "#version 440 core\n#define IS_INSTANCED\n#line 0\n";
 	else prefix = "#version 440 core\n#line 0\n";
 
 	vshader_source = prefix;
@@ -104,10 +106,10 @@ void Shader::load_in_place() {
 
 	{
 		File vshader_f;
-		vshader_f.open(v_filename);
+		if (!vshader_f.open(self->v_filename, File::ReadFile)) return false;
 
 		File fshader_f;
-		fshader_f.open(f_filename);
+		if (!fshader_f.open(self->f_filename, File::ReadFile)) return false;
 
 		vshader_source += vshader_f.read();
 		fshader_source += fshader_f.read();
@@ -116,8 +118,17 @@ void Shader::load_in_place() {
 	int sucess = 0;
 	char info_log[512];
 
-	auto vertex_shader = make_shader(v_filename, vshader_source, GL_VERTEX_SHADER, info_log);
-	auto fragment_shader = make_shader(f_filename, fshader_source, GL_FRAGMENT_SHADER, info_log);
+	GLint vertex_shader, fragment_shader; 
+	
+
+	if (!make_shader(self->v_filename, vshader_source, GL_VERTEX_SHADER, info_log, &vertex_shader)) {
+		*err = format("(", self->v_filename, ") Vertex Shader compilation", info_log);
+		return false;
+	}
+	if (!make_shader(self->f_filename, fshader_source, GL_FRAGMENT_SHADER, info_log, &fragment_shader)) {
+		*err = format("(", self->f_filename, ") Fragment Shader compilation", info_log);
+		return false;
+	}
 
 	auto id = glCreateProgram();
 
@@ -130,19 +141,29 @@ void Shader::load_in_place() {
 
 	if (!sucess) {
 		glGetProgramInfoLog(id, 512, NULL, info_log);
-		throw std::string("(") + v_filename + std::string(") Shader linkage : ") + std::string(info_log);
+		*err = format("(", self->v_filename, ") Shader linkage : ", info_log);
+		return false;
 	}
 
 	glDeleteShader(vertex_shader);
 	glDeleteShader(fragment_shader);
 
-	this->id = id;
+	self->id = id;
 
-	this->v_time_modified = Level::time_modified(v_filename);
-	this->f_time_modified = Level::time_modified(f_filename);
+	self->v_time_modified = Level::time_modified(self->v_filename);
+	self->f_time_modified = Level::time_modified(self->f_filename);
 
-	if (this->supports_instancing && !this->instanced) {
-		this->instanced_version = load_Shader(v_filename, f_filename, true, true);
+	if (self->supports_instancing && !self->instanced) {
+		self->instanced_version = load_Shader(self->v_filename, self->f_filename, true, true);
+	}
+
+	return true;
+}
+
+void Shader::load_in_place() {
+	StringBuffer err;
+	if (!load_in_place_with_err(this, &err)) {
+		throw err;
 	}
 }
 
@@ -150,7 +171,7 @@ void Shader::bind() {
 	glUseProgram(id);
 }
 
-Handle<Uniform> location(Handle<Shader> handle, const std::string& name) {
+Handle<Uniform> location(Handle<Shader> handle, StringView name) {
 	Shader* shader = RHI::shader_manager.get(handle);
 
 	for (unsigned int i = 0; i < shader->uniforms.length; i++) {
@@ -164,7 +185,7 @@ Handle<Uniform> location(Handle<Shader> handle, const std::string& name) {
 	return { shader->uniforms.length - 1 };
 }
 
-Uniform::Uniform(const std::string& name, int id) :
+Uniform::Uniform(StringView name, int id) :
 	name(name),
 	id(id)
 {
@@ -218,5 +239,33 @@ namespace shader {
 
 	void set_float(Handle<Shader> shader_handle, const char* uniform, float value) {
 		glUniform1f(get_uniform(shader_handle, location(shader_handle, uniform))->id, value);
+	}
+}
+
+void DebugShaderReloadSystem::update(World& world, UpdateParams& params) {
+	if (!params.layermask & editor_layer) return;
+
+	for (auto& shad : RHI::shader_manager.slots) {
+		auto v_time_modified = Level::time_modified(shad.v_filename);
+		auto f_time_modified = Level::time_modified(shad.f_filename);
+
+		if (v_time_modified > shad.v_time_modified or f_time_modified > shad.f_time_modified) {
+			log("recompiled shader: ", shad.v_filename);
+			auto previous = shad.id;
+
+			StringBuffer err;
+			if (load_in_place_with_err(&shad, &err)) {
+				glDeleteProgram(previous);
+
+				for (auto& uniform : shad.uniforms) {
+					uniform.id = glGetUniformLocation(shad.id, uniform.name.c_str());
+				}
+			}
+			else {
+				log("Error ", err);
+				shad.v_time_modified = v_time_modified;
+				shad.f_time_modified = f_time_modified;
+			}
+		}
 	}
 }

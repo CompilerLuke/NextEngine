@@ -2,12 +2,13 @@
 
 #include <string>
 #include "core/handle.h"
+#include "core/string_buffer.h"
 #include "reflection/reflection.h"
 
 using TextureID = unsigned int;
 
 struct Texture {
-	std::string filename;
+	StringBuffer filename;
 	TextureID texture_id = 0;
 
 	void on_load();
@@ -21,7 +22,7 @@ namespace texture {
 };
 
 struct Cubemap {
-	std::string filename;
+	StringBuffer filename;
 	TextureID texture_id = 0;
 	void bind_to(unsigned int);
 
@@ -33,6 +34,6 @@ namespace cubemap {
 };
 
 
-Handle<Texture> load_Texture(const std::string& filename);
+Handle<Texture> load_Texture(StringView filename);
 Handle<Texture> make_Texture(Texture&&);
 Handle<Cubemap> make_Cubemap(Cubemap&&);

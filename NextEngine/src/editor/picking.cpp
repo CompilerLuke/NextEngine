@@ -100,12 +100,14 @@ PickingSystem::PickingSystem(Editor& editor) : editor(editor) {
 	outline_state.stencil_func = StencilFunc_NotEqual;
 	outline_state.stencil_op = Stencil_Keep_Replace;
 	outline_state.stencil_mask = 0x00;
+	object_state.clear_depth_buffer = false;
 
 	object_state.order = (DrawOrder)3;
 	object_state.stencil_func = StencilFunc_Always;
 	object_state.stencil_mask = 0xFF;
 	object_state.stencil_op = Stencil_Keep_Replace;
 	object_state.clear_stencil_buffer = true;
+	object_state.clear_depth_buffer = false;
 
 	this->outline_material = {
 		"OutlineMaterial",
@@ -142,5 +144,7 @@ void PickingSystem::render(World& world, RenderParams& params) {
 	}
 
 	glLineWidth(5.0);
+
+
 }
 

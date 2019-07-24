@@ -36,14 +36,19 @@ struct Slot {
 constexpr unsigned int max_entities = 20000;
 
 struct Component {
+	ID id;
+	struct ComponentStore* store;
 	reflect::TypeDescriptor* type;
 	void* data;
 };
 
 struct ComponentStore {
-	virtual void free_by_id(ID) {};
-	virtual void make_by_id(ID) {};
-	virtual Component get_by_id(ID) { return { NULL, NULL }; };
+	virtual void free_by_id(ID) = 0;
+	virtual void* make_by_id(ID) = 0;
+	virtual Component get_by_id(ID) = 0;
+	virtual void set_enabled(void*, bool) = 0;
+	virtual vector<Component> filter_untyped() = 0;
+	virtual reflect::TypeDescriptor* get_component_type() = 0;
 	virtual ~ComponentStore() {};
 };
 
@@ -94,7 +99,7 @@ struct Store : ComponentStore {
 	}
 
 	Component get_by_id(ID id) {
-		return { reflect::TypeResolver<T>::get(), by_id(id) };
+		return { id, this, reflect::TypeResolver<T>::get(), by_id(id) };
 	}
 
 	void free_by_id(ID id) {
@@ -125,13 +130,18 @@ struct Store : ComponentStore {
 		return obj_ptr;
 	}
 
-	void make_by_id(ID id) {
-		make(id);
+	void* make_by_id(ID id) {
+		return make(id);
 	}
 
 	void register_component(ID id, T* obj) {
 		assert(id < max_entities);
 		id_to_obj[id] = obj;
+	}
+
+	void set_enabled(void* ptr, bool enabled) override {
+		auto slot = (Slot<T>*)ptr;
+		slot->is_enabled = enabled;
 	}
 
 	vector<T*> filter() {
@@ -143,6 +153,24 @@ struct Store : ComponentStore {
 
 			if (!slot->is_enabled) continue;
 			arr.append(&slot->object.first);
+		}
+
+		return arr;
+	}
+
+	reflect::TypeDescriptor* get_component_type() override {
+		return reflect::TypeResolver<T>::get();
+	}
+
+	vector<Component> filter_untyped() override { //todo merge definitions
+		vector<Component> arr;
+		arr.allocator = &temporary_allocator;
+
+		for (unsigned int i = 0; i < this->N; i++) {
+			auto slot = &this->components[i];
+
+			if (!slot->is_enabled) continue;
+			arr.append({slot->object.second, this, reflect::TypeResolver<T>::get(), &slot->object.first });
 		}
 
 		return arr;
@@ -161,6 +189,7 @@ struct World {
 
 	std::unique_ptr<ComponentStore> components[components_hash_size];
 	vector<std::unique_ptr<System>> systems;
+	vector<ID> skipped_ids;
 
 	template<typename T>
 	constexpr void add(Store<T>* store) {

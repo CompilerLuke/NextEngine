@@ -8,7 +8,7 @@
 #include "graphics/rhi.h"
 #include "core/vfs.h"
 
-Mesh process_mesh(aiMesh* mesh, const aiScene* scene, vector<std::string>& materials, const glm::mat4& apply_transform) {
+Mesh process_mesh(aiMesh* mesh, const aiScene* scene, vector<StringBuffer>& materials, const glm::mat4& apply_transform) {
 	glm::mat3 apply_trans3 = glm::mat3(apply_transform);
 	
 	auto vertices = vector<Vertex>();
@@ -21,7 +21,7 @@ Mesh process_mesh(aiMesh* mesh, const aiScene* scene, vector<std::string>& mater
 	for (int i = 0; i < mesh->mNumVertices; i++) {
 		auto position = mesh->mVertices[i];
 
-		aabb.update(glm::vec3(position.x, position.y, position.z));
+		aabb.update(glm::vec3(position.x, position.y, position.z) * apply_trans3);
 
 		auto tangent = mesh->mTangents[i];
 		auto bitangent = mesh->mBitangents[i];
@@ -60,7 +60,7 @@ Mesh process_mesh(aiMesh* mesh, const aiScene* scene, vector<std::string>& mater
 	aiString c_name;
 	aiGetMaterialString(aMat, AI_MATKEY_NAME, &c_name);
 
-	std::string name(c_name.data);
+	StringBuffer name(c_name.data);
 
 	int id = -1;
 	for (int i = 0; i < materials.length; i++) {
@@ -70,7 +70,7 @@ Mesh process_mesh(aiMesh* mesh, const aiScene* scene, vector<std::string>& mater
 	}
 
 	if (id == -1) {
-		materials.append(name);
+		materials.append(std::move(name));
 		id = materials.length - 1;
 	}
 
@@ -84,7 +84,7 @@ Mesh process_mesh(aiMesh* mesh, const aiScene* scene, vector<std::string>& mater
 	return new_mesh;
 }
 
-void process_node(aiNode* node, const aiScene* scene, vector<Mesh>& meshes, vector<std::string>& materials, const glm::mat4& apply_transform) {
+void process_node(aiNode* node, const aiScene* scene, vector<Mesh>& meshes, vector<StringBuffer>& materials, const glm::mat4& apply_transform) {
 	meshes.reserve(meshes.length + node->mNumMeshes);
 
 	for (int i = 0; i < node->mNumMeshes; i++) {
@@ -103,10 +103,10 @@ void Model::load_in_place(const glm::mat4& apply_transform) {
 	
 	Assimp::Importer importer;
 	auto scene = importer.ReadFile(real_path.c_str(), aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
-	if (!scene) throw std::string("Could not load model ") + path + std::string(" ") + real_path;
+	if (!scene) throw StringBuffer("Could not load model ") + path + " " + real_path;
 	
 	vector<Mesh> meshes;
-	vector<std::string> materials;
+	vector<StringBuffer> materials;
 
 	process_node(scene->mRootNode, scene, meshes, materials, apply_transform);
 
@@ -114,10 +114,10 @@ void Model::load_in_place(const glm::mat4& apply_transform) {
 	this->materials = std::move(materials);
 }
 
-Handle<Model> load_Model(const std::string& path) {
+Handle<Model> load_Model(StringView path) {
 	for (int i = 0; i < RHI::model_manager.slots.length; i++) {
 		auto& slot = RHI::model_manager.slots[i];
-		if (slot.generation != INVALID_SLOT && slot.obj.path == path) {
+		if (slot.path == path) {
 			return RHI::model_manager.index_to_handle(i);
 		}
 	}

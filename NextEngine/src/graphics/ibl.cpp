@@ -283,7 +283,7 @@ void Skybox::on_load(World& world) {
 	return;
 }
 
-Skybox* load_Skybox(World& world, const std::string& filename) {
+Skybox* load_Skybox(World& world, StringView filename) {
 	for (auto sky : world.filter<Skybox>(any_layer)) {
 		if (sky->filename == filename) return sky;
 	}

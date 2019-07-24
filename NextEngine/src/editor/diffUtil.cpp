@@ -49,23 +49,23 @@ bool DiffUtil::submit(Editor& editor, const char* name) {
 	}
 
 	if (offsets_diff.length > 0) {
-		Diff diff(size);
-		diff.target = real_ptr;
-		diff.name = name;
+		Diff* diff = new Diff(size);
+		diff->target = real_ptr;
+		diff->name = name;
 
 		unsigned int offset_buffer = 0;
 
 		for (unsigned int i = 0; i < offsets_diff.length; i++) {
-			memcpy((char*)diff.redo_buffer + offset_buffer, (char*)real_ptr + offsets_diff[i], sizes[i]);
-			memcpy((char*)diff.undo_buffer + offset_buffer, (char*)copy_ptr + offsets_diff[i], sizes[i]);
+			memcpy((char*)diff->redo_buffer + offset_buffer, (char*)real_ptr + offsets_diff[i], sizes[i]);
+			memcpy((char*)diff->undo_buffer + offset_buffer, (char*)copy_ptr + offsets_diff[i], sizes[i]);
 
 			offset_buffer += sizes[i];
 		}
 
-		diff.offsets = std::move(offsets_diff);
-		diff.sizes = std::move(sizes);
+		diff->offsets = std::move(offsets_diff);
+		diff->sizes = std::move(sizes);
 
-		editor.submit_diff(std::move(diff));
+		editor.submit_action(diff);
 
 		return true;
 	}
@@ -110,4 +110,45 @@ void Diff::redo() {
 Diff::~Diff() {
 	delete this->undo_buffer;
 	delete this->redo_buffer;
+}
+
+CreateAction::CreateAction(World& world, ID id) 
+: world(world), id(id) {
+	auto components = world.components_by_id(id);
+
+	this->components.reserve(components.length); //components by id is only temporarily valid
+	for (int i = 0; i < components.length; i++)
+		this->components.append(components[i]);
+}
+
+void CreateAction::undo() {
+	undid = true;
+	for (auto& comp : this->components) {
+		comp.store->set_enabled(comp.data, false);
+	}
+}
+
+void CreateAction::redo() {
+	undid = false;
+	for (auto& comp : this->components) {
+		comp.store->set_enabled(comp.data, true);
+	}
+}
+
+CreateAction::~CreateAction() {
+	if (undid) {
+		world.free_by_id(id);
+	}
+}
+
+DestroyAction::DestroyAction(World& w, ID id) : CreateAction(w, id) {
+	CreateAction::undo();
+}
+
+void DestroyAction::redo() {
+	CreateAction::undo();
+}
+
+void DestroyAction::undo() {
+	CreateAction::redo();
 }

@@ -5,18 +5,19 @@
 #include "ecs/id.h"
 #include "reflection/reflection.h"
 #include "core/vector.h"
+#include "core/string_buffer.h"
 
 struct EntityEditor { //Editor meta data for this entity
-	std::string name;
+	StringBuffer name;
 	vector<ID> children;
 
 	REFLECT()
 };
 
 struct Lister {
-	std::string filter;
+	StringBuffer filter;
 
 	void render(struct World& world, struct Editor& editor, struct RenderParams& params);
 };
 
-std::string name_with_id(struct World&, ID id);
+StringBuffer name_with_id(struct World&, ID id);

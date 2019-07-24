@@ -9,6 +9,8 @@
 #include "graphics/draw.h"
 #include "core/vector.h"
 #include "core/handle.h"
+#include "core/string_buffer.h"
+#include "core/string_view.h"
 
 enum Param_Type {
 	Param_Vec3,
@@ -16,7 +18,8 @@ enum Param_Type {
 	Param_Mat4x4,
 	Param_Image,
 	Param_Cubemap,
-	Param_Int
+	Param_Int,
+	Param_Float
 };
 
 struct Param {
@@ -29,6 +32,7 @@ struct Param {
 		Handle<struct Texture> image;
 		Handle<struct Cubemap> cubemap;
 		int integer;
+		float real;
 	};
 
 	Param();
@@ -37,16 +41,17 @@ struct Param {
 };
 
 Param make_Param_Int(Handle<Uniform> loc, int);
+Param make_Param_Float(Handle<Uniform> loc, float);
 Param make_Param_Vec2(Handle<Uniform> loc, glm::vec2);
 Param make_Param_Vec3(Handle<Uniform> loc, glm::vec3);
 Param make_Param_Cubemap(Handle<Uniform> loc, Handle<struct Cubemap>);
 Param make_Param_Image(Handle<Uniform> loc, Handle<struct Texture>);
 
 struct Material {
-	std::string name;
+	StringBuffer name;
 	Handle<Shader> shader;
 	vector<Param> params;
-	DrawCommandState* state;
+	DrawCommandState* state = &default_draw_state;
 
 	REFLECT()
 };
@@ -57,5 +62,5 @@ struct Materials {
 	REFLECT()
 };
 
-Handle<Material> material_by_name(vector<Handle<Material>>&, const std::string&);
-vector<Param> make_SubstanceMaterial(const std::string& folder, const std::string& name);
+Handle<Material> material_by_name(vector<Handle<Material>>&, StringView);
+vector<Param> make_SubstanceMaterial(StringView folder, StringView);

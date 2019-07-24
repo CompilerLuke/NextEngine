@@ -3,6 +3,7 @@
 #include <glm/vec3.hpp>
 #include "ecs/id.h"
 #include "reflection/reflection.h"
+#include "ecs/system.h"
 
 struct DirLight {
 	glm::vec3 direction = glm::vec3(0,1.0,0);
@@ -13,3 +14,11 @@ struct DirLight {
 };
 
 DirLight* get_dir_light(struct World&, Layermask layermask);
+
+struct DebugLightSystem : System {
+	vector<Handle<struct Material>> gizmo_materials;
+	Handle<struct Model> dir_light_model;
+
+	DebugLightSystem();
+	void render(struct World&, RenderParams&) override;
+};

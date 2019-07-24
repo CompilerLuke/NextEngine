@@ -8,10 +8,11 @@
 #include <glm/gtc/quaternion.hpp>
 #include <unordered_map>
 #include "components/transform.h"
+#include "core/string_buffer.h"
 
 struct TextureAsset {
 	Handle<struct Texture> handle;
-	std::string name;
+	StringBuffer name;
 
 	REFLECT()
 };
@@ -27,7 +28,7 @@ struct RotatablePreview {
 struct ModelAsset {
 	Handle<struct Model> handle = { INVALID_HANDLE };
 	vector<Handle<struct Material>> materials;
-	std::string name;
+	StringBuffer name;
 	
 	Transform trans;
 
@@ -38,7 +39,7 @@ struct ModelAsset {
 
 struct ShaderAsset {
 	Handle<struct Shader> handle = { INVALID_HANDLE };
-	std::string name;
+	StringBuffer name;
 
 	REFLECT()
 };
@@ -46,7 +47,7 @@ struct ShaderAsset {
 struct MaterialAsset {
 	Handle<struct Material> handle = { INVALID_HANDLE };
 	RotatablePreview rot_preview;
-	std::string name;
+	StringBuffer name;
 
 	REFLECT()
 };
@@ -54,7 +55,7 @@ struct MaterialAsset {
 struct AssetFolder {
 	Handle<AssetFolder> handle = { INVALID_HANDLE }; //contains id to itself, used to select folder to move
 	
-	std::string name;
+	StringBuffer name;
 	vector<unsigned int> contents;
 	int owner = -1;
 
@@ -79,13 +80,16 @@ struct AssetTab {
 
 	Handle<Material> default_material;
 	
-	std::string filter;
+	StringBuffer filter;
 
 	AssetTab();
 
 	void register_callbacks(struct Window&, struct Editor&);
 	void render(struct World&, struct Editor&, struct RenderParams&);
 	void update(struct World&, struct Editor&, struct UpdateParams&);
+
+	void on_save();
+	void on_load(struct World& world, struct RenderParams& params);
 };
 
 MaterialAsset* create_new_material(struct World& world, struct AssetTab& self, struct Editor& editor, struct RenderParams& params);

@@ -6,35 +6,36 @@
 #include "ecs/ecs.h"
 #include <tuple>
 #include "graphics/rhi.h"
+#include "logger/logger.h"
 
 std::unordered_map <std::string, OnInspectGUICallback> override_inspect;
 
-OnInspectGUICallback get_on_inspect_gui(const std::string& on_type) {
-	return override_inspect[on_type];
+OnInspectGUICallback get_on_inspect_gui(StringView on_type) {
+	return override_inspect[std::string(on_type.data)];
 }
 
-void register_on_inspect_gui(const std::string& on_type, OnInspectGUICallback func) {
-	override_inspect[on_type] = func;
+void register_on_inspect_gui(StringView on_type, OnInspectGUICallback func) {
+	override_inspect[std::string(on_type.data)] = func;
 }
 
-bool render_fields_primitive(int* ptr, const std::string& prefix) {
+bool render_fields_primitive(int* ptr, StringView prefix) {
 	ImGui::InputInt(prefix.c_str(), ptr);
 	return true;
 }
 
-bool render_fields_primitive(unsigned int* ptr, const std::string& prefix) {
+bool render_fields_primitive(unsigned int* ptr, StringView prefix) {
 	int as_int = *ptr;
 	ImGui::InputInt(prefix.c_str(), &as_int);
 	*ptr = as_int;
 	return true;
 }
 
-bool render_fields_primitive(float* ptr, const std::string& prefix) {
+bool render_fields_primitive(float* ptr, StringView prefix) {
 	ImGui::InputFloat(prefix.c_str(), ptr);
 	return true;
 }
 
-bool render_fields_primitive(std::string* str, const std::string& prefix) {
+bool render_fields_primitive(std::string* str, StringView prefix) {
 	char buf[50];
 	std::memcpy(buf, str->c_str(), str->size() + 1);
 
@@ -43,17 +44,17 @@ bool render_fields_primitive(std::string* str, const std::string& prefix) {
 	return true;
 }
 
-bool render_fields_primitive(bool* ptr, const std::string& prefix) {
+bool render_fields_primitive(bool* ptr, StringView prefix) {
 	ImGui::Checkbox(prefix.c_str(), ptr);
 	return true;
 }
 
-bool render_fields_struct(reflect::TypeDescriptor_Struct* self, void* data, const std::string& prefix, World& world) {
+bool render_fields_struct(reflect::TypeDescriptor_Struct* self, void* data, StringView prefix, World& world) {
 	if (override_inspect.find(self->name) != override_inspect.end()) {
 		return override_inspect[self->name](data, prefix, world);
 	}
 	
-	auto name = prefix + " : " + self->name;
+	auto name = tformat(prefix, " : ", self->name);
 
 	auto id = ImGui::GetID(name.c_str());
 
@@ -78,6 +79,7 @@ bool render_fields_struct(reflect::TypeDescriptor_Struct* self, void* data, cons
 			if (field.tag == reflect::LayermaskTag) {
 				override_inspect["Layermask"](data, prefix, world);
 			}
+			else if (field.tag == reflect::HideInInspectorTag) {}
 			else {
 				render_fields(field.type, offset_ptr, field.name, world);
 			}
@@ -87,11 +89,11 @@ bool render_fields_struct(reflect::TypeDescriptor_Struct* self, void* data, cons
 	return open;
 }
 
-bool render_fields_union(reflect::TypeDescriptor_Union* self, void* data, const std::string& prefix, struct World& world) {
+bool render_fields_union(reflect::TypeDescriptor_Union* self, void* data, StringView prefix, struct World& world) {
 
 	int tag = *((char*)data + self->tag_offset);
 
-	auto name = prefix + " : " + self->name;
+	auto name = tformat(prefix, " : ", self->name);
 
 	if (ImGui::TreeNode(name.c_str())) {
 		int i = 0;
@@ -114,7 +116,7 @@ bool render_fields_union(reflect::TypeDescriptor_Union* self, void* data, const 
 	return false;
 }
 
-bool render_fields_enum(reflect::TypeDescriptor_Enum* self, void* data, const std::string& prefix, struct World& world) {
+bool render_fields_enum(reflect::TypeDescriptor_Enum* self, void* data, StringView prefix, struct World& world) {
 	int tag = *((int*)data);
 
 	int i = 0;
@@ -130,7 +132,7 @@ bool render_fields_enum(reflect::TypeDescriptor_Enum* self, void* data, const st
 	return true;
 }
 
-bool render_fields_ptr(reflect::TypeDescriptor_Pointer* self, void* data, const std::string& prefix, struct World& world) {
+bool render_fields_ptr(reflect::TypeDescriptor_Pointer* self, void* data, StringView prefix, struct World& world) {
 	if (*(void**)data == NULL) {
 		ImGui::LabelText(prefix.c_str(), "NULL");
 		return false;
@@ -138,11 +140,11 @@ bool render_fields_ptr(reflect::TypeDescriptor_Pointer* self, void* data, const 
 	return render_fields(self->itemType, *(void**)data, prefix, world);
 }
 
-bool render_fields_vector(reflect::TypeDescriptor_Vector* self, void* data, const std::string& prefix, struct World& world) {
+bool render_fields_vector(reflect::TypeDescriptor_Vector* self, void* data, StringView prefix, struct World& world) {
 	auto ptr = (vector<char>*)data;
 	data = ptr->data;
 
-	auto name = prefix + " : " + self->name;
+	auto name = tformat(prefix, " : ", self->name);
 	if (ImGui::TreeNode(name.c_str())) {
 		for (unsigned int i = 0; i < ptr->length; i++) {
 			auto name = "[" + std::to_string(i) + "]";
@@ -154,7 +156,7 @@ bool render_fields_vector(reflect::TypeDescriptor_Vector* self, void* data, cons
 	return false;
 }
 
-bool render_fields(reflect::TypeDescriptor* type, void* data, const std::string& prefix, World& world) {
+bool render_fields(reflect::TypeDescriptor* type, void* data, StringView prefix, World& world) {
 	if (type->kind == reflect::Struct_Kind) return render_fields_struct((reflect::TypeDescriptor_Struct*)type, data, prefix, world);
 	else if (type->kind == reflect::Union_Kind) return render_fields_union((reflect::TypeDescriptor_Union*)type, data, prefix, world);
 	else if (type->kind == reflect::Vector_Kind) return render_fields_vector((reflect::TypeDescriptor_Vector*)type, data, prefix, world);
@@ -163,7 +165,7 @@ bool render_fields(reflect::TypeDescriptor* type, void* data, const std::string&
 	else if (type->kind == reflect::Int_Kind) return render_fields_primitive((int*)data, prefix);
 	else if (type->kind == reflect::Bool_Kind) return render_fields_primitive((bool*)data, prefix);
 	else if (type->kind == reflect::Unsigned_Int_Kind) return render_fields_primitive((unsigned int*)data, prefix);
-	else if (type->kind == reflect::StdString_Kind) return render_fields_primitive((std::string*)data, prefix);
+	else if (type->kind == reflect::StringBuffer_Kind) return render_fields_primitive((std::string*)data, prefix);
 }
 
 void DisplayComponents::update(World& world, UpdateParams& params) {
@@ -188,7 +190,7 @@ void DisplayComponents::render(World& world, RenderParams& params, Editor& edito
 				char buff[50];
 				memcpy(buff, meta->name.c_str(), meta->name.size() + 1);
 				ImGui::InputText(name_and_id.c_str(), buff, 50);
-				meta->name = std::string(buff);
+				meta->name = buff;
 			}
 			else {
 				ImGui::Text(name_and_id.c_str());
