@@ -342,12 +342,13 @@ void Editor::run() {
 	auto shader = load_Shader("shaders/pbr.vert", "shaders/gizmo.frag");
 	auto texture = load_Texture("normal.jpg");
 	auto model = load_Model("HOVERTANK.fbx");
-	auto skybox = load_Skybox(world, "Topanga_Forest_B_3k.hdr");
 
 	load_Model("subdivided_plane8.fbx");
 
 	CommandBuffer cmd_buffer;
 	RenderParams render_params(&cmd_buffer, &main_pass);
+
+	auto skybox = make_default_Skybox(world, &render_params, "Topanga_Forest_B_3k.hdr");
 
 	main_pass.post_process.append(&picking_pass);
 
@@ -371,7 +372,7 @@ void Editor::run() {
 	render_params.layermask = game_layer | editor_layer;
 	render_params.width = window.width;
 	render_params.height = window.height;
-	render_params.skybox = skybox;
+	render_params.skybox = world.filter<Skybox>()[0];
 
 	{
 		auto id = world.make_ID();

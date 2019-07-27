@@ -6,19 +6,22 @@
 #include "reflection/reflection.h"
 #include "core/handle.h"
 #include "core/string_buffer.h"
+#include "graphics/frameBuffer.h"
 
 struct Skybox {
 	StringBuffer filename;
+	bool capture_scene = false;
+	RenderParams* params = NULL;
 
-	Handle<struct Cubemap> env_cubemap;
-	Handle<struct Cubemap> irradiance_cubemap;
-	Handle<struct Cubemap> prefilter_cubemap;
-	Handle<struct Texture> brdf_LUT;
+	Handle<struct Cubemap> env_cubemap = { INVALID_HANDLE };
+	Handle<struct Cubemap> irradiance_cubemap = { INVALID_HANDLE };
+	Handle<struct Cubemap> prefilter_cubemap = { INVALID_HANDLE };
+	Handle<struct Texture> brdf_LUT = { INVALID_HANDLE };
 
 	void on_load(struct World&);
-	void set_ibl_params(Handle<struct Shader>, struct World&, RenderParams&);
+	void set_ibl_params(Handle<struct Shader>, Handle<struct ShaderConfig>, struct World&, struct RenderParams&);
 
 	REFLECT()
 };
 
-Skybox* load_Skybox(struct World&, StringView);
+Skybox* make_default_Skybox(struct World&, struct RenderParams*, StringView);

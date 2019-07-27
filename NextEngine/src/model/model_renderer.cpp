@@ -105,7 +105,7 @@ void ModelRendererSystem::render(World& world, RenderParams& params) { //HOTSPOT
 
 		auto shad = RHI::shader_manager.get(mat->shader);
 
-		if (shad->supports_instancing && false) {
+		if (false) {
 			DrawCommand cmd(instance.ids[i], transforms, aabbs, instance.buffer, mat);
 			cmd.num_instances = instance.transforms.length;
 			params.command_buffer->submit(cmd);

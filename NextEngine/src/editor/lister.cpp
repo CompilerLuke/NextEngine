@@ -19,7 +19,7 @@ StringBuffer name_with_id(World& world, ID id) {
 	else return tformat("#", id);
 }
 
-void render_hierarchies(vector<struct NameHierarchy*> & top, World& world, Editor& editor, RenderParams& params, int indent = 0);
+void render_hierarchies(vector<struct NameHierarchy*> & top, World& world, Editor& editor, RenderParams& params, StringView filter, int indent = 0);
 
 struct NameHierarchy {
 	StringView name;
@@ -28,7 +28,9 @@ struct NameHierarchy {
 
 	NameHierarchy(StringView name) : name(name) {};
 
-	void render_hierarchy(World& world, Editor& editor, RenderParams& params, int indent = 0) {
+	void render_hierarchy(World& world, Editor& editor, RenderParams& params, StringView filter, int indent = 0) {
+		if (!name.starts_with(filter)) return;
+
 		bool selected = editor.selected_id == id;
 		
 		ImGuiStyle* style = &ImGui::GetStyle();
@@ -46,16 +48,16 @@ struct NameHierarchy {
 
 		if (selected) ImGui::PopStyleColor();
 
-		render_hierarchies(this->children, world, editor, params, indent + 30);
+		render_hierarchies(this->children, world, editor, params, filter, indent + 30);
 	}
 
 	NameHierarchy(const NameHierarchy& other) : name(other.name) {
 	}
 };
 
-void render_hierarchies(vector<NameHierarchy*>& top, World& world, Editor& editor, RenderParams& params, int indent) {
+void render_hierarchies(vector<NameHierarchy*>& top, World& world, Editor& editor, RenderParams& params, StringView filter, int indent) {
 	for (auto child : top) {
-		child->render_hierarchy(world, editor, params, indent);
+		child->render_hierarchy(world, editor, params, filter, indent);
 	}
 }
 
@@ -129,7 +131,7 @@ void Lister::render(World& world, Editor& editor, RenderParams& params) {
 			if (e) {
 				vector<EntityEditor*> active_named = { e };
 				get_hierarchy(active_named, world, top, names);
-				render_hierarchies(top, world, editor, params);
+				render_hierarchies(top, world, editor, params, filter);
 			}
 		} 
 		else if (filter.find(':') == 0) {
@@ -148,7 +150,7 @@ void Lister::render(World& world, Editor& editor, RenderParams& params) {
 			}
 
 			get_hierarchy(active_named, world, top, names);
-			render_hierarchies(top, world, editor, params);
+			render_hierarchies(top, world, editor, params, filter);
 		}
 	}
 

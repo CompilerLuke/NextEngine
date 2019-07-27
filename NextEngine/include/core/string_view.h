@@ -18,7 +18,7 @@ struct StringView {
 	StringView(const struct StringBuffer&);
 
 	inline bool starts_with(StringView pre) {
-		return length  < pre.length ? false : strncmp(pre.data, data, pre.length) == 0;
+		return length < pre.length ? false : strncmp(pre.data, data, pre.length) == 0;
 	}
 
 	inline bool ends_with(StringView pre) {
@@ -59,6 +59,11 @@ struct StringView {
 
 	inline bool operator!=(StringView other) const {
 		return !(*this == other);
+	}
+
+	inline char operator[](unsigned int i) {
+		assert(i < length);
+		return this->data[i];
 	}
 };
 

@@ -206,6 +206,14 @@ struct vector {
 		return *this;
 	}
 
+	inline bool contains(const T& element) {
+		for (unsigned int i = 0; i < length; i++) {
+			if (this->data[i] == element) return true;
+		}
+
+		return false;
+	}
+
 	inline vector() {
 	}
 

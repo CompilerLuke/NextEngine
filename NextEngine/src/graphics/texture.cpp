@@ -23,16 +23,35 @@ REFLECT_STRUCT_BEGIN(Cubemap)
 REFLECT_STRUCT_MEMBER(filename)
 REFLECT_STRUCT_END()
 
-void Texture::on_load() {
-	auto real_filename = Level::asset_path(filename);
-
+Image load_Image(StringView filename) {
+	StringBuffer real_filename = Level::asset_path(filename);
 
 	if (filename.starts_with("Aset") || filename.starts_with("tgh") || filename.starts_with("ta")) stbi_set_flip_vertically_on_load(false);
 	else stbi_set_flip_vertically_on_load(true);
 
-	int width = 0;
-	int height = 0;
-	int nr_channels = 0;
+	Image image;
+
+	image.data = stbi_load(real_filename.c_str(), &image.width, &image.height, &image.num_channels, 4); //todo might waste space
+	if (!image.data) throw "Could not load texture";
+
+	return image;
+}
+
+Image::Image() {}
+
+Image::Image(Image&& other) {
+	this->data = other.data;
+	this->width = other.width;
+	this->height = other.height;
+	this->num_channels = other.num_channels;
+	other.data = NULL;
+}
+
+Image::~Image() {
+	if (data) stbi_image_free(data);
+}
+
+void Texture::submit(Image& image) {
 	unsigned int texture_id = 0;
 
 	glGenTextures(1, &texture_id);
@@ -44,17 +63,17 @@ void Texture::on_load() {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 16);
 
-	auto data = stbi_load(real_filename.c_str(), &width, &height, &nr_channels, 4); //todo might waste space
-	if (!data) throw "Could not load texture";
-
 	auto internal_color_format = GL_RGBA;
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, internal_color_format, GL_UNSIGNED_BYTE, data);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width, image.height, 0, internal_color_format, GL_UNSIGNED_BYTE, image.data);
 	glGenerateMipmap(GL_TEXTURE_2D);
 
-	stbi_image_free(data);
-
 	this->texture_id = texture_id;
+}
+
+void Texture::on_load() {
+	Image image = load_Image(this->filename);
+	submit(image);
 }
 
 Handle<Texture> make_Texture(Texture&& tex) {

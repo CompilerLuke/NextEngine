@@ -9,9 +9,12 @@
 #include <glm/mat4x4.hpp>
 #include "reflection/reflection.h"
 #include "core/string_view.h"
+#include "core/string_buffer.h"
 
 struct DisplayComponents {
 	vector<float> fps_times;
+
+	StringBuffer filter;
 
 	void update(struct World& world, struct UpdateParams& params);
 	void render(struct World& world, struct RenderParams& params, struct Editor& editor);

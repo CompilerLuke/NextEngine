@@ -22,6 +22,8 @@
 #include "core/input.h"
 #include "components/lights.h"
 #include "serialization/serializer.h"
+#include <thread>
+#include <mutex>
 
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3.h>
@@ -502,6 +504,22 @@ void asset_properties(MaterialAsset* mat_asset, Editor& editor, World& world, As
 						material->shader = new_shad;
 					}
 				}
+
+				if (ImGui::Button("shaders/tree.frag")) {
+					Handle<Shader> new_shad = load_Shader("shaders/tree.vert", "shaders/tree.frag");
+					if (new_shad.id != material->shader.id) {
+						material->params = {
+							make_Param_Image(location(new_shad, "material.diffuse"), load_Texture("solid_white.png")),
+							make_Param_Image(location(new_shad, "material.roughness"), load_Texture("solid_white.png")),
+							make_Param_Image(location(new_shad, "material.metallic"), load_Texture("black.png")),
+							make_Param_Image(location(new_shad, "material.normal"), load_Texture("normal.jpg")),
+							make_Param_Float(location(new_shad, "cutoff"), 0.1),
+							make_Param_Vec2(location(new_shad, "transformUVs"), glm::vec2(1, 1)),
+						};
+
+						material->shader = new_shad;
+					}
+				}
 				
 				if (ImGui::Button("shaders/paralax_pbr.frag")) {
 					Handle<Shader> new_shad = load_Shader("shaders/pbr.vert", "shaders/paralax_pbr.frag");
@@ -522,6 +540,8 @@ void asset_properties(MaterialAsset* mat_asset, Editor& editor, World& world, As
 						material->shader = new_shad;
 					}
 				}
+
+
 				ImGui::EndPopup();
 			}
 
@@ -751,8 +771,8 @@ AssetTab::AssetTab() {
 
 	ID id = assets.make_ID();
 
-	AssetFolder* folder = assets.make<AssetFolder>(id);
-	folder->name = "Assets";
+	//AssetFolder* folder = assets.make<AssetFolder>(id);
+	//folder->name = "Assets";
 	
 	this->toplevel = id;
 	this->current_folder = id;
@@ -887,6 +907,16 @@ void AssetTab::render(World& world, Editor& editor, RenderParams& params) {
 	ImGui::End();
 }
 
+template<typename T>
+struct TaskList {
+	std::mutex mutex;
+	vector<T> tasks;
+
+	void append() {
+
+	}
+	bool pop();
+};
 
 void AssetTab::on_load(World& world, RenderParams& params) {
 	{
@@ -900,11 +930,15 @@ void AssetTab::on_load(World& world, RenderParams& params) {
 
 		for (int i = 0; i < num; i++) {
 			ID id = serializer.read_int();
-			AssetFolder* folder = assets.make<AssetFolder>(id);
-			assets.skipped_ids.append(id);
 
-			serializer.read(reflect::TypeResolver<AssetFolder>::get(), folder);
+			AssetFolder folder;
+			serializer.read(reflect::TypeResolver<AssetFolder>::get(), &folder);
+
+			*assets.make<AssetFolder>(id) = folder;
+			assets.skipped_ids.append(id);
 		}
+
+		this->current_folder = 0;
 	}
 
 	{
@@ -915,6 +949,17 @@ void AssetTab::on_load(World& world, RenderParams& params) {
 		DeserializerBuffer serializer(buffer, length);
 
 		unsigned int num = serializer.read_int();
+
+		constexpr int num_threads = 9;
+
+		std::mutex tasks_lock;
+		vector<Texture*> tasks;
+		
+		std::mutex result_lock;
+		vector<Image> loaded_image;
+		vector<Texture*> loaded_image_tex;
+
+		int num_tasks_left = 0;
 
 		for (int i = 0; i < num; i++) {
 			ID id = serializer.read_int();
@@ -927,9 +972,64 @@ void AssetTab::on_load(World& world, RenderParams& params) {
 
 			Texture tex;
 			tex.filename = std::move(filename);
-			tex.on_load();
+
 
 			RHI::texture_manager.make(tex_asset->handle, std::move(tex));
+
+			if (RHI::texture_manager.get(tex_asset->handle)->filename.starts_with("sms")) {
+				tex.texture_id = 0;
+				continue;
+			}
+
+			tasks.append(RHI::texture_manager.get(tex_asset->handle));
+			num_tasks_left++;
+		}
+
+		std::thread threads[num_threads];
+
+		for (int i = 0; i < num_threads; i++) {
+			threads[i] = std::thread([&, i]() {
+				while (true) {
+					tasks_lock.lock();
+					if (tasks.length == 0) {
+						tasks_lock.unlock();
+						break;
+					}
+
+					Texture* tex = tasks.pop();
+					tasks_lock.unlock();
+
+					Image image = load_Image(tex->filename);
+
+					result_lock.lock();
+					loaded_image.append(std::move(image));
+					loaded_image_tex.append(tex);
+					num_tasks_left--;
+					result_lock.unlock();
+				}
+			});
+		}
+		
+
+		while (true) {
+			result_lock.lock();
+			if (loaded_image_tex.length == 0) {
+				result_lock.unlock();
+				continue;
+			}
+
+			Texture* tex = loaded_image_tex.pop();
+			Image image = loaded_image.pop();
+			result_lock.unlock();
+			tex->submit(image);
+
+			if (num_tasks_left == 0 && loaded_image_tex.length == 0) {
+				break;
+			}
+		}
+		
+		for (int i = 0; i < num_threads; i++) {
+			threads[i].join();
 		}
 	}
 
@@ -943,6 +1043,8 @@ void AssetTab::on_load(World& world, RenderParams& params) {
 		unsigned int num = serializer.read_int();
 
 		auto paralax = load_Shader("shaders/pbr.vert", "shaders/paralax_pbr.frag");
+		auto pbr_shader = load_Shader("shaders/pbr.vert", "shaders/pbr.frag");
+		auto tree = load_Shader("shaders/tree.vert", "shaders/tree.frag");
 
 		for (int i = 0; i < num; i++) {
 			ID id = serializer.read_int();
@@ -954,8 +1056,20 @@ void AssetTab::on_load(World& world, RenderParams& params) {
 			serializer.read(reflect::TypeResolver<MaterialAsset>::get(), mat_asset);
 
 			if (mat.shader.id == 19) {
-				mat.shader = paralax;
+				mat.shader = tree;
 			}
+
+			//if (mat.shader.id == 19) {
+			//	mat.shader = paralax;
+			//}
+
+			//if (mat_asset->name == "Ground") {
+			//	for (Param& p : mat.params) {
+			//		if (p.type == Param_Image) {
+			//			p.image = load_Texture("solid_white.png");
+			//		}
+			//	}
+			//}
 
 			location(mat.shader, "material.diffuse"); //todo fix hack
 			location(mat.shader, "material.roughness");
@@ -967,6 +1081,10 @@ void AssetTab::on_load(World& world, RenderParams& params) {
 				location(mat.shader, "material.ao");
 				location(mat.shader, "steps");
 				location(mat.shader, "depth_scale");
+			}
+
+			if (mat.shader.id == tree.id) {
+				location(mat.shader, "cutoff");
 			}
 			location(mat.shader, "transformUVs");
 

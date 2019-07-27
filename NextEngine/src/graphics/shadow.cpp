@@ -14,7 +14,10 @@
 #include "components/camera.h"
 #include "graphics/rhi.h"
 
+
 DepthMap::DepthMap(unsigned int width, unsigned int height, World& world) {
+	this->type = Pass::Depth_Only;
+	
 	AttachmentSettings attachment(this->depth_map);
 
 	FramebufferSettings settings;
@@ -24,7 +27,7 @@ DepthMap::DepthMap(unsigned int width, unsigned int height, World& world) {
 	settings.depth_buffer = DepthComponent24;
 	
 	this->depth_map_FBO = Framebuffer(settings);
-	this->depth_shader = load_Shader("shaders/gizmo.vert", "shaders/depth.frag", true);
+	this->depth_shader = load_Shader("shaders/gizmo.vert", "shaders/depth.frag");
 }
 
 ShadowPass::ShadowPass(Window& window, World& world, Handle<Texture> depth_prepass) :
@@ -55,14 +58,14 @@ ShadowMask::ShadowMask(Window& window, World& world) {
 	this->shadow_mask_map_fbo = Framebuffer(settings);
 }
 
-void ShadowMask::set_shadow_params(Handle<Shader> shader, World& world, RenderParams& params) {
+void ShadowMask::set_shadow_params(Handle<Shader> shader, Handle<ShaderConfig> config, World& world, RenderParams& params) {
 	auto bind_to = params.command_buffer->next_texture_index();
 	texture::bind_to(shadow_mask_map, bind_to);
-	shader::set_int(shader, "shadowMaskMap", bind_to);
+	shader::set_int(shader, "shadowMaskMap", bind_to, config);
 }
 
-void ShadowPass::set_shadow_params(Handle<Shader> shader, World& world, RenderParams& params) {
-	this->shadow_mask.set_shadow_params(shader, world, params);
+void ShadowPass::set_shadow_params(Handle<Shader> shader, Handle<ShaderConfig> config, World& world, RenderParams& params) {
+	this->shadow_mask.set_shadow_params(shader, config, world, params);
 }
 
 struct OrthoProjInfo {
@@ -217,50 +220,15 @@ void calc_ortho_proj(RenderParams& params, glm::mat4& light_m, float width, floa
 }
 
 void DepthMap::render_maps(World& world, RenderParams& params, glm::mat4 projection_m, glm::mat4 view_m) {
-	CommandBuffer command_buffer;
-
-	auto depth_material = TEMPORARY_ALLOC(Material);
-	depth_material->shader = depth_shader;
-	depth_material->state = &default_draw_state;
-
-	auto terrain_shader = load_Shader("shaders/terrain.vert", "shaders/depth.frag");
-
-	for (DrawCommand cmd : params.command_buffer->commands) { //makes copy of command
-		auto shad = RHI::shader_manager.get(cmd.material->shader);
-		if (shad->v_filename == "shaders/terrain.vert") {
-			auto depth_material_terrain = TEMPORARY_ALLOC(Material);
-			depth_material_terrain->shader = terrain_shader; 
-			depth_material_terrain->params.allocator = &temporary_allocator;
-
-			auto previous_shader = RHI::shader_manager.get(cmd.material->shader);
-
-			for (Param p : cmd.material->params) {
-				p.loc = location(terrain_shader, previous_shader->uniforms[p.loc.id].name);
-				depth_material_terrain->params.append(p);
-			}
-
-			cmd.material = depth_material_terrain;
-			
-			command_buffer.submit(cmd);
-			continue;
-		}
-		if (shad->f_filename != "shaders/pbr.frag") continue; //currently different vertex shader is not supported
-
-		cmd.material = depth_material;
-
-		command_buffer.submit(cmd);
-	}
-
 	RenderParams new_params = params;
-	new_params.command_buffer = &command_buffer;
 	new_params.view = view_m;
 	new_params.projection = projection_m;
-	//new_params.pass = this;
+	new_params.pass = this;
 
 	this->depth_map_FBO.bind();
 	this->depth_map_FBO.clear_depth(glm::vec4(0, 0, 0, 1));
 
-	command_buffer.submit_to_gpu(world, new_params);
+	new_params.command_buffer->submit_to_gpu(world, new_params);
 
 	this->depth_map_FBO.unbind();
 }

@@ -18,7 +18,7 @@ struct RenderParams {
 
 	unsigned int width = 0;
 	unsigned int height = 0;
-	void set_shader_scene_params(Handle<struct Shader>, struct World&);
+	void set_shader_scene_params(Handle<struct Shader>, Handle<struct ShaderConfig>, struct World&);
 
 	RenderParams(struct CommandBuffer*, struct Pass*);
 };

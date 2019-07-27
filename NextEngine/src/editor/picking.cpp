@@ -34,7 +34,7 @@ PickingPass::PickingPass(Window& params)
 	framebuffer = Framebuffer(settings);
 }
 
-void PickingPass::set_shader_params(Handle<Shader> shader, World& world, RenderParams& params) {
+void PickingPass::set_shader_params(Handle<Shader> shader, Handle<ShaderConfig> config, World& world, RenderParams& params) {
 
 }
 
@@ -55,7 +55,7 @@ int PickingPass::pick(World& world, UpdateParams& params) {
 }
 
 void PickingPass::render(World& world, RenderParams& params) {
-	if (!params.layermask & editor_layer) return;
+	if (!(params.layermask & editor_layer)) return;
 
 	CommandBuffer cmd_buffer;
 	RenderParams new_params(&cmd_buffer, this);
@@ -118,7 +118,7 @@ PickingSystem::PickingSystem(Editor& editor) : editor(editor) {
 }
 
 void PickingSystem::render(World& world, RenderParams& params) {
-	if (!params.layermask & editor_layer) return;
+	if (!(params.layermask & editor_layer)) return;
 	if (params.layermask & picking_layer) return;
 
 	//Render Outline

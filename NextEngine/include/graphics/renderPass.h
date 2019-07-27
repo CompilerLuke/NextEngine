@@ -3,9 +3,10 @@
 #include "graphics/frameBuffer.h"
 #include "graphics/shadow.h"
 #include "graphics/pass.h"
+#include <functional>
 
 struct MainPass : Pass {
-	Device device;
+	Framebuffer output;
 	
 	DepthMap depth_prepass;
 
@@ -14,8 +15,9 @@ struct MainPass : Pass {
 	Handle<struct Texture> frame_map;
 	Framebuffer current_frame;
 	
+	void render_to_buffer(struct World&, struct RenderParams&, std::function<void()>);
 	void render(struct World&, struct RenderParams&) override;
-	void set_shader_params(Handle<Shader>, struct World&, struct RenderParams&) override;
+	void set_shader_params(Handle<struct Shader>, Handle<struct ShaderConfig>, struct World&, struct RenderParams&) override;
 
 	vector<Pass*> post_process;
 

@@ -40,7 +40,7 @@ Mesh process_mesh(aiMesh* mesh, const aiScene* scene, vector<StringBuffer>& mate
 			glm::vec3(bitangent.x, bitangent.y, bitangent.z) * apply_trans3
 		};
 
-		vertices.append(v);
+		vertices.append(std::move(v));
 	}
 
 	int indices_count = 0;

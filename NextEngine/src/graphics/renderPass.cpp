@@ -21,45 +21,43 @@ MainPass::MainPass(World& world, Window& window)
 	settings.stencil_buffer = StencilComponent8;
 	settings.color_attachments.append(attachment);
 
-	device.width = window.width;
-	device.height = window.height;
-	device.multisampling = 4;
-	device.clear_colour = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	output.width = window.width;
+	output.height = window.height;
+	//device.multisampling = 4;
+	//device.clear_colour = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 
 	current_frame = Framebuffer(settings);
 }
 
-void MainPass::set_shader_params(Handle<Shader> shader, World& world, RenderParams& params) {
+void MainPass::set_shader_params(Handle<Shader> shader, Handle<ShaderConfig> config, World& world, RenderParams& params) {
 	if (params.cam) {
 		Transform* trans = world.by_id<Transform>(world.id_of(params.cam));
-		shader::set_vec3(shader, "viewPos", trans->position);
+		shader::set_vec3(shader, "viewPos", trans->position, config);
 	}
-	
-	shader::set_mat4(shader, "projection", params.projection);
-	shader::set_mat4(shader, "view", params.view);
 
-	shader::set_float(shader, "window_width", params.width);
-	shader::set_float(shader, "window_height", params.height);
-
-	shadow_pass.set_shadow_params(shader, world, params);
+	shadow_pass.set_shadow_params(shader, config, world, params);
 	
-	if (params.skybox) params.skybox->set_ibl_params(shader, world, params);
+	if (params.skybox) params.skybox->set_ibl_params(shader, config, world, params);
 	if (params.dir_light) {
-		shader::set_vec3(shader, "dirLight.direction", params.dir_light->direction);
-		shader::set_vec3(shader, "dirLight.color", params.dir_light->color);
+		shader::set_vec3(shader, "dirLight.direction", params.dir_light->direction, config);
+		shader::set_vec3(shader, "dirLight.color", params.dir_light->color, config);
 	}
 }
 
 #include "graphics/primitives.h"
 
-void MainPass::render(World& world, RenderParams& params) {
-	device.width = params.width;
-	device.height = params.height;
+void MainPass::render_to_buffer(World& world, RenderParams& params, std::function<void()> bind) {
 
+	unsigned int width = params.width;
+	unsigned int height = params.height;
+
+	params.width = current_frame.width;
+	params.height = current_frame.height;
+	
 	params.command_buffer->clear();
 
 	world.render(params);
-	
+
 	depth_prepass.render_maps(world, params, params.projection, params.view);
 	shadow_pass.render(world, params);
 
@@ -73,10 +71,25 @@ void MainPass::render(World& world, RenderParams& params) {
 
 	current_frame.unbind();
 
+	params.width = width;
+	params.height = height;
+
 	for (Pass* pass : post_process) {
 		pass->render(world, params);
 	}
 
-	device.bind();
+	bind();
+
 	shadow_pass.volumetric.render_upsampled(world, frame_map, params.projection);
+}
+
+void MainPass::render(World& world, RenderParams& params) {
+	render_to_buffer(world, params, [this, params]() {
+		output.width = params.width;
+		output.height = params.height;
+
+		output.bind();
+		output.clear_color(glm::vec4(0, 0, 0, 1));
+		output.clear_depth(glm::vec4(0, 0, 0, 1));
+	});
 }

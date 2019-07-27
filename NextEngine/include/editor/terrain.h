@@ -15,7 +15,7 @@ struct Terrain {
 	Handle<struct Texture> heightmap;
 	
 	vector<float> heightmap_points;
-	float max_height = 50.0f;
+	float max_height = 10.0f;
 
 	Terrain();
 

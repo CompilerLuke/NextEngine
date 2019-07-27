@@ -13,7 +13,7 @@ struct PickingPass : Pass {
 	Framebuffer framebuffer;
 	Handle<struct Texture> picking_map;
 	
-	void set_shader_params(Handle<Shader>, struct World&, struct RenderParams&) override;
+	void set_shader_params(Handle<struct Shader>, Handle<struct ShaderConfig>, struct World&, struct RenderParams&) override;
 
 	int pick(struct World&, struct UpdateParams&);
 	void render(struct World&, struct RenderParams&) override;

@@ -49,6 +49,8 @@ bool render_fields_primitive(bool* ptr, StringView prefix) {
 	return true;
 }
 
+#include <imgui_internal.h>
+
 bool render_fields_struct(reflect::TypeDescriptor_Struct* self, void* data, StringView prefix, World& world) {
 	if (override_inspect.find(self->name) != override_inspect.end()) {
 		return override_inspect[self->name](data, prefix, world);
@@ -58,7 +60,7 @@ bool render_fields_struct(reflect::TypeDescriptor_Struct* self, void* data, Stri
 
 	auto id = ImGui::GetID(name.c_str());
 
-	if (self->members.size() == 1) {
+	if (self->members.size() == 1 && prefix != "Component") {
 		auto& field = self->members[0];
 		render_fields(field.type, (char*)data + field.offset, field.name, world);
 		return true;
@@ -67,6 +69,10 @@ bool render_fields_struct(reflect::TypeDescriptor_Struct* self, void* data, Stri
 	bool open;
 	if (prefix == "Component") {
 		open = ImGui::CollapsingHeader(self->name, ImGuiTreeNodeFlags_Framed);
+
+		ImGui::PushID(self->name);
+		//ImGui::CloseButton(ImGui::GetActiveID(), ImVec2(ImGui::GetCurrentWindow()->DC.CursorPos.x + ImGui::GetWindowWidth() - 35, ImGui::GetCurrentWindow()->DC.CursorPos.y - 23.0f), 15.0f);
+		ImGui::PopID();
 	}
 	else {
 		open = ImGui::TreeNode(name.c_str());
@@ -217,6 +223,31 @@ void DisplayComponents::render(World& world, RenderParams& params, Editor& edito
 				ImGui::EndGroup();
 			}
 
+			if (ImGui::Button("Add Component")) {
+				ImGui::OpenPopup("createComponent");
+			}
+			if (ImGui::BeginPopup("createComponent")) {
+				char buff[50];
+				memcpy(buff, filter.c_str(), filter.length + 1);
+				ImGui::InputText("filter", buff, 50);
+				filter = StringBuffer(buff);
+
+				for (int i = 0; i < world.components_hash_size; i++) {
+					ComponentStore* store = world.components[i].get();
+					if (store == NULL) continue;
+					if (store->get_by_id(selected_id).data != NULL) continue;
+					
+					StringView type_name = StringView(store->get_component_type()->name);
+
+					if (!type_name.starts_with(filter)) continue;
+
+					if (ImGui::Button(type_name.c_str())) { //todo make work with undo and redo
+						store->make_by_id(selected_id);
+						ImGui::CloseCurrentPopup();
+					}
+				}
+				ImGui::EndPopup();
+			}
 		}
 	}
 

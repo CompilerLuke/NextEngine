@@ -6,6 +6,7 @@
 #include "logger/logger.h"
 #include "editor/assetTab.h"
 #include <glm/gtc/type_ptr.hpp>
+#include "graphics/ibl.h"
 
 bool Quat_inspect(void* data, StringView prefix, struct World& world) {
 	glm::quat* ptr = (glm::quat*)data;
@@ -133,7 +134,20 @@ bool Materials_inspect(void* data, StringView prefix, World& world) {
 	return false;
 }
 
+bool Skybox_inspect(void* data, StringView prefix, World& world) {
+	if (ImGui::CollapsingHeader("Skylight")) {
+		if (ImGui::Button("Capture")) {
+			((Skybox*)data)->capture_scene = true;
+			((Skybox*)data)->on_load(world);
+		}
+		return true;
+	}
+
+	return false;
+}
+
 void register_on_inspect_callbacks() {
+	register_on_inspect_gui("Skybox", Skybox_inspect);
 	register_on_inspect_gui("Material", Material_inspect);
 	register_on_inspect_gui("Materials", Materials_inspect);
 	register_on_inspect_gui("Handle<Shader>", Shader_inspect);

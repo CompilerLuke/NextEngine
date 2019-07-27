@@ -76,8 +76,6 @@ void DeserializerBuffer::read_union(reflect::TypeDescriptor_Union* type, void* p
 
 	auto& union_case = type->cases[tag];
 	read(union_case.type, (char*)ptr + union_case.offset);
-
-	log("here");
 }
 
 void SerializerBuffer::write_byte(uint8_t byte) {

@@ -31,6 +31,8 @@ struct DrawCommandState {
 	StencilMask stencil_mask = 0;
 	DrawMode mode = DrawSolid;
 
+	bool operator==(DrawCommandState&);
+
 	REFLECT()
 };
 
@@ -40,7 +42,6 @@ extern DrawCommandState ENGINE_API draw_draw_over;
 using DrawSortKey = long long;
 
 struct DrawCommand {
-	DrawSortKey key = 0;
 	ID id;
 	glm::mat4* model_m;
 	struct AABB* aabb;
@@ -49,6 +50,27 @@ struct DrawCommand {
 	int num_instances = 1;
 
 	DrawCommand(ID, glm::mat4*, struct AABB*, struct VertexBuffer*, struct Material*);
+};
+
+struct Pipeline {
+	Handle<struct Shader> shader;
+	Handle<struct ShaderConfig> config;
+
+	Handle<struct Uniform> model_u;
+	Handle<struct Uniform> projection_u;
+	Handle<struct Uniform> view_u;
+
+	DrawCommandState state;
+};
+
+struct SpecializedDrawCommand {
+	DrawSortKey key = 0;
+	glm::mat4* model_m;
+	struct VertexBuffer* buffer;
+	Material* material;
+	int num_instances;
+
+	Handle<ShaderConfig> config;
 };
 
 struct CommandBuffer {

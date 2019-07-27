@@ -7,10 +7,22 @@
 
 using TextureID = unsigned int;
 
+struct Image {
+	int width = 0;
+	int height = 0;
+	int num_channels = 0;
+	void* data = NULL;
+
+	Image();
+	Image(Image&&);
+	~Image();
+};
+
 struct Texture {
 	StringBuffer filename;
 	TextureID texture_id = 0;
 
+	void submit(Image&);
 	void on_load();
 
 	REFLECT()
@@ -33,6 +45,7 @@ namespace cubemap {
 	void bind_to(Handle<Cubemap>, unsigned int);
 };
 
+Image load_Image(StringView filename);
 
 Handle<Texture> load_Texture(StringView filename);
 Handle<Texture> make_Texture(Texture&&);
