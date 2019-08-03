@@ -177,8 +177,8 @@ bool load_in_place_with_err(ShaderConfig* self, StringBuffer* err, StringView v_
 
 	prefix += "#line 0\n";
 
-	vshader_source = prefix;
-	fshader_source = prefix;
+	vshader_source = prefix.view();
+	fshader_source = prefix.view();
 
 	{
 		File vshader_f;
@@ -351,6 +351,8 @@ namespace shader {
 
 void DebugShaderReloadSystem::update(World& world, UpdateParams& params) {
 	if (!params.layermask & editor_layer) return;
+
+	return;
 
 	for (auto& shad_factory : RHI::shader_manager.slots) {
 		auto v_time_modified = Level::time_modified(shad_factory.v_filename);

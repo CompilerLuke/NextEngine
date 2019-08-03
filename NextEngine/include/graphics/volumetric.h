@@ -27,7 +27,7 @@ struct VolumetricPass {
 	Handle<Shader> volume_shader;
 	Handle<Shader> upsample_shader;
 
-	VolumetricPass(struct Window&, Handle<struct Texture>);
+	VolumetricPass(glm::vec2, Handle<struct Texture>);
 	void clear();
 
 	void render_with_cascade(struct World&, struct RenderParams&, ShadowParams& shadow_params);

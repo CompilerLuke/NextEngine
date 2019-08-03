@@ -186,7 +186,7 @@ void DeserializerBuffer::read(reflect::TypeDescriptor* type, void* ptr) {
 	else if (type->kind == reflect::Bool_Kind) *(bool*)ptr = read_byte();
 	else if (type->kind == reflect::Float_Kind) *(float*)ptr = read_float();
 	else if (type->kind == reflect::Int_Kind) *(int*)ptr = read_int();
-	else if (type->kind == reflect::Unsigned_Int_Kind) *(unsigned int*)ptr = read_int();
+	else if (type->kind == reflect::Unsigned_Int_Kind) *(int*)ptr = read_int();
 	else if (type->kind == reflect::StringBuffer_Kind) read_string(*(StringBuffer*)ptr);
 	else if (type->kind == reflect::Vector_Kind) read_array((reflect::TypeDescriptor_Vector*)type, ptr);
 	else throw "Unexpected type";

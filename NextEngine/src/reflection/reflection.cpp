@@ -6,6 +6,7 @@
 #include <glm/gtc/quaternion.hpp>
 #include "editor/displayComponents.h"
 #include "core/string_buffer.h"
+#include "core/core.h"
 
 #define PRIMITIVE_TYPE_DESCRIPTOR(kind, type) \
 struct TypeDescriptor_##type : TypeDescriptor { \

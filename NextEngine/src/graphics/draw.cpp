@@ -105,6 +105,7 @@ int can_instance(vector<SpecializedDrawCommand>& commands, int i, World& world) 
 }
 */
 
+
 void switch_shader(World& world, RenderParams& params, Handle<Shader> shader_id, Handle<ShaderConfig> config) {
 	shader::get_config(shader_id, config)->bind();
 
@@ -123,7 +124,8 @@ void depth_func_bind(DepthFunc func) {
 		glDepthFunc(GL_LESS); 
 		break;
 	case DepthFunc_None:
-		glDisable(GL_DEPTH_TEST);
+		glEnable(GL_DEPTH_TEST);
+		glDepthFunc(GL_ALWAYS);
 		break;
 	}
 }
@@ -257,6 +259,7 @@ void CommandBuffer::submit_to_gpu(World& world, RenderParams& render_params) {
 	pipeline_cache.reserve(100);
 
 	vector<SpecializedDrawCommand> commands;
+	commands.allocator = &temporary_allocator;
 	commands.reserve(this->commands.length);
 
 	ShaderConfigDesc::ShaderType shader_type = render_params.pass->type == Pass::Standard ? ShaderConfigDesc::Standard : ShaderConfigDesc::DepthOnly;
@@ -308,7 +311,7 @@ void CommandBuffer::submit_to_gpu(World& world, RenderParams& render_params) {
 		auto& mat = *cmd.material;
 
 		auto num_instanceable = cmd.num_instances; //can_instance(commands, i, world);
-		auto instanced = num_instanceable > 2;
+		auto instanced = num_instanceable > 1;
 
 		if (i == 0) {
 			switch_shader(world, render_params, mat.shader, cmd.config);
@@ -401,6 +404,7 @@ void CommandBuffer::submit_to_gpu(World& world, RenderParams& render_params) {
 			}
 
 			glBindBuffer(GL_ARRAY_BUFFER, instance_buffer);
+			//glBufferSubData(GL_ARRAY_BUFFER, 0, num_instanceable * sizeof(glm::mat4), cmd.model_m);
 			glDrawElementsInstanced(GL_TRIANGLES, cmd.buffer->length, GL_UNSIGNED_INT, NULL, num_instanceable);
 		}
 		else {

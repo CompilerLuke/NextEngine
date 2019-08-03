@@ -53,8 +53,6 @@ struct ModelRenderer {
 	bool visible = true;
 	Handle<Model> model_id;
 
-	void ENGINE_API set_materials(World&, vector<Handle<Material>>& materials);
-
 	REFLECT()
 };
 

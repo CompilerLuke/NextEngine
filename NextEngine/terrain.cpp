@@ -24,36 +24,7 @@ REFLECT_STRUCT_MEMBER_TAG(heightmap_points, reflect::HideInInspectorTag)
 REFLECT_STRUCT_MEMBER(show_control_points)
 REFLECT_STRUCT_END()
 
-Terrain::Terrain() {
-	unsigned int texture_id;
-
-	glGenTextures(1, &texture_id);
-	glBindTexture(GL_TEXTURE_2D, texture_id);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	//glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 16); 
-
-	unsigned int width_quads = 32 * width;
-	unsigned int height_quads = 32 * height;
-
-	if (heightmap_points.length == 0) {
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width_quads, height_quads, 0, GL_RED, GL_FLOAT, NULL);
-	}
-	else {
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width_quads, height_quads, 0, GL_RED, GL_FLOAT, heightmap_points.data);
-		glGenerateMipmap(GL_TEXTURE_2D);
-	}
-
-	glBindTexture(GL_TEXTURE_2D, 0);
-
-	this->heightmap = RHI::texture_manager.make({
-		"Heightmap",
-		texture_id
-	});
-}
+Terrain::Terrain() {}
 
 Handle<Model> load_subdivided(unsigned int num) {
 	Handle<Model> subdivided_plane = load_Model(format("subdivided_plane", num, ".fbx"));
@@ -63,7 +34,45 @@ Handle<Model> load_subdivided(unsigned int num) {
 	return subdivided_plane;
 }
 
-TerrainSystem::TerrainSystem() {
+void init_terrains(World& world, vector<ID>& terrains) {
+	for (ID id : terrains) {
+		auto terrain = world.by_id<Terrain>(id);
+		if (!terrain) continue;
+		
+		unsigned int texture_id;
+
+		glGenTextures(1, &texture_id);
+		glBindTexture(GL_TEXTURE_2D, texture_id);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		//glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 16); 
+
+		unsigned int width_quads = 32 * terrain->width;
+		unsigned int height_quads = 32 * terrain->height;
+
+		if (terrain->heightmap_points.length == 0) {
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width_quads, height_quads, 0, GL_RED, GL_FLOAT, NULL);
+		}
+		else {
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width_quads, height_quads, 0, GL_RED, GL_FLOAT, terrain->heightmap_points.data);
+			glGenerateMipmap(GL_TEXTURE_2D);
+		}
+
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		terrain->heightmap = RHI::texture_manager.make({
+			"Heightmap",
+			texture_id
+		});
+	}
+}
+
+TerrainSystem::TerrainSystem(World& world, Editor* editor) {
+	world.on_make<Terrain>([this, &world](vector<ID>& terrains) { init_terrains(world, terrains); });
+
 	flat_shader = load_Shader("shaders/pbr.vert", "shaders/gizmo.frag");
 	terrain_shader = load_Shader("shaders/terrain.vert", "shaders/terrain.frag");
 
@@ -71,6 +80,8 @@ TerrainSystem::TerrainSystem() {
 	subdivided_plane16 = load_subdivided(16);
 	subdivided_plane8 = load_subdivided(8);
 	cube_model = load_Model("cube.fbx");
+
+	this->editor = editor;
 
 	Material mat;
 	mat.shader = flat_shader;
@@ -96,6 +107,8 @@ void TerrainSystem::update(World& world, UpdateParams& params) {
 
 			Transform* trans = world.make<Transform>(id);
 			trans->scale = glm::vec3(0.1);
+			trans->position = editor->place_at_cursor(params.input);
+
 			TerrainControlPoint* control = world.make<TerrainControlPoint>(id);
 
 			EntityEditor* name = world.make<EntityEditor>(id);
@@ -190,9 +203,7 @@ void TerrainSystem::render(World& world, RenderParams& render_params) {
 
 				Material* mat = TEMPORARY_ALLOC(Material);
 				mat->shader = terrain_shader;
-				mat->params = params;
-
-				
+				mat->params = std::move(params);
 
 				float dist = glm::length(t.position - cam_trans->position);
 

@@ -9,20 +9,20 @@
 #include "components/transform.h"
 #include "components/camera.h"
 
-MainPass::MainPass(World& world, Window& window)
-	: depth_prepass(window.width, window.height, world),
-	shadow_pass(window, world, depth_prepass.depth_map)
+MainPass::MainPass(World& world, glm::vec2 size)
+	: depth_prepass(size.x, size.y, world, true),
+	shadow_pass(size, world, depth_prepass.depth_map)
 {
 	AttachmentSettings attachment(frame_map);
 	FramebufferSettings settings;
-	settings.width = window.width;
-	settings.height = window.height;
+	settings.width = size.x;
+	settings.height = size.y;
 	settings.depth_buffer = DepthComponent24;
 	settings.stencil_buffer = StencilComponent8;
 	settings.color_attachments.append(attachment);
 
-	output.width = window.width;
-	output.height = window.height;
+	output.width = size.x;
+	output.height = size.y;
 	//device.multisampling = 4;
 	//device.clear_colour = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 
@@ -51,12 +51,15 @@ void MainPass::render_to_buffer(World& world, RenderParams& params, std::functio
 	unsigned int width = params.width;
 	unsigned int height = params.height;
 
-	params.width = current_frame.width;
-	params.height = current_frame.height;
+	//params.width = current_frame.width;
+	//params.height = current_frame.height;
 	
 	params.command_buffer->clear();
 
 	world.render(params);
+
+	params.width = current_frame.width;
+	params.height = current_frame.height;
 
 	depth_prepass.render_maps(world, params, params.projection, params.view);
 	shadow_pass.render(world, params);

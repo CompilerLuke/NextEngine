@@ -3,6 +3,15 @@
 #include "logger/logger.h"
 
 void on_cursor_pos(Input* self, glm::vec2 mouse_position) {
+	if (!self->mouse_captured && (mouse_position.x > self->region_max.x || mouse_position.y > self->region_max.y || mouse_position.x < self->region_min.x || mouse_position.y < self->region_min.y)) {
+		self->active = false;
+		return;
+	}
+	
+	self->active = true;
+
+	mouse_position -= self->region_min;
+	
 	if (self->first_mouse) {
 		self->mouse_position = mouse_position;
 		self->first_mouse = false;
@@ -19,10 +28,14 @@ void on_cursor_pos(Input* self, glm::vec2 mouse_position) {
 }
 
 void on_key(Input* self, KeyData& key_data) {
+	if (!self->active) return;
+
 	self->keys[key_data.key] = key_data.action;
 }
 
 void on_mouse_button(Input* self, MouseButtonData& data) {
+	if (!self->active) return;
+
 	int button;
 	if (data.button == GLFW_MOUSE_BUTTON_LEFT) button = Left;
 	else if (data.button == GLFW_MOUSE_BUTTON_RIGHT) button = Right;
@@ -38,6 +51,9 @@ Input::Input(Window& window) {
 	window.on_mouse_button.listen([this](MouseButtonData data) { on_mouse_button(this, data); });
 	
 	this->window_ptr = window.window_ptr;
+
+	this->region_min = glm::vec2(0, 0);
+	this->region_max = glm::vec2(window.width, window.height);
 }
 
 bool is_mod_down(Input* input) {
@@ -45,7 +61,8 @@ bool is_mod_down(Input* input) {
 }
 
 bool Input::key_down(Key key, bool allow_mod) {
-	if (!allow_mod && is_mod_down(this)) return false;
+	if (!allow_mod && is_mod_down(this))
+		return false;
 
 	auto state = this->keys[key];
 	return state == GLFW_PRESS || state == GLFW_REPEAT;
@@ -69,6 +86,7 @@ bool Input::mouse_button_pressed(MouseButton button) {
 
 void Input::capture_mouse(bool capture) {
 	glfwSetInputMode(window_ptr, GLFW_CURSOR, capture ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+	mouse_captured = capture;
 }
 
 float Input::get_vertical_axis() {
@@ -85,6 +103,11 @@ float Input::get_horizontal_axis() {
 
 void Input::clear() {
 	mouse_offset = glm::vec2(0);
+
+	if (!active) {
+		this->keys.clear();
+		return;
+	}
 
 	for (auto pair : this->keys) {
 		if (pair.second == GLFW_PRESS) {

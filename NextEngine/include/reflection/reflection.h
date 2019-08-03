@@ -258,4 +258,7 @@ public:
 	}
 };
 
+template<> ENGINE_API
+TypeDescriptor* getPrimitiveDescriptor<float>();
+
 } // namespace reflect

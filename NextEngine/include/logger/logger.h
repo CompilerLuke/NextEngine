@@ -10,6 +10,7 @@ void ENGINE_API format_intern(StringBuffer&, char* str);
 void ENGINE_API format_intern(StringBuffer&, const char* str);
 void ENGINE_API format_intern(StringBuffer&, StringView str);
 void ENGINE_API format_intern(StringBuffer&, int num);
+void ENGINE_API format_intern(StringBuffer&, float num);
 void ENGINE_API format_intern(StringBuffer&, unsigned int num);
 void ENGINE_API format_intern(StringBuffer&, const StringBuffer&);
 

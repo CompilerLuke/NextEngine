@@ -159,12 +159,20 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="bowWeapon.h" />
+    <ClInclude Include="fpsController.h" />
     <ClInclude Include="game.h" />
+    <ClInclude Include="player.h" />
+    <ClInclude Include="playerInput.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="bowWeapon.cpp" />
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="fpsController.cpp" />
+    <ClCompile Include="player.cpp" />
+    <ClCompile Include="playerInput.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

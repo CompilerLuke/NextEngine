@@ -23,6 +23,8 @@ struct Terrain {
 };
 
 struct TerrainSystem : System {
+	struct Editor* editor = NULL; 
+
 	Handle<struct Shader> terrain_shader;
 	Handle<struct Shader> flat_shader;
 
@@ -32,7 +34,7 @@ struct TerrainSystem : System {
 	Handle<struct Model> subdivided_plane32;
 	vector<Handle<struct Material>> control_point_materials;
 
-	TerrainSystem();
+	TerrainSystem(struct World&, struct Editor* editor);
 
 	void update(struct World&, struct UpdateParams&) override;
 	void render(struct World&, struct RenderParams&) override;

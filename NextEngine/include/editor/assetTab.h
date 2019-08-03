@@ -71,7 +71,8 @@ struct AssetTab {
 	struct ImFont* default_font = NULL;
 
 	static vector<MaterialAsset*> material_handle_to_asset; 
-	static void insert_material_asset(MaterialAsset*);
+	static vector<ModelAsset*> model_handle_to_asset;
+
 
 	World assets;
 	ID toplevel;

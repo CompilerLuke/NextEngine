@@ -11,6 +11,11 @@ enum MouseButton { Middle = 0, Right = 1, Left = 2 };
 enum KeyAction { Pressed = 1, Released = 0};
 
 struct Input {
+	bool active = true;
+
+	glm::vec2 region_min;
+	glm::vec2 region_max;
+	
 	bool first_mouse = true;
 
 	glm::vec2 mouse_position;
@@ -24,17 +29,17 @@ struct Input {
 
 	int mouse_button_state[3] = { 0, 0, 0 };
 
-	bool key_down(Key, bool allow_mod = false);
-	bool key_pressed(Key, bool allow_mod = false);
+	bool ENGINE_API key_down(Key, bool allow_mod = false);
+	bool ENGINE_API key_pressed(Key, bool allow_mod = false);
 
-	bool mouse_button_down(MouseButton);
-	bool mouse_button_pressed(MouseButton);
+	bool ENGINE_API mouse_button_down(MouseButton);
+	bool ENGINE_API mouse_button_pressed(MouseButton);
 
-	float get_vertical_axis();
-	float get_horizontal_axis();
+	float ENGINE_API get_vertical_axis();
+	float ENGINE_API get_horizontal_axis();
 
 	GLFWwindow* window_ptr;
-	void capture_mouse(bool);
+	void ENGINE_API capture_mouse(bool);
 	void clear();
 
 	Input(Window&);

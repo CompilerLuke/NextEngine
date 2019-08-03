@@ -13,6 +13,7 @@
 #include "editor/picking.h"
 #include "graphics/renderPass.h"
 #include "editor/diffUtil.h"
+#include "graphics/frameBuffer.h"
 
 struct DroppableField {
 	void* ptr;
@@ -47,6 +48,9 @@ struct Editor {
 	Window& window;
 	StringView game_code;
 
+	Handle<Texture> scene_view;
+	Framebuffer scene_view_fbo;
+
 	PickingPass picking_pass;
 	MainPass main_pass;
 
@@ -55,6 +59,8 @@ struct Editor {
 	float model_tab_width = 0.2f;
 	bool playing_game = false;
 	bool exit = false;
+
+	Transform fly_trans;
 
 	vector<Icon> icons;
 
@@ -78,11 +84,20 @@ struct Editor {
 	ENGINE_API Editor(const char* game_code, struct Window&);
 	ENGINE_API ~Editor();
 
+	glm::vec3 place_at_cursor(struct Input&);
+
+	struct RenderParams* render_params_ptr;
+
 	void update(struct UpdateParams&);
-	void render(struct RenderParams&);
+	void render(struct RenderParams&, struct Input&);
 	void init_imgui();
 
 	ENGINE_API void run();
 
-	void select(ID);
+	void select(int);
 };
+
+namespace ImGui {
+	void InputText(const char*, StringBuffer&);
+}
+

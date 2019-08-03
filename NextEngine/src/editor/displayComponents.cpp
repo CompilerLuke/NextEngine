@@ -14,38 +14,47 @@ OnInspectGUICallback get_on_inspect_gui(StringView on_type) {
 	return override_inspect[std::string(on_type.data)];
 }
 
+
+
 void register_on_inspect_gui(StringView on_type, OnInspectGUICallback func) {
 	override_inspect[std::string(on_type.data)] = func;
 }
 
 bool render_fields_primitive(int* ptr, StringView prefix) {
+	ImGui::PushID((long long)ptr);
 	ImGui::InputInt(prefix.c_str(), ptr);
+	ImGui::PopID();
 	return true;
 }
 
 bool render_fields_primitive(unsigned int* ptr, StringView prefix) {
 	int as_int = *ptr;
+	ImGui::PushID((long long)ptr);
+
 	ImGui::InputInt(prefix.c_str(), &as_int);
+	ImGui::PopID();
 	*ptr = as_int;
 	return true;
 }
 
 bool render_fields_primitive(float* ptr, StringView prefix) {
+	ImGui::PushID((long long)ptr);
 	ImGui::InputFloat(prefix.c_str(), ptr);
+	ImGui::PopID();
 	return true;
 }
 
-bool render_fields_primitive(std::string* str, StringView prefix) {
-	char buf[50];
-	std::memcpy(buf, str->c_str(), str->size() + 1);
-
-	ImGui::InputText(prefix.c_str(), buf, 50);
-	*str = std::string(buf);
+bool render_fields_primitive(StringBuffer* str, StringView prefix) {
+	ImGui::PushID((long long)str);
+	ImGui::InputText(prefix.c_str(), *str);
+	ImGui::PopID();
 	return true;
 }
 
 bool render_fields_primitive(bool* ptr, StringView prefix) {
+	ImGui::PushID((long long)ptr);
 	ImGui::Checkbox(prefix.c_str(), ptr);
+	ImGui::PopID();
 	return true;
 }
 
@@ -83,7 +92,7 @@ bool render_fields_struct(reflect::TypeDescriptor_Struct* self, void* data, Stri
 			auto offset_ptr = (char*)data + field.offset;
 			
 			if (field.tag == reflect::LayermaskTag) {
-				override_inspect["Layermask"](data, prefix, world);
+				override_inspect["Layermask"](offset_ptr, prefix, world);
 			}
 			else if (field.tag == reflect::HideInInspectorTag) {}
 			else {
@@ -171,7 +180,7 @@ bool render_fields(reflect::TypeDescriptor* type, void* data, StringView prefix,
 	else if (type->kind == reflect::Int_Kind) return render_fields_primitive((int*)data, prefix);
 	else if (type->kind == reflect::Bool_Kind) return render_fields_primitive((bool*)data, prefix);
 	else if (type->kind == reflect::Unsigned_Int_Kind) return render_fields_primitive((unsigned int*)data, prefix);
-	else if (type->kind == reflect::StringBuffer_Kind) return render_fields_primitive((std::string*)data, prefix);
+	else if (type->kind == reflect::StringBuffer_Kind) return render_fields_primitive((StringBuffer*)data, prefix);
 }
 
 void DisplayComponents::update(World& world, UpdateParams& params) {

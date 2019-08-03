@@ -20,7 +20,6 @@ DebugLightSystem::DebugLightSystem() {
 
 	this->dir_light_model = load_Model("editor/dirLight.fbx");
 	this->gizmo_materials = { RHI::material_manager.make({
-		"DefaultMaterial",
 		shad,
 		{
 			make_Param_Vec3(location(shad, "material.diffuse"), glm::vec3(0, 0.8, 0.8))

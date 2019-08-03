@@ -13,7 +13,7 @@ struct DepthMap : Pass {
 
 	void set_shader_params(Handle<struct Shader>, Handle<struct ShaderConfig>, struct World&, struct RenderParams&) override {};
 
-	DepthMap(unsigned int, unsigned int, struct World&);
+	DepthMap(unsigned int, unsigned int, struct World&, bool stencil = false);
 	void render_maps(struct World&, struct RenderParams&, glm::mat4 projection, glm::mat4 view);
 };
 
@@ -23,7 +23,7 @@ struct ShadowMask {
 
 	void set_shadow_params(Handle<Shader>, Handle<ShaderConfig>, struct World&, struct RenderParams&);
 
-	ShadowMask(struct Window& window, struct World&);
+	ShadowMask(glm::vec2, struct World&);
 };
 
 struct ShadowPass : Pass {
@@ -41,5 +41,5 @@ struct ShadowPass : Pass {
 	void set_shader_params(Handle<Shader>, Handle<ShaderConfig>, struct World&, struct RenderParams&) override {};
 	void set_shadow_params(Handle<Shader>, Handle<ShaderConfig>, struct World&, struct RenderParams&);
 
-	ShadowPass(struct Window& window, struct World&, Handle<struct Texture> depth_prepass);
+	ShadowPass(glm::vec2, struct World&, Handle<struct Texture> depth_prepass);
 };

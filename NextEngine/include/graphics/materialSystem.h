@@ -48,7 +48,6 @@ Param make_Param_Cubemap(Handle<Uniform> loc, Handle<struct Cubemap>);
 Param make_Param_Image(Handle<Uniform> loc, Handle<struct Texture>);
 
 struct Material {
-	StringBuffer name;
 	Handle<Shader> shader;
 	vector<Param> params;
 	DrawCommandState* state = &default_draw_state;
@@ -62,5 +61,4 @@ struct Materials {
 	REFLECT()
 };
 
-Handle<Material> material_by_name(vector<Handle<Material>>&, StringView);
 vector<Param> make_SubstanceMaterial(StringView folder, StringView);

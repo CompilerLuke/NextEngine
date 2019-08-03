@@ -23,6 +23,10 @@ void format_intern(StringBuffer& buffer, int num) {
 	buffer += std::to_string(num).c_str();
 }
 
+void format_intern(StringBuffer& buffer, float num) {
+	buffer += std::to_string(num).c_str();
+}
+
 void format_intern(StringBuffer& buffer, unsigned int num) {
 	buffer += std::to_string(num).c_str();
 }

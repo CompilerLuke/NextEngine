@@ -80,7 +80,7 @@ struct StringBuffer {
 		return *this;
 	}
 
-	inline StringBuffer& operator=(const StringView& other) {
+	inline StringBuffer& operator=(StringView other) {
 		if (*this == other) return *this;
 		
 		this->reserve(other.length);

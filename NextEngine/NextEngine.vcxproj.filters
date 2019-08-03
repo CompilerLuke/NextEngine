@@ -150,9 +150,6 @@
     <ClCompile Include="src\logger\logger.cpp">
       <Filter>src\logger</Filter>
     </ClCompile>
-    <ClCompile Include="src\physics\btWrapper.cpp">
-      <Filter>src\physics</Filter>
-    </ClCompile>
     <ClCompile Include="src\physics\physics.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>

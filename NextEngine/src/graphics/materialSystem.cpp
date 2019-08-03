@@ -20,7 +20,6 @@ REFLECT_UNION_CASE(real)
 REFLECT_UNION_END()
 
 REFLECT_STRUCT_BEGIN(Material)
-REFLECT_STRUCT_MEMBER(name)
 REFLECT_STRUCT_MEMBER(shader)
 REFLECT_STRUCT_MEMBER(params)
 REFLECT_STRUCT_END()
@@ -28,14 +27,6 @@ REFLECT_STRUCT_END()
 REFLECT_STRUCT_BEGIN(Materials)
 REFLECT_STRUCT_MEMBER(materials)
 REFLECT_STRUCT_END()
-
-Handle<Material> material_by_name(vector<Handle<Material>>& materials, StringView name) {
-	for (int i = 0; i < materials.length; i++) {
-		Material* mat = RHI::material_manager.get(materials[i]);
-		if (mat->name == name) return materials[i];
-	}
-	return { INVALID_HANDLE };
-}
 
 Param::Param() {};
 

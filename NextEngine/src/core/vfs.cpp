@@ -13,6 +13,7 @@ void Level::set_level(StringView asset_folder_path) {
 
 StringBuffer Level::asset_path(StringView filename) {
 	StringBuffer buffer;
+	buffer.allocator = &temporary_allocator;
 	buffer += asset_folder_path;
 	buffer += filename;
 	return buffer;
@@ -53,7 +54,7 @@ StringBuffer File::read() {
 	size_t length = info->st_size;
 
 	StringBuffer buffer;
-	buffer.reserve(length);
+	buffer.reserve(length + 1);
 	length = fread_s(buffer.data, length, sizeof(char), length, f);
 	buffer.data[length] = '\0';
 	buffer.length = length;

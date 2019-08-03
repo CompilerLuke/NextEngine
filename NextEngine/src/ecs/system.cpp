@@ -15,7 +15,7 @@
 
 DEFINE_COMPONENT_ID(Entity, 0)
 DEFINE_COMPONENT_ID(Transform, 1)
-DEFINE_COMPONENT_ID(LocalTransform, 2)
+DEFINE_COMPONENT_ID(LocalTransform, 22)
 DEFINE_COMPONENT_ID(Materials, 3)
 DEFINE_COMPONENT_ID(ModelRenderer, 4)
 DEFINE_COMPONENT_ID(Camera, 5)
@@ -52,7 +52,7 @@ void register_default_systems_and_components(World& world) {
 	world.add(new Store<RigidBody>(10));
 
 	world.add(new CameraSystem());
-	world.add(new PhysicsSystem());
+	world.add(new PhysicsSystem(world));
 	world.add(new FlyOverSystem());
 	world.add(new ModelRendererSystem());
 	world.add(new LocalTransformSystem());

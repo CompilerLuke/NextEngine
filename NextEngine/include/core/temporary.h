@@ -11,14 +11,14 @@ struct TemporaryAllocator : Allocator {
 
 	TemporaryAllocator(const TemporaryAllocator&) = delete;
 
-	TemporaryAllocator(size_t);
-	~TemporaryAllocator();
+	ENGINE_API TemporaryAllocator(size_t);
+	ENGINE_API ~TemporaryAllocator();
 
 	void* allocate(size_t) override;
 	void clear();
 };
 
-extern TemporaryAllocator temporary_allocator;
+extern ENGINE_API TemporaryAllocator temporary_allocator;
 
 #define TEMPORARY_ALLOC(name, ...) new (temporary_allocator.allocate(sizeof(name))) name(__VA_ARGS__)
 #define TEMPORARY_ARRAY(name, num) new (temporary_allocator.allocate(sizeof(name) * num)) name[num]

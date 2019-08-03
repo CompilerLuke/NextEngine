@@ -15,7 +15,7 @@
 #include "graphics/rhi.h"
 
 
-DepthMap::DepthMap(unsigned int width, unsigned int height, World& world) {
+DepthMap::DepthMap(unsigned int width, unsigned int height, World& world, bool stencil) {
 	this->type = Pass::Depth_Only;
 	
 	AttachmentSettings attachment(this->depth_map);
@@ -25,23 +25,25 @@ DepthMap::DepthMap(unsigned int width, unsigned int height, World& world) {
 	settings.height = height;
 	settings.depth_attachment = &attachment;
 	settings.depth_buffer = DepthComponent24;
+
+	//if (stencil) settings.stencil_buffer = StencilComponent8;
 	
 	this->depth_map_FBO = Framebuffer(settings);
 	this->depth_shader = load_Shader("shaders/gizmo.vert", "shaders/depth.frag");
 }
 
-ShadowPass::ShadowPass(Window& window, World& world, Handle<Texture> depth_prepass) :
+ShadowPass::ShadowPass(glm::vec2 size, World& world, Handle<Texture> depth_prepass) :
 	deffered_map_cascade(4096, 4096, world),
-	ping_pong_shadow_mask(window, world),
-	shadow_mask(window, world),
+	ping_pong_shadow_mask(size, world),
+	shadow_mask(size, world),
 	depth_prepass(depth_prepass),
-	volumetric(window, depth_prepass),
+	volumetric(size, depth_prepass),
 	screenspace_blur_shader(load_Shader("shaders/screenspace.vert", "shaders/blur.frag")),
 	shadow_mask_shader(load_Shader("shaders/screenspace.vert", "shaders/shadowMask.frag"))
 {
 }
 
-ShadowMask::ShadowMask(Window& window, World& world) {
+ShadowMask::ShadowMask(glm::vec2 size, World& world) {
 	AttachmentSettings color_attachment(this->shadow_mask_map);
 	color_attachment.mag_filter = Linear;
 	color_attachment.min_filter = Linear;
@@ -49,8 +51,8 @@ ShadowMask::ShadowMask(Window& window, World& world) {
 	color_attachment.wrap_t = Repeat;
 
 	FramebufferSettings settings;
-	settings.width = window.width;
-	settings.height = window.height;
+	settings.width = size.x;
+	settings.height = size.y;
 	settings.color_attachments.append(color_attachment);
 	settings.depth_buffer = DepthComponent24;
 
@@ -73,6 +75,7 @@ struct OrthoProjInfo {
 	glm::mat4 toLight;
 	glm::mat4 toWorld;
 	glm::mat4 lightProjection;
+	glm::mat4 round;
 };
 
 constexpr int num_cascades = 4;
@@ -127,18 +130,32 @@ void calc_ortho_proj(RenderParams& params, glm::mat4& light_m, float width, floa
 			//aabb.update(farFrustumCorners[j]);
 		}
 
-		glm::vec3 centroid = (farFrustumCorners[0] + farFrustumCorners[7]) / 2.0f;
-		float radius = 0.0f;
+		glm::vec3 centroid;
+		float diagonalLength = 0.0f;
 
-		for (int j = 0; j < 8; j++) {
-			auto vW = farFrustumCorners[j];
+		for (int a = 0; a < 8; a++) {
+			for (int b = a + 1; b < 8; b++) {
+				float new_dist = glm::length(farFrustumCorners[a] - farFrustumCorners[b]);
+				new_dist = glm::ceil(new_dist * 10.0f) / 10.0f;
 
-			radius = glm::max(radius, glm::length(glm::vec3(vW) - centroid));
+				if (new_dist > diagonalLength) {
+					diagonalLength = new_dist;
+					centroid = (farFrustumCorners[a] + farFrustumCorners[b]) / 2.0f;
+				}
+			}
 		}
 
+		//float radius = 0.0f;
 
-		//glm::vec3 center = (farFrustumCorners[0] + farFrustumCorners[7]) / 2.0f;
-		//float radius = glm::length(aabb.max - center);
+		float radius = diagonalLength / 2.0f;
+
+		/*
+		for (int j = 0; j < 8; j++) {
+			auto vW = farFrustumCorners[j];
+			//aabb.update(vW);
+			radius = glm::max(radius, glm::length(glm::vec3(vW) - centroid));
+		}
+		*/
 
 		//float radius = glm::length(aabb.max - center); //glm::max(glm::length(aabb.min - center), glm::length(aabb.max - center));
 
@@ -147,7 +164,37 @@ void calc_ortho_proj(RenderParams& params, glm::mat4& light_m, float width, floa
 		aabb.min.z = 1;
 		aabb.max.z = 200;
 
+		float worldsUnitsPerTexel = diagonalLength / width;
 
+		aabb.min.x = glm::floor(aabb.min.x / worldsUnitsPerTexel) * worldsUnitsPerTexel;
+		aabb.min.y = glm::floor(aabb.min.y / worldsUnitsPerTexel) * worldsUnitsPerTexel;
+
+		float viewportExtent = floor((diagonalLength) / worldsUnitsPerTexel) * worldsUnitsPerTexel;    // Ensure view point extents are a texel multiple.  
+
+		aabb.max.x = aabb.min.x + viewportExtent;
+		aabb.max.y = aabb.min.y + viewportExtent;
+
+		/*
+		glm::mat4 shadow_matrix = glm::ortho(aabb.min.x, aabb.max.y, aabb.min.y, aabb.max.y, aabb.min.z, aabb.max.z) * light_m;
+
+		glm::vec4 shadowOrigin = shadow_matrix * glm::vec4(glm::vec3(0.0f), 1.0f);
+		shadowOrigin /= shadowOrigin.w;
+
+		shadowOrigin *= (width / 2.0f);
+		glm::vec2 roundedOrigin = glm::vec2(glm::round(shadowOrigin.x), glm::round(shadowOrigin.y));
+		glm::vec2 rounding = roundedOrigin - glm::vec2(shadowOrigin);
+		rounding /= (width / 2.0f);
+
+		glm::mat4 roundMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(rounding.x, rounding.y, 0.0f));
+		*/
+
+		/*
+		glm::vec3 vBorderOffset = (glm::vec3(diagonalLength) - (aabb.max - aabb.min)) * 0.5f;
+		aabb.max += vBorderOffset;
+		aabb.min -= vBorderOffset;
+		*/
+
+		
 
 		/*
 		float shadowMapSize = radius * 2.0f;
@@ -176,10 +223,9 @@ void calc_ortho_proj(RenderParams& params, glm::mat4& light_m, float width, floa
 		glm::vec2 d = texCoordRounded - texCoord;
 
 		d /= glm::vec2(width, height) * 0.5f;
+	
+		glm::mat4 roundMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(d, 0));
 		*/
-
-
-
 
 		/*
 		float radius = 0;
@@ -205,15 +251,16 @@ void calc_ortho_proj(RenderParams& params, glm::mat4& light_m, float width, floa
 		float maxZ = 500; //todo make less hardcoded
 		*/
 
-		glm::mat4 light_projection_matrix = glm::ortho(aabb.min.x, aabb.max.y, aabb.min.y, aabb.max.y, aabb.min.z, aabb.max.z);
+		auto light_projection_matrix = glm::ortho(aabb.min.x, aabb.max.y, aabb.min.y, aabb.max.y, aabb.min.z, aabb.max.z);
 
 
 		glm::vec4 endClipSpace = proj_m * glm::vec4(0, 0, -cascadeEnd[i + 1], 1.0);
 		endClipSpace /= endClipSpace.w;
 
 		shadowOrthoProjInfo[i].toWorld = glm::inverse(proj_m * cam_m);
-		shadowOrthoProjInfo[i].toLight = light_projection_matrix * light_m;
+		shadowOrthoProjInfo[i].toLight = light_projection_matrix * light_m ;
 		shadowOrthoProjInfo[i].lightProjection = light_projection_matrix;
+		//shadowOrthoProjInfo[i].round = roundMatrix;
 
 		shadowOrthoProjInfo[i].endClipSpace = endClipSpace.z;
 	}
@@ -229,6 +276,7 @@ void DepthMap::render_maps(World& world, RenderParams& params, glm::mat4 project
 	this->depth_map_FBO.clear_depth(glm::vec4(0, 0, 0, 1));
 
 	new_params.command_buffer->submit_to_gpu(world, new_params);
+
 
 	this->depth_map_FBO.unbind();
 }
@@ -258,7 +306,7 @@ void ShadowPass::render(World& world, RenderParams& params) {
 
 	for (int i = 0; i < num_cascades; i++) {
 		auto& proj_info = info[i];
-		deffered_map_cascade.render_maps(world, params, proj_info.lightProjection, view_matrix);
+		deffered_map_cascade.render_maps(world, params, proj_info.toLight, glm::mat4(1.0f));
 
 		shadow_mask.shadow_mask_map_fbo.bind();
 

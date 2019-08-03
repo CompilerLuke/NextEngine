@@ -46,7 +46,7 @@ struct RigidBody {
 struct PhysicsSystem : System {
 	BulletWrapper* bt_wrapper;
 
-	PhysicsSystem();
+	PhysicsSystem(struct World&);
 	~PhysicsSystem();
 
 	void update(struct World&, UpdateParams&) override;

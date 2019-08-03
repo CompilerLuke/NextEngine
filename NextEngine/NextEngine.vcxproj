@@ -299,7 +299,6 @@
     <ClCompile Include="src\model\mesh.cpp" />
     <ClCompile Include="src\model\model.cpp" />
     <ClCompile Include="src\model\model_renderer.cpp" />
-    <ClCompile Include="src\physics\btWrapper.cpp" />
     <ClCompile Include="src\physics\physics.cpp" />
     <ClCompile Include="src\reflection\reflection.cpp" />
     <ClCompile Include="src\serialization\serializer.cpp" />

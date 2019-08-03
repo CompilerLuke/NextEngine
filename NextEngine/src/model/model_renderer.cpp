@@ -119,29 +119,3 @@ void ModelRendererSystem::render(World& world, RenderParams& params) { //HOTSPOT
 		}
 	}
 }
-
-
-void ModelRenderer::set_materials(World& world, vector<Handle<Material>>& materials) { //todo DEPRECATE
-	vector<Handle<Material>> materials_in_order;
-
-	if (this->model_id.id == INVALID_HANDLE) return;
-	
-	auto model = RHI::model_manager.get(this->model_id);
-	if (!model) return;
-
-	for (auto& mat_name : model->materials) {
-		auto mat = material_by_name(materials, mat_name);
-		if (mat.id == INVALID_HANDLE) throw "Missing material";
-
-		materials_in_order.append(mat);
-	}
-
-	auto this_id = world.id_of(this);
-	auto material_component = world.by_id<Materials>(this_id);
-	
-	if (material_component == NULL) {
-		material_component = world.make<Materials>(this_id);
-	}
-	material_component->materials = materials_in_order;
-}
-

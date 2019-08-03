@@ -11,19 +11,27 @@
 #include <glm/gtx/matrix_decompose.hpp>
 #include <iostream>
 
+void Gizmo::register_callbacks(Editor& editor) {
+	editor.selected.listen([this](ID id) {
+		delete diff_util;
+		diff_util = NULL;
+		ImGuizmo::Enable(false);
+	});
+}
+
 void Gizmo::update(World& world, Editor& editor, UpdateParams& params) {
 	if (editor.selected_id == -1) {
 		this->mode = GizmoMode::DisabledGizmo;
 		return;
 	}
 	
-	if (params.input.key_pressed(GLFW_KEY_T)) {
+	if (params.input.key_down(GLFW_KEY_T)) {
 		this->mode = GizmoMode::TranslateGizmo;
 	}
-	else if (params.input.key_pressed(GLFW_KEY_E)) {
+	else if (params.input.key_down(GLFW_KEY_E)) {
 		this->mode = GizmoMode::ScaleGizmo;
 	}
-	else if (params.input.key_pressed(GLFW_KEY_R)) {
+	else if (params.input.key_down(GLFW_KEY_R)) {
 		this->mode = GizmoMode::RotateGizmo;
 	}
 	else if (params.input.key_down(GLFW_KEY_ESCAPE)) {
@@ -41,7 +49,8 @@ Gizmo::~Gizmo() {
 	delete this->diff_util;
 }
 
-void Gizmo::render(World& world, Editor& editor, RenderParams& params) {
+void Gizmo::render(World& world, Editor& editor, RenderParams& params, Input& input) {
+	input.active = true;
 	if (editor.selected_id == -1) return;
 
 	Transform* trans = world.by_id<Transform>(editor.selected_id);
@@ -70,9 +79,17 @@ void Gizmo::render(World& world, Editor& editor, RenderParams& params) {
 		diff_util = new DiffUtil(trans, &default_allocator);
 	}
 
+	//ImGuizmo rendering behind other screen
+
+	ImGuizmo::SetRect(input.region_min.x, input.region_min.y, input.region_max.x - input.region_min.x, input.region_max.y - input.region_min.y);
+
 	ImGuizmo::Manipulate(glm::value_ptr(params.view), glm::value_ptr(params.projection), guizmo_operation, guizmo_mode, glm::value_ptr(model_matrix), NULL, snap ? glm::value_ptr(snap_vec) : NULL);
 
-	if (was_using != ImGuizmo::IsUsing()) {
+	if (ImGuizmo::IsOver()) {
+		input.active = false;
+	}
+
+	if (was_using && !ImGuizmo::IsUsing()) {
 		if (diff_util->submit(editor, "Transformed")) {
 			delete diff_util;
 			diff_util = new DiffUtil(trans, &default_allocator);

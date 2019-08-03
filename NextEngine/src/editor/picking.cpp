@@ -38,20 +38,37 @@ void PickingPass::set_shader_params(Handle<Shader> shader, Handle<ShaderConfig> 
 
 }
 
-int PickingPass::pick(World& world, UpdateParams& params) {
-	auto mouse_position = params.input.mouse_position;
+glm::vec2 PickingPass::picking_location(Input& input) {
+	auto mouse_position = input.mouse_position;
+	return mouse_position / (input.region_max - input.region_min) * glm::vec2(framebuffer.width, framebuffer.height);
+}
 
+int PickingPass::pick(World& world, Input& input) {
 	int id = 0;
 
+	glm::vec2 pick_at = picking_location(input);
+
 	glBindFramebuffer(GL_FRAMEBUFFER, this->framebuffer.fbo);
-	glReadPixels((int)mouse_position.x, (int)this->framebuffer.height - mouse_position.y, 1, 1, GL_RED_INTEGER, GL_INT, &id);
+	glReadPixels((int)pick_at.x, (int)this->framebuffer.height - pick_at.y, 1, 1, GL_RED_INTEGER, GL_INT, &id);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	id -= 1;
 
-	log("Got back id : ", id);
-
 	return id;
+}
+
+float PickingPass::pick_depth(World& world, Input& input) {
+	float depth = 0;
+
+	glm::vec2 pick_at = picking_location(input);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, this->framebuffer.fbo);
+	glReadPixels((int)pick_at.x, (int)this->framebuffer.height - pick_at.y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &depth);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	log("got back ", depth);
+
+	return depth;
 }
 
 void PickingPass::render(World& world, RenderParams& params) {
@@ -76,9 +93,8 @@ void PickingPass::render(World& world, RenderParams& params) {
 		params.append(make_Param_Int(loc, cmd.id));
 
 		cmd.material = TEMPORARY_ALLOC(Material, {
-			"Picking Material", //todo this will allocate
 			picking_shader,
-			params,
+			std::move(params),
 			cmd.material->state
 		});
 	}
@@ -110,7 +126,6 @@ PickingSystem::PickingSystem(Editor& editor) : editor(editor) {
 	object_state.clear_depth_buffer = false;
 
 	this->outline_material = {
-		"OutlineMaterial",
 		outline_shader,
 		{},
 		&outline_state
@@ -130,15 +145,20 @@ void PickingSystem::render(World& world, RenderParams& params) {
 
 		{
 			Shader* shad = RHI::shader_manager.get(cmd.material->shader);
-			Material* mat = TEMPORARY_ALLOC(Material, *cmd.material); //todo LEAKS MEMORY
+			Material* mat = TEMPORARY_ALLOC(Material);
+			mat->params.allocator = &temporary_allocator;
+			*mat = *cmd.material;
+
 			mat->state = &object_state;
 			cmd.material = mat;
 			
 		}
 
 		{
+
+			   
 			DrawCommand new_cmd = cmd;
-			new_cmd.material = TEMPORARY_ALLOC(Material, outline_material);
+			new_cmd.material = TEMPORARY_ALLOC(Material, outline_material); //todo change vertex shader
 			params.command_buffer->submit(new_cmd);
 		}
 	}

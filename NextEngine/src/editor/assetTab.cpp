@@ -68,21 +68,38 @@ DEFINE_COMPONENT_ID(ShaderAsset, 2)
 DEFINE_COMPONENT_ID(ModelAsset, 3)
 DEFINE_COMPONENT_ID(MaterialAsset, 4)
 
+vector<MaterialAsset*> AssetTab::material_handle_to_asset;
+vector<ModelAsset*> AssetTab::model_handle_to_asset;
+
+void insert_material_handle_to_asset(MaterialAsset* asset) {
+	int diff = asset->handle.id - AssetTab::material_handle_to_asset.length + 1;
+
+	for (int i = 0; i < diff; i++) {
+		AssetTab::material_handle_to_asset.append(NULL);
+	}
+	AssetTab::material_handle_to_asset[asset->handle.id] = asset;
+}
+
+void insert_model_handle_to_asset(ModelAsset* asset) {
+	int diff = asset->handle.id - AssetTab::model_handle_to_asset.length + 1;
+
+	for (int i = 0; i < diff; i++) {
+		AssetTab::model_handle_to_asset.append(NULL);
+	}
+	AssetTab::model_handle_to_asset[asset->handle.id] = asset;
+}
+
 void AssetTab::register_callbacks(Window& window, Editor& editor) {
 	
 }
 
 void render_name(StringBuffer& name, ImFont* font) {
-	char buff[50];
-	memcpy(buff, name.c_str(), name.size() + 1);
-
 	ImGui::PushItemWidth(-1);
 	ImGui::PushID((void*)&name);
 	ImGui::PushFont(font);
-	ImGui::InputText("##", buff, 50);
+	ImGui::InputText("##", name);
 	ImGui::PopItemWidth();
 	ImGui::PopFont();
-	name = buff;
 	ImGui::PopID();
 
 }
@@ -103,9 +120,11 @@ void render_asset(ImTextureID texture_id, StringBuffer& name, AssetTab& tab, ID 
 		
 	if (selected) ImGui::PopStyleVar(1);
 
+
 	if (data && ImGui::BeginDragDropSource()) {
+
 		ImGui::Image((ImTextureID)texture_id, ImVec2(128, 128), ImVec2(0, 1), ImVec2(1, 0));
-		ImGui::SetDragDropPayload(drag_drop_type, data, sizeof(void*));
+		ImGui::SetDragDropPayload(drag_drop_type, data, sizeof(Handle<int>));
 		ImGui::EndDragDropSource();
 	}
 	else if (is_selected) {
@@ -312,6 +331,7 @@ RenderParams create_preview_command_buffer(CommandBuffer& cmd_buffer, RenderPara
 	render_params.cam = cam;
 
 	//Light
+
 	{
 		auto id = world.make_ID();
 		auto e = world.make<Entity>(id);
@@ -331,7 +351,6 @@ Handle<Material> create_default_material() { //todo move to materialSystem
 	Handle<Shader> pbr = load_Shader("shaders/pbr.vert", "shaders/pbr.frag");
 
 	return RHI::material_manager.make({
-		"Empty",
 		pbr,
 		{
 			make_Param_Image(location(pbr, "material.diffuse"), load_Texture("solid_white.png")),
@@ -344,10 +363,13 @@ Handle<Material> create_default_material() { //todo move to materialSystem
 		});
 }
 
-
-
 void render_preview_to_buffer(AssetTab& self, RenderParams& params, CommandBuffer& cmd_buffer, Handle<Texture>& preview, World& world) {
+	((MainPass*)params.pass)->shadow_pass.shadow_mask.shadow_mask_map_fbo.bind();
+	((MainPass*)params.pass)->shadow_pass.shadow_mask.shadow_mask_map_fbo.clear_color(glm::vec4(0, 0, 0, 1));
+	
 	self.preview_fbo.bind();
+
+
 	self.preview_fbo.clear_color(glm::vec4(0, 0, 0, 1));
 	self.preview_fbo.clear_depth(glm::vec4(0, 0, 0, 1));
 
@@ -373,7 +395,7 @@ void render_preview_to_buffer(AssetTab& self, RenderParams& params, CommandBuffe
 
 	self.preview_tonemapped_fbo.unbind();
 
-	world.free_by_id(world.id_of(params.dir_light));
+	world.free_now_by_id(world.id_of(params.dir_light));
 }
 
 void render_preview_for(World& world, AssetTab& self, ModelAsset& asset, RenderParams& old_params) {
@@ -417,7 +439,7 @@ void render_preview_for(World& world, AssetTab& self, ModelAsset& asset, RenderP
 
 render_preview_to_buffer(self, params, cmd_buffer, asset.rot_preview.preview, world);
 
-world.free_by_id(id);
+world.free_now_by_id(id);
 }
 
 void render_preview_for(World& world, AssetTab& self, MaterialAsset& asset, RenderParams& old_params) {
@@ -443,7 +465,7 @@ void render_preview_for(World& world, AssetTab& self, MaterialAsset& asset, Rend
 
 	render_preview_to_buffer(self, render_params, cmd_buffer, asset.rot_preview.preview, world);
 
-	world.free_by_id(id);
+	world.free_now_by_id(id);
 }
 
 void rot_preview(RotatablePreview& self) {
@@ -645,7 +667,11 @@ void import_model(World& world, Editor& editor, AssetTab& self, RenderParams& pa
 
 	ID id = self.assets.make_ID();
 	ModelAsset* model_asset = self.assets.make<ModelAsset>(id);
+
 	model_asset->handle = handle;
+
+	insert_model_handle_to_asset(model_asset);
+
 	for (StringView name : model->materials) {
 		model_asset->materials.append(self.default_material);
 	}
@@ -714,16 +740,6 @@ void import_filename(Editor& editor, World& world, RenderParams& params, AssetTa
 	}
 }
 
-vector<MaterialAsset*> AssetTab::material_handle_to_asset;
-
-void insert_material_handle_to_asset(MaterialAsset* asset) {
-	int diff = asset->handle.id - AssetTab::material_handle_to_asset.length + 1;
-	
-	for (int i = 0; i < diff; i++) {
-		AssetTab::material_handle_to_asset.append(NULL);
-	}
-	AssetTab::material_handle_to_asset[asset->handle.id] = asset;
-}
 
 MaterialAsset* create_new_material(World& world, AssetTab& self, Editor& editor, RenderParams& params) {
 	Handle<Material> mat_handle = create_default_material();
@@ -779,34 +795,6 @@ AssetTab::AssetTab() {
 }
 
 void AssetTab::update(World& world, Editor& editor, UpdateParams& params) {
-	if (params.input.key_pressed(GLFW_KEY_N)) {
-		if (selected != -1) {
-			ModelAsset* model_asset = assets.by_id<ModelAsset>(selected);
-
-			if (model_asset) {
-
-				ID id = world.make_ID();
-				Entity* e = world.make<Entity>(id);
-
-				EntityEditor* name = world.make<EntityEditor>(id);
-				name->name = model_asset->name;
-
-				Transform * trans = world.make<Transform>(id);
-
-				Materials* materials = world.make<Materials>(id);
-				materials->materials = model_asset->materials;
-
-				ModelRenderer* mr = world.make<ModelRenderer>(id);
-				mr->model_id = model_asset->handle;
-
-				Camera* cam = get_camera(world, params.layermask);
-				Transform* cam_trans = world.by_id<Transform>(world.id_of(cam));
-				trans->position = cam_trans->position + (cam_trans->rotation * glm::vec3(0, 0, -10));
-
-				editor.submit_action(new CreateAction(world, id));
-			}
-		}
-	}
 }
 
 void AssetTab::render(World& world, Editor& editor, RenderParams& params) {
@@ -874,13 +862,10 @@ void AssetTab::render(World& world, Editor& editor, RenderParams& params) {
 		}
 
 		{
-			char buff[50];
-			memcpy(buff, filter.c_str(), filter.size() + 1);
 			ImGui::SameLine(ImGui::GetWindowWidth() - 400);
 			ImGui::Text("Filter");
 			ImGui::SameLine();
-			ImGui::InputText("Filter", buff, 50);
-			filter = buff;
+			ImGui::InputText("Filter", filter);
 		}
 
 		ImGui::Separator();
@@ -1052,12 +1037,11 @@ void AssetTab::on_load(World& world, RenderParams& params) {
 			assets.skipped_ids.append(id);
 
 			Material mat;
+
 			serializer.read(reflect::TypeResolver<Material>::get(), &mat);
 			serializer.read(reflect::TypeResolver<MaterialAsset>::get(), mat_asset);
 
-			if (mat.shader.id == 19) {
-				mat.shader = tree;
-			}
+
 
 			//if (mat.shader.id == 19) {
 			//	mat.shader = paralax;
@@ -1119,6 +1103,8 @@ void AssetTab::on_load(World& world, RenderParams& params) {
 			serializer.read(reflect::TypeResolver<ModelAsset>::get(), mod_asset);
 
 			model.load_in_place(mod_asset->trans.compute_model_matrix());
+
+			insert_model_handle_to_asset(mod_asset);
 
 			RHI::model_manager.make(mod_asset->handle, std::move(model));
 

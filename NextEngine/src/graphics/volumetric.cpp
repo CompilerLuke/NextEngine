@@ -8,6 +8,7 @@
 #include "components/lights.h"
 #include "components/transform.h"
 #include "components/camera.h"
+#include "logger/logger.h"
 
 FogMap::FogMap(unsigned int width, unsigned int height) {
 	Handle<Texture> tex;
@@ -28,8 +29,8 @@ FogMap::FogMap(unsigned int width, unsigned int height) {
 	this->map = tex;
 }
 
-VolumetricPass::VolumetricPass( Window& window, Handle<Texture> depth_prepass)
-	: calc_fog(window.width / 2.0f, window.height / 2.0f),
+VolumetricPass::VolumetricPass(glm::vec2 size, Handle<Texture> depth_prepass)
+	: calc_fog(size.x / 2.0f, size.y / 2.0f),
 	  depth_prepass(depth_prepass),
 	  volume_shader(load_Shader("shaders/screenspace.vert", "shaders/volumetric.frag")),
 	  upsample_shader(load_Shader("shaders/screenspace.vert", "shaders/volumetric_upsample.frag"))
@@ -114,6 +115,7 @@ void VolumetricPass::render_upsampled(World& world, Handle<Texture> current_fram
 	shader::set_mat4(upsample_shader, "model", ident);
 
 	glm::mat4 depth_proj = glm::inverse(proj_matrix);
+
 	shader::set_mat4(upsample_shader, "depthProj", depth_proj);
 
 	render_quad();

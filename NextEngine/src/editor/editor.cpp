@@ -102,14 +102,13 @@ void set_darcula_theme() {
 	style->FrameBorderSize = 0;
 }
 
+static bool is_scene_hovered = false;
+
 void override_key_callback(GLFWwindow* window_ptr, int key, int scancode, int action, int mods) {
 	auto window = (Window*)glfwGetWindowUserPointer(window_ptr);
 	
 	ImGui_ImplGlfw_KeyCallback(window_ptr, key, scancode, action, mods);
-
-	if (!ImGui::GetIO().WantCaptureKeyboard) {
-		window->on_key.broadcast({ key, scancode, action, mods });
-	}
+	window->on_key.broadcast({ key, scancode, action, mods });
 }
 
 void override_mouse_button_callback(GLFWwindow* window_ptr, int button, int action, int mods) {
@@ -117,13 +116,14 @@ void override_mouse_button_callback(GLFWwindow* window_ptr, int button, int acti
 	
 	ImGui_ImplGlfw_MouseButtonCallback(window_ptr, button, action, mods);
 
-	if (!ImGui::GetIO().WantCaptureMouse) {
-		window->on_mouse_button.broadcast({ button, action, mods });
-	}
+	window->on_mouse_button.broadcast({ button, action, mods });
 }
 
-void Editor::select(ID id) {
+void Editor::select(int id) {
 	this->selected_id = id;
+	if (id != -1) {
+		this->selected.broadcast(id);
+	}
 }
 
 wchar_t* to_wide_char(const char* orig) {
@@ -156,13 +156,35 @@ register_components_and_systems_t load_register_components_and_systems(const cha
 	return func;
 }
 
+#include "physics/physics.h"
+
 Editor::Editor(const char* game_code, Window& window)
-: window(window), picking_pass(window), game_code(game_code), main_pass(world, window) {
+: window(window), picking_pass(window), game_code(game_code), main_pass(world, glm::vec2(window.width, window.height)) {
 	
 	load_register_components_and_systems(game_code)(world);
 	world.add(new Store<EntityEditor>(100));
 
 	register_on_inspect_callbacks();
+
+	this->selected.listen([this](ID id) { 
+		auto rb = world.by_id<RigidBody>(id);
+		if (rb) {
+			rb->bt_rigid_body = NULL; //todo fix leak
+		}
+	});
+
+	gizmo.register_callbacks(*this);
+
+	AttachmentSettings color_attachment(scene_view);
+	color_attachment.min_filter = Linear;
+	color_attachment.mag_filter = Linear;
+
+	FramebufferSettings settings;
+	settings.width = window.width;
+	settings.height = window.height;
+	settings.color_attachments.append(color_attachment);
+
+	scene_view_fbo = Framebuffer(settings);
 }
 
 void Editor::init_imgui() {
@@ -194,13 +216,20 @@ void Editor::init_imgui() {
 }
 
 ImTextureID Editor::get_icon(StringView name) {
-	for (auto icon : icons) {
+	for (auto& icon : icons) {
 		if (icon.name == name) {
 			return (ImTextureID) texture::id_of(icon.texture_id);
 		}
 	}
 	
 	throw "Could not find icon";
+}
+
+void ImGui::InputText(const char* str, StringBuffer& buffer) {
+	char buf[50];
+	std::memcpy(buf, buffer.c_str(), buffer.size() + 1);
+	ImGui::InputText(str, buf, 50);
+	buffer = StringView(buf);
 }
 
 void default_scene(Editor& editor, RenderParams& params) {
@@ -260,7 +289,7 @@ StringBuffer save_component_to(ComponentStore* store) {
 	return StringBuffer("data/") + store->get_component_type()->name + ".ne";
 }
 
-void on_load(Editor& editor, RenderParams& params) {
+void on_load_world(Editor& editor) {
 	unsigned int save_files_available = 0;
 
 	for (int i = 0; i < editor.world.components_hash_size; i++) {
@@ -279,7 +308,7 @@ void on_load(Editor& editor, RenderParams& params) {
 			for (unsigned int i = 0; i < num_components; i++) {
 				unsigned int id = buffer.read_int();
 				void* ptr = store->make_by_id(id);
-			
+
 				buffer.read(component_type, ptr);
 				editor.world.skipped_ids.append(id);
 			}
@@ -288,21 +317,23 @@ void on_load(Editor& editor, RenderParams& params) {
 		}
 	}
 
-	editor.asset_tab.on_load(editor.world, params);
-
-	if (save_files_available == 0) default_scene(editor, params);
-
+	//if (save_files_available == 0) default_scene(editor, params);
 }
 
-void on_save(Editor& editor) {
-	for (int i = 0; i < editor.world.components_hash_size; i++) {
+void on_load(Editor& editor, RenderParams& params) {
+	on_load_world(editor);
+	editor.asset_tab.on_load(editor.world, params);
+}
+
+void on_save_world(Editor& editor) {
+	for (int i = 0; i < editor.world.components_hash_size; i++) {	
 		auto store = editor.world.components[i].get();
 		if (store != NULL) {
 			SerializerBuffer buffer;
 
 			vector<Component> filtered;
 			for (Component& comp : store->filter_untyped()) {
-				if (editor.world.by_id<EntityEditor>(comp.id))
+				if (editor.world.by_id<EntityEditor>(comp.id) && !editor.world.by_id<Skybox>(comp.id))
 					filtered.append(comp);
 			}
 
@@ -321,8 +352,17 @@ void on_save(Editor& editor) {
 			file.write({ buffer.data, buffer.index });
 		}
 	}
+}
 
+void on_save(Editor& editor) {
+	on_save_world(editor);
 	editor.asset_tab.on_save();
+}
+
+void init_world(Editor& editor) {
+	World& world = editor.world;
+
+	auto skybox = make_default_Skybox(world, NULL, "Topanga_Forest_B_3k.hdr");
 }
 
 void Editor::run() {
@@ -348,7 +388,24 @@ void Editor::run() {
 	CommandBuffer cmd_buffer;
 	RenderParams render_params(&cmd_buffer, &main_pass);
 
+	render_params_ptr = &render_params;
+
 	auto skybox = make_default_Skybox(world, &render_params, "Topanga_Forest_B_3k.hdr");
+
+	init_world(*this);
+	
+	/*
+	{
+		auto id = world.make_ID();
+		auto e = world.make<Entity>(id);
+		e->layermask |= editor_layer;
+		auto trans = world.make<Transform>(id);
+		auto camera = world.make <Camera>(id);
+		auto flyover = world.make<Flyover>(id);
+		auto name = world.make<EntityEditor>(id);
+		name->name = "Editor Camera";
+	}
+	*/
 
 	main_pass.post_process.append(&picking_pass);
 
@@ -356,31 +413,15 @@ void Editor::run() {
 
 	UpdateParams update_params(input);
 
-	//Create grid
-
 	vector<Param> params = make_SubstanceMaterial("wood_2", "Stylized_Wood");
 
-	/*Material material = {
-		std::string("DefaultMaterial"),
-		load_Shader("shaders/pbr.vert", "shaders/pbr.frag"),
-		params,
-		&default_draw_state
-	};
 
-	*/
+	//Create grid
 
 	render_params.layermask = game_layer | editor_layer;
 	render_params.width = window.width;
 	render_params.height = window.height;
 	render_params.skybox = world.filter<Skybox>()[0];
-
-	{
-		auto id = world.make_ID();
-		auto e = world.make<Entity>(id);
-		auto trans = world.make<Transform>(id);
-		auto camera = world.make <Camera>(id);
-		auto flyover = world.make<Flyover>(id);
-	}
 
 	//default_scene(*this, render_params);
 	
@@ -388,7 +429,8 @@ void Editor::run() {
 
 	world.add(new DebugLightSystem());
 	world.add(new DebugShaderReloadSystem());
-	world.add(new TerrainSystem());
+
+	world.add(new TerrainSystem(world, this));
 	world.add(picking_system);
 
 	load_Shader("shaders/pbr.vert", "shaders/paralax_pbr.frag");
@@ -403,20 +445,23 @@ void Editor::run() {
 		input.clear();
 		window.poll_inputs();
 
-		update_params.layermask = game_layer;
+		update_params.layermask = playing_game ? game_layer : editor_layer;
 
-		render_params.layermask = game_layer | editor_layer;
+		render_params.layermask = playing_game ? game_layer : game_layer | editor_layer;
 		render_params.width = window.width;
 		render_params.height = window.height;
 		render_params.dir_light = get_dir_light(world, render_params.layermask);
-		render_params.skybox = skybox;
 
-		world.update(update_params);
 		update(update_params);
+		world.update(update_params);
 
 		if (window.height == window.width == 0) { //screen is hidden
-			render_params.pass->render(world, render_params);
-			render(render_params);
+			if (playing_game) {
+				render_params.pass->render(world, render_params);
+			}
+			else {
+				render(render_params, update_params.input);
+			}
 		}
 
 		window.swap_buffers();
@@ -464,7 +509,26 @@ void on_redo(Editor& editor) {
 	}
 }
 
+void on_set_play_mode(Editor& editor, bool playing) {
+	editor.playing_game = playing;
+
+	if (playing) { //this will not fully serialize this
+		on_save_world(editor);
+	}
+	else {
+		editor.world.clear(); //todo leaks memory
+		init_world(editor);
+		on_load_world(editor);
+	}
+}
+
 void Editor::update(UpdateParams& params) {
+	if (params.input.key_pressed(GLFW_KEY_P)) {
+		on_set_play_mode(*this, !playing_game);
+	}
+
+	if (playing_game) return;
+
 	if (params.input.key_pressed(GLFW_KEY_X)) {
 		if (this->selected_id >= 0) {
 			submit_action(new DestroyAction(world, this->selected_id));
@@ -478,7 +542,7 @@ void Editor::update(UpdateParams& params) {
 	}
 
 	if (params.input.mouse_button_pressed(MouseButton::Left)) {
-		this->selected_id = picking_pass.pick(world, params);
+		select(picking_pass.pick(world, params.input));
 	}
 
 	if (params.input.key_pressed(89, true) && params.input.key_down(GLFW_KEY_LEFT_CONTROL, true)) on_undo(*this);
@@ -490,11 +554,66 @@ void Editor::update(UpdateParams& params) {
 	asset_tab.update(world, *this, params);
 }
 
+glm::vec3 Editor::place_at_cursor(Input& input) {
+	glm::mat4 to_world = glm::inverse(render_params_ptr->projection * render_params_ptr->view);
 
-void Editor::render(RenderParams& params) {
+	float height = input.region_max.y - input.region_min.y;
+	float width = input.region_max.x - input.region_min.x;
+
+	glm::vec4 pos = glm::vec4(input.mouse_position.x / width, 1.0 - (input.mouse_position.y / height), picking_pass.pick_depth(world, input), 1.0);
+
+	pos *= 2.0;
+	pos -= 1.0;
+
+	pos = to_world * pos;
+	pos /= pos.w;
+
+	return pos;
+}
+
+void spawn_Model(World& world, Editor& editor, Input& input, RenderParams& render_params, Handle<Model> model_handle) { //todo maybe move to assetTab
+	ModelAsset* model_asset = AssetTab::model_handle_to_asset[model_handle.id];
+
+	if (model_asset) {
+
+		ID id = world.make_ID();
+		Entity* e = world.make<Entity>(id);
+
+		EntityEditor* name = world.make<EntityEditor>(id);
+		name->name = model_asset->name.view();
+
+		Transform * trans = world.make<Transform>(id);
+
+		Materials* materials = world.make<Materials>(id);
+		materials->materials = model_asset->materials;
+
+		ModelRenderer* mr = world.make<ModelRenderer>(id);
+		mr->model_id = model_asset->handle;
+
+		Camera* cam = get_camera(world, editor_layer);
+
+
+		
+
+		Transform* cam_trans = world.by_id<Transform>(world.id_of(cam));
+		trans->position = editor.place_at_cursor(input);
+
+		editor.submit_action(new CreateAction(world, id));
+	}
+}
+
+
+void Editor::render(RenderParams& params, Input& input) {
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
+
+	if (input.mouse_captured) {
+		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouse;
+	}
+	else {
+		ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
+	}
 
 	unsigned char* pixels;
 	int width, height;
@@ -559,15 +678,60 @@ void Editor::render(RenderParams& params) {
 	ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
 	ImGui::End();
 
-	ImGui::Begin("Game");
-	ImGui::ImageButton(get_icon("play"), ImVec2(40, 40));
+
+	ImGuiWindowFlags flags = ImGuiWindowFlags_NoDocking;
+	window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+	window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+
+
+	if (ImGui::Begin("Scene", NULL, ImGuiWindowFlags_NoScrollbar)) {
+
+
+		ImGui::ImageButton(get_icon("play"), ImVec2(40, 40));
+
+		float width = ImGui::GetContentRegionMax().x;
+		float height = ImGui::GetContentRegionMax().y - ImGui::GetCursorPos().y;
+
+		input.region_min.x = ImGui::GetWindowPos().x + ImGui::GetCursorPos().x;
+		input.region_min.y = ImGui::GetWindowPos().y + ImGui::GetCursorPos().y;
+		input.region_max = input.region_min + glm::vec2(width, height);
+
+		{
+			params.width = width;
+			params.height = height;
+
+			main_pass.render_to_buffer(world, params, [this]() {
+				scene_view_fbo.bind();
+				scene_view_fbo.clear_color(glm::vec4(0, 0, 0, 1));
+				scene_view_fbo.clear_depth(glm::vec4(0, 0, 0, 1));
+			});
+
+			main_pass.output.bind();
+			main_pass.output.clear_color(glm::vec4(0, 0, 0, 1));
+			main_pass.output.clear_depth(glm::vec4(0, 0, 0, 1));
+		}
+
+		ImGui::Image((ImTextureID)texture::id_of(scene_view), ImVec2(width, height), ImVec2(0, 1), ImVec2(1, 0));
+
+		if (ImGui::BeginDragDropTarget()) {
+			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DRAG_AND_DROP_MODEL")) {
+				spawn_Model(world, *this, input, params, *(Handle<Model>*)payload->Data);
+			}
+			ImGui::EndDragDropTarget();
+		}
+
+		is_scene_hovered = ImGui::IsItemHovered();
+
+		gizmo.render(world, *this, params, input);
+
+	}
 	ImGui::End();
 
 	//==========================
 
 	display_components.render(world, params, *this);
 	lister.render(world, *this, params);
-	gizmo.render(world, *this, params);
+
 	asset_tab.render(world, *this, params);
 
 	ImGui::PopFont();

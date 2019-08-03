@@ -9,6 +9,8 @@
 #include "graphics/ibl.h"
 
 bool Quat_inspect(void* data, StringView prefix, struct World& world) {
+	ImGui::PushID((long long)data);
+
 	glm::quat* ptr = (glm::quat*)data;
 	glm::vec3 euler = glm::eulerAngles(*ptr);
 	glm::vec3 previous = euler;
@@ -18,18 +20,27 @@ bool Quat_inspect(void* data, StringView prefix, struct World& world) {
 	euler = glm::radians(euler);
 	if (glm::abs(glm::length(previous - euler)) > 0.001)
 		*ptr = glm::quat(euler);
+
+	ImGui::PopID();
 	return true;
 }
 
 bool Vec3_inspect(void* data, StringView prefix, struct World& world) {
+	
 	glm::vec3* ptr = (glm::vec3*)data;
+	ImGui::PushID((long long)data);
 	ImGui::InputFloat3(prefix.c_str(), glm::value_ptr(*ptr));
+	ImGui::PopID();
+
 	return true;
 }
 
 bool Vec2_inspect(void* data, StringView prefix, struct World& world) {
 	glm::vec2* ptr = (glm::vec2*)data;
+
+	ImGui::PushID((long long)data);
 	ImGui::InputFloat2(prefix.c_str(), glm::value_ptr(*ptr));
+	ImGui::PopID();
 	return true;
 }
 

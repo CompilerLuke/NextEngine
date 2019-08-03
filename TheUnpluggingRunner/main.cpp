@@ -8,8 +8,11 @@
 int main() {
 	Window window;
 	window.title = "The Unplugging";
-	//window.full_screen = true;
+	window.full_screen = false;
+	
+	window.vSync = true;
 	window.init();
+	
 
 	StringView level = "C:\\Users\\User\\Desktop\\TopCCompiler\\TopCompiler\\Fernix\\assets\\level2\\";
 	Level::set_level(level);

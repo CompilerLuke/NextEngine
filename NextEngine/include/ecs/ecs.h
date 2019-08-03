@@ -12,6 +12,8 @@
 #include "system.h"
 #include "reflection/reflection.h"
 #include "core/temporary.h"
+#include <functional>
+#include "core/eventDispatcher.h"
 
 #if 1
 template<typename T>
@@ -44,11 +46,14 @@ struct Component {
 
 struct ComponentStore {
 	virtual void free_by_id(ID) = 0;
+	virtual void actually_free_by_id(ID) = 0;
 	virtual void* make_by_id(ID) = 0;
 	virtual Component get_by_id(ID) = 0;
 	virtual void set_enabled(void*, bool) = 0;
 	virtual vector<Component> filter_untyped() = 0;
 	virtual reflect::TypeDescriptor* get_component_type() = 0;
+	virtual void fire_callbacks() = 0;
+	virtual void clear() = 0;
 	virtual ~ComponentStore() {};
 };
 
@@ -73,23 +78,48 @@ struct Store : ComponentStore {
 	Slot<T>* free_slot;
 	unsigned int N;
 
-	Store(unsigned int max_number) {
-		N = max_number;
-		assert(N > 0);
+	vector<ID> created;
+	vector<ID> freed;
+
+	EventDispatcher<vector<ID>&> on_make;
+	EventDispatcher<vector<ID>&> on_free;
+
+	void fire_destructors() {
+		vector<ID> freed;
+
+		for (int i = 0; i < N; i++) {
+			if (components[i].is_enabled) {
+				freed.append(components[i].object.second);
+			}
+		}
+
+		on_free.broadcast(freed);
+	}
+
+	void clear() {
+		fire_destructors();
 
 		for (int i = 0; i < max_entities; i++) {
 			id_to_obj[i] = NULL;
 		}
 
-		components = new Slot<T>[N];
 		for (unsigned int i = 0; i < N - 1; i++) {
 			components[i].next = &components[i + 1];
+			components[i].is_enabled = false;
 		}
 
 		free_slot = &components[0];
 	}
 
+	Store(unsigned int max_number) {
+		N = max_number;
+
+		components = new Slot<T>[N];
+		clear();
+	}
+
 	virtual ~Store() {
+		fire_destructors();
 		delete[] components;
 	}
 
@@ -102,7 +132,11 @@ struct Store : ComponentStore {
 		return { id, this, reflect::TypeResolver<T>::get(), by_id(id) };
 	}
 
-	void free_by_id(ID id) {
+	void free_by_id(ID id) { //delay freeing till end of frame
+		this->freed.append(id);
+	}
+
+	void actually_free_by_id(ID id) { 
 		auto obj_ptr = this->by_id(id);
 		if (!obj_ptr) return;
 
@@ -126,6 +160,9 @@ struct Store : ComponentStore {
 		current_free_slot->is_enabled = true;
 
 		auto obj_ptr = &current_free_slot->object.first;
+
+		this->created.append(id);
+
 		this->register_component(id, obj_ptr);
 		return obj_ptr;
 	}
@@ -175,6 +212,31 @@ struct Store : ComponentStore {
 
 		return arr;
 	}
+
+	void fire_callbacks() override {
+		if (created.length > 0) {
+			vector<ID> actually_created;
+			for (ID id : created) {
+				if (this->by_id(id) != NULL) actually_created.append(id);
+			}
+			
+			on_make.broadcast(actually_created);
+			created.clear();
+		}
+
+		if (freed.length > 0) {
+			vector<ID> actually_freed;
+			for (ID id : freed) {
+				if (this->by_id(id) != NULL) actually_freed.append(id);
+			}
+
+			on_free.broadcast(actually_freed);
+			for (int i = 0; i < freed.length; i++) {
+				actually_free_by_id(freed[i]);
+			}
+			freed.clear();
+		}
+	}
 };
 
 struct Entity {
@@ -190,6 +252,8 @@ struct World {
 	std::unique_ptr<ComponentStore> components[components_hash_size];
 	vector<std::unique_ptr<System>> systems;
 	vector<ID> skipped_ids;
+
+	vector<ID> delay_free_entity;
 
 	template<typename T>
 	constexpr void add(Store<T>* store) {
@@ -208,6 +272,16 @@ struct World {
 	}
 
 	template<typename T>
+	void on_make(std::function<void (vector<ID>&)> f) {
+		get<T>()->on_make.listen(f);
+	}
+
+	template<typename T>
+	void on_free(std::function<void(vector<ID>&)> f) {
+		get<T>()->on_free.listen(f);
+	}
+
+	template<typename T>
 	T* make(ID id) {
 		return this->get<T>()->make(id);
 	}
@@ -220,13 +294,16 @@ struct World {
 		this->get<T>()->free_by_id(id);
 	}
 
-	
 	void free_by_id(ID id) {
-		for (int i = 0; i < components_hash_size; i++) {
-			if (components[i] == NULL) continue;
-			components[i]->free_by_id(id);
+		this->delay_free_entity.append(id);
+	}
+
+	void free_now_by_id(ID id) {
+		for (unsigned int i = 0; i < components_hash_size; i++) {
+			if (components[i] != NULL) {
+				components[i]->actually_free_by_id(id);
+			}
 		}
-		this->free_ID(id);
 	}
 
 	template<typename T>
@@ -304,10 +381,33 @@ struct World {
 		}
 	}
 
-	void update(UpdateParams& params) {
+	void update(UpdateParams& params) {		
+		for (unsigned int i = 0; i < components_hash_size; i++) {
+			if (components[i] != NULL) {
+				Store<char>* store = (Store<char>*)components[i].get();
+
+				for (ID id : delay_free_entity) {
+					store->freed.append(id);
+				}
+				components[i]->fire_callbacks();
+			}
+		}
+
+		for (ID id : delay_free_entity) {
+			free_ID(id);
+		}
+
+		delay_free_entity.clear();
+
 		for (unsigned int i = 0; i < systems.length; i++) {
 			auto system = systems[i].get();
 			system->update(*this, params);
+		}
+	}
+
+	void clear() {
+		for (int i = 0; i < components_hash_size; i++) {
+			if (components[i] != NULL) components[i]->clear();
 		}
 	}
 

@@ -21,5 +21,7 @@ struct MainPass : Pass {
 
 	vector<Pass*> post_process;
 
-	MainPass(struct World&, struct Window&);
+	MainPass(struct World&, glm::vec2);
+
+	void resize(glm::vec2);
 };
