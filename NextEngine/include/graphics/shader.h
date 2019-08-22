@@ -41,6 +41,8 @@ struct ShaderConfigDesc {
 	bool instanced = false;
 
 	bool operator==(ShaderConfigDesc&);
+
+	unsigned int flags = 0;
 };
 
 struct Shader {
@@ -49,6 +51,7 @@ struct Shader {
 
 	vector<Uniform> uniforms;
 	vector<ShaderConfig> configurations;
+	vector<StringBuffer> flags;
 
 	long long v_time_modified = 0;
 	long long f_time_modified = 0;
@@ -77,8 +80,9 @@ struct ShaderConfig {
 	~ShaderConfig();
 };
 
-Handle<Shader> ENGINE_API load_Shader(StringView vfilename, StringView ffilename);
+Handle<Shader> ENGINE_API load_Shader(StringView vfilename, StringView ffilename, bool serialized = true);
 Handle<Uniform> ENGINE_API location(Handle<Shader>, StringView);
+unsigned int ENGINE_API get_flag(Handle<Shader>, StringView);
 
 struct DebugShaderReloadSystem : System {
 	void update(World&, UpdateParams&) override;

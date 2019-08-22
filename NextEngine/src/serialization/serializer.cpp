@@ -199,3 +199,5 @@ SerializerBuffer::~SerializerBuffer() {
 DeserializerBuffer::DeserializerBuffer(const char* data, unsigned int length) : data(data), length(length) {
 
 }
+
+DeserializerBuffer::DeserializerBuffer() {}

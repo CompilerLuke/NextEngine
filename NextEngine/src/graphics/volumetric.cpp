@@ -14,8 +14,8 @@ FogMap::FogMap(unsigned int width, unsigned int height) {
 	Handle<Texture> tex;
 	
 	AttachmentSettings color_attachment(tex);
-	color_attachment.min_filter = Nearest;
-	color_attachment.mag_filter = Nearest;
+	color_attachment.min_filter = Linear;
+	color_attachment.mag_filter = Linear;
 	color_attachment.wrap_s = ClampToBorder;
 	color_attachment.wrap_t = ClampToBorder;
 

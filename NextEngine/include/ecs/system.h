@@ -4,6 +4,7 @@
 #include <glm/mat4x4.hpp>
 #include "core/handle.h"
 #include "core/core.h"
+#include "graphics/culling.h"
 
 struct RenderParams {
 	Layermask layermask;
@@ -15,6 +16,8 @@ struct RenderParams {
 	glm::mat4 projection;
 	glm::mat4 view;
 	struct Camera* cam = NULL;
+
+	glm::mat4* model_m;
 
 	unsigned int width = 0;
 	unsigned int height = 0;
@@ -31,7 +34,13 @@ struct UpdateParams {
 	UpdateParams(struct Input&);
 };
 
+struct PreRenderParams {
+	Layermask layermask;
+	glm::mat4* model_m;
+};
+
 struct System {
+	virtual void pre_render(struct World& world, struct PreRenderParams&) {};
 	virtual void render(struct World& world, struct RenderParams& params) {};
 	virtual void update(struct World& world, struct UpdateParams& params) {};
 	virtual ~System() {}

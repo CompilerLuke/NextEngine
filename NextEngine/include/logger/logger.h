@@ -36,7 +36,7 @@ template<typename ...Args>
 StringBuffer tformat(Args... args) {
 	StringBuffer buffer;
 	buffer.allocator = &temporary_allocator;
-	format(buffer, args...);
+	format_intern(buffer, args...);
 	return buffer;
 }
 

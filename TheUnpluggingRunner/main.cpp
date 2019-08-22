@@ -12,7 +12,6 @@ int main() {
 	
 	window.vSync = true;
 	window.init();
-	
 
 	StringView level = "C:\\Users\\User\\Desktop\\TopCCompiler\\TopCompiler\\Fernix\\assets\\level2\\";
 	Level::set_level(level);

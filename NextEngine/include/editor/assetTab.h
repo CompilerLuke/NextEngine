@@ -93,4 +93,5 @@ struct AssetTab {
 	void on_load(struct World& world, struct RenderParams& params);
 };
 
+MaterialAsset* register_new_material(World& world, AssetTab& self, Editor& editor, RenderParams& params, ID mat_asset_handle);
 MaterialAsset* create_new_material(struct World& world, struct AssetTab& self, struct Editor& editor, struct RenderParams& params);

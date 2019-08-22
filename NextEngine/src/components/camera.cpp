@@ -32,8 +32,3 @@ void Camera::update_matrices(World& world, RenderParams& params) {
 Camera* get_camera(World& world, Layermask layermask) {
 	return world.filter<Camera>(layermask)[0];
 }
-
-void CameraSystem::render(World& world, RenderParams& params) {
-	auto camera = get_camera(world, params.layermask);
-	camera->update_matrices(world, params);
-}

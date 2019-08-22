@@ -8,6 +8,7 @@
 #include "core/temporary.h"
 #include "logger/logger.h"
 #include "editor/terrain.h"
+#include "editor/grass.h"
 
 REFLECT_STRUCT_BEGIN(EntityEditor)
 REFLECT_STRUCT_MEMBER(name)
@@ -119,6 +120,17 @@ void Lister::render(World& world, Editor& editor, RenderParams& params) {
 				Materials* mat = world.make<Materials>(id);
 				mat->materials.append(editor.asset_tab.default_material);
 				name->name = "Terrain";
+			}
+
+			if (ImGui::MenuItem("New Grass")) {
+				ID id = world.make_ID();
+				Entity* e = world.make<Entity>(id);
+				Transform* trans = world.make<Transform>(id);
+				Grass* grass = world.make<Grass>(id);
+				EntityEditor* name = world.make<EntityEditor>(id);
+				name->name = "Grass";
+				Materials* mat = world.make <Materials>(id);
+				mat->materials.append(editor.asset_tab.default_material);
 			}
 
 			if (ImGui::MenuItem("New Empty")) //todo handle undos

@@ -43,8 +43,13 @@ bool File::open(StringView filename, FileMode mode) {
 	return this->f != NULL && !errors;
 }
 
-File::~File() {
+void File::close() {
 	if (this->f) fclose(this->f);
+	this->f = NULL;
+}
+
+File::~File() {
+	close();
 }
 
 StringBuffer File::read() {

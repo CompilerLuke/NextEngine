@@ -12,6 +12,7 @@ struct PickingPass : Pass {
 	Handle<struct Shader> picking_shader;
 	Framebuffer framebuffer;
 	Handle<struct Texture> picking_map;
+	struct MainPass* main_pass;
 	
 	void set_shader_params(Handle<struct Shader>, Handle<struct ShaderConfig>, struct World&, struct RenderParams&) override;
 
@@ -22,7 +23,7 @@ struct PickingPass : Pass {
 
 	glm::vec2 picking_location(struct Input&);
 
-	PickingPass(struct Window&);
+	PickingPass(struct Window&, struct MainPass*);
 };
 
 struct PickingSystem : System {

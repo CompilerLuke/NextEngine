@@ -40,6 +40,6 @@ void Mesh::render(ID id, glm::mat4* model, vector<Handle<Material>>& materials, 
 	auto aabb = TEMPORARY_ALLOC(AABB);
 	*aabb = this->aabb.apply(*model);
 
-	DrawCommand cmd(id, model, aabb, &buffer, material);
+	DrawCommand cmd(id, model, &buffer, material);
 	params.command_buffer->submit(cmd);
 }

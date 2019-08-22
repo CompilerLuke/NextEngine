@@ -26,7 +26,7 @@ REFLECT_STRUCT_END()
 Image load_Image(StringView filename) {
 	StringBuffer real_filename = Level::asset_path(filename);
 
-	if (filename.starts_with("Aset") || filename.starts_with("tgh") || filename.starts_with("ta")) stbi_set_flip_vertically_on_load(false);
+	if (filename.starts_with("Aset") || filename.starts_with("tgh") || filename.starts_with("ta") || filename.starts_with("smen")) stbi_set_flip_vertically_on_load(false);
 	else stbi_set_flip_vertically_on_load(true);
 
 	Image image;
@@ -77,7 +77,8 @@ void Texture::on_load() {
 }
 
 Handle<Texture> make_Texture(Texture&& tex) {
-	return RHI::texture_manager.make(std::move(tex));
+	bool serialized = tex.filename.length > 0;
+	return RHI::texture_manager.make(std::move(tex), serialized);
 }
 
 Handle<Cubemap> make_Cubemap(Cubemap&& tex) {
@@ -91,6 +92,7 @@ namespace texture {
 	}
 
 	unsigned int id_of(Handle<Texture> handle) {
+		if (handle.id == INVALID_HANDLE) return 0;
 		return RHI::texture_manager.get(handle)->texture_id;
 	}
 }
@@ -114,6 +116,5 @@ Handle<Texture> load_Texture(StringView filename) {
 	Texture texture;
 	texture.filename = filename;
 	texture.on_load();
-	return RHI::texture_manager.make(std::move(texture));
+	return make_Texture(std::move(texture));
 }
-

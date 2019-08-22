@@ -304,6 +304,8 @@ struct World {
 				components[i]->actually_free_by_id(id);
 			}
 		}
+
+		free_ID(id);
 	}
 
 	template<typename T>
@@ -372,6 +374,13 @@ struct World {
 		}
 
 		return ids;
+	}
+
+	void pre_render(PreRenderParams& params) {
+		for (unsigned int i = 0; i < systems.length; i++) {
+			auto system = systems[i].get();
+			system->pre_render(*this, params);
+		}
 	}
 
 	void render(RenderParams& params) {

@@ -50,3 +50,15 @@ void LocalTransformSystem::update(World& world, UpdateParams& params) {
 		world.by_id<LocalTransform>(id)->calc_global_transform(world);
 	}
 }
+
+void TransformSystem::pre_render(World& world, PreRenderParams& params) {
+	for (Transform* trans : world.filter<Transform>(params.layermask)) {
+		glm::mat4 identity;
+
+		glm::mat4 translate = glm::translate(identity, trans->position);
+		glm::mat4 scale = glm::scale(translate, trans->scale);
+		glm::mat4 rotation = glm::mat4_cast(trans->rotation);
+	
+		params.model_m[world.id_of(trans)] = scale * rotation;
+	}
+}

@@ -40,6 +40,8 @@ struct Model {
 	vector<Mesh> meshes;
 	vector<StringBuffer> materials;
 
+	AABB aabb;
+
 	void on_load();
 	void load_in_place(const glm::mat4& apply_transform = glm::mat4(1.0));
 	void ENGINE_API render(ID, glm::mat4*, vector<Handle<Material>>&, RenderParams&);
@@ -47,15 +49,11 @@ struct Model {
 	REFLECT()
 };
 
-Handle<Model> ENGINE_API load_Model(StringView);
+Handle<Model> ENGINE_API load_Model(StringView, bool serialized = false);
 
 struct ModelRenderer {
 	bool visible = true;
 	Handle<Model> model_id;
 
 	REFLECT()
-};
-
-struct ModelRendererSystem : System {
-	void render(World&, RenderParams&) override;
 };

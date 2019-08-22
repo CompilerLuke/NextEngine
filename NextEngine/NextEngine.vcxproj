@@ -90,7 +90,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;NEXTENGINE_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>
       </DisableSpecificWarnings>
       <ExceptionHandling>false</ExceptionHandling>
@@ -111,7 +111,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;NEXTENGINE_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>
       </DisableSpecificWarnings>
       <ExceptionHandling>false</ExceptionHandling>
@@ -134,7 +134,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;NEXTENGINE_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -156,7 +156,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;NEXTENGINE_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -200,6 +200,7 @@
     <ClInclude Include="include\editor\displayComponents.h" />
     <ClInclude Include="include\editor\editor.h" />
     <ClInclude Include="include\editor\gizmo.h" />
+    <ClInclude Include="include\editor\grass.h" />
     <ClInclude Include="include\editor\lister.h" />
     <ClInclude Include="include\editor\assetTab.h" />
     <ClInclude Include="include\editor\picking.h" />
@@ -229,6 +230,7 @@
     <ClInclude Include="include\physics\physics.h" />
     <ClInclude Include="include\reflection\reflection.h" />
     <ClInclude Include="materialManager.h" />
+    <ClInclude Include="include\model\modelRendererSystem.h" />
     <ClInclude Include="platform.h" />
     <ClInclude Include="src\core\eventDispatcher.h" />
     <ClInclude Include="stdafx.h" />
@@ -245,6 +247,7 @@
     <ClInclude Include="vendor\imgui\imstb_rectpack.h" />
     <ClInclude Include="vendor\imgui\imstb_textedit.h" />
     <ClInclude Include="vendor\imgui\imstb_truetype.h" />
+    <ClInclude Include="vendor\stbi_write.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
@@ -270,6 +273,7 @@
     <ClCompile Include="src\editor\displayComponents.cpp" />
     <ClCompile Include="src\editor\editor.cpp" />
     <ClCompile Include="src\editor\gizmo.cpp" />
+    <ClCompile Include="src\editor\grass.cpp" />
     <ClCompile Include="src\editor\lister.cpp" />
     <ClCompile Include="src\editor\assetTab.cpp" />
     <ClCompile Include="src\editor\picking.cpp" />
@@ -308,7 +312,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="terrain.cpp" />
+    <ClCompile Include="src\editor\terrain.cpp" />
     <ClCompile Include="vendor\ImGuizmo\ImGuizmo.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>

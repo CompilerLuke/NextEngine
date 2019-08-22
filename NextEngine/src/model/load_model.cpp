@@ -21,8 +21,6 @@ Mesh process_mesh(aiMesh* mesh, const aiScene* scene, vector<StringBuffer>& mate
 	for (int i = 0; i < mesh->mNumVertices; i++) {
 		auto position = mesh->mVertices[i];
 
-		aabb.update(glm::vec3(position.x, position.y, position.z) * apply_trans3);
-
 		auto tangent = mesh->mTangents[i];
 		auto bitangent = mesh->mBitangents[i];
 
@@ -40,6 +38,7 @@ Mesh process_mesh(aiMesh* mesh, const aiScene* scene, vector<StringBuffer>& mate
 			glm::vec3(bitangent.x, bitangent.y, bitangent.z) * apply_trans3
 		};
 
+		aabb.update(v.position);
 		vertices.append(std::move(v));
 	}
 
@@ -110,11 +109,15 @@ void Model::load_in_place(const glm::mat4& apply_transform) {
 
 	process_node(scene->mRootNode, scene, meshes, materials, apply_transform);
 
+	for (Mesh& mesh : meshes) {
+		aabb.update_aabb(mesh.aabb);
+	}
+
 	this->meshes = std::move(meshes);
 	this->materials = std::move(materials);
 }
 
-Handle<Model> load_Model(StringView path) {
+Handle<Model> load_Model(StringView path, bool serialized) {
 	for (int i = 0; i < RHI::model_manager.slots.length; i++) {
 		auto& slot = RHI::model_manager.slots[i];
 		if (slot.path == path) {
@@ -125,6 +128,6 @@ Handle<Model> load_Model(StringView path) {
 	Model model;
 	model.path = path;
 	model.load_in_place();
-	return RHI::model_manager.make(std::move(model));
+	return RHI::model_manager.make(std::move(model), serialized);
 }
 

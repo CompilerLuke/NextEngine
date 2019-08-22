@@ -15,7 +15,7 @@
 #include "logger/logger.h"
 #include "graphics/rhi.h"
 
-PickingPass::PickingPass(Window& params)
+PickingPass::PickingPass(Window& params, MainPass* main_pass)
 : picking_shader(load_Shader("shaders/picking.vert", "shaders/picking.frag")) {
 	
 	AttachmentSettings color_attachment(picking_map);
@@ -30,8 +30,9 @@ PickingPass::PickingPass(Window& params)
 	settings.width = params.width;
 	settings.height = params.height;
 
-
 	framebuffer = Framebuffer(settings);
+
+	this->main_pass = main_pass;
 }
 
 void PickingPass::set_shader_params(Handle<Shader> shader, Handle<ShaderConfig> config, World& world, RenderParams& params) {
@@ -57,12 +58,12 @@ int PickingPass::pick(World& world, Input& input) {
 	return id;
 }
 
-float PickingPass::pick_depth(World& world, Input& input) {
+float PickingPass::pick_depth(World& world, Input& input) { //todo pick from frame buffer
 	float depth = 0;
 
 	glm::vec2 pick_at = picking_location(input);
 
-	glBindFramebuffer(GL_FRAMEBUFFER, this->framebuffer.fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, this->main_pass->depth_prepass.depth_map_FBO.fbo);
 	glReadPixels((int)pick_at.x, (int)this->framebuffer.height - pick_at.y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &depth);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -75,7 +76,8 @@ void PickingPass::render(World& world, RenderParams& params) {
 	if (!(params.layermask & editor_layer)) return;
 
 	CommandBuffer cmd_buffer;
-	RenderParams new_params(&cmd_buffer, this);
+	RenderParams new_params = params;
+	new_params.command_buffer = &cmd_buffer;
 	new_params.width = framebuffer.width;
 	new_params.height = framebuffer.height;
 	new_params.projection = params.projection;
@@ -88,15 +90,13 @@ void PickingPass::render(World& world, RenderParams& params) {
 	Handle<Uniform> loc = location(picking_shader, "id");
 
 	for (DrawCommand& cmd : cmd_buffer.commands) {
-		vector<Param> params;
-		params.allocator = &temporary_allocator;
-		params.append(make_Param_Int(loc, cmd.id));
+		if (cmd.num_instances > 1) continue;
 
-		cmd.material = TEMPORARY_ALLOC(Material, {
-			picking_shader,
-			std::move(params),
-			cmd.material->state
-		});
+		DrawCommandState* state = cmd.material->state;
+
+		cmd.material = TEMPORARY_ALLOC(Material, picking_shader);
+		cmd.material->state = state;
+		cmd.material->set_int("id", cmd.id);
 	}
 
 	framebuffer.bind();
@@ -125,11 +125,8 @@ PickingSystem::PickingSystem(Editor& editor) : editor(editor) {
 	object_state.clear_stencil_buffer = true;
 	object_state.clear_depth_buffer = false;
 
-	this->outline_material = {
-		outline_shader,
-		{},
-		&outline_state
-	};
+	this->outline_material = Material(outline_shader);
+	this->outline_material.state = &outline_state;
 }
 
 void PickingSystem::render(World& world, RenderParams& params) {
@@ -142,6 +139,7 @@ void PickingSystem::render(World& world, RenderParams& params) {
 
 	for (DrawCommand& cmd : params.command_buffer->commands) {
 		if (cmd.id != selected) continue;
+		if (cmd.num_instances > 1) continue;
 
 		{
 			Shader* shad = RHI::shader_manager.get(cmd.material->shader);

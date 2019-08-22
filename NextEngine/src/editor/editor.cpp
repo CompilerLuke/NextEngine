@@ -26,6 +26,7 @@
 #include "graphics/materialSystem.h"
 #include "serialization/serializer.h"
 #include "editor/terrain.h"
+#include <ImGuizmo.h>
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
@@ -159,7 +160,7 @@ register_components_and_systems_t load_register_components_and_systems(const cha
 #include "physics/physics.h"
 
 Editor::Editor(const char* game_code, Window& window)
-: window(window), picking_pass(window), game_code(game_code), main_pass(world, glm::vec2(window.width, window.height)) {
+: window(window), game_code(game_code), main_pass(world, glm::vec2(window.width, window.height)), picking_pass(window, &main_pass) {
 	
 	load_register_components_and_systems(game_code)(world);
 	world.add(new Store<EntityEditor>(100));
@@ -283,6 +284,17 @@ void default_scene(Editor& editor, RenderParams& params) {
 		auto entity_editor = world.make<EntityEditor>(id);
 		entity_editor->name = "Sun Light";
 	}
+
+	/*
+	{
+		ID id = editor.asset_tab.assets.make_ID();
+		MaterialAsset* asset = editor.asset_tab.assets.make<MaterialAsset>(id);
+		asset->name = "Skybox Material";
+		asset->handle = world.by_id<Materials>(world.id_of(skybox))->materials[0];
+
+		register_new_material(world, asset_tab, *this, render_params, id);
+	}
+	*/
 }
 
 StringBuffer save_component_to(ComponentStore* store) {
@@ -307,10 +319,21 @@ void on_load_world(Editor& editor) {
 			unsigned num_components = buffer.read_int();
 			for (unsigned int i = 0; i < num_components; i++) {
 				unsigned int id = buffer.read_int();
-				void* ptr = store->make_by_id(id);
+				
+				if (id == 0 && false) {
+					id = editor.world.make_ID();
+					void* ptr = store->make_by_id(id);
 
-				buffer.read(component_type, ptr);
-				editor.world.skipped_ids.append(id);
+					buffer.read(component_type, ptr);
+					
+					store->free_by_id(id);
+				}
+				else {
+					void* ptr = store->make_by_id(id);
+
+					buffer.read(component_type, ptr);
+					editor.world.skipped_ids.append(id);
+				}
 			}
 
 			save_files_available++;
@@ -322,6 +345,10 @@ void on_load_world(Editor& editor) {
 
 void on_load(Editor& editor, RenderParams& params) {
 	on_load_world(editor);
+
+	editor.world.get<Skybox>()->fire_callbacks();
+	params.skybox = editor.world.filter<Skybox>()[0];
+
 	editor.asset_tab.on_load(editor.world, params);
 }
 
@@ -333,7 +360,7 @@ void on_save_world(Editor& editor) {
 
 			vector<Component> filtered;
 			for (Component& comp : store->filter_untyped()) {
-				if (editor.world.by_id<EntityEditor>(comp.id) && !editor.world.by_id<Skybox>(comp.id))
+				if (editor.world.by_id<EntityEditor>(comp.id))
 					filtered.append(comp);
 			}
 
@@ -359,12 +386,6 @@ void on_save(Editor& editor) {
 	editor.asset_tab.on_save();
 }
 
-void init_world(Editor& editor) {
-	World& world = editor.world;
-
-	auto skybox = make_default_Skybox(world, NULL, "Topanga_Forest_B_3k.hdr");
-}
-
 void Editor::run() {
 	this->asset_tab.register_callbacks(window, *this);
 
@@ -379,21 +400,27 @@ void Editor::run() {
 		{"shader", load_Texture("editor/shader_icon.png")}
 	};
 
-	auto shader = load_Shader("shaders/pbr.vert", "shaders/gizmo.frag");
-	auto texture = load_Texture("normal.jpg");
-	auto model = load_Model("HOVERTANK.fbx");
-
-	load_Model("subdivided_plane8.fbx");
-
 	CommandBuffer cmd_buffer;
 	RenderParams render_params(&cmd_buffer, &main_pass);
 
 	render_params_ptr = &render_params;
 
-	auto skybox = make_default_Skybox(world, &render_params, "Topanga_Forest_B_3k.hdr");
+	main_pass.post_process.append(&picking_pass);
 
-	init_world(*this);
+	PickingSystem* picking_system = new PickingSystem(*this);
+
+	UpdateParams update_params(input);
+
+	//Create grid
+
+	render_params.layermask = game_layer | editor_layer;
+	render_params.width = window.width;
+	render_params.height = window.height;
 	
+	//default_scene(*this, render_params);
+
+	on_load(*this, render_params);
+
 	/*
 	{
 		auto id = world.make_ID();
@@ -407,25 +434,8 @@ void Editor::run() {
 	}
 	*/
 
-	main_pass.post_process.append(&picking_pass);
+	input.capture_mouse(false);
 
-	PickingSystem* picking_system = new PickingSystem(*this);
-
-	UpdateParams update_params(input);
-
-	vector<Param> params = make_SubstanceMaterial("wood_2", "Stylized_Wood");
-
-
-	//Create grid
-
-	render_params.layermask = game_layer | editor_layer;
-	render_params.width = window.width;
-	render_params.height = window.height;
-	render_params.skybox = world.filter<Skybox>()[0];
-
-	//default_scene(*this, render_params);
-	
-	on_load(*this, render_params);
 
 	world.add(new DebugLightSystem());
 	world.add(new DebugShaderReloadSystem());
@@ -434,6 +444,18 @@ void Editor::run() {
 	world.add(picking_system);
 
 	load_Shader("shaders/pbr.vert", "shaders/paralax_pbr.frag");
+
+	render_params.dir_light = get_dir_light(world, render_params.layermask);
+
+	/*
+	*/
+
+	glm::mat4* model_m = new glm::mat4[max_entities];
+
+	PreRenderParams pre_render_params;
+	pre_render_params.model_m = model_m;
+
+	render_params.model_m = model_m;
 
 	render_params.dir_light = get_dir_light(world, render_params.layermask);
 
@@ -450,12 +472,15 @@ void Editor::run() {
 		render_params.layermask = playing_game ? game_layer : game_layer | editor_layer;
 		render_params.width = window.width;
 		render_params.height = window.height;
-		render_params.dir_light = get_dir_light(world, render_params.layermask);
+
+		pre_render_params.layermask = render_params.layermask;
 
 		update(update_params);
 		world.update(update_params);
 
 		if (window.height == window.width == 0) { //screen is hidden
+			world.pre_render(pre_render_params); //todo this will execute even when scene window isnt open
+
 			if (playing_game) {
 				render_params.pass->render(world, render_params);
 			}
@@ -517,7 +542,6 @@ void on_set_play_mode(Editor& editor, bool playing) {
 	}
 	else {
 		editor.world.clear(); //todo leaks memory
-		init_world(editor);
 		on_load_world(editor);
 	}
 }
@@ -541,7 +565,7 @@ void Editor::update(UpdateParams& params) {
 		log("about to serialize");
 	}
 
-	if (params.input.mouse_button_pressed(MouseButton::Left)) {
+	if (params.input.mouse_button_pressed(MouseButton::Left) && !ImGuizmo::IsOver()) {
 		select(picking_pass.pick(world, params.input));
 	}
 

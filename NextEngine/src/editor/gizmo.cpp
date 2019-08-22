@@ -50,7 +50,6 @@ Gizmo::~Gizmo() {
 }
 
 void Gizmo::render(World& world, Editor& editor, RenderParams& params, Input& input) {
-	input.active = true;
 	if (editor.selected_id == -1) return;
 
 	Transform* trans = world.by_id<Transform>(editor.selected_id);
@@ -84,10 +83,6 @@ void Gizmo::render(World& world, Editor& editor, RenderParams& params, Input& in
 	ImGuizmo::SetRect(input.region_min.x, input.region_min.y, input.region_max.x - input.region_min.x, input.region_max.y - input.region_min.y);
 
 	ImGuizmo::Manipulate(glm::value_ptr(params.view), glm::value_ptr(params.projection), guizmo_operation, guizmo_mode, glm::value_ptr(model_matrix), NULL, snap ? glm::value_ptr(snap_vec) : NULL);
-
-	if (ImGuizmo::IsOver()) {
-		input.active = false;
-	}
 
 	if (was_using && !ImGuizmo::IsUsing()) {
 		if (diff_util->submit(editor, "Transformed")) {

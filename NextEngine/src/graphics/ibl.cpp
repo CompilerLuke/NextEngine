@@ -18,6 +18,10 @@
 #include "components/camera.h"
 #include "graphics/renderPass.h"
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stbi_write.h>
+#include "logger/logger.h"
+
 REFLECT_STRUCT_BEGIN(Skybox)
 REFLECT_STRUCT_MEMBER(filename)
 REFLECT_STRUCT_MEMBER(capture_scene)
@@ -69,6 +73,8 @@ struct CubemapCapture {
 
 		World& world = *this->world;
 
+		ID main_camera = world.id_of(get_camera(world, game_layer));
+
 		RenderParams new_params = *params;
 		new_params.width = width;
 		new_params.height = height;
@@ -87,10 +93,8 @@ struct CubemapCapture {
 		new_params.cam = camera;
 		new_params.layermask = game_layer;
 
-		ID main_camera = world.id_of(get_camera(world, any_layer));
-
 		world.by_id<Entity>(main_camera)->enabled = false;
-		//camera->update_matrices(world, new_params);
+		camera->update_matrices(world, new_params);
 
 		((MainPass*)new_params.pass)->render_to_buffer(world, new_params, [this, i]() {
 			glViewport(0, 0, width, width); // don't forget to configure the viewport to the capture dimensions.
@@ -99,13 +103,13 @@ struct CubemapCapture {
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		});
 
-		world.free_by_id(id);
+		world.free_now_by_id(id);
 
 		world.by_id<Entity>(main_camera)->enabled = true;
 	}
 };
 
-void Skybox::on_load(World& world) {
+void Skybox::on_load(World& world, bool take_capture, RenderParams* params) { //todo cleanup
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
 	auto equirectangular_to_cubemap_shader = load_Shader("shaders/eToCubemap.vert", "shaders/eToCubemap.frag");
@@ -130,7 +134,7 @@ void Skybox::on_load(World& world) {
 
 	// pbr: load the HDR environment map
 	// ---------------------------------
-	{
+	if (!this->capture_scene) {
 		stbi_set_flip_vertically_on_load(true);
 		int width, height, nrComponents;
 		float *data = stbi_loadf(Level::asset_path(filename).c_str(), &width, &height, &nrComponents, 0);
@@ -160,7 +164,7 @@ void Skybox::on_load(World& world) {
 	glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
 	for (unsigned int i = 0; i < 6; ++i)
 	{
-		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
+		if (!this->capture_scene || take_capture) glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
 	}
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -197,20 +201,81 @@ void Skybox::on_load(World& world) {
 
 	// pbr: convert HDR equirectangular environment map to cubemap equivalent
 	// ----------------------------------------------------------------------
-	shader::bind(equirectangular_to_cubemap_shader);
-	shader::set_int(equirectangular_to_cubemap_shader, "equirectangularMap", 0);
-	shader::set_mat4(equirectangular_to_cubemap_shader, "projection", captureProjection);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, hdrTexture);
+	if (!this->capture_scene) {
+		shader::bind(equirectangular_to_cubemap_shader);
+		shader::set_int(equirectangular_to_cubemap_shader, "equirectangularMap", 0);
+		shader::set_mat4(equirectangular_to_cubemap_shader, "projection", captureProjection);
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, hdrTexture);
+	}
 
 	glViewport(0, 0, width, width); // don't forget to configure the viewport to the capture dimensions.
 	glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
 
+	GLfloat* pixels_float = NULL;
+	uint8_t* pixels = NULL;
+	
+	if (take_capture) {
+		pixels_float = new float[width * height * 3];
+	}
+
+	if (this->capture_scene) {
+		pixels = new uint8_t[width * height * 3];
+	}
 
 	for (unsigned int i = 0; i < 6; ++i)
 	{
-		if (this->capture_scene) {
+		if (take_capture) {
 			capture.capture(i);
+
+			memset(pixels_float, 0, sizeof(float) * width * height * 3);
+			memset(pixels, 0, sizeof(uint8_t) * width * height * 3);
+
+			glBindFramebuffer(GL_FRAMEBUFFER, captureFBO);
+			glReadPixels(0, 0, width, height, GL_RGB, GL_FLOAT, pixels_float);
+
+			int index = 0;
+			for (int j = 0; j < height; j++)
+			{
+				for (int i = 0; i < width; ++i)
+				{
+					float r = pixels_float[index];
+					float g = pixels_float[index + 1];
+					float b = pixels_float[index + 2];
+					int ir = int(255.99 * r);
+					int ig = int(255.99 * g);
+					int ib = int(255.99 * b);
+
+					pixels[index++] = ir;
+					pixels[index++] = ig;
+					pixels[index++] = ib;
+				}
+			}
+
+			StringBuffer save_capture_to = Level::asset_path(format("data/scene_capture/capture", i, ".jpg").c_str());
+			int success = stbi_write_jpg(save_capture_to.c_str(), width, height, 3, pixels, 100);
+			
+		}
+		else if (this->capture_scene) {
+			int width, height, num_channels;
+
+			StringBuffer load_capture_from = Level::asset_path(format("data/scene_capture/capture", i, ".jpg"));
+
+			stbi_set_flip_vertically_on_load(false);
+			uint8_t* data = stbi_load(load_capture_from.c_str(), &width, &height, &num_channels, 3);
+			
+			if (data == NULL) throw "Could not load scene capture!";
+
+			log("width ", width);
+			log("height ", height);
+
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			glBindTexture(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, envCubemap);
+			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+			glGenerateMipmap(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i);
+
+			stbi_image_free(data);
 		}
 		else {
 			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, envCubemap, 0);
@@ -222,6 +287,9 @@ void Skybox::on_load(World& world) {
 		}
 		
 	}
+
+	delete pixels;
+	delete pixels_float;
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	// pbr: create an irradiance cubemap, and re-scale capture FBO to irradiance scale.
@@ -388,26 +456,42 @@ Skybox* make_default_Skybox(World& world, RenderParams* params, StringView filen
 	auto name = world.make<EntityEditor>(id);
 	name->name = "Skylight";
 
-	sky->params = params;
+	sky->capture_scene = true;
 	sky->filename = filename;
-	sky->on_load(world);
 
 	auto skybox_shader = load_Shader("shaders/skybox.vert", "shaders/skybox.frag");
 	auto cube_model = load_Model("cube.fbx");
 
-	Material mat;
-	mat.shader = skybox_shader;
-	mat.params.append(make_Param_Cubemap(location(skybox_shader, "environmentMap"), sky->env_cubemap));
-	mat.state = &skybox_draw_state;
-	
-	auto model_renderer = world.make<ModelRenderer>(id);
-	model_renderer->model_id = cube_model;
+	Material mat(skybox_shader);
+	mat.set_vec3("skytop", glm::vec3(66, 188, 245) / 200.0f);
+	mat.set_vec3("skyhorizon", glm::vec3(66, 135, 245) / 400.0f);
 
 	auto materials = world.make<Materials>(id);
 	
-	materials->materials.append(RHI::material_manager.make(std::move(mat)));
+	materials->materials.append(RHI::material_manager.make(std::move(mat), true));
 
 	auto trans = world.make<Transform>(id);
 
 	return sky;
+}
+
+SkyboxSystem::SkyboxSystem(struct World& world) {
+	cube_model = load_Model("cube.fbx");
+
+	world.on_make<Skybox>([&world](vector<ID> created) {
+		for (ID id : created) {
+			world.by_id<Skybox>(id)->on_load(world);
+		}
+	});
+}
+
+void SkyboxSystem::render(struct World& world, struct RenderParams& render_params) {
+	if (render_params.layermask & shadow_layer) return;
+
+	for (ID id : world.filter<Skybox, Materials>(render_params.layermask)) {
+		glm::mat4* identity = TEMPORARY_ALLOC(glm::mat4, 1.0f);
+		auto& materials = world.by_id<Materials>(id)->materials;
+
+		RHI::model_manager.get(cube_model)->render(id, identity, materials, render_params);
+	}
 }

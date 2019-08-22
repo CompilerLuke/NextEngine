@@ -44,12 +44,11 @@ using DrawSortKey = long long;
 struct DrawCommand {
 	ID id;
 	glm::mat4* model_m;
-	struct AABB* aabb;
 	struct VertexBuffer* buffer;
 	struct Material* material;
 	int num_instances = 1;
 
-	DrawCommand(ID, glm::mat4*, struct AABB*, struct VertexBuffer*, struct Material*);
+	DrawCommand(ID, glm::mat4*, struct VertexBuffer*, struct Material*);
 };
 
 struct Pipeline {
@@ -63,20 +62,8 @@ struct Pipeline {
 	DrawCommandState state;
 };
 
-struct SpecializedDrawCommand {
-	DrawSortKey key = 0;
-	glm::mat4* model_m;
-	struct VertexBuffer* buffer;
-	Material* material;
-	int num_instances;
-
-	Handle<ShaderConfig> config;
-};
-
 struct CommandBuffer {
 	vector<DrawCommand> commands;
-
-	static std::unordered_map<DrawSortKey, int> instanced_buffers;
 
 	unsigned int current_texture_index = 0;
 

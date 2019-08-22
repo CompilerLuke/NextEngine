@@ -16,16 +16,11 @@ DirLight* get_dir_light(World& world, Layermask mask) {
 }
 
 DebugLightSystem::DebugLightSystem() {
-	auto shad = load_Shader("shaders/pbr.vert", "shaders/diffuse.frag");
-
 	this->dir_light_model = load_Model("editor/dirLight.fbx");
-	this->gizmo_materials = { RHI::material_manager.make({
-		shad,
-		{
-			make_Param_Vec3(location(shad, "material.diffuse"), glm::vec3(0, 0.8, 0.8))
-		},
-		&default_draw_state
-	}) };
+	Material gizmo_mat(load_Shader("shaders/pbr.vert", "shaders/diffuse.frag"));
+	gizmo_mat.set_vec3("material.diffuse", glm::vec3(0, 0.8, 0.8));
+
+	this->gizmo_materials.append(RHI::material_manager.make(std::move(gizmo_mat)));
 }
 
 void DebugLightSystem::render(World& world, RenderParams& params) {

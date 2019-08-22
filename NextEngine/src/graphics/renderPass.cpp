@@ -45,6 +45,7 @@ void MainPass::set_shader_params(Handle<Shader> shader, Handle<ShaderConfig> con
 }
 
 #include "graphics/primitives.h"
+#include "components/camera.h"
 
 void MainPass::render_to_buffer(World& world, RenderParams& params, std::function<void()> bind) {
 
@@ -56,6 +57,7 @@ void MainPass::render_to_buffer(World& world, RenderParams& params, std::functio
 	
 	params.command_buffer->clear();
 
+	get_camera(world, params.layermask)->update_matrices(world, params);
 	world.render(params);
 
 	params.width = current_frame.width;

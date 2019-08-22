@@ -21,9 +21,9 @@ REFLECT_STRUCT_MEMBER(v_filename)
 REFLECT_STRUCT_MEMBER(f_filename)
 REFLECT_STRUCT_END()
 
-bool load_in_place_with_err(ShaderConfig* self, StringBuffer* err, StringView v_filename, StringView f_filename);
+bool load_in_place_with_err(ShaderConfig* self, StringBuffer* err, StringView v_filename, StringView f_filename, Shader* shader, bool create_flags);
 
-Handle<Shader> load_Shader(StringView vfilename, StringView ffilename) {
+Handle<Shader> load_Shader(StringView vfilename, StringView ffilename, bool serialized) {
 	auto& existing_shaders = RHI::shader_manager.slots;
 
 	for (int i = 0; i < existing_shaders.length; i++) { //todo move to ShaderManager
@@ -45,12 +45,12 @@ Handle<Shader> load_Shader(StringView vfilename, StringView ffilename) {
 	ShaderConfig default_config;
 
 	StringBuffer err;
-	if (!load_in_place_with_err(&default_config, &err, vfilename, ffilename)) {
+	if (!load_in_place_with_err(&default_config, &err, vfilename, ffilename, &shad, true)) {
 		throw err;
 	}
 
 	shad.configurations.append(std::move(default_config));
-	return RHI::shader_manager.make(std::move(shad));
+	return RHI::shader_manager.make(std::move(shad), serialized);
 }
 
 ShaderConfig::ShaderConfig() {
@@ -69,6 +69,52 @@ ShaderConfig::~ShaderConfig() {
 	glDeleteProgram(id);
 }
 
+unsigned int get_flag(Shader* shader, StringView flag_name) {
+	for (unsigned int i = 0; i < shader->flags.length; i++) {
+		if (shader->flags[i] == flag_name) return (1 << i);
+	}
+
+	return 0;
+}
+
+unsigned int get_flag(Handle<Shader> handle, StringView flag_name) {
+	return get_flag(RHI::shader_manager.get(handle), flag_name);
+}
+
+
+/*
+if (create_flags) {
+if (in_struct.length > 0) { //todo move everything out of material struct
+shader->flags.append(full_name);
+}
+else {
+shader->flags.append(name);
+}
+}
+
+if (get_flag(shader, full_name) & flags) {
+output += format("vec3 ", name);
+}
+else {
+output += format("sampler2D ", name);
+}
+
+/*
+if (flags & flag) {
+output += sampler;
+
+i++; //,
+i++; //TexCoords
+i++; //)
+i++;
+}
+else {
+output += "texture(";
+output += sampler;
+}
+
+*/
+
 struct ShaderPreprocessor {
 	vector<StringView> tokens;
 	StringView tok;
@@ -76,9 +122,39 @@ struct ShaderPreprocessor {
 	StringView source;
 
 	vector<StringBuffer>& already_included;
+	unsigned int flags;
 
-	ShaderPreprocessor(StringView source, vector<StringBuffer>& already_included) 
-	: source(source), already_included(already_included) {
+	bool create_flags; //if this flag is set it will upon finding channel3 add the flag to the shader
+
+	Shader* shader;
+
+	StringBuffer in_struct;
+
+	vector<StringBuffer> channels;
+
+	ShaderPreprocessor(StringView source, vector<StringBuffer>& already_included, unsigned int flags, Shader* shader, bool create_flags)
+	: source(source), already_included(already_included), flags(flags), shader(shader), create_flags(create_flags) {
+	}
+
+	void channel(unsigned int num, StringBuffer& output) {
+		i++;
+		StringView name = tokens[++i];
+
+		StringBuffer full_name;
+		if (in_struct.length > 0) full_name = format("material.", name);
+		else full_name = name;
+
+		channels.append(full_name);
+
+		output += "sampler2D ";
+		output += name;
+
+		if (num == 3) output += "; vec3 ";
+		if (num == 2) output += "; vec2 ";
+		if (num == 1) output += "; float ";
+
+		output += name;
+		output += "_scalar";
 	}
 
 	void reset_tok() {
@@ -98,7 +174,7 @@ struct ShaderPreprocessor {
 		for (i = 0; i < source.length; i++) {
 			char c = source[i];
 
-			if (c == ' ' || c == '\n') reset_tok();
+			if (c == ' ' || c == '\n' || c == '\t' || c == ';' || c == '}' || c == '(' || c == ')' || c == '=' || c == ',') reset_tok();
 			else tok.length++;
 		}
 
@@ -112,7 +188,7 @@ struct ShaderPreprocessor {
 
 		StringBuffer output;
 
-		for (int i = 0; i < tokens.length; i++) {
+		for (i = 0; i < tokens.length; i++) {
 			if (tokens[i] == "#include") {
 				while (tokens[++i] == " ");
 
@@ -124,28 +200,74 @@ struct ShaderPreprocessor {
 
 					StringBuffer src = file.read();
 
-					ShaderPreprocessor pre(src, already_included);
+					ShaderPreprocessor pre(src, already_included, flags, shader, create_flags);
 					output += pre.parse();
 				
 					already_included.append(name);
 				}
 			}
-			output += tokens[i];
+			else if (tokens[i] == "texture") {
+				i++; //(
+				StringView sampler = tokens[++i];
+
+				//unsigned int flag = get_flag(shader, sampler);
+
+				if (channels.contains(sampler)) {
+					log("has flag");
+
+					output += sampler;
+					output += "_scalar";
+					output += " * ";
+					output += "texture(";
+					output += sampler;
+				}
+				else {
+					output += "texture(";
+					output += sampler;
+				}
+			}
+			else if (tokens[i] == "struct") {
+				i++;
+
+				in_struct = tokens[++i];
+
+				output += "struct ";
+				output += in_struct;
+
+				in_struct += ".";
+			}
+			else if (tokens[i] == "channel3") {
+				channel(3, output);
+			}
+			else if (tokens[i] == "channel2") {
+				channel(2, output);
+			}
+			else if (tokens[i] == "channel1") {
+				channel(1, output);
+			}
+			else if (tokens[i] == "}") {
+				in_struct = StringBuffer();
+				output += "}";
+			}
+			else {
+				output += tokens[i];
+			}
 		}
 
 		return output;
 	}
 };
 
-StringBuffer preprocess_source(StringView source) {
+StringBuffer preprocess_source(StringView source, unsigned int flags, Shader* shader, bool create_flags) { //todo refactor into struct
 	vector<StringBuffer> already_included;
-	ShaderPreprocessor pre(source, already_included);
+	ShaderPreprocessor pre(source, already_included, flags, shader, create_flags);
 
 	return pre.parse();
 }
 
-bool make_shader(StringView filename, StringView source, GLenum kind, char* info_log, GLint* result) {
-	auto pre_source = preprocess_source(source);
+bool make_shader(StringView filename, StringView source, GLenum kind, char* info_log, GLint* result, unsigned int flags, Shader* shader_handle, bool create_flags) {
+	auto pre_source = preprocess_source(source, flags, shader_handle, create_flags);
+
 	auto c_source = pre_source.c_str();
 	
 	auto shader = glCreateShader(kind);
@@ -165,13 +287,21 @@ bool make_shader(StringView filename, StringView source, GLenum kind, char* info
 	return true;
 }
 
-bool load_in_place_with_err(ShaderConfig* self, StringBuffer* err, StringView v_filename, StringView f_filename) {
+bool load_in_place_with_err(ShaderConfig* self, StringBuffer* err, StringView v_filename, StringView f_filename, Shader* shader, bool create_flags) {
 	ShaderConfigDesc& desc = self->desc;
 	
 	StringBuffer vshader_source;
 	StringBuffer fshader_source;
 
-	StringBuffer prefix = "#version 440 core\n";
+	File preamble;
+	if (!preamble.open("shaders/preamble.glsl", File::ReadFile)) {
+		throw "Could not open preamble!";
+	}
+
+	StringBuffer prefix = "#version 440 core";
+
+	prefix += "\n";
+
 	if (desc.instanced) prefix += "#define IS_INSTANCED\n";
 	if (desc.type == ShaderConfigDesc::DepthOnly) prefix += "#define IS_DEPTH_ONLY\n";
 
@@ -195,13 +325,12 @@ bool load_in_place_with_err(ShaderConfig* self, StringBuffer* err, StringView v_
 	char info_log[512];
 
 	GLint vertex_shader, fragment_shader; 
-	
 
-	if (!make_shader(v_filename, vshader_source, GL_VERTEX_SHADER, info_log, &vertex_shader)) {
+	if (!make_shader(v_filename, vshader_source, GL_VERTEX_SHADER, info_log, &vertex_shader, desc.flags, shader, create_flags)) {
 		*err = format("(", v_filename, ") Vertex Shader compilation", info_log);
 		return false;
 	}
-	if (!make_shader(f_filename, fshader_source, GL_FRAGMENT_SHADER, info_log, &fragment_shader)) {
+	if (!make_shader(f_filename, fshader_source, GL_FRAGMENT_SHADER, info_log, &fragment_shader, desc.flags, shader, create_flags)) {
 		*err = format("(", f_filename, ") Fragment Shader compilation", info_log);
 		return false;
 	}
@@ -237,7 +366,7 @@ void ShaderConfig::bind() {
 }
 
 bool ShaderConfigDesc::operator==(ShaderConfigDesc& other) {
-	return this->type == other.type && this->instanced == other.instanced;
+	return this->type == other.type && this->instanced == other.instanced && this->flags == other.flags;
 }
 
 Handle<Uniform> location(Handle<Shader> handle, StringView name) {
@@ -267,7 +396,7 @@ Handle<ShaderConfig> Shader::get_config(ShaderConfigDesc& desc) {
 	config.desc = desc;
 	
 	StringBuffer err;
-	if (!load_in_place_with_err(&config, &err, v_filename, f_filename)) {
+	if (!load_in_place_with_err(&config, &err, v_filename, f_filename, this, false)) {
 		throw err;
 	}
 
@@ -365,7 +494,7 @@ void DebugShaderReloadSystem::update(World& world, UpdateParams& params) {
 				auto previous = shad.id;
 
 				StringBuffer err;
-				if (load_in_place_with_err(&shad, &err, shad_factory.v_filename, shad_factory.f_filename)) {
+				if (load_in_place_with_err(&shad, &err, shad_factory.v_filename, shad_factory.f_filename, &shad_factory, false)) {
 					glDeleteProgram(previous);
 
 					for (int i = 0; i < shad.uniform_bindings.length; i++) {

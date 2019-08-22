@@ -3,6 +3,7 @@
 #include <glm/vec3.hpp>
 #include <glm/mat4x4.hpp>
 #include <limits>
+#include "core/vector.h"
 
 struct AABB {
 	glm::vec3 min = glm::vec3(FLT_MAX);
@@ -15,3 +16,6 @@ struct AABB {
 };
 
 void aabb_to_verts(AABB* self, glm::vec4* verts);
+
+void extract_planes(struct RenderParams&, glm::vec4 planes[6]);
+bool cull(glm::vec4 planes[6], const AABB& aabb);

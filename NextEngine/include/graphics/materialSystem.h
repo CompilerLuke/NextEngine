@@ -19,10 +19,35 @@ enum Param_Type {
 	Param_Image,
 	Param_Cubemap,
 	Param_Int,
-	Param_Float
+	Param_Float,
+	Param_Channel3, Param_Channel2, Param_Channel1
 };
 
 struct Param {
+	struct Channel3 {
+		Handle<struct Texture> image;
+		Handle<Uniform> scalar_loc;
+		glm::vec3 color;
+
+		REFLECT()
+	};
+
+	struct Channel2 {
+		Handle<struct Texture> image;
+		Handle<Uniform> scalar_loc;
+		glm::vec2 value;
+
+		REFLECT()
+	};
+
+	struct Channel1{
+		Handle<struct Texture> image;
+		Handle<Uniform> scalar_loc;
+		float value;
+
+		REFLECT()
+	};
+
 	Handle<Uniform> loc;
 	Param_Type type;
 	union {
@@ -33,6 +58,10 @@ struct Param {
 		Handle<struct Cubemap> cubemap;
 		int integer;
 		float real;
+
+		Channel3 channel3;
+		Channel2 channel2;
+		Channel1 channel1;
 	};
 
 	Param();
@@ -40,17 +69,31 @@ struct Param {
 	REFLECT_UNION()
 };
 
-Param make_Param_Int(Handle<Uniform> loc, int);
-Param make_Param_Float(Handle<Uniform> loc, float);
-Param make_Param_Vec2(Handle<Uniform> loc, glm::vec2);
-Param make_Param_Vec3(Handle<Uniform> loc, glm::vec3);
-Param make_Param_Cubemap(Handle<Uniform> loc, Handle<struct Cubemap>);
-Param make_Param_Image(Handle<Uniform> loc, Handle<struct Texture>);
-
 struct Material {
 	Handle<Shader> shader;
 	vector<Param> params;
 	DrawCommandState* state = &default_draw_state;
+
+	unsigned int shader_flags = 0;
+
+	void retarget_from(Handle<Material>);
+
+
+	void set_flag(StringView, bool);
+
+	void set_int(StringView, int);
+	void set_float(StringView, float);
+	void set_vec2(StringView, glm::vec2);
+	void set_vec3(StringView, glm::vec3);
+	void set_cubemap(StringView, Handle<struct Cubemap>);
+	void set_image(StringView, Handle<struct Texture>);
+	
+	void set_channel3(StringView, glm::vec3, Handle<struct Texture> img = { INVALID_HANDLE });
+	void set_channel2(StringView, glm::vec2, Handle<struct Texture> img = { INVALID_HANDLE });
+	void set_channel1(StringView, float, Handle<struct Texture> img = { INVALID_HANDLE });
+
+	Material();
+	Material(Handle<Shader>);
 
 	REFLECT()
 };

@@ -58,7 +58,7 @@ btCollisionShape* make_Heightfield(int 	heightStickWidth,
 	float 	maxHeight
 ) {	
 	return new btHeightfieldTerrainShape(heightStickWidth, heightStickLength, heightfieldData,
-		heightScale, minHeight, maxHeight, 1, PHY_FLOAT, true);
+		heightScale, minHeight, maxHeight, 1, PHY_FLOAT, false);
 }
 
 #include <BulletCollision/CollisionShapes/btShapeHull.h>
@@ -312,7 +312,7 @@ void PhysicsSystem::update(World& world, UpdateParams& params) {
 
 				float size_per_quad = collider->size_of_block / 32.0f;
 
-				
+				/*
 				glm::vec3* data = new glm::vec3[width * height]; //todo fix leak
 
 				for (int h = 0; h < height; h++) {
@@ -324,14 +324,24 @@ void PhysicsSystem::update(World& world, UpdateParams& params) {
 						data[h * height + w] = pos + glm::vec3(0, height_at_point, 0);
 					}
 				}
+				*/
 
-				//settings.origin += glm::vec3(0.5 * size_per_quad * width, collider->max_height * -0.5, 0.5 * size_per_quad * height);
+				//settings.origin += glm::vec3(0.5 * size_per_quad * width, 0, -0.5 * size_per_quad * height);
+				//settings.origin = glm::vec3(0);
+
+				//shape = make_PlaneShape(glm::vec3(0, 1, 0));
+				//shape = make_ConvexHull(data, width * height);
+
 				settings.origin = glm::vec3(0);
 
-				shape = make_PlaneShape(glm::vec3(0, 1, 0));
-				//shape = make_ConvexHull(data, width * height);
-				//shape = make_Heightfield(width, height, collider->heightmap_points.data, collider->max_height, 0, collider->max_height);
-			
+				unsigned char* data = new unsigned char[width * height]();
+
+				shape = new btHeightfieldTerrainShape(height, width, collider->heightmap_points.data,
+					10.0, 0.0f, 10.0, 1, PHY_FLOAT, false);
+
+				//shape->setLocalScaling(btVector3(100.0f, 100.f, 100.0f));
+
+				//shape->setLocalScaling(btVector3(size_per_quad, size_per_quad, size_per_quad));
 			}
 
 			settings.id = id;

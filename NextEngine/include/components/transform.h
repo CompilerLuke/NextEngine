@@ -35,3 +35,7 @@ struct LocalTransform {
 struct LocalTransformSystem : System {
 	void update(World&, UpdateParams&) override;
 };
+
+struct TransformSystem : System {
+	void pre_render(World&, PreRenderParams&) override;
+};

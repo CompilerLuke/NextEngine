@@ -27,11 +27,7 @@ REFLECT_STRUCT_END()
 Terrain::Terrain() {}
 
 Handle<Model> load_subdivided(unsigned int num) {
-	Handle<Model> subdivided_plane = load_Model(format("subdivided_plane", num, ".fbx"));
-	Model* model = RHI::model_manager.get(subdivided_plane);
-	model->meshes[0].aabb.max.y = 1;
-
-	return subdivided_plane;
+	return load_Model(format("subdivided_plane", num, ".fbx"));
 }
 
 void init_terrains(World& world, vector<ID>& terrains) {
@@ -83,10 +79,8 @@ TerrainSystem::TerrainSystem(World& world, Editor* editor) {
 
 	this->editor = editor;
 
-	Material mat;
-	mat.shader = flat_shader;
-	mat.state = &draw_draw_over;
-	mat.params.append(make_Param_Vec3(location(flat_shader, "color"), glm::vec3(1, 1, 0)));
+	Material mat(flat_shader);
+	mat.set_vec3("color", glm::vec3(1, 1, 0));
 
 	control_point_materials.append(RHI::material_manager.make(std::move(mat)));
 }
@@ -113,6 +107,8 @@ void TerrainSystem::update(World& world, UpdateParams& params) {
 
 			EntityEditor* name = world.make<EntityEditor>(id);
 			name->name = "Control Point";
+
+			editor->select(id);
 		}
 
 		if (!params.input.key_pressed('B')) continue;
@@ -167,6 +163,11 @@ void TerrainSystem::render(World& world, RenderParams& render_params) {
 	Camera* cam = get_camera(world, render_params.layermask);
 	Transform* cam_trans = world.by_id<Transform>(world.id_of(cam));
 	
+	glm::vec4 planes[6];
+	extract_planes(render_params, planes);
+
+	int rendering_block = 0;
+
 	for (ID id : world.filter<Terrain, Transform, Materials>(render_params.layermask)) {
 		auto self = world.by_id<Terrain>(id);
 		auto self_trans = world.by_id<Transform>(id);
@@ -185,42 +186,52 @@ void TerrainSystem::render(World& world, RenderParams& render_params) {
 				glm::mat4* model_m = TEMPORARY_ALLOC(glm::mat4);
 				*model_m = t.compute_model_matrix();
 
-				vector<Param> params;
-				params.allocator = &temporary_allocator;
+				AABB aabb = RHI::model_manager.get(this->subdivided_plane8)->aabb;
+				aabb.max.y = 1.0f;
+				aabb = aabb.apply(*model_m);
 
-				Material* specified_mat = RHI::material_manager.get(materials->materials[0]);
-				Shader* specified_shader = RHI::shader_manager.get(specified_mat->shader);
-
-				for (Param p : specified_mat->params) {
-					p.loc = location(terrain_shader, specified_shader->uniforms[p.loc.id].name);
-					params.append(p);
-				}
-
-				params.append(make_Param_Image(location(terrain_shader, "displacement"), self->heightmap));
-				params.append(make_Param_Vec2(location(terrain_shader, "displacement_offset"), glm::vec2(1.0 / self->width * w, 1.0 / self->height * h)));
-				params.append(make_Param_Vec2(location(terrain_shader, "displacement_scale"), glm::vec2(1.0 / self->width, 1.0 / self->height)));
-				params.append(make_Param_Float(location(terrain_shader, "max_height"), self->max_height));
+				if (cull(planes, aabb)) continue;
 
 				Material* mat = TEMPORARY_ALLOC(Material);
 				mat->shader = terrain_shader;
-				mat->params = std::move(params);
+				mat->params.allocator = &temporary_allocator;
 
-				float dist = glm::length(t.position - cam_trans->position);
-
-				DrawCommand cmd(id, model_m, NULL, NULL, mat);
-				if (dist < 50 || true) {
-					cmd.buffer = &RHI::model_manager.get(subdivided_plane32)->meshes[0].buffer;
-					mat->params.append(make_Param_Int(location(terrain_shader, "lod"), 0));
+				if (!(render_params.layermask & shadow_layer)) {
+					mat->retarget_from(materials->materials[0]);
 				}
-				else if (dist < 100) {
+
+				mat->set_image("displacement", self->heightmap);
+				mat->set_vec2("displacement_offset", glm::vec2(1.0 / self->width * w, 1.0 / self->height * h));
+				mat->set_vec2("displacement_scale", glm::vec2(1.0 / self->width, 1.0 / self->height));
+				mat->set_float("max_height", self->max_height);
+
+				int lod = 0;
+
+				if (render_params.layermask & shadow_layer) {
+					lod = 2;
+				}
+				else {
+					float dist = glm::length(t.position - cam_trans->position);
+
+					if (dist < 50) lod = 0;
+					else if (dist < 100) lod = 1;
+					else lod = 2;
+				}
+
+				DrawCommand cmd(id, model_m, NULL, mat);
+				
+				if (lod == 0) {
+					cmd.buffer = &RHI::model_manager.get(subdivided_plane32)->meshes[0].buffer;
+				}
+				else if (lod == 1) {
 					cmd.buffer = &RHI::model_manager.get(subdivided_plane16)->meshes[0].buffer;
-					mat->params.append(make_Param_Int(location(terrain_shader, "lod"), 1));
 				} 
 				else {
 					cmd.buffer = &RHI::model_manager.get(subdivided_plane8)->meshes[0].buffer;
-					mat->params.append(make_Param_Int(location(terrain_shader, "lod"), 2));
 				}
+				mat->set_int("lod", lod);
 
+				rendering_block++;
 
 
 				render_params.command_buffer->submit(cmd);

@@ -26,6 +26,7 @@ struct SerializerBuffer {
 };
 
 struct DeserializerBuffer {
+	DeserializerBuffer();
 	DeserializerBuffer(const char* data, unsigned int length);
 
 	const char* data;

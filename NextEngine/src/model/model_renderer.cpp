@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "model/model.h"
+#include "model/modelRendererSystem.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include "components/transform.h"
 #include "core/temporary.h"
@@ -11,13 +11,6 @@ REFLECT_STRUCT_BEGIN(ModelRenderer)
 REFLECT_STRUCT_MEMBER(visible)
 REFLECT_STRUCT_MEMBER_TAG(model_id)
 REFLECT_STRUCT_END()
-
-struct Instance {
-	vector<glm::mat4> transforms;
-	vector<AABB> aabbs;
-	vector<ID> ids;
-	VertexBuffer* buffer;
-};
 
 //#define PROFILING
 
@@ -32,20 +25,14 @@ log(name, delta.count(), "ms");
 #define PROFILE_END()
 #endif
 
-constexpr unsigned MAX_VAO = 30;
-constexpr unsigned int NUM_INSTANCES = MAX_VAO * RHI::material_manager.MAX_HANDLES;
-Instance instances[NUM_INSTANCES]; //todo move into system, 
-//one possibility is splitting dynamic and static meshes
-
-void ModelRendererSystem::render(World& world, RenderParams& params) { //HOTSPOT
+void ModelRendererSystem::pre_render(World& world, PreRenderParams& params) {
 	auto filtered = world.filter<ModelRenderer, Materials, Transform>(params.layermask);
 
 	for (int i = 0; i < NUM_INSTANCES; i++) {
 		instances[i].transforms.clear();
+		instances[i].aabbs.clear();
 		instances[i].ids.clear();
 	}
-
-	glm::mat4 identity(1.0);
 
 	for (unsigned int i = 0; i < filtered.length; i++) {
 		ID id = filtered[i];
@@ -59,60 +46,59 @@ void ModelRendererSystem::render(World& world, RenderParams& params) { //HOTSPOT
 		auto model = RHI::model_manager.get(self->model_id);
 		if (!model) continue;
 
+		//if (cull(planes, model->aabb.apply(params.model_m[id]))) continue;
+
 		assert(model->materials.length == materials->materials.length);
-
-
-		auto static_trans = world.by_id<StaticTransform>(id);
 
 		for (Mesh& mesh : model->meshes) {
 			Handle<Material> mat = materials->materials[mesh.material_id];
 
 			unsigned int mat_index = mat.id - 1;
-			
-			auto& instance = instances[mesh.buffer.vao + MAX_VAO * mat_index];
-			auto trans = world.by_id<Transform>(filtered[i]);
 
-			if (static_trans) {
-				instance.transforms.append(static_trans->model_matrix);
-			}
-			else {
-				glm::mat4 translate = glm::translate(identity, trans->position);
-				glm::mat4 scale = glm::scale(translate, trans->scale);
-				glm::mat4 rotation = glm::mat4_cast(trans->rotation);
+			auto& instance = instances[mesh.buffer.vao * MAX_VAO + mat_index];
 
-				instance.transforms.append(scale * rotation);
-			}
 			instance.buffer = &mesh.buffer;
-			instance.ids.append(id); //make ids an array
+			instance.ids.append(id); 
+			instance.aabbs.append(mesh.aabb.apply(params.model_m[id]));
+			instance.transforms.append(params.model_m[id]);
 		}
 	}
 
+}
+
+void ModelRendererSystem::render(World& world, RenderParams& params) { //HOTSPOT
+	
+	//Once automatically instanced, draw the commands
+
+	//todo fix bug
+
+	glm::vec4 planes[6];
+	extract_planes(params, planes);
 	
 	for (unsigned int i = 0; i < NUM_INSTANCES; i++) {
 		unsigned int length = instances[i].transforms.length;
 		if (length == 0) continue;
 		
-		unsigned int vao = i % MAX_VAO;
-		unsigned int mat_index = i / MAX_VAO;
+		unsigned int vao = i / MAX_VAO;
+		unsigned int mat_index = i % MAX_VAO;
 
 		Material* mat = RHI::material_manager.get({ mat_index + 1 });
 		if (mat == NULL) continue;
 
 		auto& instance = instances[i];
 
-		auto transforms = instance.transforms.data;
-		auto aabbs = instance.aabbs.data;
-
 		auto shad = RHI::shader_manager.get(mat->shader);
 
 		if (false) {
-			DrawCommand cmd(instance.ids[i], transforms, aabbs, instance.buffer, mat);
+			DrawCommand cmd(instance.ids[0], &instance.transforms[0], instance.buffer, mat);
 			cmd.num_instances = instance.transforms.length;
 			params.command_buffer->submit(cmd);
 		}
 		else {
 			for (int i = 0; i < instance.transforms.length; i++) {
-				DrawCommand cmd(instance.ids[i], &transforms[i], &aabbs[i], instance.buffer, mat);
+				if (cull(planes, instance.aabbs[i])) continue;
+
+				DrawCommand cmd(instance.ids[i], &instance.transforms[i], instance.buffer, mat);
 
 				params.command_buffer->submit(cmd);
 			}

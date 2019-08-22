@@ -18,6 +18,8 @@ struct File {
 	FILE* f;
 	StringBuffer filename;
 
+	void close();
+
 	ENGINE_API File();
 	ENGINE_API ~File();
 	bool ENGINE_API open(StringView, FileMode);
