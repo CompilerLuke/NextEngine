@@ -42,11 +42,15 @@ extern DrawCommandState ENGINE_API draw_draw_over;
 using DrawSortKey = long long;
 
 struct DrawCommand {
+	static constexpr unsigned int update_instances = (1 << 0);
+
 	ID id;
 	glm::mat4* model_m;
 	struct VertexBuffer* buffer;
 	struct Material* material;
 	int num_instances = 1;
+
+	unsigned int flags = 0;
 
 	DrawCommand(ID, glm::mat4*, struct VertexBuffer*, struct Material*);
 };

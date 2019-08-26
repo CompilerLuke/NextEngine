@@ -199,12 +199,21 @@ void Editor::init_imgui() {
 
 	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
 
-	ImFontConfig icons_config; icons_config.MergeMode = false; icons_config.PixelSnapH = true; icons_config.FontDataOwnedByAtlas = true; icons_config.FontDataSize = 72;
+	ImFontConfig icons_config; icons_config.MergeMode = false; icons_config.PixelSnapH = true; icons_config.FontDataOwnedByAtlas = true; icons_config.FontDataSize = 32.0f;
 
 	auto font_path = Level::asset_path("fonts/segoeui.ttf");
 	ImFont* font = io.Fonts->AddFontFromFileTTF(font_path.c_str(), 32.0f, &icons_config, io.Fonts->GetGlyphRangesDefault());
+
+	io.FontAllowUserScaling = true;
+
 	asset_tab.filename_font = io.Fonts->AddFontFromFileTTF(font_path.c_str(), 26.0f, &icons_config, io.Fonts->GetGlyphRangesDefault());
 	asset_tab.default_font = font;
+
+	for (int i = 0; i < 10; i++) {
+		ImFontConfig im_font_config; im_font_config.OversampleH = 5; im_font_config.OversampleV = 5;
+
+		shader_editor.font[i] = io.Fonts->AddFontFromFileTTF(font_path.c_str(), (i + 1) * 10.0f, &icons_config, io.Fonts->GetGlyphRangesDefault());
+	}
 
 	set_darcula_theme();
 
@@ -397,7 +406,7 @@ void Editor::run() {
 	icons = {
 		{"play", load_Texture("editor/play_button3.png")},
 		{"folder", load_Texture("editor/folder_icon.png")},
-		{"shader", load_Texture("editor/shader_icon.png")}
+		{"shader", load_Texture("editor/shader-works-icon.png")}
 	};
 
 	CommandBuffer cmd_buffer;
@@ -616,9 +625,6 @@ void spawn_Model(World& world, Editor& editor, Input& input, RenderParams& rende
 
 		Camera* cam = get_camera(world, editor_layer);
 
-
-		
-
 		Transform* cam_trans = world.by_id<Transform>(world.id_of(cam));
 		trans->position = editor.place_at_cursor(input);
 
@@ -709,8 +715,7 @@ void Editor::render(RenderParams& params, Input& input) {
 
 
 	if (ImGui::Begin("Scene", NULL, ImGuiWindowFlags_NoScrollbar)) {
-
-
+		
 		ImGui::ImageButton(get_icon("play"), ImVec2(40, 40));
 
 		float width = ImGui::GetContentRegionMax().x;
@@ -749,6 +754,7 @@ void Editor::render(RenderParams& params, Input& input) {
 		gizmo.render(world, *this, params, input);
 
 	}
+
 	ImGui::End();
 
 	//==========================
@@ -757,6 +763,7 @@ void Editor::render(RenderParams& params, Input& input) {
 	lister.render(world, *this, params);
 
 	asset_tab.render(world, *this, params);
+	shader_editor.render(world, *this, params, input);
 
 	ImGui::PopFont();
 	ImGui::EndFrame();

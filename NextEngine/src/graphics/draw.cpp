@@ -176,6 +176,8 @@ void stencil_op_bind(StencilOp op) {
 
 #include "logger/logger.h"
 
+#include "GLFW/glfw3.h"
+
 void set_params(CommandBuffer& command_buffer, Handle<ShaderConfig> config_handle, Material& mat, World& world) {	
 	static Handle<Texture> empty_texture = load_Texture("solid_white.png");
 	
@@ -190,7 +192,7 @@ void set_params(CommandBuffer& command_buffer, Handle<ShaderConfig> config_handl
 		case Param_Vec3:
 			config->set_vec3(param.loc, param.vec3);
 			break;
-		
+
 		case Param_Vec2:
 			config->set_vec2(param.loc, param.vec2);
 			break;
@@ -207,7 +209,7 @@ void set_params(CommandBuffer& command_buffer, Handle<ShaderConfig> config_handl
 		}
 		case Param_Channel3: {
 			auto index = command_buffer.next_texture_index();
-			
+
 			if (param.channel3.image.id == INVALID_HANDLE) {
 				texture::bind_to(empty_texture, index);
 				config->set_int(param.loc, index);
@@ -265,6 +267,11 @@ void set_params(CommandBuffer& command_buffer, Handle<ShaderConfig> config_handl
 		case Param_Float:
 			config->set_float(param.loc, param.real);
 			break;
+
+		case Param_Time: 
+			config->set_float(param.loc, glfwGetTime());
+			break;
+		
 		}
 	}
 
@@ -309,6 +316,8 @@ struct SpecializedDrawCommand {
 	int num_instances;
 
 	Handle<ShaderConfig> config;
+
+	unsigned int flags;
 };
 
 struct SortKey {
@@ -355,6 +364,7 @@ void CommandBuffer::submit_to_gpu(World& world, RenderParams& render_params) {
 		new_cmd.model_m = cmd.model_m;
 		new_cmd.config = shader->get_config(desc);
 		new_cmd.material = cmd.material;
+		new_cmd.flags = cmd.flags;
 
 		DrawSortKey key = ((long long)cmd.material->state->order << 36)
 			+ ((long long)cmd.material->state->depth_func << 32)
@@ -472,10 +482,10 @@ void CommandBuffer::submit_to_gpu(World& world, RenderParams& render_params) {
 			glBindBuffer(GL_ARRAY_BUFFER, instance_buffer.buffer);
 			//glBufferSubData(GL_ARRAY_BUFFER, 0, num_instanceable * sizeof(glm::mat4), cmd.model_m); //todo allow optimizations
 			
-			if (instance_buffer.length == num_instanceable) {
-				//glBufferSubData(GL_ARRAY_BUFFER, 0, num_instanceable * sizeof(glm::mat4), cmd.model_m); //todo allow optimizations
+			if (instance_buffer.length == num_instanceable && cmd.flags & DrawCommand::update_instances) {
+				glBufferSubData(GL_ARRAY_BUFFER, 0, num_instanceable * sizeof(glm::mat4), cmd.model_m); //todo allow optimizations
 			}
-			else {
+			else if (instance_buffer.length != num_instanceable) {
 				glBufferData(GL_ARRAY_BUFFER, num_instanceable * sizeof(glm::mat4), cmd.model_m, GL_STREAM_DRAW);
 				InstancedBuffer::buffers[key].length = num_instanceable;
 

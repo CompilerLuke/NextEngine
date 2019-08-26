@@ -1,3 +1,6 @@
+
+#define PROFILING
+
 #include <editor/editor.h>
 #include <graphics/window.h>
 #include <core/vfs.h>
@@ -5,7 +8,52 @@
 #include <core/string_buffer.h>
 #include <iostream>
 
+#include <core/profiling.h>
+#include <stdio.h>
+
 int main() {
+	/*
+	int num_iterations = 10000;
+	const char* world = "World!";
+
+	PROFILE_BEGIN()
+		for (int i = 0; i < num_iterations; i++) {
+			printf("Hello %s\n", world);
+		}
+	PROFILE_END(Printf);
+
+	PROFILE_BEGIN()
+		for (int i = 0; i < num_iterations; i++) {
+			std::cout << "Hello " << world << "\n";
+		}
+	PROFILE_END(StdoutNewline)
+
+	PROFILE_BEGIN()
+		for (int i = 0; i < num_iterations; i++) {
+			std::cout << "Hello " << world << std::endl;
+		}
+	PROFILE_END(StdoutEndline)
+
+	PROFILE_BEGIN()
+		for (int i = 0; i < num_iterations; i++) {
+			log("Hello ", world);
+		}
+	PROFILE_END(MyLogger)
+
+	PROFILE_LOG(MyLogger)
+	PROFILE_LOG(StdoutEndline)	
+	PROFILE_LOG(StdoutNewline)
+	PROFILE_LOG(Printf)
+
+	flush_logger();
+
+	while (1) {
+
+	}
+
+	return 0;
+	*/
+
 	Window window;
 	window.title = "The Unplugging";
 	window.full_screen = false;

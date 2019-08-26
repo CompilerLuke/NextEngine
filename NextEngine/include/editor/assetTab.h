@@ -9,6 +9,8 @@
 #include <unordered_map>
 #include "components/transform.h"
 #include "core/string_buffer.h"
+#include "graphics/materialSystem.h"
+#include <imgui.h>
 
 struct TextureAsset {
 	Handle<struct Texture> handle;
@@ -41,6 +43,10 @@ struct ShaderAsset {
 	Handle<struct Shader> handle = { INVALID_HANDLE };
 	StringBuffer name;
 
+	vector<Param> shader_arguments;
+
+	std::unique_ptr<struct ShaderGraph> graph = NULL;
+
 	REFLECT()
 };
 
@@ -72,7 +78,7 @@ struct AssetTab {
 
 	static vector<MaterialAsset*> material_handle_to_asset; 
 	static vector<ModelAsset*> model_handle_to_asset;
-
+	static vector<ShaderAsset*> shader_handle_to_asset;
 
 	World assets;
 	ID toplevel;
@@ -95,3 +101,17 @@ struct AssetTab {
 
 MaterialAsset* register_new_material(World& world, AssetTab& self, Editor& editor, RenderParams& params, ID mat_asset_handle);
 MaterialAsset* create_new_material(struct World& world, struct AssetTab& self, struct Editor& editor, struct RenderParams& params);
+
+void add_asset(AssetTab& self, ID id);
+void render_name(StringBuffer& name, struct ImFont* font);
+
+void edit_color(glm::vec3& color, StringView name, ImVec2 size = ImVec2(200, 200));
+void edit_color(glm::vec4& color, StringView name, ImVec2 size = ImVec2(200, 200));
+
+RenderParams create_preview_command_buffer(struct CommandBuffer& cmd_buffer, struct RenderParams& old_params, struct AssetTab& self, struct Camera* cam, struct World& world);
+void render_preview_to_buffer(struct AssetTab& self, struct RenderParams& params, struct CommandBuffer& cmd_buffer, Handle<struct Texture>& preview, struct World& world);
+void rot_preview(RotatablePreview& self);
+
+bool accept_drop(const char* drop_type, void* ptr, unsigned int size);
+
+void insert_shader_handle_to_asset(ShaderAsset* asset);

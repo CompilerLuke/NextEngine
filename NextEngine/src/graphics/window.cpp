@@ -35,6 +35,13 @@ void drop_callback(GLFWwindow* window_ptr, int count, const char** paths) {
 	}
 }
 
+void scroll_callback(GLFWwindow* window_ptr, double xoffset, double yoffset)
+{
+	auto window = (Window*)glfwGetWindowUserPointer(window_ptr);
+
+	window->on_scroll.broadcast(glm::vec2(xoffset, yoffset));
+}
+
 void gl_error_callback(GLenum source, GLenum typ, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* ptr) {
 	log(message);
 }
@@ -70,6 +77,7 @@ void Window::init() {
 	glfwSetInputMode(window_ptr, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	glfwSetDropCallback(window_ptr, drop_callback);
 	glfwSetMouseButtonCallback(window_ptr, mouse_button_callback);
+	glfwSetScrollCallback(window_ptr, scroll_callback);
 
 	glfwSetWindowUserPointer(window_ptr, this);
 

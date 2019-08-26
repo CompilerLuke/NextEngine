@@ -27,6 +27,11 @@ void on_cursor_pos(Input* self, glm::vec2 mouse_position) {
 	self->mouse_position = mouse_position;
 }
 
+
+void on_scroll(Input* self, glm::vec2 offset) {
+	self->scroll_offset = offset.y;
+}
+
 void on_key(Input* self, KeyData& key_data) {
 	if (!self->active) return;
 
@@ -49,6 +54,7 @@ Input::Input(Window& window) {
 	window.on_cursor_pos.listen([this](glm::vec2 pos) { on_cursor_pos(this, pos); });
 	window.on_key.listen([this](KeyData data) { on_key(this, data); });
 	window.on_mouse_button.listen([this](MouseButtonData data) { on_mouse_button(this, data); });
+	window.on_scroll.listen([this](glm::vec2 offset) { on_scroll(this, offset); });
 	
 	this->window_ptr = window.window_ptr;
 
@@ -103,6 +109,7 @@ float Input::get_horizontal_axis() {
 
 void Input::clear() {
 	mouse_offset = glm::vec2(0);
+	scroll_offset = 0.0f;
 
 	if (!active) {
 		this->keys.clear();

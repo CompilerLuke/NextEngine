@@ -277,6 +277,8 @@
     <ClCompile Include="src\editor\lister.cpp" />
     <ClCompile Include="src\editor\assetTab.cpp" />
     <ClCompile Include="src\editor\picking.cpp" />
+    <ClCompile Include="src\editor\shaderGraph.cpp" />
+    <ClCompile Include="src\editor\shaderGraphNodes.cpp" />
     <ClCompile Include="src\graphics\buffer.cpp" />
     <ClCompile Include="src\graphics\culling.cpp" />
     <ClCompile Include="src\graphics\device.cpp" />

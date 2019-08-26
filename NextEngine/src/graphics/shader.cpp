@@ -478,6 +478,26 @@ namespace shader {
 	}
 }
 
+void reload_shader(Shader& shad_factory) {
+	log("recompiled shader: ", shad_factory.v_filename);
+
+	for (auto& shad : shad_factory.configurations) {
+		auto previous = shad.id;
+
+		StringBuffer err;
+		if (load_in_place_with_err(&shad, &err, shad_factory.v_filename, shad_factory.f_filename, &shad_factory, false)) {
+			glDeleteProgram(previous);
+
+			for (int i = 0; i < shad.uniform_bindings.length; i++) {
+				shad.uniform_bindings[i] = glGetUniformLocation(shad.id, shad_factory.uniforms[i].name.c_str());
+			}
+		}
+		else {
+			log("Error ", err);
+		}
+	}
+}
+
 void DebugShaderReloadSystem::update(World& world, UpdateParams& params) {
 	if (!params.layermask & editor_layer) return;
 
@@ -488,25 +508,10 @@ void DebugShaderReloadSystem::update(World& world, UpdateParams& params) {
 		auto f_time_modified = Level::time_modified(shad_factory.f_filename);
 
 		if (v_time_modified > shad_factory.v_time_modified or f_time_modified > shad_factory.f_time_modified) {
-			log("recompiled shader: ", shad_factory.v_filename);
+			reload_shader(shad_factory);
 			
-			for (auto& shad : shad_factory.configurations) {
-				auto previous = shad.id;
-
-				StringBuffer err;
-				if (load_in_place_with_err(&shad, &err, shad_factory.v_filename, shad_factory.f_filename, &shad_factory, false)) {
-					glDeleteProgram(previous);
-
-					for (int i = 0; i < shad.uniform_bindings.length; i++) {
-						shad.uniform_bindings[i] = glGetUniformLocation(shad.id, shad_factory.uniforms[i].name.c_str());
-					}
-				}
-				else {
-					shad_factory.v_time_modified = v_time_modified;
-					shad_factory.f_time_modified = f_time_modified;
-					log("Error ", err);
-				}
-			}
+			shad_factory.v_time_modified = v_time_modified;
+			shad_factory.f_time_modified = f_time_modified;
 		}
 	}
 }

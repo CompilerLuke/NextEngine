@@ -2,6 +2,7 @@
 
 #include <string.h>
 #include <assert.h>
+#include "core/core.h"
 
 struct StringView {
 	const char* data = "";
@@ -15,7 +16,7 @@ struct StringView {
 		this->length = strlen(data);
 	}
 
-	StringView(const struct StringBuffer&);
+	ENGINE_API StringView(const struct StringBuffer&);
 
 	inline bool starts_with(StringView pre) {
 		return length < pre.length ? false : strncmp(pre.data, data, pre.length) == 0;

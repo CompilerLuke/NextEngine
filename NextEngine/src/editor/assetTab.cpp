@@ -26,6 +26,7 @@
 #include <mutex>
 #include "editor/diffUtil.h"
 
+
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
@@ -71,6 +72,7 @@ DEFINE_COMPONENT_ID(MaterialAsset, 4)
 
 vector<MaterialAsset*> AssetTab::material_handle_to_asset;
 vector<ModelAsset*> AssetTab::model_handle_to_asset;
+vector<ShaderAsset*> AssetTab::shader_handle_to_asset;
 
 void insert_material_handle_to_asset(MaterialAsset* asset) {
 	int diff = asset->handle.id - AssetTab::material_handle_to_asset.length + 1;
@@ -88,6 +90,15 @@ void insert_model_handle_to_asset(ModelAsset* asset) {
 		AssetTab::model_handle_to_asset.append(NULL);
 	}
 	AssetTab::model_handle_to_asset[asset->handle.id] = asset;
+}
+
+void insert_shader_handle_to_asset(ShaderAsset* asset) {
+	int diff = asset->handle.id - AssetTab::shader_handle_to_asset.length + 1;
+
+	for (int i = 0; i < diff; i++) {
+		AssetTab::shader_handle_to_asset.append(NULL);
+	}
+	AssetTab::shader_handle_to_asset[asset->handle.id] = asset;
 }
 
 void AssetTab::register_callbacks(Window& window, Editor& editor) {
@@ -177,6 +188,7 @@ struct DefferedMoveFolder {
 	int image_moved_to_folder = -1;
 	int model_moved_to_folder = -1;
 	int folder_moved_to_folder = -1;
+	int shader_moved_to_folder = -1;
 	int moved_to_folder = -1;
 
 	void accept_drop(ID folder_handle) {
@@ -185,6 +197,7 @@ struct DefferedMoveFolder {
 			model_moved_to_folder = accept_move_to_folder("DRAG_AND_DROP_MODEL");
 			image_moved_to_folder = accept_move_to_folder("DRAG_AND_DROP_IMAGE");
 			folder_moved_to_folder = accept_move_to_folder("DRAG_AND_DROP_FOLDER");
+			shader_moved_to_folder = accept_move_to_folder("DRAG_AND_DROP_SHADER");
 
 			moved_to_folder = folder_handle;
 			ImGui::EndDragDropTarget();
@@ -196,6 +209,7 @@ struct DefferedMoveFolder {
 			if (mat_moved_to_folder != -1) move_to_folder<MaterialAsset>(asset_tab, moved_to_folder, mat_moved_to_folder);
 			if (model_moved_to_folder != -1) move_to_folder<ModelAsset>(asset_tab, moved_to_folder, model_moved_to_folder);
 			if (image_moved_to_folder != -1) move_to_folder<TextureAsset>(asset_tab, moved_to_folder, image_moved_to_folder);
+			if (shader_moved_to_folder != -1) move_to_folder<ShaderAsset>(asset_tab, moved_to_folder, shader_moved_to_folder);
 			if (folder_moved_to_folder != -1) {
 				asset_tab.assets.by_id<AssetFolder>(folder_moved_to_folder - 1)->owner = moved_to_folder;
 				move_to_folder<AssetFolder>(asset_tab, moved_to_folder, folder_moved_to_folder);
@@ -228,7 +242,7 @@ void render_assets(Editor& editor, AssetTab& asset_tab, StringView filter, bool*
 		}
 
 		if (shad) { 
-			render_asset(editor.get_icon("shader"), shad->name, asset_tab, handle, deselect);
+			render_asset(editor.get_icon("shader"), shad->name, asset_tab, handle, deselect, "DRAG_AND_DROP_SHADER", &shad->handle);
 		}
 
 		if (mod) {
@@ -274,9 +288,6 @@ void asset_properties(TextureAsset* tex, Editor& editor, World& world, AssetTab&
 
 //Materials
 
-void asset_properties(ShaderAsset* tex, Editor& editor, World& world, AssetTab& self, RenderParams& params) {
-
-}
 
 std::wstring open_dialog(Editor& editor) {
 	wchar_t filename[MAX_PATH];
@@ -496,19 +507,25 @@ void rot_preview(RotatablePreview& self) {
 	}
 }
 
-void edit_color(glm::vec3& color, StringView name, ImVec2 size = ImVec2(200, 200)) {
+void edit_color(glm::vec4& color, StringView name, ImVec2 size) {
 
-	ImVec4 col(color.x, color.y, color.z, 1.0f);
+	ImVec4 col(color.x, color.y, color.z, color.w);
 	if (ImGui::ColorButton(name.c_str(), col, 0, size)) {
-		ImGui::OpenPopup("ColorEdit");
+		ImGui::OpenPopup(name.c_str());
 	}
 	
-	color = glm::vec3(col.x, col.y, col.z);
+	color = glm::vec4(col.x, col.y, col.z, col.w);
 
-	if (ImGui::BeginPopup("ColorEdit")) {
-		ImGui::ColorPicker3(name.c_str(), &color.x);
+	if (ImGui::BeginPopup(name.c_str())) {
+		ImGui::ColorPicker4(name.c_str(), &color.x);
 		ImGui::EndPopup();
 	}
+}
+
+void edit_color(glm::vec3& color, StringView name, ImVec2 size) {
+	glm::vec4 color4 = glm::vec4(color, 1.0f);
+	edit_color(color4, name, size);
+	color = color4;
 }
 
 void channel_image(Handle<Texture>& image, StringView name) {
@@ -527,6 +544,8 @@ void channel_image(Handle<Texture>& image, StringView name) {
 	ImGui::Text(name.c_str());
 	ImGui::SameLine(ImGui::GetWindowWidth() - 300);
 }
+
+void set_params_for_shader_graph(Material* mat);
 
 void asset_properties(MaterialAsset* mat_asset, Editor& editor, World& world, AssetTab& self, RenderParams& params) {
 
@@ -549,6 +568,10 @@ void asset_properties(MaterialAsset* mat_asset, Editor& editor, World& world, As
 
 			if (ImGui::Button(shad->f_filename.c_str())) {
 				ImGui::OpenPopup("StandardShaders");
+			}
+
+			if (accept_drop("DRAG_AND_DROP_SHADER", &material->shader, sizeof(Handle<Shader>))) {
+				set_params_for_shader_graph(material);
 			}
 
 			if (ImGui::BeginPopup("StandardShaders")) {
@@ -910,6 +933,11 @@ void AssetTab::render(World& world, Editor& editor, RenderParams& params) {
 			if (ImGui::MenuItem("New Material"))
 			{
 				create_new_material(world, *this, editor, params);
+			}
+
+			if (ImGui::MenuItem("New Shader"))
+			{
+				create_new_shader(world, *this, editor, params);
 			}
 
 			if (ImGui::MenuItem("New Folder"))

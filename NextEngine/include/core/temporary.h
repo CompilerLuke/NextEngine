@@ -14,8 +14,8 @@ struct TemporaryAllocator : Allocator {
 	ENGINE_API TemporaryAllocator(size_t);
 	ENGINE_API ~TemporaryAllocator();
 
-	void* allocate(size_t) override;
-	void clear();
+	ENGINE_API void* allocate(size_t) override;
+	ENGINE_API void clear();
 };
 
 extern ENGINE_API TemporaryAllocator temporary_allocator;

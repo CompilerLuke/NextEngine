@@ -33,6 +33,7 @@ struct Window {
 	EventDispatcher<KeyData> on_key;
 	EventDispatcher<StringBuffer> on_drop;
 	EventDispatcher<MouseButtonData> on_mouse_button;
+	EventDispatcher<glm::vec2> on_scroll;
 
 	GLFWwindow* window_ptr;
 

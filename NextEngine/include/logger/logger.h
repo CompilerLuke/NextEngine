@@ -48,3 +48,5 @@ template<typename ...Args>
 void log(Args... args) {
 	log_string(format(args...));
 }
+
+ENGINE_API void flush_logger();

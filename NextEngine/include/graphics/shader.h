@@ -84,6 +84,8 @@ Handle<Shader> ENGINE_API load_Shader(StringView vfilename, StringView ffilename
 Handle<Uniform> ENGINE_API location(Handle<Shader>, StringView);
 unsigned int ENGINE_API get_flag(Handle<Shader>, StringView);
 
+void reload_shader(Shader& shad_factory);
+
 struct DebugShaderReloadSystem : System {
 	void update(World&, UpdateParams&) override;
 };

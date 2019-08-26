@@ -2,82 +2,82 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="src\ecs">
-      <UniqueIdentifier>{2db1130e-2955-4716-8533-186acf9ba402}</UniqueIdentifier>
+      <UniqueIdentifier>{6559f63a-b661-4dcf-9e17-03eb551d51d8}</UniqueIdentifier>
     </Filter>
     <Filter Include="src">
-      <UniqueIdentifier>{6d33d453-b020-41ad-883a-54b428449a5f}</UniqueIdentifier>
+      <UniqueIdentifier>{4253d4ee-37ca-45c8-a7b9-cd071ee58b14}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\core">
-      <UniqueIdentifier>{c3ec933c-7ee0-4ce9-8d25-8386b2462f13}</UniqueIdentifier>
+      <UniqueIdentifier>{cc4ce05c-1592-4079-8981-d56ec7e626fa}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\model">
-      <UniqueIdentifier>{15c07bd0-af56-4583-92ec-e44e82c38a6b}</UniqueIdentifier>
+      <UniqueIdentifier>{ef7f7a2f-c3a1-4421-b641-aa91b96a1f12}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\editor">
-      <UniqueIdentifier>{0c07ad9d-6c51-4e8e-adab-a866479b5456}</UniqueIdentifier>
+      <UniqueIdentifier>{da88f128-4a46-490c-84d2-91179b6cd0e9}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\logger">
-      <UniqueIdentifier>{c6566431-2687-439b-b60c-a7743658fe4c}</UniqueIdentifier>
+      <UniqueIdentifier>{a5d5a62c-eb55-4f5b-a52c-d1cc6f3bf471}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\physics">
-      <UniqueIdentifier>{eb849cdb-4724-47d8-baa3-fe176f5a857e}</UniqueIdentifier>
+      <UniqueIdentifier>{d61a7eba-6338-4623-8288-765e54fd5176}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\graphics">
-      <UniqueIdentifier>{b407bf91-597b-463b-8bf5-f3d87de010f6}</UniqueIdentifier>
+      <UniqueIdentifier>{04515cad-095b-4c61-8c1a-817c5de37077}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\benchmark">
-      <UniqueIdentifier>{b4521a26-1166-4a41-adc6-3000d6c5b1be}</UniqueIdentifier>
+      <UniqueIdentifier>{e1a01d83-49b9-48ba-939a-faf490ebad3d}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\components">
-      <UniqueIdentifier>{e1bc0098-8a94-4147-a8c5-d52f8ba8af42}</UniqueIdentifier>
+      <UniqueIdentifier>{9d39e240-cdee-4569-954f-f58d8da892cd}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\reflection">
-      <UniqueIdentifier>{63318b6f-a7bf-4c5e-8a87-bbdff8296c73}</UniqueIdentifier>
+      <UniqueIdentifier>{cd659407-e074-42f3-9f64-283677f1973b}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\serialization">
-      <UniqueIdentifier>{cbd5fcd7-728f-4a27-bacc-0228e4f55567}</UniqueIdentifier>
+      <UniqueIdentifier>{f726f2e4-9ae4-43ae-874a-4eb84e23349b}</UniqueIdentifier>
     </Filter>
     <Filter Include="vendor\imgui">
-      <UniqueIdentifier>{20a1351b-92af-476b-bcd3-411136e1cb61}</UniqueIdentifier>
+      <UniqueIdentifier>{1178eb3e-68e9-41bc-b2dd-41e0b138aa62}</UniqueIdentifier>
     </Filter>
     <Filter Include="vendor">
-      <UniqueIdentifier>{237071a5-bb8a-406e-9d71-9206ef02c6c5}</UniqueIdentifier>
+      <UniqueIdentifier>{8637cddc-cd1c-45a9-a33b-a18b2238fe40}</UniqueIdentifier>
     </Filter>
     <Filter Include="vendor\ImGuizmo">
-      <UniqueIdentifier>{c7e7f0d0-e371-44e2-bbaa-ad73dfc73874}</UniqueIdentifier>
+      <UniqueIdentifier>{c82c5464-ce8b-474d-b15c-8e6b426ebdd4}</UniqueIdentifier>
     </Filter>
     <Filter Include="vendor\imgui\examples">
-      <UniqueIdentifier>{e56c4853-87a6-4f95-bed5-ddcbf1cd5a67}</UniqueIdentifier>
+      <UniqueIdentifier>{5c9e3d76-f0cd-4cbe-91fc-733a4898ef5a}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\ecs">
-      <UniqueIdentifier>{d1f85273-3298-477a-89b8-e540965d445a}</UniqueIdentifier>
+      <UniqueIdentifier>{0fc921fd-e5be-44fc-b5c4-13263c30b838}</UniqueIdentifier>
     </Filter>
     <Filter Include="include">
-      <UniqueIdentifier>{5c64525a-b06d-4d14-9532-07925715d8da}</UniqueIdentifier>
+      <UniqueIdentifier>{9006c178-2440-4c96-b1f7-8875795f70e9}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\core">
-      <UniqueIdentifier>{dbcf6010-27a4-434d-80c7-19b549ed6e5f}</UniqueIdentifier>
+      <UniqueIdentifier>{66f73938-a61c-4add-a925-f2c5720afdce}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\model">
-      <UniqueIdentifier>{2ac3cec0-7ca7-44ee-8584-11455866478d}</UniqueIdentifier>
+      <UniqueIdentifier>{14bf0316-07f6-487f-95a1-c5c2ee6c30d9}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\editor">
-      <UniqueIdentifier>{af58cf29-1292-42e6-8f0a-00effbe09241}</UniqueIdentifier>
+      <UniqueIdentifier>{ebe17cc9-9170-493e-a762-daf4887c5d71}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\logger">
-      <UniqueIdentifier>{7e9c4d7c-31c2-4d29-9c96-0f7734b1e93a}</UniqueIdentifier>
+      <UniqueIdentifier>{f563a0ba-4616-4c70-905f-dd28a720bc48}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\physics">
-      <UniqueIdentifier>{daa2eeff-c035-4043-8890-5bcdd006b326}</UniqueIdentifier>
+      <UniqueIdentifier>{fec59a16-fc2a-4f0d-8d6f-4014a9c9a0db}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\graphics">
-      <UniqueIdentifier>{f6ed690e-664d-42d0-9485-e72e6bf3c316}</UniqueIdentifier>
+      <UniqueIdentifier>{4fd02c8f-f0aa-4b80-adb3-6a9677e42c05}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\components">
-      <UniqueIdentifier>{923cfab3-d87f-41de-9a35-b9d34fba476a}</UniqueIdentifier>
+      <UniqueIdentifier>{9e14229c-9ccd-406e-8fae-984d6e6e0b15}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\reflection">
-      <UniqueIdentifier>{e75877fb-b950-46ae-b0b3-62fb87ee72e1}</UniqueIdentifier>
+      <UniqueIdentifier>{5b36a9d4-3654-4aac-963a-1dfa2aa549ec}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -139,6 +139,9 @@
       <Filter>src\editor</Filter>
     </ClCompile>
     <ClCompile Include="src\editor\gizmo.cpp">
+      <Filter>src\editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\grass.cpp">
       <Filter>src\editor</Filter>
     </ClCompile>
     <ClCompile Include="src\editor\lister.cpp">
@@ -249,13 +252,19 @@
     <ClCompile Include="vendor\ImGuizmo\ImSequencer.cpp">
       <Filter>vendor\ImGuizmo</Filter>
     </ClCompile>
-    <ClCompile Include="src\editor\grass.cpp">
+    <ClCompile Include="src\editor\shaderGraph.cpp">
+      <Filter>src\editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\shaderGraphNodes.cpp">
       <Filter>src\editor</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\core\eventDispatcher.h">
       <Filter>src\core</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\stbi_write.h">
+      <Filter>vendor</Filter>
     </ClInclude>
     <ClInclude Include="vendor\imgui\imconfig.h">
       <Filter>vendor\imgui</Filter>
@@ -329,6 +338,9 @@
     <ClInclude Include="include\core\input.h">
       <Filter>include\core</Filter>
     </ClInclude>
+    <ClInclude Include="include\core\platform.h">
+      <Filter>include\core</Filter>
+    </ClInclude>
     <ClInclude Include="include\core\resource.h">
       <Filter>include\core</Filter>
     </ClInclude>
@@ -375,6 +387,9 @@
       <Filter>include\editor</Filter>
     </ClInclude>
     <ClInclude Include="include\editor\gizmo.h">
+      <Filter>include\editor</Filter>
+    </ClInclude>
+    <ClInclude Include="include\editor\grass.h">
       <Filter>include\editor</Filter>
     </ClInclude>
     <ClInclude Include="include\editor\lister.h">
@@ -466,15 +481,6 @@
     </ClInclude>
     <ClInclude Include="include\reflection\reflection.h">
       <Filter>include\reflection</Filter>
-    </ClInclude>
-    <ClInclude Include="include\core\platform.h">
-      <Filter>include\core</Filter>
-    </ClInclude>
-    <ClInclude Include="vendor\stbi_write.h">
-      <Filter>vendor</Filter>
-    </ClInclude>
-    <ClInclude Include="include\editor\grass.h">
-      <Filter>include\editor</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

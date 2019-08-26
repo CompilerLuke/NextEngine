@@ -19,6 +19,8 @@ struct Grass {
 
 	vector<Transform> transforms;
 
+	bool dirty = true;
+
 	REFLECT()
 
 	void place(struct World&);

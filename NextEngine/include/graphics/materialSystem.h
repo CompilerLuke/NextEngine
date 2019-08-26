@@ -20,7 +20,8 @@ enum Param_Type {
 	Param_Cubemap,
 	Param_Int,
 	Param_Float,
-	Param_Channel3, Param_Channel2, Param_Channel1
+	Param_Channel3, Param_Channel2, Param_Channel1, 
+	Param_Time
 };
 
 struct Param {
@@ -62,6 +63,8 @@ struct Param {
 		Channel3 channel3;
 		Channel2 channel2;
 		Channel1 channel1;
+
+		int time; //pointless makes it easy to serialize
 	};
 
 	Param();

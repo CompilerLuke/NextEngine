@@ -61,8 +61,10 @@ struct HandleManager {
 		auto popped = slots.pop();
 
 		if (index != slots.length) { //poped is the element we are trying to delete
-			slots[index] = std::move(popped);
+			//slots[index].~T(); todo not sure of this is a leak
+			new (&slots[index]) T(std::move(popped)); //Move assign doesnt work on Material
 			by_handle[last_id - 1] = &slots[index];
+			id_of_slots[index] = last_id;
 		}
 		by_handle[handle.id - 1] = NULL;
 	}

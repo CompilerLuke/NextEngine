@@ -14,6 +14,7 @@
 #include "graphics/renderPass.h"
 #include "editor/diffUtil.h"
 #include "graphics/frameBuffer.h"
+#include "editor/shaderGraph.h"
 
 struct DroppableField {
 	void* ptr;
@@ -71,6 +72,7 @@ struct Editor {
 
 	ImTextureID get_icon(StringView name);
 	
+	ShaderEditor shader_editor;
 	AssetTab asset_tab;
 	Lister lister;
 	DisplayComponents display_components;
