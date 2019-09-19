@@ -25,7 +25,7 @@ namespace reflect {
 		Int_Kind,
 		Unsigned_Int_Kind,
 		Float_Kind,
-		StringBuffer_Kind
+		StringBuffer_Kind,
 	};
 
 	struct TypeDescriptor {
@@ -172,10 +172,13 @@ namespace reflect {
 		typeDesc->tag_offset = offsetof(T, type); \
         typeDesc->name = #Type; \
         typeDesc->size = sizeof(T); \
-        typeDesc->cases = {
+        typeDesc->members = {
 
-#define REFLECT_UNION_FIELD(name) }; \
-	typeDesc->members = {{#name, offsetof(T, name), reflect::TypeResolver<decltype(T::name)>::get(), reflect::NoTag}}; \
+#define REFLECT_UNION_FIELD(name) \
+	{#name, offsetof(T, name), reflect::TypeResolver<decltype(T::name)>::get(), reflect::NoTag}, \
+
+#define REFLECT_UNION_CASE_BEGIN() \
+	}; \
 	typeDesc->cases = {
 
 #define REFLECT_UNION_CASE(name) REFLECT_STRUCT_MEMBER(name)

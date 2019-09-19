@@ -155,6 +155,7 @@ void SerializerBuffer::write_string(StringBuffer& str) {
 	}
 }
 
+
 void DeserializerBuffer::read_string(StringBuffer& str) {
 	unsigned int length = (unsigned int)this->read_int();
 	str.reserve(length);
@@ -177,6 +178,7 @@ void SerializerBuffer::write(reflect::TypeDescriptor* type, void* ptr) {
 	else if (type->kind == reflect::Unsigned_Int_Kind) write_int(*(unsigned int*)ptr);
 	else if (type->kind == reflect::StringBuffer_Kind) write_string(*(StringBuffer*)ptr);
 	else if (type->kind == reflect::Vector_Kind) write_array((reflect::TypeDescriptor_Vector*)type, ptr);
+	else if (type->kind == reflect::Enum_Kind) write_int(*(int*)ptr);
 	else throw "Unexpected type";
 }
 
@@ -189,6 +191,7 @@ void DeserializerBuffer::read(reflect::TypeDescriptor* type, void* ptr) {
 	else if (type->kind == reflect::Unsigned_Int_Kind) *(int*)ptr = read_int();
 	else if (type->kind == reflect::StringBuffer_Kind) read_string(*(StringBuffer*)ptr);
 	else if (type->kind == reflect::Vector_Kind) read_array((reflect::TypeDescriptor_Vector*)type, ptr);
+	else if (type->kind == reflect::Enum_Kind) *(int*)ptr = read_int();
 	else throw "Unexpected type";
 }
 

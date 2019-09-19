@@ -25,28 +25,29 @@ ShaderNode::ShaderNode(Type type, ChannelType output_type) {
 	this->type = type;
 }
 
+ShaderNode::ShaderNode() {}
+
 ShaderEditor::ShaderEditor() {}
 
-ShaderNode::InputChannel::InputChannel(StringView name, ShaderNode::ChannelType type) {
+ShaderNode::InputChannel::InputChannel(StringView name, ChannelType type) {
 	memset(this, 0, sizeof(InputChannel));
 
 	this->type = type;
-	this->name = name;
 }
 
-ShaderNode::InputChannel::InputChannel(StringView name, glm::vec4 value) : InputChannel(name, ShaderNode::Channel4) {
+ShaderNode::InputChannel::InputChannel(StringView name, glm::vec4 value) : InputChannel(name, Channel4) {
 	this->value4 = value;
 }
 
-ShaderNode::InputChannel::InputChannel(StringView name, glm::vec3 value) : InputChannel(name, ShaderNode::Channel3) {
+ShaderNode::InputChannel::InputChannel(StringView name, glm::vec3 value) : InputChannel(name, Channel3) {
 	this->value3 = value;
 }
 
-ShaderNode::InputChannel::InputChannel(StringView name, glm::vec2 value) : InputChannel(name, ShaderNode::Channel2) {
+ShaderNode::InputChannel::InputChannel(StringView name, glm::vec2 value) : InputChannel(name, Channel2) {
 	this->value2 = value;
 }
 
-ShaderNode::InputChannel::InputChannel(StringView name, float value) : InputChannel(name, ShaderNode::Channel1) {
+ShaderNode::InputChannel::InputChannel(StringView name, float value) : InputChannel(name, Channel1) {
 	this->value1 = value;
 }
 
@@ -288,7 +289,9 @@ void render_link(ShaderGraph& graph, ShaderNode::Link* link, bool is_input) {
 	}
 }
 
-void render_input(ShaderGraph& graph, Handle<ShaderNode> handle, unsigned int i, bool render_default) {
+void render_input(ShaderGraph& graph, Handle<ShaderNode> handle, unsigned int i, const char** names, bool render_default) {
+	const char* name = names[i];
+	
 	ShaderNode* node = graph.nodes_manager.get(handle);
 	ShaderNode::InputChannel& input = node->inputs[i];
 	
@@ -303,26 +306,26 @@ void render_input(ShaderGraph& graph, Handle<ShaderNode> handle, unsigned int i,
 
 	ImGui::PushID(handle.id);
 
-	if (input.type == ShaderNode::Channel1 && !is_connected && render_default) { 
+	if (input.type == Channel1 && !is_connected && render_default) { 
 		ImGui::Dummy(ImVec2(0, 40.0f * graph.scale));
 		ImGui::SameLine();
-		ImGui::InputFloat(input.name.c_str(), &input.value1); 
+		ImGui::InputFloat(name, &input.value1); 
 	}
-	else if (input.type == ShaderNode::Channel2 && !is_connected && render_default) ImGui::InputFloat2(input.name.c_str(), &input.value2.x);
-	else if (input.type == ShaderNode::Channel3 && !is_connected && render_default) {
-		edit_color(input.value3, input.name, ImVec2(40 * graph.scale, 40 * graph.scale));
+	else if (input.type == Channel2 && !is_connected && render_default) ImGui::InputFloat2(names[i], &input.value2.x);
+	else if (input.type == Channel3 && !is_connected && render_default) {
+		edit_color(input.value3, name, ImVec2(40 * graph.scale, 40 * graph.scale));
 		ImGui::SameLine();
-		ImGui::Text(input.name.c_str());
+		ImGui::Text(name);
 	}
-	else if (input.type == ShaderNode::Channel4 && !is_connected && render_default) {
-		edit_color(input.value4, input.name, ImVec2(40 * graph.scale, 40 * graph.scale));
+	else if (input.type == Channel4 && !is_connected && render_default) {
+		edit_color(input.value4, name, ImVec2(40 * graph.scale, 40 * graph.scale));
 		ImGui::SameLine();
-		ImGui::Text(input.name.c_str());
+		ImGui::Text(name);
 	}
 	else {
 		ImGui::Dummy(ImVec2(0, 40 * graph.scale));
 		ImGui::SameLine();
-		ImGui::Text(input.name.c_str());
+		ImGui::Text(name);
 		
 	}
 
@@ -336,7 +339,7 @@ void render_output(ShaderGraph& graph, Handle<ShaderNode> handle) {
 
 	auto window = ImGui::GetCurrentWindow();
 
-	if (output.type != ShaderNode::ChannelNone) {
+	if (output.type != ChannelNone) {
 		glm::vec2 start_position = glm::vec2(window->DC.CursorPos.x + (width - 10.0f) * graph.scale, window->DC.CursorPos.y + 20.0f * graph.scale);
 		draw_connector(graph, start_position, handle, output);
 	}
@@ -527,6 +530,12 @@ void set_params_for_shader_graph(Material* mat_ptr) {
 		mat_ptr->params.append(p);
 	}
 
+	for (unsigned int i = 0; i < asset->graph->parameters.length; i++) {
+		Param p = asset->graph->parameters[i];
+		p.loc = location(mat_ptr->shader, asset->graph->param_names[i]);
+		mat_ptr->params.append(p);
+	}
+
 	mat_ptr->set_vec2("transformUVs", glm::vec2(1.0f));
 }
 
@@ -666,14 +675,15 @@ void ShaderGraph::render(World& world, Editor& editor, RenderParams& params, Inp
 
 	if (action.type == Action::BoxSelect) {
 		glm::vec2 start = action.mouse_pos;
-		glm::vec2 end = start;
-		end.x += ImGui::GetMouseDragDelta().x;
-		end.y += ImGui::GetMouseDragDelta().y;
+		glm::vec2 end = start + to_vec2(ImGui::GetMouseDragDelta());
 
 		float length = 5.0f;
 
 		auto line_color = ImColor(200, 200, 200);
 		float line_width = 2.0f;
+
+		if (start.x > end.x) std::swap(start.x, end.x);
+		if (start.y > end.y) std::swap(start.y, end.y);
 
 		for (float x = start.x; x < end.x - length; x += length * 2) draw_list->AddLine(ImVec2(x, start.y), ImVec2(x + length, start.y), line_color, line_width);
 		for (float x = start.x; x < end.x - length; x += length * 2) draw_list->AddLine(ImVec2(x, end.y), ImVec2(x + length, end.y), line_color, line_width);
@@ -724,6 +734,22 @@ void ShaderCompiler::begin() {
 		}
 	}
 
+	for (unsigned int i = 0; i < graph.parameters.length; i++) {
+		Param& param = graph.parameters[i];
+
+		if (param.type == Param_Image) {
+			contents += "uniform sampler2D ";
+			contents += graph.param_names[i];
+			contents += ";\n";
+		}
+
+		if (param.type == Param_Float) {
+			contents += "uniform float ";
+			contents += graph.param_names[i];
+			contents += ";\n";
+		}
+	}
+
 	if (graph.requires_time) {
 		contents += "uniform float _dep_time;\n";
 	}
@@ -742,19 +768,19 @@ void ShaderCompiler::end() {
 
 void ShaderCompiler::compile_input(ShaderNode::InputChannel& input) {
 	if (input.link.from.id == INVALID_HANDLE) {
-		if (input.type == ShaderNode::Channel1) {
+		if (input.type == Channel1) {
 			contents += format(input.value1);
 		}
 
-		if (input.type == ShaderNode::Channel2) {
+		if (input.type == Channel2) {
 			contents += format("vec2(", input.value2.x, ",", input.value2.y, ")");
 		}
 
-		if (input.type == ShaderNode::Channel3) {
+		if (input.type == Channel3) {
 			contents += format("vec3(", input.value3.x, ",", input.value3.y, ",", input.value3.z, ")");
 		}
 
-		if (input.type == ShaderNode::Channel4) {
+		if (input.type == Channel4) {
 			contents += format("vec4(", input.value3.x, ",", input.value3.y, ",", input.value3.z, ",", input.value4.w, ")");
 		}
 	}
@@ -764,47 +790,47 @@ void ShaderCompiler::compile_input(ShaderNode::InputChannel& input) {
 		if (output->output.type > input.type) {
 			compile_node(input.link.from);
 				
-			if (input.type == ShaderNode::Channel1) contents += ".x";
-			if (input.type == ShaderNode::Channel2) contents += ".xy";
-			if (input.type == ShaderNode::Channel3) contents += ".xyz";
+			if (input.type == Channel1) contents += ".x";
+			if (input.type == Channel2) contents += ".xy";
+			if (input.type == Channel3) contents += ".xyz";
 		}
 		else if (output->output.type < input.type) {
-			if (input.type == ShaderNode::Channel4) {
-				if (output->output.type == ShaderNode::Channel1) {
+			if (input.type == Channel4) {
+				if (output->output.type == Channel1) {
 					contents += "vec4(vec3(";
 					compile_node(input.link.from);
 					contents += "), 1.0f)";
 				}
 
-				if (output->output.type == ShaderNode::Channel2) {
+				if (output->output.type == Channel2) {
 					contents += "vec4(";
 					compile_node(input.link.from);
 					contents += "0.0f, 1.0f)";
 				}
 
-				if (output->output.type == ShaderNode::Channel3) {
+				if (output->output.type == Channel3) {
 					contents += "vec4(";
 					compile_node(input.link.from);
 					contents += "1.0f)";
 				}
 			}
 				
-			if (input.type == ShaderNode::Channel3) {
-				if (output->output.type == ShaderNode::Channel1) {
+			if (input.type == Channel3) {
+				if (output->output.type == Channel1) {
 					contents += "vec3(";
 					compile_node(input.link.from);
 					contents += ")";
 				}
 
-				if (output->output.type == ShaderNode::Channel2) {
+				if (output->output.type == Channel2) {
 					contents += "vec3(";
 					compile_node(input.link.from);
 					contents += "0.0f)";
 				}
 			}
 
-			if (input.type == ShaderNode::Channel2) {
-				if (output->output.type == ShaderNode::Channel1) {
+			if (input.type == Channel2) {
+				if (output->output.type == Channel1) {
 					contents += "vec2(";
 					compile_node(input.link.from);
 					contents += ")";
@@ -833,7 +859,7 @@ void ShaderCompiler::compile() {
 		}
 	}
 
-	if (base_node.id != INVALID_HANDLE) {
+	if (base_node.id == INVALID_HANDLE) {
 		log("Shader Graph missing base node");
 	}
 
@@ -842,10 +868,19 @@ void ShaderCompiler::compile() {
 	end();
 }
 
+void load_Shader_for_graph(ShaderAsset* asset) {
+	StringBuffer file_path = format("data/shader_output/", asset->name, ".frag");
+	
+	asset->handle = load_Shader("shaders/pbr.vert", file_path);
+}
 
 void compile_shader_graph(ShaderAsset* asset) {
+	static StringBuffer last_output;
+	
 	ShaderCompiler compiler(*asset->graph);
 	compiler.compile();
+
+	if (last_output == compiler.contents) return;
 
 	StringBuffer file_path = format("data/shader_output/", asset->name, ".frag");
 
@@ -857,12 +892,13 @@ void compile_shader_graph(ShaderAsset* asset) {
 	file.write(compiler.contents);
 	file.close();
 
-
-	asset->handle = load_Shader("shaders/pbr.vert", file_path);
+	load_Shader_for_graph(asset);
 
 	insert_shader_handle_to_asset(asset);
 	
 	reload_shader(*RHI::shader_manager.get(asset->handle));
+
+	last_output = compiler.contents;
 }
 
 void new_node_popup(ShaderAsset* asset);
@@ -936,11 +972,8 @@ void ShaderEditor::render(World& world, Editor& editor, RenderParams& params, In
 
 		bool mouse_drag_within_window = window_a.x < mouse_drag_begin.x && window_a.y < mouse_drag_begin.y && window_b.x > mouse_drag_begin.x && window_b.y > mouse_drag_begin.y;
 
-		if (ImGui::IsMouseDragging()) {
-			log("here", window_a.x, window_b.x, window_a.y, window_b.y);
-		}
-
-		if (!ImGui::IsAnyItemHovered() && ImGui::IsMouseDragging() && asset->graph->action.type == ShaderGraph::Action::None && mouse_drag_within_window) {
+		//ImGui::IsAnyItemHovered()
+		if (ImGui::IsMouseDragging() && asset->graph->action.type == ShaderGraph::Action::None && mouse_drag_within_window) {
 			asset->graph->action.type = ShaderGraph::Action::BoxSelect;
 			asset->graph->action.mouse_pos = glm::vec2(ImGui::GetMousePos().x, ImGui::GetMousePos().y);
 		}
@@ -949,7 +982,8 @@ void ShaderEditor::render(World& world, Editor& editor, RenderParams& params, In
 			asset->graph->action.type = ShaderGraph::Action::None;
 		}
 
-		if (!ImGui::IsAnyItemHovered() && ImGui::IsMouseClicked(0) && asset->graph->action.type == ShaderGraph::Action::None && mouse_drag_within_window) {
+		//ImGui::IsAnyItemHovered()
+		if (!ImGui::IsAnyItemHovered() && ImGui::IsMouseDown(0) && asset->graph->action.type == ShaderGraph::Action::None && mouse_drag_within_window) {
 			asset->graph->selected.clear();
 		}
 
@@ -969,14 +1003,38 @@ void ShaderEditor::render(World& world, Editor& editor, RenderParams& params, In
 			//}
 		}
 
+		//Create property node
+		{
+			unsigned int param_id;
+
+			glm::vec2 position = screenspace_to_position(*asset->graph, to_vec2(ImGui::GetMousePos()));
+
+			mouse_hovering(to_vec2(ImGui::GetWindowPos()), to_vec2(ImGui::GetWindowSize()));
+
+			if (ImGui::BeginDragDropTarget()) {
+				if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DRAG_AND_DROP_PARAM_FLOAT")) {
+					param_id = (unsigned int)payload->Data;
+
+					ShaderNode node(ShaderNode::PARAM_NODE, Channel1);
+					node.param_id = param_id;
+					node.position = position;
+					asset->graph->nodes_manager.make(std::move(node));
+				}
+				ImGui::EndDragDropTarget();
+			}
+		}
+
+
 		ImGui::PopStyleVar();
 		ImGui::PopFont();
 
-		if (ImGui::GetIO().MouseClicked[1]) {
+		if (ImGui::GetIO().MouseClicked[1] && mouse_drag_within_window) {
 			ImGui::OpenPopup("NewNode");
+			node_popup_filter.length = 0;
 		}
 
 		new_node_popup(asset);
+
 	}
 
 	ImGui::End();
@@ -1007,9 +1065,189 @@ void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTa
 
 	if (shader->graph == NULL) {
 		shader->graph = std::unique_ptr<ShaderGraph>(new ShaderGraph());
-		shader->graph->nodes_manager.make(make_pbr_node());
+		shader->graph->nodes_manager.make(make_pbr_node(), true);
+	}
+
+	compile_shader_graph(shader); //todo use undo redo system to detect change
+
+	ImGui::SetNextTreeNodeOpen(true);
+	ImGui::CollapsingHeader("Properties");
+
+	for (unsigned int i = 0; i < shader->graph->parameters.length; i++) {
+		Param& param = shader->graph->parameters[i];
+		StringView name = shader->graph->param_names[i];
+
+		if (param.type == Param_Float) {
+			ImGui::InputFloat(name.c_str(), &param.real);
+		
+			if (ImGui::BeginDragDropSource()) {
+				ImGui::Text(name.c_str());
+				ImGui::SetDragDropPayload("DRAG_AND_DROP_PARAM_FLOAT", (void*)i, sizeof(unsigned int));
+				ImGui::EndDragDropSource();
+			}
+		}
+
+		if (param.type == Param_Image) {
+			ImGui::Image((ImTextureID)texture::id_of(param.image), ImVec2(200, 200), ImVec2(0, 1), ImVec2(1, 0));
+			
+			accept_drop("DRAG_AND_DROP_IMAGE", &param.image, sizeof(Handle<Texture>));
+			
+			ImGui::SameLine();
+
+			ImGui::Button(name.c_str()); //todo implement rename
+
+			if (ImGui::BeginDragDropSource()) {
+				ImGui::Image((ImTextureID)texture::id_of(param.image), ImVec2(200, 200), ImVec2(0, 1), ImVec2(1, 0));
+				ImGui::SetDragDropPayload("DRAG_AND_DROP_IMAGE_PARAM", (void*)i, sizeof(StringView));
+				ImGui::EndDragDropSource();
+			}
+
+	
+		}
+	}
+
+	ImGui::NewLine();
+	
+	static StringBuffer buffer_name;
+	
+	if (ImGui::Button("New Property")) {
+		buffer_name.length = 0;
+		ImGui::OpenPopup("New Property");
+	}
+
+	if (ImGui::BeginPopup("New Property")) {
+		
+		ImGui::InputText("Name", buffer_name);
+
+		Param p;
+
+		bool create_property = true;
+
+		if (ImGui::Button("Float")) {
+			p.type = Param_Float;
+			p.real = 1.0f;
+		}
+		else if (ImGui::Button("Image")) {
+			p.type = Param_Image;
+			p.image.id = 0;
+		}
+		else create_property = false;
+
+		if (buffer_name.length == 0) create_property = false;
+
+		if (create_property) {
+			shader->graph->parameters.append(p);
+			shader->graph->param_names.append(buffer_name);
+		}
+
+		ImGui::EndPopup();
 	}
 
 	rot_preview(shader->graph->rot_preview);
 	render_preview(shader, world, editor, params);
+}
+
+#include "serialization/serializer.h"
+
+REFLECT_BEGIN_ENUM(ChannelType)
+REFLECT_ENUM_VALUE(Channel1)
+REFLECT_ENUM_VALUE(Channel2)
+REFLECT_ENUM_VALUE(Channel3)
+REFLECT_ENUM_VALUE(ChannelNone)
+REFLECT_END_ENUM()
+
+REFLECT_GENERIC_STRUCT_BEGIN(Handle<ShaderNode>)
+REFLECT_STRUCT_MEMBER(id)
+REFLECT_STRUCT_END()
+
+REFLECT_STRUCT_BEGIN(ShaderNode::Link)
+REFLECT_STRUCT_MEMBER(to)
+REFLECT_STRUCT_MEMBER(from)
+REFLECT_STRUCT_MEMBER(index)
+REFLECT_STRUCT_END()
+
+REFLECT_UNION_BEGIN(ShaderNode::InputChannel)
+REFLECT_UNION_FIELD(link)
+REFLECT_UNION_FIELD(position)
+REFLECT_UNION_CASE_BEGIN()
+REFLECT_UNION_CASE(value1)
+REFLECT_UNION_CASE(value2)
+REFLECT_UNION_CASE(value3)
+REFLECT_UNION_END()
+
+REFLECT_STRUCT_BEGIN(ShaderNode::OutputChannel)
+REFLECT_STRUCT_MEMBER(type)
+REFLECT_STRUCT_MEMBER(links)
+REFLECT_STRUCT_MEMBER(position)
+REFLECT_STRUCT_END()
+
+StringView get_param_name(ShaderGraph& graph, unsigned int i) {
+	return graph.param_names[i];
+}
+
+void deserialize_shader_asset(DeserializerBuffer& buffer, ShaderAsset* asset) {
+	if (asset->graph == NULL) {
+		asset->graph = std::unique_ptr<ShaderGraph>(new ShaderGraph());
+	}
+	
+	buffer.read_string(asset->name);
+	ShaderGraph* graph = asset->graph.get();
+
+	unsigned int num = buffer.read_int();
+
+	for (unsigned int i = 0; i < num; i++) {
+		Handle<ShaderNode> handle = { buffer.read_int() };
+
+		ShaderNode node;
+		node.type = (ShaderNode::Type) buffer.read_int();
+		node.collapsed = buffer.read_byte();
+
+		buffer.read_struct((reflect::TypeDescriptor_Struct*) reflect::TypeResolver<glm::vec2>::get(), &node.position);
+		buffer.read_array((reflect::TypeDescriptor_Vector*)  reflect::TypeResolver<decltype(node.inputs)>::get(), &node.inputs);
+		buffer.read_struct((reflect::TypeDescriptor_Struct*) reflect::TypeResolver<decltype(node.output)>::get(), &node.output);
+
+		if (node.type == ShaderNode::MATH_NODE) {
+			node.tex_node.from_param = buffer.read_byte();
+		}
+		if (node.type == ShaderNode::MATH_NODE) {
+			node.math_op = (ShaderNode::MathOp)buffer.read_int();
+		}
+		if (node.type == ShaderNode::PARAM_NODE) {
+			node.param_id = buffer.read_int();
+		}
+
+		graph->nodes_manager.make(handle, std::move(node));
+	}
+
+
+	HandleManager<ShaderNode> nodes_manager;
+}
+
+void serialize_shader_asset(SerializerBuffer& buffer,  ShaderAsset* asset) {
+	ShaderGraph* graph = asset->graph.get();
+
+	buffer.write_string(asset->name);
+	buffer.write_int(graph->nodes_manager.slots.length);
+
+	for (unsigned int i = 0; i < graph->nodes_manager.slots.length; i++) {
+		buffer.write_int(graph->nodes_manager.index_to_handle(i).id);
+
+		ShaderNode* node = &graph->nodes_manager.slots[i];
+		
+		buffer.write_int(node->type);
+		buffer.write_byte(node->collapsed);
+		buffer.write_struct((reflect::TypeDescriptor_Struct*) reflect::TypeResolver<glm::vec2>::get(), &node->position);
+		buffer.write_array((reflect::TypeDescriptor_Vector*)  reflect::TypeResolver<decltype(node->inputs)>::get(), &node->inputs);
+		buffer.write_struct((reflect::TypeDescriptor_Struct*) reflect::TypeResolver<decltype(node->output)>::get(), &node->output);
+
+		if (node->type == ShaderNode::MATH_NODE) {
+			buffer.write_byte(node->tex_node.from_param);
+		}
+		if (node->type == ShaderNode::MATH_NODE) {
+			buffer.write_int(node->math_op);
+		}
+		if (node->type == ShaderNode::PARAM_NODE) {
+			buffer.write_int(node->param_id);
+		}
+	}
 }

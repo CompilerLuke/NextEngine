@@ -33,13 +33,18 @@ struct HandleManager {
 	}
 
 	void make(Handle<T> handle, T&& obj) {
+		bool found = false;
+
 		for (int i = 0; i < free_serialized_ids.length; i++) {
 			if (free_serialized_ids[i] == handle.id) {
 				auto popped = free_serialized_ids.pop();
 				if (i != free_serialized_ids.length) free_serialized_ids[i] = popped; //poped is the element we are trying to delete
+				found = true;
 			}
 		}
 		
+		//assert(found); skybox material is not in the correct range
+
 		slots.append(std::move(obj));
 
 		id_of_slots.append(handle.id);

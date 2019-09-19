@@ -547,6 +547,62 @@ void channel_image(Handle<Texture>& image, StringView name) {
 
 void set_params_for_shader_graph(Material* mat);
 
+void inspect_material_params(Editor& editor, Material* material) {
+	for (auto& param : material->params) {
+		DiffUtil diff_util(&param, &temporary_allocator);
+
+		auto shader = RHI::shader_manager.get(material->shader);
+		auto& uniform = shader->uniforms[param.loc.id];
+
+		if (param.type == Param_Vec2) {
+			ImGui::PushItemWidth(200.0f);
+			ImGui::InputFloat2(uniform.name.c_str(), &param.vec2.x);
+		}
+		if (param.type == Param_Vec3) {
+			edit_color(param.vec3, uniform.name);
+
+			ImGui::SameLine();
+			ImGui::Text(uniform.name.c_str());
+		}
+		if (param.type == Param_Image) {
+			ImGui::Image((ImTextureID)texture::id_of(param.image), ImVec2(200, 200), ImVec2(0, 1), ImVec2(1, 0));
+
+			accept_drop("DRAG_AND_DROP_IMAGE", &param.image, sizeof(Handle<Texture>));
+
+			ImGui::SameLine();
+			ImGui::Text(uniform.name.c_str());
+		}
+		if (param.type == Param_Int) {
+			ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.3f);
+			ImGui::InputInt(uniform.name.c_str(), &param.integer);
+		}
+
+		if (param.type == Param_Float) {
+			ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.3f);
+			ImGui::SliderFloat(uniform.name.c_str(), &param.real, -1.0f, 1.0f);
+		}
+
+		if (param.type == Param_Channel3) {
+			channel_image(param.channel3.image, uniform.name);
+			edit_color(param.channel3.color, uniform.name, ImVec2(50, 50));
+		}
+
+		if (param.type == Param_Channel2) {
+			channel_image(param.channel2.image, uniform.name);
+			ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.3f);
+			ImGui::InputFloat2(tformat("##", uniform.name).c_str(), &param.vec2.x);
+		}
+
+		if (param.type == Param_Channel1) {
+			channel_image(param.channel1.image, uniform.name);
+			ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.3f);
+			ImGui::SliderFloat(tformat("##", uniform.name).c_str(), &param.channel1.value, 0, 1.0f);
+		}
+
+		diff_util.submit(editor, "Material property");
+	}
+}
+
 void asset_properties(MaterialAsset* mat_asset, Editor& editor, World& world, AssetTab& self, RenderParams& params) {
 
 	Material* material = RHI::material_manager.get(mat_asset->handle);
@@ -611,59 +667,7 @@ void asset_properties(MaterialAsset* mat_asset, Editor& editor, World& world, As
 
 		}
 		else if (field.name == "params") {
-			for (auto& param : material->params) {
-				DiffUtil diff_util(&param, &temporary_allocator);
-
-				auto shader = RHI::shader_manager.get(material->shader);
-				auto& uniform = shader->uniforms[param.loc.id];
-
-				if (param.type == Param_Vec2) {
-					ImGui::PushItemWidth(200.0f);
-					ImGui::InputFloat2(uniform.name.c_str(), &param.vec2.x);
-				}
-				if (param.type == Param_Vec3) {
-					edit_color(param.vec3, uniform.name);
-
-					ImGui::SameLine();
-					ImGui::Text(uniform.name.c_str());
-				}
-				if (param.type == Param_Image) {
-					ImGui::Image((ImTextureID)texture::id_of(param.image), ImVec2(200, 200), ImVec2(0,1), ImVec2(1, 0));
-
-					accept_drop("DRAG_AND_DROP_IMAGE", &param.image, sizeof(Handle<Texture>));
-
-					ImGui::SameLine();
-					ImGui::Text(uniform.name.c_str());
-				}
-				if (param.type == Param_Int) {
-					ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.3f);
-					ImGui::InputInt(uniform.name.c_str(), &param.integer);
-				}
-
-				if (param.type == Param_Float) {
-					ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.3f);
-					ImGui::SliderFloat(uniform.name.c_str(), &param.real, -1.0f, 1.0f);
-				}
-
-				if (param.type == Param_Channel3) {
-					channel_image(param.channel3.image, uniform.name);
-					edit_color(param.channel3.color, uniform.name, ImVec2(50, 50));
-				}
-
-				if (param.type == Param_Channel2) {
-					channel_image(param.channel2.image, uniform.name);
-					ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.3f);
-					ImGui::InputFloat2(tformat("##", uniform.name).c_str(), &param.vec2.x);
-				}
-
-				if (param.type == Param_Channel1) {
-					channel_image(param.channel1.image, uniform.name);
-					ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.3f);
-					ImGui::SliderFloat(tformat("##", uniform.name).c_str(), &param.channel1.value, 0, 1.0f);
-				}
-				
-				diff_util.submit(editor, "Material property");
-			}
+			inspect_material_params(editor, material);
 		}
 		else {
 			render_fields(field.type, (char*)data + field.offset, field.name, world);
@@ -1142,9 +1146,6 @@ void AssetTab::on_load(World& world, RenderParams& params) {
 
 			unsigned int length = serializer.read_int();
 
-			//log("===========");
-			//log(mat_asset->name);
-
 			for (int i = 0; i < length; i++) {
 				Param param;
 				StringBuffer name;
@@ -1154,23 +1155,6 @@ void AssetTab::on_load(World& world, RenderParams& params) {
 				serializer.read(reflect::TypeResolver<Param>::get(), &param);
 
 				param.loc = location(mat.shader, name);
-
-				/*
-				if (name == "material.diffuse" && (f_filename == "shaders/pbr.frag" || f_filename == "shaders/tree.frag")) {
-					param.channel3.color = glm::vec3(1.0f);
-					param.channel3.image = param.image;
-					param.channel3.scalar_loc = location(mat.shader, format(name, "_scalar"));
-					param.type = Param_Channel3;
-				}
-
-				if ((name == "material.roughness" || name == "material.metallic") && (f_filename == "shaders/pbr.frag" || f_filename == "shaders/tree.frag")) {
-					param.channel1.value = 1.0f;
-					param.channel1.image = param.image;
-					param.channel1.scalar_loc = location(mat.shader, format(name, "_scalar"));
-					param.type = Param_Channel1;
-				}
-				*/
-
 				if (param.type == Param_Channel1) param.channel1.scalar_loc = location(mat.shader, format(name, "_scalar"));
 				if (param.type == Param_Channel2) param.channel2.scalar_loc = location(mat.shader, format(name, "_scalar"));
 				if (param.type == Param_Channel3) param.channel3.scalar_loc = location(mat.shader, format(name, "_scalar"));
@@ -1212,6 +1196,24 @@ void AssetTab::on_load(World& world, RenderParams& params) {
 			render_preview_for(world, *this, *mod_asset, params);
 		}
 	}
+
+	
+	{
+		DeserializerBuffer serializer;
+		unsigned int num = read_save_file("data/ShaderAsset.ne", &serializer);
+
+		for (int i = 0; i < num; i++) {
+			ID id = serializer.read_int();
+			ShaderAsset* shad_asset = assets.make<ShaderAsset>(id);
+			assets.skipped_ids.append(id);
+
+			deserialize_shader_asset(serializer, shad_asset);
+			insert_shader_handle_to_asset(shad_asset);
+			
+			load_Shader_for_graph(shad_asset);
+		}
+	}
+
 }
 
 #define BEGIN_SAVE(type_name) { \
@@ -1263,6 +1265,10 @@ void AssetTab::on_save() {
 		serializer.write_string(RHI::model_manager.get(asset->handle)->path);
 		serializer.write(reflect::TypeResolver<ModelAsset>::get(), asset);
 	END_SAVE("data/ModelAsset.ne")
+
+	BEGIN_SAVE(ShaderAsset)
+			serialize_shader_asset(serializer, asset);
+	END_SAVE("data/ShaderAsset.ne")
 }
 
 #undef BEGIN_SAVE

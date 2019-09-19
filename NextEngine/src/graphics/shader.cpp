@@ -337,6 +337,7 @@ bool load_in_place_with_err(ShaderConfig* self, StringBuffer* err, StringView v_
 
 	auto id = glCreateProgram();
 
+
 	glAttachShader(id, vertex_shader);
 	glAttachShader(id, fragment_shader);
 

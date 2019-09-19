@@ -51,5 +51,5 @@ void flush_logger() {
 }
 
 void log(const char* s) {
-	log_string(StringView(s));
+	//log_string(StringView(s));
 }

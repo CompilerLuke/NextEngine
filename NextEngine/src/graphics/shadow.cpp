@@ -34,6 +34,7 @@ DepthMap::DepthMap(unsigned int width, unsigned int height, World& world, bool s
 
 ShadowPass::ShadowPass(glm::vec2 size, World& world, Handle<Texture> depth_prepass) :
 	deffered_map_cascade(4096, 4096, world),
+	//deffered_map_cascade(2048, 2048, world),
 	ping_pong_shadow_mask(size, world),
 	shadow_mask(size, world),
 	depth_prepass(depth_prepass),

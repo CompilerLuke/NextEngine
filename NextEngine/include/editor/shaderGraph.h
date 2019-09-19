@@ -4,23 +4,24 @@
 #include "editor/assetTab.h"
 #include "core/HandleManager.h"
 
+enum ChannelType { Channel1, Channel2, Channel3, Channel4, ChannelNone };
 
 struct ShaderNode {
-	enum Type { PBR_NODE, TEXTURE_NODE, TEX_COORDS, MATH_NODE, BLEND_NODE, TIME_NODE, CLAMP_NODE, VEC_NODE, REMAP_NODE, STEP_NODE, NOISE_NODE } type;
-	enum ChannelType { Channel1, Channel2, Channel3, Channel4, ChannelNone };
+	enum Type { PBR_NODE, TEXTURE_NODE, TEX_COORDS, MATH_NODE, BLEND_NODE, TIME_NODE, CLAMP_NODE, VEC_NODE, REMAP_NODE, STEP_NODE, NOISE_NODE, PARAM_NODE } type;
 
 	struct Link {
 		Handle<ShaderNode> to{ INVALID_HANDLE };
 		Handle<ShaderNode> from{ INVALID_HANDLE };
 
 		unsigned int index = 0;
+
+		REFLECT()
 	};
 
 	struct InputChannel {
 		Link link;
 
 		ChannelType type;
-		StringView name;
 
 		glm::vec2 position;
 
@@ -36,6 +37,8 @@ struct ShaderNode {
 		InputChannel(StringView, glm::vec3);
 		InputChannel(StringView, glm::vec2);
 		InputChannel(StringView, float);
+
+		REFLECT_UNION()
 	};
 
 	struct OutputChannel {
@@ -45,6 +48,8 @@ struct ShaderNode {
 
 		ChannelType type = ChannelNone;
 		bool is_being_dragged = false;
+
+		REFLECT()
 	};
 
 	vector<InputChannel> inputs;
@@ -54,12 +59,22 @@ struct ShaderNode {
 	bool collapsed = false;
 
 	ShaderNode(Type, ChannelType);
+	ShaderNode();
 
 	enum MathOp { Add = 0, Sub = 1, Mul = 2, Div = 3, Sin = 4, Cos = 5, SinOne = 6, CosOne = 7 };
 
+	struct TextureNode {
+		bool from_param;
+		union {
+			unsigned int param_id;
+			Handle<struct Texture> tex_handle;
+		};
+	};
+
 	union {
-		Handle<struct Texture> tex;
+		TextureNode tex_node;
 		MathOp math_op;
+		unsigned int param_id;
 	};
 };
 
@@ -83,6 +98,8 @@ struct ShaderGraph {
 
 	RotatablePreview rot_preview;
 
+	vector<StringView> param_names;
+	vector<Param> parameters;
 	vector<Param> dependencies;
 	bool requires_time = false;
 
@@ -119,10 +136,22 @@ struct ShaderCompiler {
 	void compile();
 };
 
-void render_input(ShaderGraph& graph, Handle<ShaderNode> handle, unsigned int i, bool render_default = true);
+void render_input(ShaderGraph& graph, Handle<ShaderNode> handle, unsigned int i, const char** names, bool render_default = true);
 void render_output(ShaderGraph& graph, Handle<ShaderNode> handle);
 glm::vec2 screenspace_to_position(ShaderGraph& graph, glm::vec2 position);
 StringBuffer get_dependency(Handle<ShaderNode> node);
 
 ShaderAsset* create_new_shader(World& world, AssetTab& self, Editor& editor, RenderParams& params);
 void asset_properties(struct ShaderAsset* tex, struct Editor& editor, struct World& world, struct AssetTab& self, struct RenderParams& params);
+
+StringView get_param_name(ShaderGraph& graph, unsigned int i);
+
+glm::vec2 to_vec2(ImVec2);
+ImVec2 from_vec2(glm::vec2);
+
+void load_Shader_for_graph(ShaderAsset* asset);
+void compile_shader_graph(ShaderAsset* asset);
+void serialize_shader_asset(struct SerializerBuffer& buffer, ShaderAsset* asset);
+void deserialize_shader_asset(struct DeserializerBuffer& buffer, ShaderAsset* asset);
+
+extern StringBuffer node_popup_filter;

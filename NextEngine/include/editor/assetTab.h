@@ -115,3 +115,4 @@ void rot_preview(RotatablePreview& self);
 bool accept_drop(const char* drop_type, void* ptr, unsigned int size);
 
 void insert_shader_handle_to_asset(ShaderAsset* asset);
+void inspect_material_params(Editor& editor, Material* material);
