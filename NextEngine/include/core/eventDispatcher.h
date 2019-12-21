@@ -10,10 +10,21 @@ struct EventDispatcher {
 		listeners.append(func);
 	}
 
+	void remove(std::function<void(T)> func) {
+		int i = 0;
+		for (; i < listeners.length; i++) {
+			if (listeners[i] == func) break;
+		}
+
+		listeners[i] = listeners.pop();
+	}
+
 	void broadcast(T mesg) {
 		for (auto func : listeners) {
 			func(mesg);
 		}
 	}
+
+
 };
 

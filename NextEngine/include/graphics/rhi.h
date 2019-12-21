@@ -1,10 +1,11 @@
 #pragma once
 
+#include "core/core.h"
+#include "core/HandleManager.h"
+#include "model/modelManager.h"
 #include "shaderManager.h"
 #include "textureManager.h"
-#include "model/modelManager.h"
 #include "materialManager.h"
-#include "core/core.h"
 
 namespace RHI {
 	extern ShaderManager ENGINE_API shader_manager;
@@ -13,3 +14,4 @@ namespace RHI {
 	extern ModelManager ENGINE_API model_manager;
 	extern MaterialManager ENGINE_API material_manager;
 };
+

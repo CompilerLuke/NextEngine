@@ -177,8 +177,16 @@ struct Store : ComponentStore {
 	}
 
 	void set_enabled(void* ptr, bool enabled) override {
-		auto slot = (Slot<T>*)ptr;
+		auto slot = (Slot<T>*) ptr;
 		slot->is_enabled = enabled;
+
+		ID id = slot->object.second;
+		if (enabled) {
+			id_to_obj[id] = &slot->object.first;
+		}
+		else {
+			id_to_obj[id] = NULL;
+		}
 	}
 
 	vector<T*> filter() {
@@ -243,14 +251,14 @@ struct Entity {
 	bool enabled = true;
 	Layermask layermask = game_layer | picking_layer;
 
-	REFLECT()
+	REFLECT(ENGINE_API)
 };
 
 struct World {
 	static constexpr int components_hash_size = 100;
 
-	std::unique_ptr<ComponentStore> components[components_hash_size];
 	vector<std::unique_ptr<System>> systems;
+	std::unique_ptr<ComponentStore> components[components_hash_size];
 	vector<ID> skipped_ids;
 
 	vector<ID> delay_free_entity;
@@ -279,6 +287,16 @@ struct World {
 	template<typename T>
 	void on_free(std::function<void(vector<ID>&)> f) {
 		get<T>()->on_free.listen(f);
+	}
+
+	template<typename T>
+	void remove_on_make(std::function<void(vector<ID>&)> f) {
+		get<T>()->on_make.remove(f);
+	}
+
+	template<typename T>
+	void remove_on_free(std::function<void(vector<ID>&)> f) {
+		get<T>()->on_free.remove(f);
 	}
 
 	template<typename T>
@@ -376,20 +394,6 @@ struct World {
 		return ids;
 	}
 
-	void pre_render(PreRenderParams& params) {
-		for (unsigned int i = 0; i < systems.length; i++) {
-			auto system = systems[i].get();
-			system->pre_render(*this, params);
-		}
-	}
-
-	void render(RenderParams& params) {
-		for (unsigned int i = 0; i < systems.length; i++) {
-			auto system = systems[i].get();
-			system->render(*this, params);
-		}
-	}
-
 	void update(UpdateParams& params) {		
 		for (unsigned int i = 0; i < components_hash_size; i++) {
 			if (components[i] != NULL) {
@@ -426,7 +430,7 @@ struct World {
 		}
 	}
 
-	vector<Component> components_by_id(ID id);
+	vector<Component> ENGINE_API components_by_id(ID id);
 
 private:
 	unsigned int current_id = 0;

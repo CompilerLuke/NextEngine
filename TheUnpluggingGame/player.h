@@ -2,8 +2,10 @@
 
 #include <reflection/reflection.h>
 
-struct Player {
-	float health = 100;
+#define COMPONENT()
 
+COMPONENT()
+struct Player {
 	REFLECT()
+	float health = 100;
 };

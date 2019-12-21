@@ -1,9 +1,10 @@
 #include "stdafx.h"
+#include "components/terrain.h"
+
 #include "physics/physics.h"
 #include "ecs/ecs.h"
 #include "components/transform.h"
 #include <glm/glm.hpp>
-#include "editor/terrain.h"
 
 #include "physics/btWrapper.h"
 #include <iostream>
@@ -11,6 +12,9 @@
 #include <LinearMath/btVector3.h>
 #include <LinearMath/btAlignedObjectArray.h>
 #include <BulletCollision\CollisionShapes/btHeightfieldTerrainShape.h>
+#include "graphics/buffer.h"
+#include "model/model.h"
+
 
 struct BulletWrapper {
 	btDefaultCollisionConfiguration* collisionConfiguration;
@@ -48,7 +52,6 @@ btCollisionShape* make_CapsuleShape(float r, float height) {
 	btCapsuleShape* shape = new btCapsuleShape(r, height);
 	return shape;
 }
-
 
 btCollisionShape* make_Heightfield(int 	heightStickWidth,
 	int 	heightStickLength,
@@ -206,6 +209,7 @@ void free_BulletWrapper(BulletWrapper* self) {
 		delete obj;
 	}
 
+	delete self->dynamicsWorld->getDebugDrawer();
 	delete self->dynamicsWorld;
 	delete self->overlappingPairCache;
 	delete self->collisionConfiguration;
@@ -232,6 +236,12 @@ REFLECT_STRUCT_END()
 
 REFLECT_STRUCT_BEGIN(PlaneCollider)
 REFLECT_STRUCT_MEMBER(normal)
+REFLECT_STRUCT_END()
+
+REFLECT_STRUCT_BEGIN(CharacterController)
+REFLECT_STRUCT_MEMBER(on_ground, reflect::HideInInspectorTag)
+REFLECT_STRUCT_MEMBER_TAG(velocity, reflect::HideInInspectorTag)
+REFLECT_STRUCT_MEMBER(feet_height)
 REFLECT_STRUCT_END()
 
 REFLECT_STRUCT_BEGIN(RigidBody)
@@ -277,6 +287,9 @@ void PhysicsSystem::update(World& world, UpdateParams& params) {
 			settings.origin.x = trans->position.x;
 			settings.origin.y = trans->position.y;
 			settings.origin.z = trans->position.z;
+			settings.velocity.x = rb->velocity.x;
+			settings.velocity.y = rb->velocity.y;
+			settings.velocity.z = rb->velocity.z;
 
 			btCollisionShape* shape = NULL;
 			if (world.by_id<SphereCollider>(id)) {
@@ -312,9 +325,9 @@ void PhysicsSystem::update(World& world, UpdateParams& params) {
 
 				float size_per_quad = collider->size_of_block / 32.0f;
 
-				/*
-				glm::vec3* data = new glm::vec3[width * height]; //todo fix leak
+				//glm::vec3* data = new glm::vec3[width * height]; //todo fix leak
 
+				/*
 				for (int h = 0; h < height; h++) {
 					for (int w = 0; w < width; w++) {
 						auto pos = trans->position + (glm::vec3(w, 0, h) * size_per_quad);
@@ -327,17 +340,15 @@ void PhysicsSystem::update(World& world, UpdateParams& params) {
 				*/
 
 				//settings.origin += glm::vec3(0.5 * size_per_quad * width, 0, -0.5 * size_per_quad * height);
-				//settings.origin = glm::vec3(0);
-
-				//shape = make_PlaneShape(glm::vec3(0, 1, 0));
-				//shape = make_ConvexHull(data, width * height);
-
 				settings.origin = glm::vec3(0);
 
-				unsigned char* data = new unsigned char[width * height]();
+				shape = make_PlaneShape(glm::vec3(0, 1, 0));
+				//shape = make_ConvexHull(data, width * height);
 
-				shape = new btHeightfieldTerrainShape(height, width, collider->heightmap_points.data,
-					10.0, 0.0f, 10.0, 1, PHY_FLOAT, false);
+				//settings.origin = glm::vec3(0);
+
+				//shape = new btHeightfieldTerrainShape(height, width, data,
+				//	100, 0.0f, 100.0, 1, PHY_FLOAT, true);
 
 				//shape->setLocalScaling(btVector3(100.0f, 100.f, 100.0f));
 
@@ -382,6 +393,21 @@ void PhysicsSystem::update(World& world, UpdateParams& params) {
 
 		set_transform_of_RigidBody(rb->bt_rigid_body, &trans_of_rb);
 	}
+
+	Terrain* terrain = world.filter<Terrain>()[0];
+	Transform* terrain_trans = world.by_id<Transform>(world.id_of(terrain));
+
+	for (ID id : world.filter<CharacterController, CapsuleCollider, Transform>(params.layermask)) {
+		Transform* trans = world.by_id<Transform>(id);
+		CharacterController* cc = world.by_id<CharacterController>(id);
+		CapsuleCollider* collider = world.by_id<CapsuleCollider>(id);
+
+		trans->position += cc->velocity * (float)params.delta_time;
+
+		float height = sample_terrain_height(terrain, terrain_trans, glm::vec2(trans->position.x, trans->position.z));
+		height += 0.5f * collider->height + collider->radius;
+
+		if (trans->position.y < height) trans->position.y = height;
+		cc->on_ground = trans->position.y == height;
+	}
 }
-
-

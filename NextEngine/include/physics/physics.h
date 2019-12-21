@@ -9,22 +9,22 @@
 struct CapsuleCollider {
 	float radius;
 	float height;
-	REFLECT()
+	REFLECT(ENGINE_API)
 };
 
 struct SphereCollider {
 	float radius;
-	REFLECT()
+	REFLECT(ENGINE_API)
 };
 
 struct BoxCollider {
 	glm::vec3 scale;
-	REFLECT()
+	REFLECT(ENGINE_API)
 };
 
 struct PlaneCollider {
 	glm::vec3 normal;
-	REFLECT()
+	REFLECT(ENGINE_API)
 };
 
 struct RigidBody {
@@ -40,7 +40,16 @@ struct RigidBody {
 	bool continous = false;
 
 	struct btRigidBody* bt_rigid_body = NULL;
-	REFLECT()
+	REFLECT(ENGINE_API)
+};
+
+struct CharacterController {
+	bool on_ground = true;
+	glm::vec3 velocity;
+
+	float feet_height = 1;
+
+	REFLECT(ENGINE_API)
 };
 
 struct PhysicsSystem : System {

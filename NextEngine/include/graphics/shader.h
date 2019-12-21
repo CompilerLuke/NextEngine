@@ -17,21 +17,21 @@ struct Uniform {
 
 	StringBuffer name;
 
-	REFLECT()
+	REFLECT(ENGINE_API)
 };
 
 struct ShaderConfig;
 
 namespace shader {
-	void set_mat4(Handle<Shader> shader_handle, const char*, glm::mat4&, Handle<ShaderConfig> config = { 0 });
-	void set_vec3(Handle<Shader> shader_handle, const char*, glm::vec3&, Handle<ShaderConfig> config = { 0 });
-	void set_vec2(Handle<Shader> shader_handle, const char*, glm::vec2&, Handle<ShaderConfig> config = { 0 });
-	void set_int(Handle<Shader> shader_handle, const char*, int, Handle<ShaderConfig> config = { 0 });
-	void set_float(Handle<Shader> shader_handle, const char*, float, Handle<ShaderConfig> config = { 0 });
+	void ENGINE_API set_mat4(Handle<Shader> shader_handle, const char*, glm::mat4&, Handle<ShaderConfig> config = { 0 });
+	void ENGINE_API set_vec3(Handle<Shader> shader_handle, const char*, glm::vec3&, Handle<ShaderConfig> config = { 0 });
+	void ENGINE_API set_vec2(Handle<Shader> shader_handle, const char*, glm::vec2&, Handle<ShaderConfig> config = { 0 });
+	void ENGINE_API set_int(Handle<Shader> shader_handle, const char*, int, Handle<ShaderConfig> config = { 0 });
+	void ENGINE_API set_float(Handle<Shader> shader_handle, const char*, float, Handle<ShaderConfig> config = { 0 });
 
 	ShaderConfig* get_config(Handle<Shader> shader_handle, Handle<ShaderConfig> config);
 
-	void bind(Handle<Shader>, Handle<ShaderConfig> config = { 0 });
+	void ENGINE_API bind(Handle<Shader>, Handle<ShaderConfig> config = { 0 });
 }
 
 struct ShaderConfigDesc {
@@ -58,7 +58,7 @@ struct Shader {
 
 	Handle<struct ShaderConfig> get_config(ShaderConfigDesc&);
 
-	REFLECT();
+	REFLECT(ENGINE_API);
 };
 
 struct ShaderConfig {
@@ -66,12 +66,12 @@ struct ShaderConfig {
 	vector<int> uniform_bindings;
 	int id;
 
-	void bind();
-	void set_mat4(Handle<Uniform> uniform, glm::mat4&);
-	void set_vec3(Handle<Uniform> uniform, glm::vec3&);
-	void set_vec2(Handle<Uniform> uniform, glm::vec2&);
-	void set_int(Handle<Uniform> uniform, int);
-	void set_float(Handle<Uniform> uniform, float);
+	void ENGINE_API bind();
+	void ENGINE_API set_mat4(Handle<Uniform> uniform, glm::mat4&);
+	void ENGINE_API set_vec3(Handle<Uniform> uniform, glm::vec3&);
+	void ENGINE_API set_vec2(Handle<Uniform> uniform, glm::vec2&);
+	void ENGINE_API set_int(Handle<Uniform> uniform, int);
+	void ENGINE_API set_float(Handle<Uniform> uniform, float);
 
 	int get_binding(Handle<Uniform>);
 
@@ -84,8 +84,8 @@ Handle<Shader> ENGINE_API load_Shader(StringView vfilename, StringView ffilename
 Handle<Uniform> ENGINE_API location(Handle<Shader>, StringView);
 unsigned int ENGINE_API get_flag(Handle<Shader>, StringView);
 
-void reload_shader(Shader& shad_factory);
+void ENGINE_API reload_shader(Shader& shad_factory);
 
-struct DebugShaderReloadSystem : System {
-	void update(World&, UpdateParams&) override;
+struct DebugShaderReloadSystem{
+	static void update(World&, UpdateParams&);
 };

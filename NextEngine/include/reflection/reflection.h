@@ -6,6 +6,9 @@
 #include <cstddef>
 #include <utility>
 #include <vector>
+#include <glm/vec3.hpp>
+#include "core/string_buffer.h"
+#include "core/handle.h"
 
 struct World;
 
@@ -127,11 +130,12 @@ namespace reflect {
 		}
 	};
 
+#define NO_ARG
 
-#define REFLECT() \
+#define REFLECT(linking) \
     friend struct reflect::DefaultResolver; \
-    static reflect::TypeDescriptor_Struct Reflection; \
-    static void initReflection(reflect::TypeDescriptor_Struct*);
+    static linking reflect::TypeDescriptor_Struct Reflection; \
+    static void linking initReflection(reflect::TypeDescriptor_Struct*);
 
 #define REFLECT_STRUCT_BEGIN(type) \
     reflect::TypeDescriptor_Struct type::Reflection{type::initReflection}; \
@@ -237,6 +241,38 @@ public:
 	}
 };
 
+template<> ENGINE_API
+TypeDescriptor* getPrimitiveDescriptor<float>();
+
+template<> ENGINE_API
+TypeDescriptor* getPrimitiveDescriptor<unsigned int>();
+
+template<> ENGINE_API
+TypeDescriptor* getPrimitiveDescriptor<int>();
+
+template<> ENGINE_API
+TypeDescriptor* getPrimitiveDescriptor<glm::vec2>();
+
+template<> ENGINE_API
+TypeDescriptor* getPrimitiveDescriptor<glm::vec3>();
+
+template<> ENGINE_API
+TypeDescriptor* getPrimitiveDescriptor<glm::vec4>();
+
+template<> ENGINE_API
+TypeDescriptor* getPrimitiveDescriptor<StringBuffer>();
+
+void ENGINE_API make_Handle_TypeDescriptor(TypeDescriptor_Struct* typeDesc);
+
+template <typename T>
+class TypeResolver<Handle<T>> {
+public:
+	static TypeDescriptor* get() {
+		static TypeDescriptor_Struct typeDesc(make_Handle_TypeDescriptor); 
+		return &typeDesc;
+	}
+};
+
 struct TypeDescriptor_Pointer : TypeDescriptor {
 	TypeDescriptor* itemType;
 	std::string name_buffer;
@@ -261,7 +297,7 @@ public:
 	}
 };
 
-template<> ENGINE_API
-TypeDescriptor* getPrimitiveDescriptor<float>();
+//template<> ENGINE_API
+//TypeDescriptor* getPrimitiveDescriptor<StringBuffer>();
 
 } // namespace reflect

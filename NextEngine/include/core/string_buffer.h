@@ -138,6 +138,21 @@ struct StringBuffer {
 		return view().starts_with(pre);
 	}
 
+	inline bool starts_with_ignore_case(StringView pre) {
+		return view().starts_with_ignore_case(pre);
+	}
+
+	inline StringBuffer lower() {
+		StringBuffer new_str;
+		new_str.reserve(length);
+
+		for (int i = 0; i < length; i++) {
+			new_str.data[i] = to_lower_case(data[i]);
+		}
+
+		return new_str;
+	}
+
 	inline bool ends_with(StringView pre) {
 		return view().ends_with(pre);
 	}

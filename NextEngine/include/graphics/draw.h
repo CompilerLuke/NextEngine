@@ -33,7 +33,7 @@ struct DrawCommandState {
 
 	bool operator==(DrawCommandState&);
 
-	REFLECT()
+	REFLECT(ENGINE_API)
 };
 
 extern DrawCommandState ENGINE_API default_draw_state;
@@ -66,7 +66,7 @@ struct Pipeline {
 	DrawCommandState state;
 };
 
-struct CommandBuffer {
+struct ENGINE_API CommandBuffer {
 	vector<DrawCommand> commands;
 
 	unsigned int current_texture_index = 0;

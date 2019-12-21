@@ -6,27 +6,7 @@
 #include "core/core.h"
 #include "graphics/culling.h"
 
-struct RenderParams {
-	Layermask layermask;
-	struct CommandBuffer* command_buffer;
-	struct Pass* pass;
-	struct Skybox* skybox;
-	struct DirLight* dir_light;
-
-	glm::mat4 projection;
-	glm::mat4 view;
-	struct Camera* cam = NULL;
-
-	glm::mat4* model_m;
-
-	unsigned int width = 0;
-	unsigned int height = 0;
-	void set_shader_scene_params(Handle<struct Shader>, Handle<struct ShaderConfig>, struct World&);
-
-	RenderParams(struct CommandBuffer*, struct Pass*);
-};
-
-struct UpdateParams {
+struct ENGINE_API UpdateParams {
 	Layermask layermask;
 	struct Input& input;
 	double delta_time = 0;
@@ -34,15 +14,8 @@ struct UpdateParams {
 	UpdateParams(struct Input&);
 };
 
-struct PreRenderParams {
-	Layermask layermask;
-	glm::mat4* model_m;
-};
-
-struct System {
-	virtual void pre_render(struct World& world, struct PreRenderParams&) {};
-	virtual void render(struct World& world, struct RenderParams& params) {};
-	virtual void update(struct World& world, struct UpdateParams& params) {};
+struct ENGINE_API System {
+	virtual void update(struct World& world, struct UpdateParams& params) = 0;
 	virtual ~System() {}
 };
 
@@ -52,7 +25,7 @@ void ENGINE_API register_default_systems_and_components(World& world);
 template<> \
 typeid_t constexpr ENGINE_API type_id<type>() { return id; }
 
-#define DEFINE_GAME_COMPONENT_ID(type, id) \
+#define DEFINE_APP_COMPONENT_ID(type, id) \
 template<> \
-typeid_t constexpr type_id<type>() { return id; }
+typeid_t constexpr type_id<type>() { return 50 + id; }
 

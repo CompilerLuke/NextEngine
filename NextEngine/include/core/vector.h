@@ -5,10 +5,6 @@
 #include <memory.h>
 #include <type_traits>
 
-#ifdef _DEBUG
-#define BOUNDS_CHECKING
-#endif 
-
 #include <iterator>
 
 template<typename T>
@@ -90,6 +86,13 @@ struct vector {
 		}
 
 		new (data + length++)T(element);
+	}
+
+	inline T& last(int index = 1) {
+#ifdef BOUNDS_CHECKING
+		assert(length - index >= 0);
+#endif 
+		return this->data[length - index];
 	}
 
 	inline vector(std::initializer_list<T> l) {

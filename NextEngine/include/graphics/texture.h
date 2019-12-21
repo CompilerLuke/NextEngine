@@ -7,7 +7,7 @@
 
 using TextureID = unsigned int;
 
-struct Image {
+struct ENGINE_API Image {
 	int width = 0;
 	int height = 0;
 	int num_channels = 0;
@@ -18,35 +18,35 @@ struct Image {
 	~Image();
 };
 
-struct Texture {
+struct ENGINE_API Texture {
 	StringBuffer filename;
 	TextureID texture_id = 0;
 
 	void submit(Image&);
 	void on_load();
 
-	REFLECT()
+	REFLECT(NO_ARG)
 };
 
 namespace texture {
-	void bind_to(Handle<Texture>, unsigned int);
-	unsigned int id_of(Handle<Texture>);
+	void ENGINE_API bind_to(Handle<Texture>, unsigned int);
+	unsigned int ENGINE_API id_of(Handle<Texture>);
 };
 
-struct Cubemap {
+struct ENGINE_API Cubemap {
 	StringBuffer filename;
 	TextureID texture_id = 0;
 	void bind_to(unsigned int);
 
-	REFLECT()
+	REFLECT(NO_ARG)
 };
 
 namespace cubemap {
 	void bind_to(Handle<Cubemap>, unsigned int);
 };
 
-Image load_Image(StringView filename);
+Image ENGINE_API load_Image(StringView filename);
 
-Handle<Texture> load_Texture(StringView filename);
-Handle<Texture> make_Texture(Texture&&);
-Handle<Cubemap> make_Cubemap(Cubemap&&);
+Handle<Texture> ENGINE_API load_Texture(StringView filename);
+Handle<Texture> ENGINE_API make_Texture(Texture&&);
+Handle<Cubemap> ENGINE_API make_Cubemap(Cubemap&&);

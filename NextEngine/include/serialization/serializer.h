@@ -4,7 +4,7 @@
 #include <cstdint>
 #include "core/string_buffer.h"
 
-struct SerializerBuffer { 
+struct ENGINE_API SerializerBuffer {
 	Allocator* allocator = &default_allocator;
 	char* data = NULL;
 	unsigned int index = 0; //also size
@@ -25,7 +25,7 @@ struct SerializerBuffer {
 	~SerializerBuffer();
 };
 
-struct DeserializerBuffer {
+struct ENGINE_API DeserializerBuffer {
 	DeserializerBuffer();
 	DeserializerBuffer(const char* data, unsigned int length);
 

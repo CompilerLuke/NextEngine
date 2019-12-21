@@ -24,13 +24,13 @@ enum Param_Type {
 	Param_Time
 };
 
-struct Param {
+struct ENGINE_API Param {
 	struct Channel3 {
 		Handle<struct Texture> image;
 		Handle<Uniform> scalar_loc;
 		glm::vec3 color;
 
-		REFLECT()
+		REFLECT(ENGINE_API)
 	};
 
 	struct Channel2 {
@@ -38,7 +38,7 @@ struct Param {
 		Handle<Uniform> scalar_loc;
 		glm::vec2 value;
 
-		REFLECT()
+		REFLECT(ENGINE_API)
 	};
 
 	struct Channel1{
@@ -46,7 +46,7 @@ struct Param {
 		Handle<Uniform> scalar_loc;
 		float value;
 
-		REFLECT()
+		REFLECT(ENGINE_API)
 	};
 
 	Handle<Uniform> loc;
@@ -72,7 +72,7 @@ struct Param {
 	REFLECT_UNION()
 };
 
-struct Material {
+struct ENGINE_API Material {
 	Handle<Shader> shader;
 	vector<Param> params;
 	DrawCommandState* state = &default_draw_state;
@@ -98,13 +98,13 @@ struct Material {
 	Material();
 	Material(Handle<Shader>);
 
-	REFLECT()
+	REFLECT(NO_ARG)
 };
 
 struct Materials {
 	vector<Handle<Material>> materials;
 
-	REFLECT()
+	REFLECT(ENGINE_API)
 };
 
 vector<Param> make_SubstanceMaterial(StringView folder, StringView);

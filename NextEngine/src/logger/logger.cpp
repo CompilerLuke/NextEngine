@@ -34,6 +34,9 @@ void format_intern(StringBuffer& buffer, unsigned int num) {
 StringBuffer log_buffer;
 
 void log_string(StringView s) {
+	fwrite(s.c_str(), s.length, 1, stdout);
+	return;
+
 	log_buffer += s;
 	log_buffer += "\n";
 
@@ -51,5 +54,5 @@ void flush_logger() {
 }
 
 void log(const char* s) {
-	//log_string(StringView(s));
+	log_string(StringView(s));
 }

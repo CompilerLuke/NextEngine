@@ -1,5 +1,6 @@
 #pragma once
 
+/*
 #include "handleManager.h"
 #include <unordered_map>
 #include <string>
@@ -52,3 +53,4 @@ struct ResourceManager {
 		resources.free(handle);
 	}
 };
+*/

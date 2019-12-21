@@ -5,7 +5,7 @@
 #include <limits>
 #include "core/vector.h"
 
-struct AABB {
+struct ENGINE_API AABB {
 	glm::vec3 min = glm::vec3(FLT_MAX);
 	glm::vec3 max = glm::vec3(-FLT_MAX);
 
@@ -15,7 +15,7 @@ struct AABB {
 	void update_aabb(AABB&);
 };
 
-void aabb_to_verts(AABB* self, glm::vec4* verts);
+void ENGINE_API aabb_to_verts(AABB* self, glm::vec4* verts);
 
-void extract_planes(struct RenderParams&, glm::vec4 planes[6]);
-bool cull(glm::vec4 planes[6], const AABB& aabb);
+void ENGINE_API extract_planes(struct RenderParams&, glm::vec4 planes[6]);
+bool ENGINE_API cull(glm::vec4 planes[6], const AABB& aabb);

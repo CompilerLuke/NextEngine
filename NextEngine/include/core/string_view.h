@@ -4,6 +4,12 @@
 #include <assert.h>
 #include "core/core.h"
 
+inline char to_lower_case(char a) {
+	if ((a >= 65) && (a <= 90))
+		a = a + 32;
+	return a;
+}
+
 struct StringView {
 	const char* data = "";
 	unsigned int length = 0;
@@ -20,6 +26,16 @@ struct StringView {
 
 	inline bool starts_with(StringView pre) {
 		return length < pre.length ? false : strncmp(pre.data, data, pre.length) == 0;
+	}
+
+	inline bool starts_with_ignore_case(StringView pre) {
+		if (length < pre.length) return false;
+
+		for (int i = 0; i < pre.length; i++) {
+			if (to_lower_case(pre.data[i]) != to_lower_case(data[i])) return false;
+		}
+
+		return true;
 	}
 
 	inline bool ends_with(StringView pre) {
@@ -68,5 +84,5 @@ struct StringView {
 	}
 };
 
-bool string_to_uint(StringView str, unsigned int* number);
-bool string_to_int(StringView str, int* number);
+bool ENGINE_API string_to_uint(StringView str, unsigned int* number);
+bool ENGINE_API string_to_int(StringView str, int* number);

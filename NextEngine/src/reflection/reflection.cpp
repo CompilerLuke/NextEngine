@@ -4,7 +4,6 @@
 #include <glm/vec2.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/gtc/quaternion.hpp>
-#include "editor/displayComponents.h"
 #include "core/string_buffer.h"
 #include "core/core.h"
 
@@ -86,6 +85,14 @@ namespace reflect {
 		type->members.push_back({ "y", offsetof(glm::quat, y), reflect::TypeResolver<float>::get(), reflect::NoTag });
 		type->members.push_back({ "z", offsetof(glm::quat, z), reflect::TypeResolver<float>::get(), reflect::NoTag });
 		type->members.push_back({ "w", offsetof(glm::quat, w), reflect::TypeResolver<float>::get(), reflect::NoTag });
+	}
+
+	void make_Handle_TypeDescriptor(TypeDescriptor_Struct* typeDesc) {
+		typeDesc->name = "Handle";
+		typeDesc->size = sizeof(Handle<unsigned int>);
+		typeDesc->members = {
+			{ "id", offsetof(Handle<unsigned int>, id), getPrimitiveDescriptor<unsigned int>(), NoTag }
+		};
 	}
 
 	template<>

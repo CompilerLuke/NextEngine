@@ -12,7 +12,7 @@ enum TexelType { Int_Texel, Float_Texel };
 enum Filter { Nearest, Linear };
 enum Wrap { ClampToBorder, Repeat };
 
-struct AttachmentSettings {
+struct ENGINE_API AttachmentSettings {
 	Handle<struct Texture>& tex_id;
 	InternalColorFormat internal_format = Rgb16f;
 	ColorFormat external_format = Rgb;
@@ -25,7 +25,7 @@ struct AttachmentSettings {
 	AttachmentSettings(Handle<struct Texture>&);
 };
 
-struct FramebufferSettings {
+struct ENGINE_API FramebufferSettings {
 	unsigned int width = 0;
 	unsigned int height = 0;
 	DepthBufferSettings depth_buffer = DepthComponent24;
@@ -34,7 +34,7 @@ struct FramebufferSettings {
 	vector<AttachmentSettings> color_attachments;
 };
 
-struct Framebuffer {
+struct ENGINE_API Framebuffer {
 	unsigned int fbo = 0;
 	unsigned int rbo = 0;
 	unsigned int width = 0;

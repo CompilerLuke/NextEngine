@@ -4,6 +4,9 @@
 #include <glad/glad.h>
 #include "core/sort.h"
 #include "graphics/pass.h"
+#include "graphics/renderer.h"
+#include "graphics/materialSystem.h"
+#include "graphics/buffer.h"
 
 REFLECT_BEGIN_ENUM(DrawOrder)
 REFLECT_ENUM_VALUE(draw_opaque)

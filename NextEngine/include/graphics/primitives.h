@@ -1,3 +1,5 @@
 #pragma once
 
-void render_quad();
+#include "core/core.h"
+
+void ENGINE_API render_quad();

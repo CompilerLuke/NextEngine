@@ -2,7 +2,7 @@
 
 #include "core/handle.h"
 
-struct Pass {
+struct ENGINE_API Pass {
 	enum PassType { Standard, Depth_Only };
 
 	PassType type = Standard;

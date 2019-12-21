@@ -18,8 +18,6 @@ float get_speed(Flyover& self, UpdateParams& params, float height) {
 	return (float)(self.movement_speed * height_multiplier * params.delta_time);
 }
 
-#include <imgui.h>
-
 void FlyOverSystem::update(World& world, UpdateParams& params) {
 	auto debugging = world.get<Flyover>();
 

@@ -4,7 +4,7 @@
 #include "core/core.h"
 
 namespace Level {
-	extern StringBuffer asset_folder_path;
+	extern ENGINE_API StringBuffer asset_folder_path;
 
 	StringBuffer ENGINE_API asset_path(StringView filename);
 	bool ENGINE_API to_asset_path(StringView filename, StringBuffer* result);
@@ -13,17 +13,19 @@ namespace Level {
 	void ENGINE_API set_level(StringView filename);
 };
 
-struct File {
+struct ENGINE_API File {
 	enum FileMode { WriteFile, ReadFile, ReadFileB, WriteFileB };
 	FILE* f;
 	StringBuffer filename;
 
 	void close();
 
-	ENGINE_API File();
-	ENGINE_API ~File();
-	bool ENGINE_API open(StringView, FileMode);
-	ENGINE_API StringBuffer read();
-	ENGINE_API void write(StringView);
-	ENGINE_API unsigned int read_binary(char**);
+	File();
+	~File();
+	bool  open(StringView, FileMode);
+	StringBuffer read();
+	void write(StringView);
+	unsigned int read_binary(char**);
 };
+
+void WatchFileChange(StringView, std::function<void>());

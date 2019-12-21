@@ -3,9 +3,7 @@
 #include <ecs/ecs.h>
 #include <core/input.h>
 
-REFLECT_STRUCT_BEGIN(PlayerInput)
-REFLECT_STRUCT_MEMBER(mouse_sensitivity)
-REFLECT_STRUCT_END()
+DEFINE_APP_COMPONENT_ID(PlayerInput, 50);
 
 PlayerInput* get_player_input(World& world) {
 	auto result = world.filter<PlayerInput>(game_layer);
@@ -13,6 +11,8 @@ PlayerInput* get_player_input(World& world) {
 }
 
 void PlayerInputSystem::update(World& world, UpdateParams& params) {
+	Input& input = params.input;
+
 	for (PlayerInput* self : world.filter<PlayerInput>(params.layermask)) {
 		params.input.capture_mouse(true);
 
@@ -29,11 +29,11 @@ void PlayerInputSystem::update(World& world, UpdateParams& params) {
 		self->pitch = pitch;
 		self->yaw = yaw;
 
-		self->vertical_axis = params.input.get_vertical_axis();
-		self->horizonal_axis = params.input.get_horizontal_axis();
+		self->vertical_axis = input.get_vertical_axis();
+		self->horizonal_axis = input.get_horizontal_axis();
 
-		self->shift = params.input.key_down(GLFW_KEY_LEFT_SHIFT);
-		self->space = params.input.key_pressed(' ');
+		self->shift = input.key_down(GLFW_KEY_LEFT_SHIFT);
+		self->space = input.key_pressed(' ');
 
 		self->holding_mouse_left = params.input.mouse_button_down(MouseButton::Left);
 	}

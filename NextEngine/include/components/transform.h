@@ -12,13 +12,13 @@ struct Transform {
 	
 	glm::mat4 ENGINE_API compute_model_matrix();
 
-	REFLECT()
+	REFLECT(ENGINE_API)
 };
 
 struct StaticTransform {
 	glm::mat4 model_matrix;
 
-	REFLECT()
+	REFLECT(ENGINE_API)
 };
 
 struct LocalTransform {
@@ -29,13 +29,9 @@ struct LocalTransform {
 
 	void ENGINE_API calc_global_transform(struct World&);
 
-	REFLECT()
+	REFLECT(ENGINE_API)
 };
 
 struct LocalTransformSystem : System {
 	void update(World&, UpdateParams&) override;
-};
-
-struct TransformSystem : System {
-	void pre_render(World&, PreRenderParams&) override;
 };

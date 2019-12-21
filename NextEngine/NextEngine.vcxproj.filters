@@ -13,9 +13,6 @@
     <Filter Include="src\model">
       <UniqueIdentifier>{ef7f7a2f-c3a1-4421-b641-aa91b96a1f12}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\editor">
-      <UniqueIdentifier>{da88f128-4a46-490c-84d2-91179b6cd0e9}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\logger">
       <UniqueIdentifier>{a5d5a62c-eb55-4f5b-a52c-d1cc6f3bf471}</UniqueIdentifier>
     </Filter>
@@ -37,18 +34,6 @@
     <Filter Include="src\serialization">
       <UniqueIdentifier>{f726f2e4-9ae4-43ae-874a-4eb84e23349b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="vendor\imgui">
-      <UniqueIdentifier>{1178eb3e-68e9-41bc-b2dd-41e0b138aa62}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="vendor">
-      <UniqueIdentifier>{8637cddc-cd1c-45a9-a33b-a18b2238fe40}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="vendor\ImGuizmo">
-      <UniqueIdentifier>{c82c5464-ce8b-474d-b15c-8e6b426ebdd4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="vendor\imgui\examples">
-      <UniqueIdentifier>{5c9e3d76-f0cd-4cbe-91fc-733a4898ef5a}</UniqueIdentifier>
-    </Filter>
     <Filter Include="include\ecs">
       <UniqueIdentifier>{0fc921fd-e5be-44fc-b5c4-13263c30b838}</UniqueIdentifier>
     </Filter>
@@ -60,9 +45,6 @@
     </Filter>
     <Filter Include="include\model">
       <UniqueIdentifier>{14bf0316-07f6-487f-95a1-c5c2ee6c30d9}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="include\editor">
-      <UniqueIdentifier>{ebe17cc9-9170-493e-a762-daf4887c5d71}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\logger">
       <UniqueIdentifier>{f563a0ba-4616-4c70-905f-dd28a720bc48}</UniqueIdentifier>
@@ -78,6 +60,12 @@
     </Filter>
     <Filter Include="include\reflection">
       <UniqueIdentifier>{5b36a9d4-3654-4aac-963a-1dfa2aa549ec}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\engine">
+      <UniqueIdentifier>{2635abb1-6418-4dbe-8ec9-fbb1b9b859d5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\engine">
+      <UniqueIdentifier>{1b31ca14-220a-4059-917b-d49ab4059ff9}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -123,39 +111,6 @@
     <ClCompile Include="src\model\model.cpp">
       <Filter>src\model</Filter>
     </ClCompile>
-    <ClCompile Include="src\model\model_renderer.cpp">
-      <Filter>src\model</Filter>
-    </ClCompile>
-    <ClCompile Include="src\editor\custom_inspect.cpp">
-      <Filter>src\editor</Filter>
-    </ClCompile>
-    <ClCompile Include="src\editor\diffUtil.cpp">
-      <Filter>src\editor</Filter>
-    </ClCompile>
-    <ClCompile Include="src\editor\displayComponents.cpp">
-      <Filter>src\editor</Filter>
-    </ClCompile>
-    <ClCompile Include="src\editor\editor.cpp">
-      <Filter>src\editor</Filter>
-    </ClCompile>
-    <ClCompile Include="src\editor\gizmo.cpp">
-      <Filter>src\editor</Filter>
-    </ClCompile>
-    <ClCompile Include="src\editor\grass.cpp">
-      <Filter>src\editor</Filter>
-    </ClCompile>
-    <ClCompile Include="src\editor\lister.cpp">
-      <Filter>src\editor</Filter>
-    </ClCompile>
-    <ClCompile Include="src\editor\assetTab.cpp">
-      <Filter>src\editor</Filter>
-    </ClCompile>
-    <ClCompile Include="src\editor\picking.cpp">
-      <Filter>src\editor</Filter>
-    </ClCompile>
-    <ClCompile Include="src\editor\terrain.cpp">
-      <Filter>src\editor</Filter>
-    </ClCompile>
     <ClCompile Include="src\logger\logger.cpp">
       <Filter>src\logger</Filter>
     </ClCompile>
@@ -184,9 +139,6 @@
       <Filter>src\graphics</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\primitives.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\renderParams.cpp">
       <Filter>src\graphics</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\renderPass.cpp">
@@ -222,85 +174,49 @@
     <ClCompile Include="src\components\lights.cpp">
       <Filter>src\components</Filter>
     </ClCompile>
-    <ClCompile Include="src\components\transforms.cpp">
-      <Filter>src\components</Filter>
-    </ClCompile>
     <ClCompile Include="src\reflection\reflection.cpp">
       <Filter>src\reflection</Filter>
     </ClCompile>
     <ClCompile Include="src\serialization\serializer.cpp">
       <Filter>src\serialization</Filter>
     </ClCompile>
-    <ClCompile Include="vendor\imgui\imgui.cpp">
-      <Filter>vendor\imgui</Filter>
+    <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="NextEngine.cpp" />
+    <ClCompile Include="stdafx.cpp" />
+    <ClCompile Include="src\core\profiler.cpp">
+      <Filter>src\core</Filter>
     </ClCompile>
-    <ClCompile Include="vendor\imgui\imgui_draw.cpp">
-      <Filter>vendor\imgui</Filter>
+    <ClCompile Include="src\engine\application.cpp">
+      <Filter>src\engine</Filter>
     </ClCompile>
-    <ClCompile Include="vendor\imgui\imgui_impl_glfw.cpp">
-      <Filter>vendor\imgui</Filter>
+    <ClCompile Include="src\graphics\modelRendering.cpp">
+      <Filter>src\graphics</Filter>
     </ClCompile>
-    <ClCompile Include="vendor\imgui\imgui_impl_opengl3.cpp">
-      <Filter>vendor\imgui</Filter>
+    <ClCompile Include="src\graphics\renderer.cpp">
+      <Filter>src\graphics</Filter>
     </ClCompile>
-    <ClCompile Include="vendor\imgui\imgui_widgets.cpp">
-      <Filter>vendor\imgui</Filter>
+    <ClCompile Include="src\graphics\transforms.cpp">
+      <Filter>src\graphics</Filter>
     </ClCompile>
-    <ClCompile Include="vendor\ImGuizmo\ImGuizmo.cpp">
-      <Filter>vendor\ImGuizmo</Filter>
+    <ClCompile Include="src\graphics\terrain.cpp">
+      <Filter>src\graphics</Filter>
     </ClCompile>
-    <ClCompile Include="vendor\ImGuizmo\ImSequencer.cpp">
-      <Filter>vendor\ImGuizmo</Filter>
+    <ClCompile Include="src\components\terrain_components.cpp">
+      <Filter>src\components</Filter>
     </ClCompile>
-    <ClCompile Include="src\editor\shaderGraph.cpp">
-      <Filter>src\editor</Filter>
+    <ClCompile Include="src\components\grass_components.cpp">
+      <Filter>src\components</Filter>
     </ClCompile>
-    <ClCompile Include="src\editor\shaderGraphNodes.cpp">
-      <Filter>src\editor</Filter>
+    <ClCompile Include="src\components\transforms_components.cpp">
+      <Filter>src\components</Filter>
+    </ClCompile>
+    <ClCompile Include="src\engine\engine.cpp">
+      <Filter>src\engine</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\core\eventDispatcher.h">
       <Filter>src\core</Filter>
-    </ClInclude>
-    <ClInclude Include="vendor\stbi_write.h">
-      <Filter>vendor</Filter>
-    </ClInclude>
-    <ClInclude Include="vendor\imgui\imconfig.h">
-      <Filter>vendor\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="vendor\imgui\imgui.h">
-      <Filter>vendor\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="vendor\imgui\imgui_impl_glfw.h">
-      <Filter>vendor\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="vendor\imgui\imgui_impl_opengl3.h">
-      <Filter>vendor\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="vendor\imgui\imgui_internal.h">
-      <Filter>vendor\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="vendor\imgui\imstb_rectpack.h">
-      <Filter>vendor\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="vendor\imgui\imstb_textedit.h">
-      <Filter>vendor\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="vendor\imgui\imstb_truetype.h">
-      <Filter>vendor\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="vendor\imgui\examples\imgui_impl_glfw.h">
-      <Filter>vendor\imgui\examples</Filter>
-    </ClInclude>
-    <ClInclude Include="vendor\imgui\examples\imgui_impl_opengl3.h">
-      <Filter>vendor\imgui\examples</Filter>
-    </ClInclude>
-    <ClInclude Include="vendor\ImGuizmo\ImGuizmo.h">
-      <Filter>vendor\ImGuizmo</Filter>
-    </ClInclude>
-    <ClInclude Include="vendor\ImGuizmo\ImSequencer.h">
-      <Filter>vendor\ImGuizmo</Filter>
     </ClInclude>
     <ClInclude Include="include\ecs\ecs.h">
       <Filter>include\ecs</Filter>
@@ -370,39 +286,6 @@
     </ClInclude>
     <ClInclude Include="include\model\modelManager.h">
       <Filter>include\model</Filter>
-    </ClInclude>
-    <ClInclude Include="include\model\modelRendererSystem.h">
-      <Filter>include\model</Filter>
-    </ClInclude>
-    <ClInclude Include="include\editor\custom_inspect.h">
-      <Filter>include\editor</Filter>
-    </ClInclude>
-    <ClInclude Include="include\editor\diffUtil.h">
-      <Filter>include\editor</Filter>
-    </ClInclude>
-    <ClInclude Include="include\editor\displayComponents.h">
-      <Filter>include\editor</Filter>
-    </ClInclude>
-    <ClInclude Include="include\editor\editor.h">
-      <Filter>include\editor</Filter>
-    </ClInclude>
-    <ClInclude Include="include\editor\gizmo.h">
-      <Filter>include\editor</Filter>
-    </ClInclude>
-    <ClInclude Include="include\editor\grass.h">
-      <Filter>include\editor</Filter>
-    </ClInclude>
-    <ClInclude Include="include\editor\lister.h">
-      <Filter>include\editor</Filter>
-    </ClInclude>
-    <ClInclude Include="include\editor\assetTab.h">
-      <Filter>include\editor</Filter>
-    </ClInclude>
-    <ClInclude Include="include\editor\picking.h">
-      <Filter>include\editor</Filter>
-    </ClInclude>
-    <ClInclude Include="include\editor\terrain.h">
-      <Filter>include\editor</Filter>
     </ClInclude>
     <ClInclude Include="include\logger\logger.h">
       <Filter>include\logger</Filter>
@@ -481,6 +364,44 @@
     </ClInclude>
     <ClInclude Include="include\reflection\reflection.h">
       <Filter>include\reflection</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="targetver.h" />
+    <ClInclude Include="include\core\profiler.h">
+      <Filter>include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="include\engine\application.h">
+      <Filter>include\engine</Filter>
+    </ClInclude>
+    <ClInclude Include="include\engine\engine.h">
+      <Filter>include\engine</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\grass.h">
+      <Filter>include\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\components\grass.h">
+      <Filter>include\components</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\modelRendering.h">
+      <Filter>include\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\renderer.h">
+      <Filter>include\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\materialManager.h">
+      <Filter>include\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\components\terrain.h">
+      <Filter>include\components</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\renderFeature.h">
+      <Filter>include\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\transforms.h">
+      <Filter>include\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\terrain.h">
+      <Filter>include\graphics</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

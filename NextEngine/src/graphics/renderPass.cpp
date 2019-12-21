@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "graphics/renderPass.h"
 #include "ecs/ecs.h"
+#include "graphics/renderer.h"
 #include "graphics/window.h"
 #include "graphics/draw.h"
 #include "graphics/frameBuffer.h"
@@ -57,8 +58,9 @@ void MainPass::render_to_buffer(World& world, RenderParams& params, std::functio
 	
 	params.command_buffer->clear();
 
-	get_camera(world, params.layermask)->update_matrices(world, params);
-	world.render(params);
+	update_camera_matrices(world, get_camera(world, params.layermask), params);
+
+	Renderer::render_view(world, params);
 
 	params.width = current_frame.width;
 	params.height = current_frame.height;

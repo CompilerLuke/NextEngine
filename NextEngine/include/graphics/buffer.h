@@ -14,7 +14,7 @@ struct VertexAttrib {
 	unsigned int offset;
 };
 
-struct VertexBuffer {
+struct ENGINE_API VertexBuffer {
 	unsigned int vao = 0;
 	unsigned int length = 0;
 

@@ -6,13 +6,14 @@
 #include "core/input.h"
 #include "components/flyover.h"
 #include "graphics/shader.h"
-#include "model/modelRendererSystem.h"
+#include "model/model.h"
 #include "graphics/texture.h"
 #include "components/lights.h"
 #include "graphics/ibl.h"
 #include "physics/physics.h"
-#include "editor/terrain.h"
-#include "editor/grass.h"
+#include "components/terrain.h"
+#include "components/grass.h"
+#include "graphics/materialSystem.h"
 
 DEFINE_COMPONENT_ID(Entity, 0)
 DEFINE_COMPONENT_ID(Transform, 1)
@@ -32,6 +33,8 @@ DEFINE_COMPONENT_ID(StaticTransform, 14)
 DEFINE_COMPONENT_ID(Terrain, 16)
 DEFINE_COMPONENT_ID(TerrainControlPoint, 17)
 DEFINE_COMPONENT_ID(Grass, 18)
+DEFINE_COMPONENT_ID(CharacterController, 19)
+
 
 void register_default_systems_and_components(World& world) {
 	world.add(new Store<Entity>(100));
@@ -53,7 +56,11 @@ void register_default_systems_and_components(World& world) {
 	world.add(new Store<PlaneCollider>(10));
 	world.add(new Store<RigidBody>(10));
 	world.add(new Store<Grass>(10));
+	world.add(new Store<CharacterController>(10));
+}
 
+/*
+{
 	world.add(new TransformSystem());
 	world.add(new SkyboxSystem(world));
 	world.add(new PhysicsSystem(world));
@@ -62,4 +69,5 @@ void register_default_systems_and_components(World& world) {
 	world.add(new GrassSystem());
 	world.add(new LocalTransformSystem());
 }
+*/
 

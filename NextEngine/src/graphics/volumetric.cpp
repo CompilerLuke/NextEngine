@@ -3,7 +3,7 @@
 #include "graphics/texture.h"
 #include "graphics/window.h"
 #include "graphics/primitives.h"
-#include "ecs/system.h"
+#include "graphics/renderer.h"
 #include "graphics/shader.h"
 #include "components/lights.h"
 #include "components/transform.h"

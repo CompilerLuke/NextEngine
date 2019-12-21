@@ -2,7 +2,7 @@
 #include "graphics/culling.h"
 #include <glm/vec4.hpp>
 #include <glm/glm.hpp>
-#include "ecs/system.h"
+#include "graphics/renderer.h"
 
 void aabb_to_verts(AABB* self, glm::vec4* verts) {
 	verts[0] = glm::vec4(self->max.x, self->max.y, self->max.z, 1);

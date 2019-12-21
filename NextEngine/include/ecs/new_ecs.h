@@ -22,7 +22,7 @@ struct Entity {
 	bool enabled = true;
 	Layermask layermask = game_layer | picking_layer;
 
-	REFLECT()
+	REFLECT(ENGINE_API)
 };
 
 struct World {

@@ -3,7 +3,9 @@
 #include "ecs/ecs.h"
 #include "core/temporary.h"
 #include "graphics/draw.h"
+#include "graphics/renderer.h"
 #include "graphics/rhi.h"
+#include "graphics/materialSystem.h"
 
 REFLECT_STRUCT_BEGIN(Vertex)
 REFLECT_STRUCT_MEMBER(position)

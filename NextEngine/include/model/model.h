@@ -1,27 +1,27 @@
 #pragma once
 
-#include <string>
-#include <vector>
+#include "core/string_buffer.h"
+#include "core/vector.h"
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
-#include "graphics/buffer.h"
-#include "graphics/culling.h"
-#include "graphics/materialSystem.h"
 #include "ecs/ecs.h"
 #include "reflection/reflection.h"
 #include "core/handle.h"
+#include "graphics/buffer.h"
 
-struct Vertex {
+struct Material;
+
+struct ENGINE_API Vertex {
 	glm::vec3 position;
 	glm::vec3 normal;
 	glm::vec2 tex_coord;
 	glm::vec3 tangent;
 	glm::vec3 bitangent;
 
-	REFLECT()
+	REFLECT(NO_ARG)
 };
 
-struct Mesh {
+struct ENGINE_API Mesh {
 	VertexBuffer buffer;
 	vector<Vertex> vertices;
 	vector<unsigned int> indices;
@@ -29,13 +29,15 @@ struct Mesh {
 	unsigned int material_id;
 
 	Mesh() {};
+	Mesh(const Mesh&);
+
 	void submit();
 	void render(ID, glm::mat4*, vector<Handle<Material>>&, RenderParams&);
 
-	REFLECT()
+	REFLECT(NO_ARG)
 };
 
-struct Model {
+struct ENGINE_API Model {
 	StringBuffer path;
 	vector<Mesh> meshes;
 	vector<StringBuffer> materials;
@@ -44,9 +46,9 @@ struct Model {
 
 	void on_load();
 	void load_in_place(const glm::mat4& apply_transform = glm::mat4(1.0));
-	void ENGINE_API render(ID, glm::mat4*, vector<Handle<Material>>&, RenderParams&);
+	void render(ID, glm::mat4*, vector<Handle<Material>>&, RenderParams&);
 
-	REFLECT()
+	REFLECT(NO_ARG)
 };
 
 Handle<Model> ENGINE_API load_Model(StringView, bool serialized = false);

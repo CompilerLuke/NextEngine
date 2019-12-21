@@ -97,8 +97,12 @@ void process_node(aiNode* node, const aiScene* scene, vector<Mesh>& meshes, vect
 	}
 }
 
+#include "logger/logger.h"
+
 void Model::load_in_place(const glm::mat4& apply_transform) {
 	auto real_path = Level::asset_path(this->path);
+
+	log("Loaded model ", real_path, "\n");
 	
 	Assimp::Importer importer;
 	auto scene = importer.ReadFile(real_path.c_str(), aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);

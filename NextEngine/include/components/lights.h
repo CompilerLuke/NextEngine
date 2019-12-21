@@ -9,16 +9,8 @@ struct DirLight {
 	glm::vec3 direction = glm::vec3(0,1.0,0);
 	glm::vec3 color = glm::vec3(1.0);
 
-	REFLECT()
+	REFLECT(ENGINE_API)
 
 };
 
-DirLight* get_dir_light(struct World&, Layermask layermask);
-
-struct DebugLightSystem : System {
-	vector<Handle<struct Material>> gizmo_materials;
-	Handle<struct Model> dir_light_model;
-
-	DebugLightSystem();
-	void render(struct World&, RenderParams&) override;
-};
+ENGINE_API DirLight* get_dir_light(struct World&, Layermask layermask);

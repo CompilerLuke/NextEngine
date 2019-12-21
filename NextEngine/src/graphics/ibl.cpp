@@ -1,6 +1,9 @@
 #include "stdafx.h"
+
+#include "graphics/rhi.h"
 #include "graphics/ibl.h"
 #include "graphics/draw.h"
+#include "graphics/renderer.h"
 #include "graphics/materialSystem.h"
 #include "ecs/ecs.h"
 #include "model/model.h"
@@ -18,8 +21,8 @@
 #include "components/camera.h"
 #include "graphics/renderPass.h"
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stbi_write.h>
+//#define STB_IMAGE_WRITE_IMPLEMENTATION
+//#include <stbi_write.h>
 #include "logger/logger.h"
 
 REFLECT_STRUCT_BEGIN(Skybox)
@@ -73,7 +76,7 @@ struct CubemapCapture {
 
 		World& world = *this->world;
 
-		ID main_camera = world.id_of(get_camera(world, game_layer));
+		ID main_camera = get_camera(world, game_layer);
 
 		RenderParams new_params = *params;
 		new_params.width = width;
@@ -94,7 +97,8 @@ struct CubemapCapture {
 		new_params.layermask = game_layer;
 
 		world.by_id<Entity>(main_camera)->enabled = false;
-		camera->update_matrices(world, new_params);
+
+		update_camera_matrices(world, id, new_params);
 
 		((MainPass*)new_params.pass)->render_to_buffer(world, new_params, [this, i]() {
 			glViewport(0, 0, width, width); // don't forget to configure the viewport to the capture dimensions.
@@ -164,7 +168,8 @@ void Skybox::on_load(World& world, bool take_capture, RenderParams* params) { //
 	glBindTexture(GL_TEXTURE_CUBE_MAP, envCubemap);
 	for (unsigned int i = 0; i < 6; ++i)
 	{
-		if (!this->capture_scene || take_capture) glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
+		if (!this->capture_scene || take_capture)
+			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, nullptr);
 	}
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -254,7 +259,7 @@ void Skybox::on_load(World& world, bool take_capture, RenderParams* params) { //
 			}
 
 			StringBuffer save_capture_to = Level::asset_path(format("data/scene_capture/capture", i, ".jpg").c_str());
-			int success = stbi_write_jpg(save_capture_to.c_str(), width, height, 3, pixels, 100);
+			//int success = stbi_write_jpg(save_capture_to.c_str(), width, height, 3, pixels, 100);
 			
 		}
 		else if (this->capture_scene) {
@@ -267,12 +272,9 @@ void Skybox::on_load(World& world, bool take_capture, RenderParams* params) { //
 			
 			if (data == NULL) throw "Could not load scene capture!";
 
-			log("width ", width);
-			log("height ", height);
-
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			glBindTexture(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, envCubemap);
-			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
 			glGenerateMipmap(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i);
 
 			stbi_image_free(data);
@@ -441,7 +443,7 @@ void Skybox::on_load(World& world, bool take_capture, RenderParams* params) { //
 	return; //todo update textures in place
 }
 
-#include "editor/lister.h"
+//#include "lister.h"
 
 Skybox* make_default_Skybox(World& world, RenderParams* params, StringView filename) {
 	for (auto sky : world.filter<Skybox>(any_layer)) {
@@ -453,8 +455,8 @@ Skybox* make_default_Skybox(World& world, RenderParams* params, StringView filen
 	e->layermask = game_layer;
 	auto sky = world.make<Skybox>(id);
 
-	auto name = world.make<EntityEditor>(id);
-	name->name = "Skylight";
+	//auto name = world.make<EntityEditor>(id);
+	//name->name = "Skylight";
 
 	sky->capture_scene = true;
 	sky->filename = filename;

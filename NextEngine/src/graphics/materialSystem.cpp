@@ -4,10 +4,6 @@
 #include "graphics/rhi.h"
 #include "logger/logger.h"
 
-REFLECT_GENERIC_STRUCT_BEGIN(Handle<Material>)
-REFLECT_STRUCT_MEMBER(id)
-REFLECT_STRUCT_END()
-
 REFLECT_UNION_BEGIN(Param)
 REFLECT_UNION_FIELD(loc)
 REFLECT_UNION_CASE_BEGIN()

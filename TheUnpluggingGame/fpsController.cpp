@@ -4,13 +4,11 @@
 #include <components/transform.h>
 #include "playerInput.h"
 #include <physics/physics.h>
+#include "components/camera.h"
 
-REFLECT_STRUCT_BEGIN(FPSController)
-REFLECT_STRUCT_MEMBER(roll_cooldown_time)
-REFLECT_STRUCT_MEMBER(movement_speed)
-REFLECT_STRUCT_MEMBER(roll_speed)
-REFLECT_STRUCT_MEMBER(roll_duration)
-REFLECT_STRUCT_END()
+DEFINE_APP_COMPONENT_ID(FPSController, 51);
+
+float gravity = -9.81;
 
 void FPSControllerSystem::update(World& world, UpdateParams& params) {
 	PlayerInput* player_input = get_player_input(world);
@@ -19,8 +17,8 @@ void FPSControllerSystem::update(World& world, UpdateParams& params) {
 		FPSController* self = world.by_id<FPSController>(id);
 		LocalTransform* trans = world.by_id<LocalTransform>(id);
 
-		RigidBody* rb = world.by_id<RigidBody>(trans->owner);
-		if (rb == NULL) continue;
+		CharacterController* cc = world.by_id<CharacterController>(trans->owner);
+		if (cc == NULL) continue;
 
 		float pitch = player_input->pitch;
 		float yaw = player_input->yaw;
@@ -46,17 +44,20 @@ void FPSControllerSystem::update(World& world, UpdateParams& params) {
 		vec += right * player_input->horizonal_axis * vel;
 
 
-		rb->velocity.x = vec.x;
-		rb->velocity.z = vec.z;
+		cc->velocity.x = vec.x;
+		cc->velocity.z = vec.z;
 
-		if (player_input->space) {
-			rb->override_velocity_y = true;
-			rb->velocity.y = 5;
+		if (player_input->space && cc->on_ground) {
+			cc->velocity.y = 5;
 		}
 		else {
-			rb->override_velocity_y = false;
+			cc->velocity.y += gravity * params.delta_time;
 		}
 
 		trans->rotation = glm::quat(glm::vec3(glm::radians(pitch), glm::radians(yaw), 0));
+
+		Camera* cam = world.by_id<Camera>(id);
+		cam->fov = (1.0 - self->roll_blend) * 60.0f + self->roll_blend * 70.0f;
+
 	}
 }

@@ -81,7 +81,7 @@ void Window::init() {
 
 	glfwSetWindowUserPointer(window_ptr, this);
 
-	if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
+	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
 		throw "Failed to initialize GLAD!";
 	}
 

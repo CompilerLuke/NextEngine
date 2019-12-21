@@ -5,7 +5,7 @@
 #include "graphics/pass.h"
 #include <functional>
 
-struct MainPass : Pass {
+struct ENGINE_API MainPass : Pass {
 	Framebuffer output;
 	
 	DepthMap depth_prepass;

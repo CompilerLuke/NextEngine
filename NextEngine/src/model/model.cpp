@@ -7,9 +7,9 @@ REFLECT_STRUCT_MEMBER(meshes)
 REFLECT_STRUCT_MEMBER(materials)
 REFLECT_STRUCT_END()
 
-REFLECT_GENERIC_STRUCT_BEGIN(Handle<Model>)
-REFLECT_STRUCT_MEMBER(id)
-REFLECT_STRUCT_END()
+Mesh::Mesh(const Mesh& other) {
+
+}
 
 void Model::on_load() {
 	for (auto& mesh : meshes) {

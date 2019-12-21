@@ -80,7 +80,7 @@
       <ExceptionHandling>false</ExceptionHandling>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>C:\Users\User\source\repos\NextEngine\x64\Debug\NextEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>C:\Users\User\source\repos\NextEngine\x64\Debug\NextEngine.lib;C:\Users\User\source\repos\NextEngine\x64\Debug\TheUnpluggingGame.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -93,7 +93,7 @@
       <ExceptionHandling>false</ExceptionHandling>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>C:\Users\User\source\repos\NextEngine\x64\Debug\NextEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>C:\Users\User\source\repos\NextEngine\x64\Debug\NextEngine.lib;C:\Users\User\source\repos\NextEngine\x64\Debug\TheUnpluggingGame.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">

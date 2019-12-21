@@ -14,6 +14,7 @@
 #include "components/camera.h"
 #include "graphics/rhi.h"
 #include "logger/logger.h"
+#include "graphics/renderer.h"
 
 DepthMap::DepthMap(unsigned int width, unsigned int height, World& world, bool stencil) {
 	this->type = Pass::Depth_Only;
@@ -95,6 +96,8 @@ void calc_ortho_proj(RenderParams& params, glm::mat4& light_m, float width, floa
 		90.0f,
 		params.cam->far_plane,
 	};
+
+
 
 	for (int i = 0; i < num_cascades; i++) {
 		auto proj = glm::perspective(
@@ -216,7 +219,7 @@ void DepthMap::render_maps(World& world, RenderParams& params, glm::mat4 project
 		new_params.layermask |= shadow_layer;
 		new_params.command_buffer = &cmd_buffer;
 
-		world.render(new_params);
+		Renderer::render_view(world, new_params);
 	}
 
 	this->depth_map_FBO.bind();

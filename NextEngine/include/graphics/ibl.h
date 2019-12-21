@@ -6,9 +6,9 @@
 #include "reflection/reflection.h"
 #include "core/handle.h"
 #include "core/string_buffer.h"
-#include "graphics/frameBuffer.h"
+#include "graphics/renderFeature.h";
 
-struct Skybox {
+struct ENGINE_API Skybox {
 	StringBuffer filename;
 	bool capture_scene = true;
 
@@ -20,12 +20,12 @@ struct Skybox {
 	void on_load(struct World&, bool take_capture = false, RenderParams* params = NULL);
 	void set_ibl_params(Handle<struct Shader>, Handle<struct ShaderConfig>, struct World&, struct RenderParams&);
 
-	REFLECT()
+	REFLECT(NO_ARG)
 };
 
 Skybox* make_default_Skybox(struct World&, struct RenderParams*, StringView);
 
-struct SkyboxSystem : System {
+struct SkyboxSystem : RenderFeature {
 	Handle<struct Model> cube_model;
 
 	SkyboxSystem(struct World&);
