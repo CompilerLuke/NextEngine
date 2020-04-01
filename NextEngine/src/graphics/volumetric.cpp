@@ -10,10 +10,10 @@
 #include "components/camera.h"
 #include "core/io/logger.h"
 
-FogMap::FogMap(unsigned int width, unsigned int height) {
+FogMap::FogMap(TextureManager& textures, unsigned int width, unsigned int height) {
 	texture_handle tex;
 	
-	AttachmentDesc color_attachment(tex);
+	AttachmentDesc color_attachment(tex); //Should this really be creating a handle to the actuall resource
 	color_attachment.min_filter = Filter::Linear;
 	color_attachment.mag_filter = Filter::Linear;
 	color_attachment.wrap_s = Wrap::ClampToBorder;
@@ -25,13 +25,13 @@ FogMap::FogMap(unsigned int width, unsigned int height) {
 	settings.depth_buffer = DepthComponent24;
 	settings.color_attachments.append(color_attachment);
 
-	this->fbo = Framebuffer(asset_manager, settings);
+	this->fbo = Framebuffer(textures, settings);
 	this->map = tex;
 }
 
 VolumetricPass::VolumetricPass(AssetManager& asset_manager, glm::vec2 size, texture_handle depth_prepass)
 	: asset_manager(asset_manager),
-	  calc_fog(size.x / 2.0f, size.y / 2.0f),
+	  calc_fog(asset_manager.textures, size.x / 2.0f, size.y / 2.0f),
 	  depth_prepass(depth_prepass),
 	  volume_shader(asset_manager.shaders.load("shaders/screenspace.vert", "shaders/volumetric.frag")),
 	  upsample_shader(asset_manager.shaders.load("shaders/screenspace.vert", "shaders/volumetric_upsample.frag"))

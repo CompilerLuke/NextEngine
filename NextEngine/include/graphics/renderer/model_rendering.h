@@ -35,6 +35,6 @@ struct ENGINE_API ModelRendererSystem : RenderFeature {
 
 	ModelRendererSystem(struct AssetManager&);
 	void pre_render();
-	void render_Model(model_handle handle, glm::mat4 mat, vector<material_handle>& materials, RenderCtx& ctx);
+	void render(World&, RenderCtx&) override;
 };
 

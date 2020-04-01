@@ -39,7 +39,7 @@ void* get_Func(void* dll, const char* name) {
 	return GetProcAddress((HINSTANCE)dll, name);
 }
 
-Application::Application(Engine* engine, string_view path) : engine(engine), path(path) {}
+Application::Application(Engine& engine, string_view path) : engine(engine), path(path) {}
 
 void Application::init(void* args) {
 	load_functions();

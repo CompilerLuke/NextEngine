@@ -28,5 +28,3 @@ struct ENGINE_API File {
 	void write(string_view);
 	unsigned int read_binary(char**);
 };
-
-void WatchFileChange(string_view, std::function<void>());

@@ -41,8 +41,7 @@ struct ENGINE_API Renderer {
 	
 	void render_view(World& world, RenderCtx&);
 	void render_overlay(World& world, RenderCtx&);
-	void set_shader_scene_params(RenderCtx& ctx, ShaderConfig* config);
-	void render(Layermask layermask, uint width, uint height, RenderExtension* ext = NULL);
+	RenderCtx render(World& world, Layermask layermask, uint width, uint height, RenderExtension* ext);
 
 	Renderer();
 	void init(AssetManager& asset_manager, Window&, World&);
@@ -70,7 +69,7 @@ struct ENGINE_API RenderCtx {
 	void set_shader_scene_params(ShaderConfig&);
 
 	RenderCtx(struct CommandBuffer&, struct Pass*);
-	RenderCtx(Layermask mask, RenderExtension* ext = NULL);
+	RenderCtx(const RenderCtx&, struct CommandBuffer&, struct Pass*);
 };
 
 struct ENGINE_API PreRenderParams {

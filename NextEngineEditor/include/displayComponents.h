@@ -9,11 +9,16 @@
 #include "core/container/string_view.h"
 #include "core/container/string_buffer.h"
 
+struct World;
+struct Editor;
+struct UpdateCtx;
+struct RenderCtx;
+
 struct DisplayComponents {
 	string_buffer filter;
 
-	void update(struct World& world, struct UpdateCtx& params);
-	void render(struct World& world, struct RenderCtx& params, struct Editor& editor);
+	void update(World& world, UpdateCtx& params);
+	void render(World& world, RenderCtx& params, struct Editor& editor);
 };
 
 bool render_fields_primitive(int*, string_view);
@@ -22,9 +27,9 @@ bool render_fields_primitive(float*, string_view);
 bool render_fields_primitive(string_buffer*, string_view);
 bool render_fields_primitive(bool*, string_view);
 
-bool render_fields(reflect::TypeDescriptor*, void*, string_view, World&);
+bool render_fields(reflect::TypeDescriptor*, void*, string_view, Editor&);
 
-using OnInspectGUICallback = bool(*)(void*, string_view, World&);
+using OnInspectGUICallback = bool(*)(void*, string_view, Editor&);
 
 void register_on_inspect_gui(string_view, OnInspectGUICallback);
 OnInspectGUICallback get_on_inspect_gui(string_view on_type);

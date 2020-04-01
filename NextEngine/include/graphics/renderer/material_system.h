@@ -82,9 +82,8 @@ struct ENGINE_API Material {
 	unsigned int shader_flags = 0;
 
 	void retarget_from(AssetManager&, material_handle);
-	void set_flag(string_view, bool);
+	void set_flag(ShaderManager&, string_view, bool);
 
-	
 	void set_int(ShaderManager&, string_view, int);
 	void set_float(ShaderManager&, string_view, float);
 	void set_vec2(ShaderManager&, string_view, glm::vec2);

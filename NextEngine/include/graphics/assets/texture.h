@@ -5,6 +5,8 @@
 #include "core/container/handle_manager.h"
 #include "core/reflection.h"
 
+struct Level;
+
 using TextureID = uint;
 
 struct ENGINE_API Image {
@@ -38,9 +40,6 @@ struct ENGINE_API Texture {
 	string_buffer filename;
 	TextureID texture_id = 0;
 
-	void submit(Image&);
-	void on_load();
-
 	REFLECT(NO_ARG)
 };
 
@@ -55,11 +54,16 @@ struct ENGINE_API Cubemap {
 ENGINE_API struct CubemapManager : HandleManager<Cubemap, cubemap_handle> {};
 
 ENGINE_API struct TextureManager : HandleManager<Texture, texture_handle> {
+	Level& level;
+	
+	TextureManager(Level& level);
 	Image load_Image(string_view filename);
 	texture_handle load(string_view filename);
 	texture_handle create_from(const Image& image, const TextureDesc& desc = {});
 	texture_handle create_from_gl(uint tex_id, const TextureDesc& self);
 	texture_handle assign_handle(Texture&&);
+	void assign_handle(texture_handle, Texture&&);
+	void on_load(texture_handle handle);
 };
 
 ENGINE_API void gl_bind_cubemap(CubemapManager&, cubemap_handle, uint);
@@ -72,3 +76,4 @@ ENGINE_API int  gl_format(Filter filter);
 ENGINE_API int  gl_format(Wrap wrap);
 ENGINE_API int  gl_gen_texture();
 ENGINE_API void gl_copy_sub(int width, int height); //todo abstract away
+ENGINE_API uint gl_submit(Image&);

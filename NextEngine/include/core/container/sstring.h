@@ -53,3 +53,14 @@ struct sstring {
 		return { data, length() };
 	}
 };
+
+inline uint hash_func(sstring& sstring) {
+	const char* str = sstring.data;
+	unsigned long hash = 5381;
+	uint c;
+
+	while (c = *str++)
+		hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+
+	return hash;
+}

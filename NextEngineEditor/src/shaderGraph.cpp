@@ -523,7 +523,7 @@ void render_node(ShaderGraph& graph, shader_node_handle handle) {
 
 #include "GLFW/glfw3.h"
 
-void set_params_for_shader_graph(Material* mat_ptr) {
+void set_params_for_shader_graph(ShaderManager& shaders, Material* mat_ptr) {
 	mat_ptr->params.clear();
 
 	ShaderAsset* asset = AssetTab::shader_handle_to_asset[mat_ptr->shader.id];
@@ -531,23 +531,23 @@ void set_params_for_shader_graph(Material* mat_ptr) {
 	if (asset->graph->requires_time) {
 		Param p;
 		p.type = Param_Time;
-		p.loc = location(mat_ptr->shader, "_dep_time");
+		p.loc = shaders.location(mat_ptr->shader, "_dep_time");
 
 		mat_ptr->params.append(p);
 	}
 
 	for (Param p : asset->graph->dependencies) {
-		p.loc = location(mat_ptr->shader, get_dependency({ p.loc.id }));
+		p.loc = shaders.location(mat_ptr->shader, get_dependency({ p.loc.id }));
 		mat_ptr->params.append(p);
 	}
 
 	for (unsigned int i = 0; i < asset->graph->parameters.length; i++) {
 		Param p = asset->graph->parameters[i];
-		p.loc = location(mat_ptr->shader, asset->graph->param_names[i]);
+		p.loc = shaders.location(mat_ptr->shader, asset->graph->param_names[i]);
 		mat_ptr->params.append(p);
 	}
 
-	mat_ptr->set_vec2("transformUVs", glm::vec2(1.0f));
+	mat_ptr->set_vec2(shaders, "transformUVs", glm::vec2(1.0f));
 }
 
 //todo Refactor into Preview Class
@@ -575,17 +575,17 @@ void render_preview(ShaderAsset* asset, World& world, AssetTab& tab, RenderCtx& 
 		static material_handle preview_handle = assets.materials.assign_handle({});
 		Material* mat_ptr = assets.materials.get(preview_handle);
 		*mat_ptr = Material(asset->handle);
-		set_params_for_shader_graph(mat_ptr);
+		set_params_for_shader_graph(assets.shaders, mat_ptr);
 
 		mat_handle = preview_handle;
 	}
 
 	vector<material_handle> materials = { mat_handle };
 
-	CommandBuffer cmd_buffer;
+	CommandBuffer cmd_buffer(assets);
 	RenderCtx render_ctx = create_preview_command_buffer(cmd_buffer, old_ctx, tab, cam, world);
 
-	render_Model(sphere, model_m, materials, render_ctx);
+	cmd_buffer.draw(model_m, sphere, materials);
 
 	render_preview_to_buffer(tab, render_ctx, cmd_buffer, graph.rot_preview.preview, world);
 
@@ -900,7 +900,7 @@ void compile_shader_graph(ShaderManager& shader_manager, ShaderAsset* asset) {
 
 	string_buffer file_path = format("data/shader_output/", asset->name, ".frag");
 
-	File file;
+	File file(shader_manager.level);
 	if (file.open(file_path, File::WriteFile)) {
 		log("Could not open file to write shader output");
 	}
@@ -914,7 +914,7 @@ void compile_shader_graph(ShaderManager& shader_manager, ShaderAsset* asset) {
 	
 	shader_manager.reload(asset->handle);
 
-	last_output = compiler.contents;
+	last_output = string_view(compiler.contents);
 }
 
 void new_node_popup(ShaderAsset* asset);
@@ -1075,6 +1075,8 @@ ShaderAsset* create_new_shader(World& world, AssetTab& self, Editor& editor, Ren
 ShaderNode make_pbr_node();
 
 void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTab& self, RenderCtx& ctx) {
+	TextureManager& textures = self.asset_manager.textures;
+	
 	render_name(shader->name, self.default_font);
 	
 	ImGui::SetNextTreeNodeOpen(true);
@@ -1110,7 +1112,7 @@ void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTa
 		}
 
 		if (param.type == Param_Image) {
-			ImGui::Image((ImTextureID)texture::id_of(param.image), ImVec2(200, 200), ImVec2(0, 1), ImVec2(1, 0));
+			ImGui::Image((ImTextureID)gl_id_of(textures, param.image), ImVec2(200, 200), ImVec2(0, 1), ImVec2(1, 0));
 			
 			accept_drop("DRAG_AND_DROP_IMAGE", &param.image, sizeof(texture_handle));
 			
@@ -1119,7 +1121,7 @@ void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTa
 			ImGui::Button(name.c_str()); //todo implement rename
 
 			if (ImGui::BeginDragDropSource()) {
-				ImGui::Image((ImTextureID)texture::id_of(param.image), ImVec2(200, 200), ImVec2(0, 1), ImVec2(1, 0));
+				ImGui::Image((ImTextureID)gl_id_of(textures, param.image), ImVec2(200, 200), ImVec2(0, 1), ImVec2(1, 0));
 				ImGui::SetDragDropPayload("DRAG_AND_DROP_IMAGE_PARAM", &i, sizeof(string_view));
 				ImGui::EndDragDropSource();
 			}
@@ -1165,8 +1167,8 @@ void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTa
 		ImGui::EndPopup();
 	}
 
-	rot_preview(shader->graph->rot_preview);
-	render_preview(shader, world, editor, ctx);
+	rot_preview(textures, shader->graph->rot_preview);
+	render_preview(shader, world, self, ctx);
 }
 
 #include "core/serializer.h"

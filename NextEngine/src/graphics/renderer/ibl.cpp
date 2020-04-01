@@ -28,7 +28,8 @@ struct DrawCommandState skybox_draw_state = {
 	draw_skybox
 };
 
-void SkyboxSystem::bind_ibl_params(Skybox* skybox, ShaderConfig& config, RenderCtx& ctx) {
+void SkyboxSystem::bind_ibl_params(ShaderConfig& config, RenderCtx& ctx) {
+	Skybox* skybox = ctx.skybox;
 	auto bind_to = ctx.command_buffer.next_texture_index();
 	
 	gl_bind_cubemap(asset_manager.cubemaps, skybox->irradiance_cubemap, bind_to);
@@ -105,13 +106,12 @@ struct CubemapCapture {
 	}
 };
 
-void SkyboxSystem::load(World& world, ID id) { //todo cleanup
+void SkyboxSystem::load(Skybox* skybox) { //todo cleanup
+	Level& level = asset_manager.level;
 	ShaderManager& shaders = asset_manager.shaders;
 	TextureManager& textures = asset_manager.textures;
 	ModelManager& models = asset_manager.models;
 	CubemapManager& cubemaps = asset_manager.cubemaps;
-
-	Skybox* skybox = world.by_id<Skybox>(id);
 
 	bool take_capture = false;
 	
@@ -139,10 +139,10 @@ void SkyboxSystem::load(World& world, ID id) { //todo cleanup
 
 	// pbr: load the HDR environment map
 	// ---------------------------------
-	if (!this->capture_scene) {
+	if (!skybox->capture_scene) {
 		stbi_set_flip_vertically_on_load(false); //this seems different
 		int width, height, nrComponents;
-		float *data = stbi_loadf(gb::level.asset_path(skybox->filename).c_str(), &width, &height, &nrComponents, 0);
+		float *data = stbi_loadf(asset_manager.level.asset_path(skybox->filename).c_str(), &width, &height, &nrComponents, 0);
 		if (data)
 		{
 			glGenTextures(1, &hdrTexture);
@@ -186,11 +186,10 @@ void SkyboxSystem::load(World& world, ID id) { //todo cleanup
 	CubemapCapture capture;
 	capture.width = width;
 	capture.height = height;
-	capture.world = &world;
+	//capture.world = &world;
 	capture.captureFBO = captureFBO;
 	capture.captureTexture = envCubemap;
-	capture.params = params;
-	capture.capture_id = world.id_of(this);
+	//capture.capture_id = world.id_of(this);
 
 	glm::mat4 captureViews[6];
 	memcpy(captureViews, capture.captureViews, sizeof(glm::mat4) * 6);
@@ -207,7 +206,7 @@ void SkyboxSystem::load(World& world, ID id) { //todo cleanup
 
 	// pbr: convert HDR equirectangular environment map to cubemap equivalent
 	// ----------------------------------------------------------------------
-	if (!this->capture_scene) {
+	if (!skybox->capture_scene) {
 		equirectangular_to_cubemap_shader->bind();
 		equirectangular_to_cubemap_shader->set_int("equirectangularMap", 0);
 		equirectangular_to_cubemap_shader->set_mat4("projection", captureProjection);
@@ -226,7 +225,7 @@ void SkyboxSystem::load(World& world, ID id) { //todo cleanup
 		pixels_float = new float[width * height * 3];
 	}
 
-	if (this->capture_scene) {
+	if (skybox->capture_scene) {
 		pixels = new uint8_t[width * height * 3];
 	}
 
@@ -259,14 +258,14 @@ void SkyboxSystem::load(World& world, ID id) { //todo cleanup
 				}
 			}
 
-			string_buffer save_capture_to = gb::level.asset_path(format("data/scene_capture/capture", i, ".jpg").c_str());
+			string_buffer save_capture_to = asset_manager.level.asset_path(format("data/scene_capture/capture", i, ".jpg").c_str());
 			//int success = stbi_write_jpg(save_capture_to.c_str(), width, height, 3, pixels, 100);
 			
 		}
-		else if (this->capture_scene) {
+		else if (skybox->capture_scene) {
 			int width, height, num_channels;
 
-			string_buffer load_capture_from = gb::level.asset_path(format("data/scene_capture/capture", i, ".jpg"));
+			string_buffer load_capture_from = asset_manager.level.asset_path(format("data/scene_capture/capture", i, ".jpg"));
 
 			stbi_set_flip_vertically_on_load(false);
 			uint8_t* data = stbi_load(load_capture_from.c_str(), &width, &height, &num_channels, 3);
@@ -490,7 +489,7 @@ SkyboxSystem::SkyboxSystem(AssetManager& assets, World& world) : asset_manager(a
 
 	world.on_make<Skybox>([this, &world](vector<ID>& created) {
 		for (ID id : created) {
-			load(world, id);
+			load(world.by_id<Skybox>(id));
 		}
 	});
 }

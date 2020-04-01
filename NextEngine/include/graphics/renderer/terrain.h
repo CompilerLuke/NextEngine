@@ -15,6 +15,8 @@ struct ChunkInfo {
 };
 
 struct TerrainRenderSystem : RenderFeature {
+	AssetManager& asset_manager;
+	
 	shader_handle terrain_shader;
 	shader_handle flat_shader;
 

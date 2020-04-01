@@ -336,9 +336,6 @@
     <ClInclude Include="include\graphics\culling\culling.h">
       <Filter>include\graphics</Filter>
     </ClInclude>
-    <ClInclude Include="include\graphics\assets\material_manager.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
     <ClInclude Include="include\graphics\culling\scene_partition.h">
       <Filter>include\graphics</Filter>
     </ClInclude>
@@ -435,5 +432,6 @@
     <ClInclude Include="include\graphics\assets\asset_manager.h" />
     <ClInclude Include="include\graphics\pass\render_graph.h" />
     <ClInclude Include="include\graphics\rhi\rhi.h" />
+    <ClInclude Include="include\graphics\assets\material_manager.h" />
   </ItemGroup>
 </Project>

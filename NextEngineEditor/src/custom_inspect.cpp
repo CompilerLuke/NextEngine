@@ -6,10 +6,13 @@
 #include "assetTab.h"
 #include <glm/gtc/type_ptr.hpp>
 #include "graphics/renderer/ibl.h"
+#include "graphics/renderer/renderer.h"
 #include "grass.h"
 #include "graphics/assets/asset_manager.h"
+#include "engine/engine.h"
+#include "editor.h"
 
-bool Quat_inspect(void* data, string_view prefix, struct World& world) {
+bool Quat_inspect(void* data, string_view prefix, Editor& editor) {
 	ImGui::PushID((long long)data);
 
 	glm::quat* ptr = (glm::quat*)data;
@@ -26,7 +29,7 @@ bool Quat_inspect(void* data, string_view prefix, struct World& world) {
 	return true;
 }
 
-bool Vec3_inspect(void* data, string_view prefix, struct World& world) {
+bool Vec3_inspect(void* data, string_view prefix, Editor& editor) {
 	
 	glm::vec3* ptr = (glm::vec3*)data;
 	ImGui::PushID((long long)data);
@@ -36,7 +39,7 @@ bool Vec3_inspect(void* data, string_view prefix, struct World& world) {
 	return true;
 }
 
-bool Vec2_inspect(void* data, string_view prefix, struct World& world) {
+bool Vec2_inspect(void* data, string_view prefix, Editor& editor) {
 	glm::vec2* ptr = (glm::vec2*)data;
 
 	ImGui::PushID((long long)data);
@@ -45,13 +48,14 @@ bool Vec2_inspect(void* data, string_view prefix, struct World& world) {
 	return true;
 }
 
-bool Mat4_inspect(void* data, string_view prefix, World& world) {
+bool Mat4_inspect(void* data, string_view prefix, Editor& editor) {
 	ImGui::LabelText("Matrix", prefix.c_str());
 	return true;
 }
 
 //Shaders
-bool Shader_inspect(void* data, string_view prefix, World& world, ShaderManager& manager) { //todo how do we pass state into these functions
+bool Shader_inspect(void* data, string_view prefix, Editor& editor) { //todo how do we pass state into these functions
+	ShaderManager& manager = editor.engine.asset_manager.shaders;
 	auto handle_shader = (shader_handle*)data;
 	auto shader = manager.get(*handle_shader);
 
@@ -62,7 +66,7 @@ bool Shader_inspect(void* data, string_view prefix, World& world, ShaderManager&
 }
 
 template<typename H, typename T>
-bool render_asset_preview(H* handle_ptr, vector<T*>& to_asset, string_view prefix, const char * drag_and_drop) {
+bool render_asset_preview(TextureManager& texture_manager, H* handle_ptr, vector<T*>& to_asset, string_view prefix, const char * drag_and_drop) {
 	H asset_id = *handle_ptr;
 
 	T* asset = NULL;
@@ -73,7 +77,7 @@ bool render_asset_preview(H* handle_ptr, vector<T*>& to_asset, string_view prefi
 		ImGui::NewLine();
 	}
 	else {
-		ImGui::Image((ImTextureID)texture::id_of(asset->rot_preview.preview), ImVec2(128, 128), ImVec2(0, 1), ImVec2(1, 0));
+		ImGui::Image((ImTextureID)gl_id_of(texture_manager, asset->rot_preview.preview), ImVec2(128, 128), ImVec2(0, 1), ImVec2(1, 0));
 	}
 
 	accept_drop(drag_and_drop, handle_ptr, sizeof(uint));
@@ -84,11 +88,11 @@ bool render_asset_preview(H* handle_ptr, vector<T*>& to_asset, string_view prefi
 	return true;
 }
 
-bool Model_inspect(void* data, string_view prefix, World& world) {
-	return render_asset_preview((model_asset_handle*)data, AssetTab::model_handle_to_asset, prefix, "DRAG_AND_DROP_MODEL");
+bool Model_inspect(void* data, string_view prefix, Editor& editor) {
+	return render_asset_preview(editor.engine.asset_manager.textures, (model_asset_handle*)data, AssetTab::model_handle_to_asset, prefix, "DRAG_AND_DROP_MODEL");
 }
 
-bool Layermask_inspect(void* data, string_view prefix, World& world) {
+bool Layermask_inspect(void* data, string_view prefix, Editor& editor) {
 	Layermask* mask_ptr = (Layermask*)(data);
 	Layermask mask = *mask_ptr;
 
@@ -111,7 +115,7 @@ bool Layermask_inspect(void* data, string_view prefix, World& world) {
 	return true;
 }
 
-bool EntityEditor_inspect(void* data, string_view prefix, World& world) {
+bool EntityEditor_inspect(void* data, string_view prefix, Editor& world) {
 	return false;
 }
 
@@ -128,17 +132,17 @@ bool accept_drop(const char* drop_type, void* ptr, unsigned int size) {
 }
 
 //Materials
-bool Material_inspect(void* data, string_view prefix, World& world) {
-	return render_asset_preview((material_asset_handle*)data, AssetTab::material_handle_to_asset, prefix, "DRAG_AND_DROP_MATERIAL");
+bool Material_inspect(void* data, string_view prefix, Editor& editor) {
+	return render_asset_preview(editor.engine.asset_manager.textures, (material_asset_handle*)data, AssetTab::material_handle_to_asset, prefix, "DRAG_AND_DROP_MATERIAL");
 }
 
-bool Materials_inspect(void* data, string_view prefix, World& world) {
+bool Materials_inspect(void* data, string_view prefix, Editor& editor) {
 	Materials* materials = (Materials*)data;
 	auto material_type = reflect::TypeResolver<Material>::get();
 
 	if (ImGui::CollapsingHeader("Materials")) {
 		for (unsigned int i = 0; i < materials->materials.length; i++) {
-			Material_inspect(&materials->materials[i], tformat("Element ", i), world);
+			Material_inspect(&materials->materials[i], tformat("Element ", i), editor);
 		}
 		return true;
 	}
@@ -146,11 +150,13 @@ bool Materials_inspect(void* data, string_view prefix, World& world) {
 	return false;
 }
 
-bool Skybox_inspect(void* data, string_view prefix, World& world) {
+bool Skybox_inspect(void* data, string_view prefix, Editor& editor) {
 	if (ImGui::CollapsingHeader("Skylight")) {
 		if (ImGui::Button("Capture")) {
 			((Skybox*)data)->capture_scene = true;
-			((Skybox*)data)->on_load(world, true); //todo broken
+			
+			Renderer& renderer = editor.engine.renderer;
+			renderer.skybox_renderer->load((Skybox*)data);
 		}
 		return true;
 	}
@@ -158,7 +164,10 @@ bool Skybox_inspect(void* data, string_view prefix, World& world) {
 	return false;
 }
 
-bool Grass_inspect(void* data, string_view prefix, World& world, ModelManager& model_manager) {
+bool Grass_inspect(void* data, string_view prefix, Editor& editor) {
+	World& world = editor.engine.world;
+	ModelManager& model_manager = editor.engine.asset_manager.models;
+
 	static glm::vec2 density_range(0, 0.1);
 	
 	if (ImGui::CollapsingHeader("Grass")) {
@@ -173,7 +182,7 @@ bool Grass_inspect(void* data, string_view prefix, World& world, ModelManager& m
 				continue;
 			}
 
-			render_fields(member.type, (char*)data + member.offset, member.name, world);
+			render_fields(member.type, (char*)data + member.offset, member.name, editor);
 		}
 
 		ImGui::NewLine();
@@ -207,7 +216,7 @@ bool Grass_inspect(void* data, string_view prefix, World& world, ModelManager& m
 	return false;
 }
 
-void register_on_inspect_callbacks() {
+void register_on_inspect_callbacks(AssetManager& asset_manager) {
 	register_on_inspect_gui("Skybox", Skybox_inspect);
 	register_on_inspect_gui("Material", Material_inspect);
 	register_on_inspect_gui("Materials", Materials_inspect);

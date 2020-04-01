@@ -219,6 +219,7 @@ struct DefferedMoveFolder {
 void render_assets(Editor& editor, AssetTab& asset_tab, string_view filter, bool* deselect) {
 	ID folder_handle = asset_tab.current_folder;
 	World& world = asset_tab.assets;
+	TextureManager& textures = asset_tab.asset_manager.textures;
 	auto folder = world.by_id<AssetFolder>(folder_handle);
 	
 	ImGui::PushStyleColor(ImGuiCol_Column, ImVec4(0.16, 0.16, 0.16, 1));
@@ -236,7 +237,7 @@ void render_assets(Editor& editor, AssetTab& asset_tab, string_view filter, bool
 		auto folder = world.by_id<AssetFolder>(handle);
 
 		if (tex) {
-			render_asset((ImTextureID)texture::id_of(tex->handle), tex->name, asset_tab, handle, deselect, "DRAG_AND_DROP_IMAGE", &tex->handle);
+			render_asset((ImTextureID)gl_id_of(textures, tex->handle), tex->name, asset_tab, handle, deselect, "DRAG_AND_DROP_IMAGE", &tex->handle);
 		}
 
 		if (shad) { 
@@ -244,11 +245,11 @@ void render_assets(Editor& editor, AssetTab& asset_tab, string_view filter, bool
 		}
 
 		if (mod) {
-			render_asset((ImTextureID)texture::id_of(mod->rot_preview.preview), mod->name, asset_tab, handle, deselect, "DRAG_AND_DROP_MODEL", &mod->handle);
+			render_asset((ImTextureID)gl_id_of(textures, mod->rot_preview.preview), mod->name, asset_tab, handle, deselect, "DRAG_AND_DROP_MODEL", &mod->handle);
 		}
 
 		if (mat) { 
-			render_asset((ImTextureID)texture::id_of(mat->rot_preview.preview), mat->name, asset_tab, handle, deselect, "DRAG_AND_DROP_MATERIAL", &mat->handle);
+			render_asset((ImTextureID)gl_id_of(textures, mat->rot_preview.preview), mat->name, asset_tab, handle, deselect, "DRAG_AND_DROP_MATERIAL", &mat->handle);
 		}
 
 		if (folder && !filtered(asset_tab, folder->name)) {
@@ -449,7 +450,6 @@ void render_preview_for(World& world, AssetTab& self, ModelAsset& asset, RenderC
 	RenderCtx ctx = create_preview_command_buffer(cmd_buffer, old_ctx, self, cam, world);
 
 	cmd_buffer.draw(model_m, asset.handle, asset.materials);
-	render_Model(asset.handle, model_m, asset.materials, ctx);
 
 	render_preview_to_buffer(self, ctx, cmd_buffer, asset.rot_preview.preview, world);
 
@@ -459,13 +459,15 @@ void render_preview_for(World& world, AssetTab& self, ModelAsset& asset, RenderC
 #include "graphics/rhi/primitives.h"
 
 void render_preview_for(World& world, AssetTab& self, MaterialAsset& asset, RenderCtx& old_ctx) {
+	ModelManager& models = self.asset_manager.models;
+	
 	ID id = world.make_ID();
 	Entity* entity = world.make<Entity>(id);
 	Transform* trans = world.make<Transform>(id);
 	trans->position.z = 2.5;
 	Camera* cam = world.make<Camera>(id);
 
-	model_handle sphere = load_Model("sphere.fbx");
+	model_handle sphere = models.load("sphere.fbx");
 
 	Transform trans_of_sphere;
 	trans_of_sphere.rotation = asset.rot_preview.rot;
@@ -474,21 +476,21 @@ void render_preview_for(World& world, AssetTab& self, MaterialAsset& asset, Rend
 
 	vector<material_handle> materials = { asset.handle };
 
-	CommandBuffer cmd_buffer;
+	CommandBuffer cmd_buffer(self.asset_manager);
 	RenderCtx render_ctx = create_preview_command_buffer(cmd_buffer, old_ctx, self, cam, world);
 
-	render_Model(sphere, model_m, materials, render_ctx);
+	cmd_buffer.draw(model_m, sphere, materials);
 
 	render_preview_to_buffer(self, render_ctx, cmd_buffer, asset.rot_preview.preview, world);
 
 	world.free_now_by_id(id);
 }
 
-void rot_preview(RotatablePreview& self) {
+void rot_preview(TextureManager& textures, RotatablePreview& self) {
 	ImGui::SetNextTreeNodeOpen(true);
 	ImGui::CollapsingHeader("Preview");
 
-	ImGui::Image((ImTextureID)texture::id_of(self.preview), ImVec2(512, 512), ImVec2(0, 1), ImVec2(1, 0));
+	ImGui::Image((ImTextureID)gl_id_of(textures, self.preview), ImVec2(512, 512), ImVec2(0, 1), ImVec2(1, 0));
 	
 	if (ImGui::IsItemHovered() && ImGui::IsMouseDragging()) {
 		self.previous = self.current;
@@ -542,7 +544,7 @@ void channel_image(TextureManager& textures, texture_handle& image, string_view 
 	ImGui::SameLine(ImGui::GetWindowWidth() - 300);
 }
 
-void set_params_for_shader_graph(Material* mat);
+void set_params_for_shader_graph(ShaderManager& shader_manager, Material* mat);
 
 //todo refactor Editor into smaller chunks
 void inspect_material_params(Editor& editor, Material* material) {
@@ -584,18 +586,18 @@ void inspect_material_params(Editor& editor, Material* material) {
 		}
 
 		if (param.type == Param_Channel3) {
-			channel_image(param.channel3.image, uniform.name);
+			channel_image(texture_manager, param.channel3.image, uniform.name);
 			edit_color(param.channel3.color, uniform.name, glm::vec2(50, 50));
 		}
 
 		if (param.type == Param_Channel2) {
-			channel_image(param.channel2.image, uniform.name);
+			channel_image(texture_manager, param.channel2.image, uniform.name);
 			ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.3f);
 			ImGui::InputFloat2(tformat("##", uniform.name).c_str(), &param.vec2.x);
 		}
 
 		if (param.type == Param_Channel1) {
-			channel_image(param.channel1.image, uniform.name);
+			channel_image(texture_manager, param.channel1.image, uniform.name);
 			ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.3f);
 			ImGui::SliderFloat(tformat("##", uniform.name).c_str(), &param.channel1.value, 0, 1.0f);
 		}
@@ -605,10 +607,12 @@ void inspect_material_params(Editor& editor, Material* material) {
 }
 
 void asset_properties(MaterialAsset* mat_asset, Editor& editor, World& world, AssetTab& self, RenderCtx& ctx) {
-	ShaderManager& shader_manager = editor.engine.asset_manager.shaders;
-	TextureManager& texture_manager = editor.engine.asset_manager.textures;
+	AssetManager& asset_manager = editor.engine.asset_manager;
+	ShaderManager& shader_manager = asset_manager.shaders;
+	TextureManager& texture_manager = asset_manager.textures;
+	MaterialManager& material_manager = asset_manager.materials;
 
-	Material* material = RHI::material_manager.get(mat_asset->handle);
+	Material* material = material_manager.get(mat_asset->handle);
 	void* data = material;
 
 	reflect::TypeDescriptor_Struct* material_type = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<Material>::get();
@@ -630,14 +634,14 @@ void asset_properties(MaterialAsset* mat_asset, Editor& editor, World& world, As
 			}
 
 			if (accept_drop("DRAG_AND_DROP_SHADER", &material->shader, sizeof(shader_handle))) {
-				set_params_for_shader_graph(material);
+				set_params_for_shader_graph(shader_manager, material);
 			}
 
 			if (ImGui::BeginPopup("StandardShaders")) {
 				if (ImGui::Button("shaders/pbr.frag")) {
 					shader_handle new_shad = shader_manager.load("shaders/pbr.vert", "shaders/pbr.frag");
 					if (new_shad.id != material->shader.id) {
-						set_base_shader_params(texture_manager, material, new_shad);
+						set_base_shader_params(texture_manager, shader_manager, material, new_shad);
 						material->set_vec2(shader_manager, "transformUVs", glm::vec2(1, 1));
 					}
 				}
@@ -645,7 +649,7 @@ void asset_properties(MaterialAsset* mat_asset, Editor& editor, World& world, As
 				if (ImGui::Button("shaders/tree.frag")) {
 					shader_handle new_shad = shader_manager.load("shaders/tree.vert", "shaders/tree.frag");
 					if (new_shad.id != material->shader.id) {
-						set_base_shader_params(texture_manager, material, new_shad);
+						set_base_shader_params(texture_manager, shader_manager, material, new_shad);
 						material->set_float(shader_manager, "cutoff", 0.1f),
 						material->set_vec2(shader_manager, "transformUVs", glm::vec2(1, 1));
 					}
@@ -655,7 +659,7 @@ void asset_properties(MaterialAsset* mat_asset, Editor& editor, World& world, As
 					shader_handle new_shad = shader_manager.load("shaders/pbr.vert", "shaders/paralax_pbr.frag");
 
 					if (new_shad.id != material->shader.id) {
-						set_base_shader_params(texture_manager, material, new_shad);
+						set_base_shader_params(texture_manager, shader_manager, material, new_shad);
 						material->set_image(shader_manager, "material.height", texture_manager.load("black.png"));
 						material->set_image(shader_manager, "material.ao", texture_manager.load("solid_white.png")),
 						material->set_int(shader_manager, "steps", 5);
@@ -673,17 +677,19 @@ void asset_properties(MaterialAsset* mat_asset, Editor& editor, World& world, As
 			inspect_material_params(editor, material);
 		}
 		else {
-			render_fields(field.type, (char*)data + field.offset, field.name, world);
+			render_fields(field.type, (char*)data + field.offset, field.name, editor);
 		}
 	}
 
-	rot_preview(mat_asset->rot_preview);
+	rot_preview(texture_manager, mat_asset->rot_preview);
 
 	render_preview_for(world, self, *mat_asset, ctx);
 }
 
 void asset_properties(ModelAsset* mod_asset, Editor& editor, World& world, AssetTab& self, RenderCtx& ctx) {
-	Model* model = editor.engine.asset_manager.models.get(mod_asset->handle);
+	ModelManager& model_manager = self.asset_manager.models;
+	TextureManager& texture_manager = self.asset_manager.textures;
+	Model* model = model_manager.get(mod_asset->handle);
 
 	render_name(mod_asset->name, self.default_font);
 
@@ -692,13 +698,13 @@ void asset_properties(ModelAsset* mod_asset, Editor& editor, World& world, Asset
 	ImGui::SetNextTreeNodeOpen(true);
 	ImGui::CollapsingHeader("Transform");
 	ImGui::InputFloat3("position", &mod_asset->trans.position.x);
-	get_on_inspect_gui("glm::quat")(&mod_asset->trans.rotation, "rotation", world);
+	get_on_inspect_gui("glm::quat")(&mod_asset->trans.rotation, "rotation", editor);
 	ImGui::InputFloat3("scale", &mod_asset->trans.scale.x);
 
 	diff_util.submit(editor, "Properties Material");
 
 	if (ImGui::Button("Apply")) {
-		load_in_place_Model(mod_asset->handle, mod_asset->trans.compute_model_matrix());
+		model_manager.load_in_place(mod_asset->handle, mod_asset->trans.compute_model_matrix());
 
 		mod_asset->rot_preview.rot_deg = glm::vec2();
 		mod_asset->rot_preview.current = glm::vec2();
@@ -712,12 +718,12 @@ void asset_properties(ModelAsset* mod_asset, Editor& editor, World& world, Asset
 	for (int i = 0; i < mod_asset->materials.length; i++) {
 		string_buffer prefix = tformat(model->materials[i], " : ");
 		
-		get_on_inspect_gui("Material")(&mod_asset->materials[i], prefix, world);
+		get_on_inspect_gui("Material")(&mod_asset->materials[i], prefix, editor);
 	}
 
 	diff_util.submit(editor, "Asset Properties");
 
-	rot_preview(mod_asset->rot_preview);
+	rot_preview(texture_manager, mod_asset->rot_preview);
 
 	render_preview_for(world, self, *mod_asset, ctx);
 }
@@ -755,7 +761,8 @@ void import_model(World& world, Editor& editor, AssetTab& self, RenderCtx& ctx, 
 }
 
 void import_texture(Editor& editor, AssetTab& self, string_view filename) {
-	texture_handle handle = texture::load(filename);
+	TextureManager& textures = self.asset_manager.textures;
+	texture_handle handle = textures.load(filename);
 
 	ID id = self.assets.make_ID();
 	TextureAsset* folder = self.assets.make<TextureAsset>(id);
@@ -769,7 +776,7 @@ void import_shader(Editor& editor, AssetTab& self, string_view filename) {
 	string_buffer frag_filename(filename.sub(0, filename.length - strlen(".vert")));
 	frag_filename += ".frag";
 
-	shader_handle handle = load_Shader(filename, frag_filename);
+	shader_handle handle = self.asset_manager.shaders.load(filename, frag_filename);
 	ID id = self.assets.make_ID();
 	ShaderAsset* shader_asset = self.assets.make<ShaderAsset>(id);
 
@@ -777,7 +784,7 @@ void import_shader(Editor& editor, AssetTab& self, string_view filename) {
 }
 
 void import_filename(Editor& editor, World& world, RenderCtx& ctx, AssetTab& self, std::wstring& w_filename) {
-	Level& level = gb::level;
+	Level& level = self.asset_manager.level;
 	
 	string_buffer filename;
 	size_t i;
@@ -832,7 +839,7 @@ MaterialAsset* create_new_material(World& world, AssetTab& self, Editor& editor,
 	return register_new_material(world, self, editor, ctx, id);
 }
 
-AssetTab::AssetTab(Renderer& renderer, AssetManager& asset_manager) : renderer(renderer), asset_manager(asset_manager) {
+AssetTab::AssetTab(Renderer& renderer, AssetManager& asset_manager, Window& window) : window(window), renderer(renderer), asset_manager(asset_manager) {
 	{
 		AttachmentDesc attachment(this->preview_map);
 
@@ -934,7 +941,7 @@ void AssetTab::render(World& world, Editor& editor, RenderCtx& ctx) {
 		if (ImGui::BeginPopup("CreateAsset"))
 		{
 			if (ImGui::MenuItem("Import")) {
-				std::wstring filename = open_dialog();
+				std::wstring filename = open_dialog(asset_manager.level, window);
 				if (filename != L"") import_filename(editor, world, ctx, *this, filename);
 			}
 
@@ -1013,9 +1020,9 @@ struct TaskList {
 	bool pop();
 };
 
-unsigned int read_save_file(string_view filename, DeserializerBuffer* serializer) {
+unsigned int read_save_file(Level& level, string_view filename, DeserializerBuffer* serializer) {
 	char* buffer;
-	File file;
+	File file(level);
 	file.open(filename, File::ReadFileB);
 	unsigned int length = file.read_binary(&buffer);
 	
@@ -1027,7 +1034,7 @@ unsigned int read_save_file(string_view filename, DeserializerBuffer* serializer
 void AssetTab::on_load(World& world, RenderCtx& ctx) {
 	{
 		DeserializerBuffer serializer;
-		unsigned int num = read_save_file("data/AssetFolder.ne", &serializer);
+		unsigned int num = read_save_file(asset_manager.level, "data/AssetFolder.ne", &serializer);
 
 		for (int i = 0; i < num; i++) {
 			ID id = serializer.read_int();
@@ -1042,7 +1049,7 @@ void AssetTab::on_load(World& world, RenderCtx& ctx) {
 
 	{
 		DeserializerBuffer serializer;
-		unsigned int num = read_save_file("data/TextureAsset.ne", &serializer);
+		unsigned int num = read_save_file(asset_manager.level, "data/TextureAsset.ne", &serializer);
 
 		constexpr int num_threads = 9;
 
@@ -1066,7 +1073,6 @@ void AssetTab::on_load(World& world, RenderCtx& ctx) {
 
 			Texture tex;
 			tex.filename = std::move(filename);
-
 
 			asset_manager.textures.assign_handle(tex_asset->handle, std::move(tex));
 
@@ -1093,7 +1099,9 @@ void AssetTab::on_load(World& world, RenderCtx& ctx) {
 					Texture* tex = tasks.pop();
 					tasks_lock.unlock();
 
-					Image image = load_Image(tex->filename);
+					
+
+					Image image = asset_manager.textures.load_Image(tex->filename);
 
 					result_lock.lock();
 					loaded_image.append(std::move(image));
@@ -1115,7 +1123,8 @@ void AssetTab::on_load(World& world, RenderCtx& ctx) {
 			Texture* tex = loaded_image_tex.pop();
 			Image image = loaded_image.pop();
 			result_lock.unlock();
-			tex->submit(image);
+			
+			tex->texture_id = gl_submit(image);
 
 			if (num_tasks_left == 0 && loaded_image_tex.length == 0) {
 				break;
@@ -1129,7 +1138,7 @@ void AssetTab::on_load(World& world, RenderCtx& ctx) {
 
 	{
 		DeserializerBuffer serializer;
-		unsigned int num = read_save_file("data/MaterialAsset.ne", &serializer);
+		unsigned int num = read_save_file(asset_manager.level, "data/MaterialAsset.ne", &serializer);
 
 		auto paralax = asset_manager.shaders.load("shaders/pbr.vert", "shaders/paralax_pbr.frag");
 		auto pbr_shader = asset_manager.shaders.load("shaders/pbr.vert", "shaders/pbr.frag");
@@ -1172,7 +1181,7 @@ void AssetTab::on_load(World& world, RenderCtx& ctx) {
 
 			insert_material_handle_to_asset(mat_asset);
 
-			RHI::material_manager.assign_handle(mat_asset->handle, std::move(mat));
+			asset_manager.materials.assign_handle(mat_asset->handle, std::move(mat));
 
 			if (i == 0) this->default_material = mat_asset->handle;
 
@@ -1182,7 +1191,7 @@ void AssetTab::on_load(World& world, RenderCtx& ctx) {
 
 	{
 		DeserializerBuffer serializer;
-		unsigned int num = read_save_file("data/ModelAsset.ne", &serializer);
+		unsigned int num = read_save_file(asset_manager.level, "data/ModelAsset.ne", &serializer);
 
 		for (int i = 0; i < num; i++) {
 			ID id = serializer.read_int();
@@ -1195,10 +1204,9 @@ void AssetTab::on_load(World& world, RenderCtx& ctx) {
 
 			asset_manager.models.assign_handle(mod_asset->handle, std::move(model));
 
-			load_in_place_Model(mod_asset->handle, mod_asset->trans.compute_model_matrix());
+			asset_manager.models.load_in_place(mod_asset->handle, mod_asset->trans.compute_model_matrix());
 
 			insert_model_handle_to_asset(mod_asset);
-
 
 			render_preview_for(world, *this, *mod_asset, ctx);
 		}
@@ -1207,7 +1215,7 @@ void AssetTab::on_load(World& world, RenderCtx& ctx) {
 	
 	{
 		DeserializerBuffer serializer;
-		unsigned int num = read_save_file("data/ShaderAsset.ne", &serializer);
+		unsigned int num = read_save_file(asset_manager.level, "data/ShaderAsset.ne", &serializer);
 
 		for (int i = 0; i < num; i++) {
 			ID id = serializer.read_int();
@@ -1233,27 +1241,31 @@ for (type_name* asset : filtered) { \
 		serializer.write_int(assets.id_of(asset));
 
 #define END_SAVE(filename) } \
-File file; \
+File file(asset_manager.level); \
 file.open(filename, File::WriteFileB); \
 file.write({ serializer.data, serializer.index }); \
 }
 
 void AssetTab::on_save() {
+	ShaderManager& shaders = asset_manager.shaders;
+	MaterialManager& materials = asset_manager.materials;
+	ModelManager& models = asset_manager.models;
+
 	BEGIN_SAVE(AssetFolder)
 		serializer.write(reflect::TypeResolver<AssetFolder>::get(), asset);
 	END_SAVE("data/AssetFolder.ne")
 	
 	BEGIN_SAVE(TextureAsset)
-		Texture* tex = RHI::texture_manager.get(asset->handle);
+		Texture* tex = asset_manager.textures.get(asset->handle);
 		serializer.write_string(tex->filename);
 		serializer.write(reflect::TypeResolver<TextureAsset>::get(), asset);
 	END_SAVE("data/TextureAsset.ne")
 	
 	
 	BEGIN_SAVE(MaterialAsset)
-		Material* mat = RHI::material_manager.get(asset->handle);
+		Material* mat = materials.get(asset->handle);
 		
-		Shader* shader = RHI::shader_manager.get(mat->shader);
+		Shader* shader = shaders.get(mat->shader);
 
 		serializer.write_string(shader->v_filename);
 		serializer.write_string(shader->f_filename);
@@ -1269,7 +1281,7 @@ void AssetTab::on_save() {
 	END_SAVE("data/MaterialAsset.ne")
 	
 	BEGIN_SAVE(ModelAsset)
-		serializer.write_string(RHI::model_manager.get(asset->handle)->path);
+		serializer.write_string(models.get(asset->handle)->path);
 		serializer.write(reflect::TypeResolver<ModelAsset>::get(), asset);
 	END_SAVE("data/ModelAsset.ne")
 

@@ -6,16 +6,16 @@
 
 struct ModelRendererSystem;
 struct AssetManager;
+struct World;
 
 struct ObjectGizmoSystem : RenderFeature {
 	AssetManager& asset_manager;
-	ModelRendererSystem& model_renderer;
 	
 	vector<material_handle> gizmo_materials;
 	model_handle dir_light_model;
 	model_handle grass_model;
 	model_handle camera_model;
 
-	ObjectGizmoSystem(ModelRendererSystem& model_renderer);
-	void render(struct World&, RenderCtx&) override;
+	ObjectGizmoSystem(AssetManager& asset_manager);
+	void render(World&, RenderCtx&) override;
 };

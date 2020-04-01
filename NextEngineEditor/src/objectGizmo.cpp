@@ -10,8 +10,8 @@
 #include "graphics/renderer/renderer.h"
 #include "graphics/renderer/model_rendering.h"
 
-ObjectGizmoSystem::ObjectGizmoSystem(ModelRendererSystem& renderer) 
-: model_renderer(renderer),  asset_manager(renderer.asset_manager) {
+ObjectGizmoSystem::ObjectGizmoSystem(AssetManager& asset_manager) 
+: asset_manager(asset_manager) {
 	this->dir_light_model =  asset_manager.models.load("editor/dirLight.fbx", true);
 	this->grass_model =      asset_manager.models.load("editor/grass.fbx", true);
 	this->camera_model =     asset_manager.models.load("editor/camera.fbx", true);
@@ -22,23 +22,23 @@ ObjectGizmoSystem::ObjectGizmoSystem(ModelRendererSystem& renderer)
 	this->gizmo_materials.append(asset_manager.materials.assign_handle(std::move(gizmo_mat)));
 }
 
-void render_gizmo(ModelRendererSystem& renderer, model_handle model, vector<material_handle>& gizmo_materials, World& world, RenderCtx& params, ID id) {
+void render_gizmo(model_handle model, slice<material_handle> gizmo_materials, World& world, RenderCtx& ctx, ID id) {
 	Transform trans = *world.by_id<Transform>(id);
 
 	glm::mat4 model_m = model_m = trans.compute_model_matrix();
 
-	if (params.layermask & EDITOR_LAYER || params.layermask & PICKING_LAYER) {
-		renderer.render_Model(model, model_m, gizmo_materials, params);
+	if (ctx.layermask & EDITOR_LAYER || ctx.layermask & PICKING_LAYER) {
+		ctx.command_buffer.draw(model_m, model, gizmo_materials);
 	}
 }
 
 void ObjectGizmoSystem::render(World& world, RenderCtx& ctx) {
 	for (ID id : world.filter<Grass, Transform>(GAME_LAYER)) {
-		render_gizmo(model_renderer, grass_model, gizmo_materials, world, ctx, id);
+		render_gizmo(grass_model, gizmo_materials, world, ctx, id);
 	}
 
 	for (ID id : world.filter<Camera, Transform>(GAME_LAYER)) {
-		render_gizmo(model_renderer, camera_model, gizmo_materials, world, ctx, id);
+		render_gizmo(camera_model, gizmo_materials, world, ctx, id);
 	}
 
 	for (ID id : world.filter<DirLight, Transform>(GAME_LAYER)) {
@@ -48,6 +48,6 @@ void ObjectGizmoSystem::render(World& world, RenderCtx& ctx) {
 		dir_light->direction = trans->rotation * glm::vec3(0, 1, 0);
 		dir_light->direction = glm::normalize(dir_light->direction);
 
-		render_gizmo(model_renderer, dir_light_model, gizmo_materials, world, ctx, id);
+		render_gizmo(dir_light_model, gizmo_materials, world, ctx, id);
 	}
 }

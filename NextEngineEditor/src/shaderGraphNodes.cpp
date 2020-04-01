@@ -146,14 +146,14 @@ float override_width_of_node(ShaderNode* self) {
 	return 300.0f;
 }
 
-void render_pbr_node(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle) {
+void render_pbr_node(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle, TextureManager& texture_manager) {
 	render_title(graph, "PBR");
 	render_output(graph, handle);
 	render_inputs(graph, handle, 4, pbr_inputs);
 	render_input(graph, handle, 4, pbr_inputs, false);
 	render_inputs(graph, handle, 2, pbr_inputs, 5);
 
-	ImGui::Image((ImTextureID)texture::id_of(graph.rot_preview.preview), ImVec2(380 * graph.scale, 380 * graph.scale), ImVec2(0, 1), ImVec2(1, 0));
+	ImGui::Image((ImTextureID)gl_id_of(texture_manager, graph.rot_preview.preview), ImVec2(380 * graph.scale, 380 * graph.scale), ImVec2(0, 1), ImVec2(1, 0));
 }
 
 void render_remap_node(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle) {
@@ -309,7 +309,7 @@ void render_param_node(ShaderGraph& graph, ShaderNode* self, shader_node_handle 
 }
 
 void render_node_inner(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle, TextureManager& texture_manager) {
-	if (self->type == ShaderNode::PBR_NODE) render_pbr_node(graph, self, handle);
+	if (self->type == ShaderNode::PBR_NODE) render_pbr_node(graph, self, handle, texture_manager);
 	if (self->type == ShaderNode::TEXTURE_NODE) render_texture_node(graph, self, handle, texture_manager);
 	if (self->type == ShaderNode::TEX_COORDS) render_tex_coords(graph, self, handle);
 	if (self->type == ShaderNode::MATH_NODE) render_math_node(graph, self, handle);

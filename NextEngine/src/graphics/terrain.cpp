@@ -45,7 +45,7 @@ model_handle load_subdivided(ModelManager& model_manager, uint num) {
 	return model_manager.load(tformat("subdivided_plane", num, ".fbx"));
 }
 
-TerrainRenderSystem::TerrainRenderSystem(AssetManager& assets, World& world) {
+TerrainRenderSystem::TerrainRenderSystem(AssetManager& assets, World& world) : asset_manager(assets) {
 	world.on_make<Terrain>([&assets, &world](vector<ID>& terrains) { init_terrains(assets.textures, world, terrains); });
 
 	flat_shader = assets.shaders.load("shaders/pbr.vert", "shaders/gizmo.frag");
@@ -71,6 +71,7 @@ TerrainRenderSystem::TerrainRenderSystem(AssetManager& assets, World& world) {
 }
 
 void TerrainRenderSystem::render(World& world, RenderCtx& render_ctx) {
+	ShaderManager& shaders = asset_manager.shaders;
 	CommandBuffer& cmd_buffer = render_ctx.command_buffer;
 	
 	ID cam = get_camera(world, render_ctx.layermask);
@@ -90,11 +91,11 @@ void TerrainRenderSystem::render(World& world, RenderCtx& render_ctx) {
 		mat->shader = terrain_shader;
 		mat->params.allocator = &temporary_allocator;
 		if (!(render_ctx.layermask & SHADOW_LAYER)) {
-			mat->retarget_from(materials->materials[0]);
+			mat->retarget_from(asset_manager, materials->materials[0]);
 		}
-		mat->set_image("displacement", self->heightmap);
-		mat->set_float("max_height", self->max_height);
-		mat->set_vec2("displacement_scale", glm::vec2(1.0 / self->width, 1.0 / self->height));
+		mat->set_image(shaders, "displacement", self->heightmap);
+		mat->set_float(shaders, "max_height", self->max_height);
+		mat->set_vec2(shaders, "displacement_scale", glm::vec2(1.0 / self->width, 1.0 / self->height));
 
 		vector<ChunkInfo> lod_chunks[3];
 		lod_chunks[0].allocator = &temporary_allocator;
@@ -140,7 +141,9 @@ void TerrainRenderSystem::render(World& world, RenderCtx& render_ctx) {
 			
 			RHI::upload_data(chunk_instance_buffer[i], chunk_info);
 
-			cmd_buffer.cmd_draw(chunk_info.length, subdivided_plane[i], &chunk_instance_buffer[i], mat);
+			Model* model = asset_manager.models.get(subdivided_plane[i]);
+
+			cmd_buffer.draw(chunk_info.length, &model->meshes[0].buffer, &chunk_instance_buffer[i], mat);
 		}
 
 		/*

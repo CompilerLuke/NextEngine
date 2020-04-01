@@ -61,9 +61,9 @@ const char* destroy_component_popup_name(reflect::TypeDescriptor_Struct* type) {
 	return tformat("DestroyComponent", type->name).c_str();
 }
 
-bool render_fields_struct(reflect::TypeDescriptor_Struct* self, void* data, string_view prefix, World& world) {
-	if (override_inspect.find(self->name) != override_inspect.end()) {
-		return override_inspect[self->name](data, prefix, world);
+bool render_fields_struct(reflect::TypeDescriptor_Struct* self, void* data, string_view prefix, Editor& editor) {
+	if (override_inspect.keys.index(self->name) != -1) {
+		return override_inspect[self->name](data, prefix, editor);
 	}
 	
 	auto name = tformat(prefix, " : ", self->name);
@@ -72,7 +72,7 @@ bool render_fields_struct(reflect::TypeDescriptor_Struct* self, void* data, stri
 
 	if (self->members.length == 1 && prefix != "Component") {
 		auto& field = self->members[0];
-		render_fields(field.type, (char*)data + field.offset, field.name, world);
+		render_fields(field.type, (char*)data + field.offset, field.name, editor);
 		return true;
 	}
 
@@ -97,11 +97,11 @@ bool render_fields_struct(reflect::TypeDescriptor_Struct* self, void* data, stri
 			auto offset_ptr = (char*)data + field.offset;
 			
 			if (field.tag == reflect::LayermaskTag) {
-				override_inspect["Layermask"](offset_ptr, prefix, world);
+				override_inspect["Layermask"](offset_ptr, prefix, editor);
 			}
 			else if (field.tag == reflect::HideInInspectorTag) {}
 			else {
-				render_fields(field.type, offset_ptr, field.name, world);
+				render_fields(field.type, offset_ptr, field.name, editor);
 			}
 		}
 		if (prefix != "Component") ImGui::TreePop();
@@ -109,7 +109,7 @@ bool render_fields_struct(reflect::TypeDescriptor_Struct* self, void* data, stri
 	return open;
 }
 
-bool render_fields_union(reflect::TypeDescriptor_Union* self, void* data, string_view prefix, struct World& world) {
+bool render_fields_union(reflect::TypeDescriptor_Union* self, void* data, string_view prefix, Editor& editor) {
 
 	int tag = *((char*)data + self->tag_offset);
 
@@ -124,11 +124,11 @@ bool render_fields_union(reflect::TypeDescriptor_Union* self, void* data, string
 		}
 
 		for (auto field : self->members) {
-			render_fields(field.type, (char*)data + field.offset, field.name, world);
+			render_fields(field.type, (char*)data + field.offset, field.name, editor);
 		}
 
 		auto& union_case = self->cases[tag];
-		render_fields(union_case.type, (char*)data + union_case.offset, "", world);
+		render_fields(union_case.type, (char*)data + union_case.offset, "", editor);
 
 		ImGui::TreePop();
 		return true;
@@ -136,7 +136,7 @@ bool render_fields_union(reflect::TypeDescriptor_Union* self, void* data, string
 	return false;
 }
 
-bool render_fields_enum(reflect::TypeDescriptor_Enum* self, void* data, string_view prefix, struct World& world) {
+bool render_fields_enum(reflect::TypeDescriptor_Enum* self, void* data, string_view prefix, Editor& world) {
 	int tag = *((int*)data);
 
 	int i = 0;
@@ -152,7 +152,7 @@ bool render_fields_enum(reflect::TypeDescriptor_Enum* self, void* data, string_v
 	return true;
 }
 
-bool render_fields_ptr(reflect::TypeDescriptor_Pointer* self, void* data, string_view prefix, struct World& world) {
+bool render_fields_ptr(reflect::TypeDescriptor_Pointer* self, void* data, string_view prefix, Editor& world) {
 	if (*(void**)data == NULL) {
 		ImGui::LabelText(prefix.c_str(), "NULL");
 		return false;
@@ -160,7 +160,7 @@ bool render_fields_ptr(reflect::TypeDescriptor_Pointer* self, void* data, string
 	return render_fields(self->itemType, *(void**)data, prefix, world);
 }
 
-bool render_fields_vector(reflect::TypeDescriptor_Vector* self, void* data, string_view prefix, struct World& world) {
+bool render_fields_vector(reflect::TypeDescriptor_Vector* self, void* data, string_view prefix, Editor& world) {
 	auto ptr = (vector<char>*)data;
 	data = ptr->data;
 
@@ -176,11 +176,11 @@ bool render_fields_vector(reflect::TypeDescriptor_Vector* self, void* data, stri
 	return false;
 }
 
-bool render_fields(reflect::TypeDescriptor* type, void* data, string_view prefix, World& world) {
-	if (type->kind == reflect::Struct_Kind) return render_fields_struct((reflect::TypeDescriptor_Struct*)type, data, prefix, world);
-	else if (type->kind == reflect::Union_Kind) return render_fields_union((reflect::TypeDescriptor_Union*)type, data, prefix, world);
-	else if (type->kind == reflect::Vector_Kind) return render_fields_vector((reflect::TypeDescriptor_Vector*)type, data, prefix, world);
-	else if (type->kind == reflect::Enum_Kind) return render_fields_enum((reflect::TypeDescriptor_Enum*)type, data, prefix, world);
+bool render_fields(reflect::TypeDescriptor* type, void* data, string_view prefix, Editor& editor) {
+	if (type->kind == reflect::Struct_Kind) return render_fields_struct((reflect::TypeDescriptor_Struct*)type, data, prefix, editor);
+	else if (type->kind == reflect::Union_Kind) return render_fields_union((reflect::TypeDescriptor_Union*)type, data, prefix, editor);
+	else if (type->kind == reflect::Vector_Kind) return render_fields_vector((reflect::TypeDescriptor_Vector*)type, data, prefix, editor);
+	else if (type->kind == reflect::Enum_Kind) return render_fields_enum((reflect::TypeDescriptor_Enum*)type, data, prefix, editor);
 	else if (type->kind == reflect::Float_Kind) return render_fields_primitive((float*)data, prefix);
 	else if (type->kind == reflect::Int_Kind) return render_fields_primitive((int*)data, prefix);
 	else if (type->kind == reflect::Bool_Kind) return render_fields_primitive((bool*)data, prefix);
@@ -222,7 +222,7 @@ void DisplayComponents::render(World& world, RenderCtx& params, Editor& editor) 
 
 				DiffUtil diff_util(comp.data, comp.type, &temporary_allocator);
 
-				bool open = render_fields(comp.type, comp.data, "Component", world);
+				bool open = render_fields(comp.type, comp.data, "Component", editor);
 				if (open) {
 					ImGui::Dummy(ImVec2(10, 20));
 				}

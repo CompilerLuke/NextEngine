@@ -139,26 +139,26 @@ void Material::retarget_from(AssetManager& manager, material_handle mat_handle) 
 	Shader* old_shader = manager.shaders.get(old_mat->shader);
 
 	for (Param p : old_mat->params) {
-		p.loc = location(shader, old_shader->uniforms[p.loc.id].name);
+		p.loc = manager.shaders.location(shader, old_shader->uniforms[p.loc.id].name);
 		params.append(p);
 	}
 }
 
-void Material::set_flag(string_view flag, bool enabled) {
-	this->shader_flags ^= (-enabled ^ this->shader_flags) & get_flag(shader, flag);
+void Material::set_flag(ShaderManager& manager, string_view flag, bool enabled) {
+	this->shader_flags ^= (-enabled ^ this->shader_flags) & manager.get(shader)->get_flag(flag);
 }
 
-void Material::set_channel3(string_view name, glm::vec3 value, texture_handle tex) {
-	if (tex.id == INVALID_HANDLE) {
-		tex = texture::load("solid_white.png");
-	}
+void Material::set_channel3(ShaderManager& shaders, string_view name, glm::vec3 value, texture_handle tex) {
+	//if (tex.id == INVALID_HANDLE) {
+	//	tex = texture::load("solid_white.png");
+	//}
 	
 	Param param;
-	param.loc = location(shader, name);
+	param.loc = shaders.location(shader, name);
 	param.type = Param_Channel3;
 	param.channel3.color = value;
 	param.channel3.image = tex;
-	param.channel3.scalar_loc = location(shader, format(name, "_scalar"));
+	param.channel3.scalar_loc = shaders.location(shader, format(name, "_scalar"));
 
 	params.append(param);
 }

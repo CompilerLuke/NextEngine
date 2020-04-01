@@ -11,9 +11,9 @@
 #include "core/io/input.h"
 #include "editor.h"
 #include "core/container/string_buffer.h"
-#include "graphics/assets/texture.h"
+#include "graphics/assets/asset_manager.h"
 
-void edit_Terrain(Editor& editor, World& world, UpdateCtx& params) {
+void edit_Terrain(Editor& editor, AssetManager& asset_manager, World& world, UpdateCtx& params) {
 	if (!params.layermask & EDITOR_LAYER) return;
 
 	for (ID id : world.filter<Terrain, Transform>(params.layermask | GAME_LAYER)) {
@@ -36,12 +36,12 @@ void edit_Terrain(Editor& editor, World& world, UpdateCtx& params) {
 			EntityEditor* name = world.make<EntityEditor>(id);
 			name->name = "Control Point";
 
-			editor.select(id);
+			editor.select(id); 
 		}
 
 		if (!params.input.key_pressed('B')) continue;
 
-		auto texture_id = texture::id_of(self->heightmap);
+		auto texture_id = gl_id_of(asset_manager.textures, self->heightmap);
 		
 		if (!self->show_control_points) continue;
 

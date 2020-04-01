@@ -30,7 +30,7 @@ bool Level::to_asset_path(string_view filename, string_buffer* result) {
 File::File(Level& level) : level(level) {}
 
 bool File::open(string_view filename, FileMode mode) {
-	this->filename = gb::level.asset_path(filename);
+	this->filename = level.asset_path(filename);
 
 	const char* c_mode = NULL;
 	if (mode == FileMode::ReadFile) c_mode = "r";

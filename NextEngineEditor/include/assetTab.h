@@ -18,6 +18,7 @@ struct World;
 struct CommandBuffer;
 struct Material;
 struct Renderer;
+struct Window;
 
 struct asset_folder_handle {
 	uint id = INVALID_HANDLE;
@@ -98,6 +99,7 @@ struct AssetFolder {
 struct AssetTab {
 	Renderer& renderer;
 	AssetManager& asset_manager;
+	Window& window;
 
 	Framebuffer preview_fbo;
 	Framebuffer preview_tonemapped_fbo;
@@ -119,7 +121,7 @@ struct AssetTab {
 	
 	string_buffer filter;
 
-	AssetTab(Renderer&, AssetManager&);
+	AssetTab(Renderer&, AssetManager&, Window& window);
 
 	void register_callbacks(struct Window&, struct Editor&);
 	void render(struct World&, struct Editor&, struct RenderCtx&);
@@ -139,7 +141,7 @@ void edit_color(glm::vec4& color, string_view name, glm::vec2 size = glm::vec2(2
 
 RenderCtx create_preview_command_buffer(CommandBuffer& cmd_buffer, RenderCtx& old_params, AssetTab& self, Camera* cam, World& world);
 void render_preview_to_buffer(AssetTab& self, RenderCtx& params, CommandBuffer& cmd_buffer, texture_handle& preview, World& world);
-void rot_preview(RotatablePreview& self);
+void rot_preview(TextureManager& texture_manager, RotatablePreview& self);
 
 bool accept_drop(const char* drop_type, void* ptr, unsigned int size);
 

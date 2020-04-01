@@ -209,7 +209,7 @@ struct vector {
 	}
 
 	operator slice<T>() {
-		return { data, length };
+		return { length, data };
 	}
 };
 

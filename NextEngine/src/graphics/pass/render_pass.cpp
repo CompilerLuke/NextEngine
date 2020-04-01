@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "graphics/pass/render_pass.h"
 #include "ecs/ecs.h"
+#include "graphics/assets/asset_manager.h"
 #include "graphics/renderer/renderer.h"
 #include "graphics/rhi/window.h"
 #include "graphics/rhi/draw.h"
@@ -10,9 +11,11 @@
 #include "components/transform.h"
 #include "components/camera.h"
 
-MainPass::MainPass(AssetManager& asset_manager, glm::vec2 size)
-	: depth_prepass(asset_manager, size.x, size.y, true),
-	shadow_pass(asset_manager, size * 0.25f, depth_prepass.depth_map)
+MainPass::MainPass(Renderer& renderer, AssetManager& asset_manager, glm::vec2 size)
+	:
+	renderer(renderer),
+	depth_prepass(asset_manager, size.x, size.y, true),
+	shadow_pass(asset_manager, renderer, size * 0.25f, depth_prepass.depth_map)
 {
 	AttachmentDesc attachment(frame_map);
 	FramebufferDesc settings;
@@ -27,7 +30,7 @@ MainPass::MainPass(AssetManager& asset_manager, glm::vec2 size)
 	//device.multisampling = 4;
 	//device.clear_colour = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 
-	current_frame = Framebuffer(asset_manager, settings);
+	current_frame = Framebuffer(asset_manager.textures, settings);
 }
 
 //todo this should be a uniform buffer, this current solution is terrible!!
@@ -37,11 +40,11 @@ void MainPass::set_shader_params(ShaderConfig& config, RenderCtx& ctx) {
 	}
 
 	shadow_pass.set_shadow_params(config, ctx);
-	
-	if (ctx.skybox) ctx.skybox->set_ibl_params(config, ctx);
+
+	if (ctx.skybox) renderer.skybox_renderer->bind_ibl_params(config, ctx);
 	if (ctx.dir_light) {
-		config.set_vec3("dirLight.direction", ctx.dir_light->direction, config);
-		config.set_vec3("dirLight.color", ctx.dir_light->color, config);
+		config.set_vec3("dirLight.direction", ctx.dir_light->direction);
+		config.set_vec3("dirLight.color", ctx.dir_light->color);
 	}
 }
 
@@ -60,13 +63,13 @@ void MainPass::render_to_buffer(World& world, RenderCtx& ctx, std::function<void
 
 	update_camera_matrices(world, get_camera(world, ctx.layermask), ctx);
 
-	Renderer::render_view(world, ctx);
-	Renderer::render_overlay(world, ctx);
+	renderer.render_view(world, ctx);
+	renderer.render_overlay(world, ctx);
 
 	ctx.width = current_frame.width;
 	ctx.height = current_frame.height;
 
-	depth_prepass.render_maps(world, ctx, ctx.projection, ctx.view);
+	depth_prepass.render_maps(renderer, world, ctx, ctx.projection, ctx.view);
 
 	shadow_pass.render(world, ctx);
 

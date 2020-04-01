@@ -13,6 +13,9 @@ struct ShaderConfig;
 struct Input;
 
 struct PickingPass : Pass {
+	Renderer& renderer;
+	AssetManager& asset_manager;
+
 	shader_handle picking_shader;
 	Framebuffer framebuffer;
 	texture_handle picking_map;
@@ -27,7 +30,7 @@ struct PickingPass : Pass {
 
 	glm::vec2 picking_location(Input&);
 
-	PickingPass(Window&, MainPass*);
+	PickingPass(AssetManager&, glm::vec2, MainPass*);
 };
 
 struct PickingSystem : RenderFeature {
@@ -37,7 +40,7 @@ struct PickingSystem : RenderFeature {
 	DrawCommandState object_state;
 	DrawCommandState outline_state;
 
-	PickingSystem(Editor&);
+	PickingSystem(Editor&, ShaderManager&);
 
 	void render(struct World&, struct RenderCtx&) override;
 };

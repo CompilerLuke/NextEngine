@@ -31,8 +31,8 @@ struct SkyboxSystem : RenderFeature {
 	SkyboxSystem(AssetManager&, World&);
 	
 	Skybox* make_default_Skybox(World&, RenderCtx*, string_view);
-	void bind_ibl_params(Skybox*, ShaderConfig&, RenderCtx&); //todo strange function signature
+	void bind_ibl_params(ShaderConfig&, RenderCtx&); //todo strange function signature
 	void capture_scene(World& world, RenderCtx& ctx, ID id);
-	void load(World& world, ID id); 
+	void load(Skybox*); 
 	void render(World&, struct RenderCtx&) override;
 };

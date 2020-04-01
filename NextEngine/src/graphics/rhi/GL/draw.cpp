@@ -121,7 +121,7 @@ void switch_shader(ShaderManager& shader_manager, RenderCtx& ctx, shader_handle 
 	*found_config = config;
 
 	ctx.command_buffer.current_texture_index = 0;
-	ctx.set_shader_scene_params(shader_id, config_id);
+	ctx.set_shader_scene_params(*config);
 }
 
 void depth_func_bind(DepthFunc func) {
@@ -267,7 +267,7 @@ void set_params(CommandBuffer& command_buffer, AssetManager& asset_manager, shad
 
 		case Param_Cubemap: {
 			auto index = command_buffer.next_texture_index();
-			gl_bind_to(cubemap_manager, param.cubemap, index);
+			gl_bind_cubemap(cubemap_manager, param.cubemap, index);
 			config->set_int(param.loc, index);
 			break;
 		}
@@ -354,6 +354,7 @@ struct DrawElementsIndirectCommand {
 
 void CommandBuffer::submit_to_gpu(RenderCtx& ctx) {
 	CommandBuffer& self = ctx.command_buffer;
+	AssetManager& assets = self.asset_manager;
 	
 	vector<SpecializedDrawCommand> commands_data;
 	commands_data.allocator = &temporary_allocator;
@@ -368,8 +369,6 @@ void CommandBuffer::submit_to_gpu(RenderCtx& ctx) {
 	for (unsigned int i = 0; i < self.commands.length; i++) {
 		auto& cmd = self.commands[i];
 
-		Shader* shader = RHI::shader_manager.get(cmd.material->shader);
-
 		ShaderConfigDesc desc;
 		desc.instanced = cmd.instance_buffer != NULL;
 		desc.type = shader_type;
@@ -380,7 +379,7 @@ void CommandBuffer::submit_to_gpu(RenderCtx& ctx) {
 		new_cmd.model_m = new_cmd.model_m;
 		new_cmd.num_instances = cmd.num_instances;
 		new_cmd.model_m = cmd.model_m;
-		new_cmd.config = shader->get_config(desc);
+		new_cmd.config = assets.shaders.get_config_handle(cmd.material->shader, desc);
 		new_cmd.material = cmd.material;
 		new_cmd.instance_buffer = cmd.instance_buffer;
 
@@ -414,7 +413,7 @@ void CommandBuffer::submit_to_gpu(RenderCtx& ctx) {
 		auto instanced = cmd.instance_buffer != NULL;
 
 		if (i == 0) {
-			switch_shader(ctx, mat.shader, cmd.config, &shader_config, &model_uniform);
+			switch_shader(assets.shaders, ctx, mat.shader, cmd.config, &shader_config, &model_uniform);
 
 			extract_layout(cmd, &vertex_layout, &instance_layout);
 			RHI::bind_vertex_buffer(vertex_layout, instance_layout);
@@ -430,14 +429,14 @@ void CommandBuffer::submit_to_gpu(RenderCtx& ctx) {
 			stencil_op_bind(mat.state->stencil_op);
 			stencil_func_bind(mat.state->stencil_func);
 			glStencilMask(mat.state->stencil_mask);
-			set_params(self, cmd.config, mat);
+			set_params(self, assets, cmd.config, mat);
 		}
 		else {
 			auto& last_cmd = commands_data[commands[i - 1].index];
 			auto& last_mat = *last_cmd.material;
 
 			if (mat != last_mat || cmd.config.id != last_cmd.config.id) {
-				switch_shader(ctx, mat.shader, cmd.config, &shader_config, &model_uniform);
+				switch_shader(assets.shaders, ctx, mat.shader, cmd.config, &shader_config, &model_uniform);
 			}
 
 			VertexLayout new_vertex_layout;
@@ -481,7 +480,7 @@ void CommandBuffer::submit_to_gpu(RenderCtx& ctx) {
 			}
 
 			if (mat != last_mat || cmd.config.id != last_cmd.config.id) {
-				set_params(self, cmd.config, mat);
+				set_params(self, assets, cmd.config, mat);
 			}
 		}
 

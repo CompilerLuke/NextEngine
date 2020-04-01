@@ -157,7 +157,7 @@ void hotreload(Editor& editor) {
 #include "physics/physics.h"
 
 World& get_World(Editor& editor) {
-	return gb::world;
+	return editor.engine.world;
 }
 
 string_buffer save_component_to(ComponentStore* store) {
@@ -165,6 +165,7 @@ string_buffer save_component_to(ComponentStore* store) {
 }
 
 void on_load_world(Editor& editor) {
+	Level& level = editor.engine.level;
 	World& world = get_World(editor);
 
 	unsigned int save_files_available = 0;
@@ -172,7 +173,7 @@ void on_load_world(Editor& editor) {
 	for (int i = 0; i < world.components_hash_size; i++) {
 		auto store = world.components[i].get();
 		if (store != NULL) {
-			File file;
+			File file(level);
 			if (!file.open(save_component_to(store).view(), File::ReadFileB)) continue;
 
 			char* data_buffer = NULL;
@@ -221,6 +222,7 @@ void on_load(Editor& editor, RenderCtx& ctx) {
 
 void on_save_world(Editor& editor) {
 	World& world = get_World(editor);
+	Level& level = editor.engine.asset_manager.level;
 
 	for (int i = 0; i < world.components_hash_size; i++) {
 		auto store = world.components[i].get();
@@ -242,7 +244,7 @@ void on_save_world(Editor& editor) {
 				buffer.write(comp.type, comp.data);
 			}
 
-			File file;
+			File file(level);
 
 			if (!file.open(save_component_to(store).view(), File::WriteFileB)) throw "Could not save data";
 			file.write({ buffer.data, buffer.index });
@@ -257,9 +259,10 @@ void on_save(Editor& editor) {
 
 
 Editor::Editor(Engine& engine, const char* game_code) : 
-	engine(engine), picking_pass(engine.window, engine.renderer.main_pass), 
+	engine(engine), 
+	picking_pass(engine.asset_manager, glm::vec2(engine.window.width, engine.window.height), engine.renderer.main_pass), 
 	game(engine, game_code),
-	asset_tab(engine.asset_manager)
+	asset_tab(engine.renderer, engine.asset_manager, engine.window)
 {
 	Window& window = engine.window;
 	World& world = engine.world;
@@ -406,6 +409,7 @@ void ImGui::InputText(const char* str, string_buffer& buffer) {
 
 void default_scene(Editor& editor, RenderCtx& ctx) {
 	World& world = get_World(editor);
+	AssetManager& assets = editor.engine.asset_manager;
 
 	editor.asset_tab.default_material = create_new_material(world, editor.asset_tab, editor, ctx)->handle;
 
@@ -424,7 +428,7 @@ void default_scene(Editor& editor, RenderCtx& ctx) {
 	}
 
 	auto model_render = world.make<ModelRenderer>(model_renderer_id);
-	model_render->model_id = load_Model("HOVERTANK.fbx");
+	model_render->model_id = assets.models.load("HOVERTANK.fbx");
 
 	auto materials = world.make<Materials>(model_renderer_id);
 	materials->materials.append(editor.asset_tab.default_material);
@@ -440,7 +444,7 @@ void default_scene(Editor& editor, RenderCtx& ctx) {
 		trans->position = glm::vec3(-5, 0, 0);
 		trans->scale = glm::vec3(5);
 		auto mr = world.make<ModelRenderer>(id);
-		mr->model_id = load_Model("subdivided_plane8.fbx");
+		mr->model_id = assets.models.load("subdivided_plane8.fbx");
 
 		auto materials = world.make<Materials>(id);
 		materials->materials.append(editor.asset_tab.default_material);
@@ -556,13 +560,11 @@ glm::vec3 Editor::place_at_cursor() {
 	Input& input = engine.input;
 
 	ID cam = get_camera(world, EDITOR_LAYER);
+	
+	glm::mat4 view_m = get_view_matrix(world, cam);
+	glm::mat4 proj_m = get_proj_matrix(world, cam, viewport_width / viewport_height);
 
-	RenderCtx ctx(EDITOR_LAYER); //todo is there a need for ctx
-	ctx.width = viewport_width;
-	ctx.height = viewport_height;
-	update_camera_matrices(world, cam, ctx);
-
-	glm::mat4 to_world = glm::inverse(ctx.projection * ctx.view);
+	glm::mat4 to_world = glm::inverse(proj_m * view_m);
 
 	float height = input.region_max.y - input.region_min.y;
 	float width = input.region_max.x - input.region_min.x;
@@ -637,6 +639,7 @@ void Editor::end_imgui() {
 
 void render_Editor(Editor& editor, RenderCtx& ctx) {
 	Input& input = editor.engine.input;
+	TextureManager& textures = editor.engine.asset_manager.textures;
 	
 	editor.begin_imgui(input);
 	
@@ -713,7 +716,7 @@ void render_Editor(Editor& editor, RenderCtx& ctx) {
 		input.region_min.y = ImGui::GetWindowPos().y + ImGui::GetCursorPos().y;
 		input.region_max =  input.region_min + glm::vec2(width, height);
 
-		ImGui::Image((ImTextureID)texture::id_of(editor.scene_view), ImVec2(width, height), ImVec2(0, 1), ImVec2(1, 0));
+		ImGui::Image((ImTextureID)gl_id_of(textures, editor.scene_view), ImVec2(width, height), ImVec2(0, 1), ImVec2(1, 0));
 
 		if (ImGui::BeginDragDropTarget()) {
 			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DRAG_AND_DROP_MODEL")) {
@@ -816,17 +819,14 @@ APPLICATION_API void update(Editor& editor, Engine& engine) {
 #include "graphics/renderer/model_rendering.h"
 #include "graphics/renderer/transforms.h"
 
-APPLICATION_API void render(Editor& editor) {
+APPLICATION_API void render(Editor& editor, Engine& engine) {
 	World& world = get_World(editor);
 
 	EditorRendererExtension ext(editor);
 
-	RenderCtx ctx(editor.playing_game ? GAME_LAYER : GAME_LAYER | EDITOR_LAYER);
-	ctx.width = editor.viewport_width;
-	ctx.height = editor.viewport_height;
-	ctx.extension = &ext;
+	Layermask layermask = editor.playing_game ? GAME_LAYER : GAME_LAYER | EDITOR_LAYER;
 
-	Renderer::render(world, ctx);
+	RenderCtx ctx = engine.renderer.render(world, layermask, editor.viewport_width, editor.viewport_height, &ext);
 	render_Editor(editor, ctx);
 }
 

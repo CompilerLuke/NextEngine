@@ -8,6 +8,7 @@
 #include "graphics/rhi/buffer.h"
 #include "core/memory/linear_allocator.h"
 #include "ecs/ecs.h"
+#include "graphics/assets/asset_manager.h"
 
 Engine::Engine(string_view level_path) :
 	input(*PERMANENT_ALLOC(Input)),
@@ -15,6 +16,8 @@ Engine::Engine(string_view level_path) :
 	world(*PERMANENT_ALLOC(World)),
 	window(*PERMANENT_ALLOC(Window)),
 	renderer(*PERMANENT_ALLOC(Renderer)),
+	asset_manager(*PERMANENT_ALLOC(AssetManager, level_path)),
+	level(asset_manager.level)
 {
 	level.set(level_path);
 
@@ -27,7 +30,16 @@ Engine::Engine(string_view level_path) :
 	input.init(window);
 
 	RHI::create_buffers();
-	renderer.init();
+	renderer.init(asset_manager, window, world);
+}
+
+Engine::~Engine() {
+	destruct(&input);
+	destruct(&time);
+	destruct(&world);
+	destruct(&window);
+	destruct(&renderer);
+	destruct(&asset_manager);
 }
 
 void Engine::begin_frame() {
@@ -54,8 +66,9 @@ void Engine::begin_frame() {
 
 void Engine::end_frame() {
 	Profile profile("Swap Buffers");
-	gb::window.swap_buffers();
+	window.swap_buffers();
 	profile.end();
 
 	Profiler::end_frame();
 }
+

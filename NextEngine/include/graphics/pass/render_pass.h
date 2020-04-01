@@ -11,6 +11,7 @@ struct World;
 struct ShaderConfig;
 
 struct ENGINE_API MainPass : Pass {
+	Renderer& renderer;
 	Framebuffer output;
 	
 	DepthMap depth_prepass;
@@ -26,6 +27,6 @@ struct ENGINE_API MainPass : Pass {
 
 	vector<Pass*> post_process;
 
-	MainPass(AssetManager& asset_manager, glm::vec2);
+	MainPass(Renderer& renderer,AssetManager& asset_manager, glm::vec2);
 	void resize(glm::vec2);
 };

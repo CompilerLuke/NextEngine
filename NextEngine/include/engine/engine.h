@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/core.h"
+#include "core/container/string_view.h"
 
 struct Engine {
 	struct Window& window;

@@ -10,30 +10,31 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "graphics/assets/shader.h"
 #include "core/memory/linear_allocator.h"
-#include "graphics/rhi/window.h"
 #include "core/io/logger.h"
+#include "graphics/assets/asset_manager.h"
+#include "engine/engine.h"
 
-PickingPass::PickingPass(Window& params, MainPass* main_pass)
-: picking_shader(load_Shader("shaders/picking.vert", "shaders/picking.frag")) {
+PickingPass::PickingPass(AssetManager& asset_manager, glm::vec2 size, MainPass* main_pass)
+: asset_manager(asset_manager), picking_shader(asset_manager.shaders.load("shaders/picking.vert", "shaders/picking.frag")), renderer(main_pass->renderer) {
 	
 	AttachmentDesc color_attachment(picking_map);
-	color_attachment.internal_format = R32I;
-	color_attachment.external_format = Red_Int;
-	color_attachment.texel_type = Int_Texel;
-	color_attachment.min_filter = Nearest;
-	color_attachment.mag_filter = Nearest;
+	color_attachment.internal_format = InternalColorFormat::R32I;
+	color_attachment.external_format = ColorFormat::Red_Int;
+	color_attachment.texel_type = TexelType::Int;
+	color_attachment.min_filter = Filter::Nearest;
+	color_attachment.mag_filter = Filter::Nearest;
 
 	FramebufferDesc settings;
 	settings.color_attachments.append(color_attachment);
-	settings.width = params.width;
-	settings.height = params.height;
+	settings.width = size.x;
+	settings.height = size.y;
 
-	framebuffer = Framebuffer(settings);
+	framebuffer = Framebuffer(asset_manager.textures, settings);
 
 	this->main_pass = main_pass;
 }
 
-void PickingPass::set_shader_params(shader_handle shader, shader_config_handle config, RenderCtx& params) {
+void PickingPass::set_shader_params(ShaderConfig& config, RenderCtx& params) {
 
 }
 
@@ -68,19 +69,17 @@ float PickingPass::pick_depth(World& world, Input& input) { //todo pick from fra
 
 void PickingPass::render(World& world, RenderCtx& ctx) {
 	return;
-	if (!(ctx.layermask & EDITOR_LAYER)) return;
+	/*if (!(ctx.layermask & EDITOR_LAYER)) return;
 
-	CommandBuffer cmd_buffer;
-	RenderCtx new_ctx = ctx;
-	new_ctx.command_buffer = &cmd_buffer;
+	CommandBuffer cmd_buffer(asset_manager);
+	RenderCtx new_ctx(ctx, cmd_buffer, this);
 	new_ctx.width = framebuffer.width;
 	new_ctx.height = framebuffer.height;
 	new_ctx.layermask = PICKING_LAYER;
-	new_ctx.pass = this;
 
-	Renderer::render_view(world, ctx);
+	renderer.render_view(world, ctx);
 
-	uniform_handle loc = location(picking_shader, "id");
+	uniform_handle loc = asset_manager.location(picking_shader, "id");
 
 	for (DrawCommand& cmd : cmd_buffer.commands) {
 		if (cmd.num_instances > 1) continue;
@@ -98,11 +97,11 @@ void PickingPass::render(World& world, RenderCtx& ctx) {
 
 	CommandBuffer::submit_to_gpu(ctx);
 
-	framebuffer.unbind();
+	framebuffer.unbind();*/
 }
 
-PickingSystem::PickingSystem(Editor& editor) : editor(editor) {
-	this->outline_shader = load_Shader("shaders/outline.vert", "shaders/outline.frag"); //todo move into constructor
+PickingSystem::PickingSystem(Editor& editor, ShaderManager& shader_manager) : editor(editor) {
+	this->outline_shader = shader_manager.load("shaders/outline.vert", "shaders/outline.frag"); //todo move into constructor
 
 	outline_state.order = (DrawOrder)4;
 	outline_state.mode = DrawWireframe;

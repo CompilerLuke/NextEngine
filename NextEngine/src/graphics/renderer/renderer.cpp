@@ -25,8 +25,8 @@ void Renderer::init(AssetManager& asset_manager, Window& window, World& world) {
 	grass_renderer    = PERMANENT_ALLOC(GrassRenderSystem, world);
 	terrain_renderer  = PERMANENT_ALLOC(TerrainRenderSystem, asset_manager, world);
 	skybox_renderer   = PERMANENT_ALLOC(SkyboxSystem, asset_manager, world);
-	main_pass         = PERMANENT_ALLOC(MainPass, asset_manager, glm::vec2(window.width, window.height));
-	culling			  = PERMANENT_ALLOC(CullingSystem, world);
+	main_pass         = PERMANENT_ALLOC(MainPass, *this, asset_manager, glm::vec2(window.width, window.height));
+	culling			  = PERMANENT_ALLOC(CullingSystem, asset_manager, *model_renderer, world);
 }
 
 Renderer::~Renderer() {
@@ -45,21 +45,30 @@ RenderCtx::RenderCtx(CommandBuffer& command_buffer, Pass* pass) :
 	pass(pass)
 {}
 
-RenderCtx::RenderCtx(Layermask mask, RenderExtension* ext) :
-	layermask(mask),
-	extension(ext) {}
+RenderCtx::RenderCtx(const RenderCtx& ctx, CommandBuffer& command_buffer, Pass* pass) :
+	layermask(ctx.layermask),
+	extension(ctx.extension),
+	skybox(ctx.skybox),
+	dir_light(ctx.dir_light),
+	view_pos(ctx.view_pos),
+	projection(ctx.projection),
+	view(ctx.view),
+	model_m(ctx.model_m),
+	width(ctx.width),
+	height(ctx.height),
+	command_buffer(command_buffer),
+	pass(pass)
+{
 
-void Renderer::set_shader_scene_params(RenderCtx& ctx, ShaderConfig& config) {
-	config.set_mat4("projection", ctx.projection);
-	config.set_mat4("view", ctx.view);
-	config.set_float("window_width", ctx.width);
-	config.set_float("window_height", ctx.height);
-
-	ctx.pass->set_shader_params(config, ctx);
 }
 
 void RenderCtx::set_shader_scene_params(ShaderConfig& config) {
-	Renderer::set_shader_scene_params(config);
+	config.set_mat4("projection", projection);
+	config.set_mat4("view", view);
+	config.set_float("window_width", width);
+	config.set_float("window_height", height);
+
+	pass->set_shader_params(config, *this);
 }
 
 void Renderer::update_settings(const RenderSettings& settings) {
@@ -71,20 +80,18 @@ void Renderer::update_settings(const RenderSettings& settings) {
 //}
 
 void Renderer::render_view(World& world, RenderCtx& ctx) {
-	Renderer& renderer = gb::renderer;
-	renderer.culling->cull(world, ctx);
-	renderer.model_renderer->render(world, ctx);
-	renderer.terrain_renderer->render(world, ctx);
-	renderer.grass_renderer->render(world, ctx);
-	renderer.skybox_renderer->render(world, ctx);
-
+	culling->cull(world, ctx);
+	model_renderer->render(world, ctx);
+	terrain_renderer->render(world, ctx);
+	grass_renderer->render(world, ctx);
+	skybox_renderer->render(world, ctx);
 }
 
 void Renderer::render_overlay(World& world, RenderCtx& ctx) {
 	culling->render_debug_bvh(world, ctx);
 }
 
-void Renderer::render(World& world, Layermask layermask, uint width, uint height, RenderExtension* ext) {	
+RenderCtx Renderer::render(World& world, Layermask layermask, uint width, uint height, RenderExtension* ext) {	
 	model_m = TEMPORARY_ARRAY(glm::mat4, 1000); //todo find real number
 
 	PreRenderParams pre_render(layermask);
@@ -110,4 +117,6 @@ void Renderer::render(World& world, Layermask layermask, uint width, uint height
 	else {
 		ctx.extension->render(world, ctx);
 	}
+
+	return ctx;
 }

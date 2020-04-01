@@ -113,9 +113,8 @@ void ModelRendererSystem::render(World& world, RenderCtx& ctx) {
 			DrawCommand cmd(0, instances.model_m[j], vertex_buffer, material);
 			ctx.command_buffer->submit(cmd);
 		}*/
-	
-		DrawCommand cmd(0, count, vertex_buffer, instance_offset, material);
-		ctx.command_buffer->submit(cmd);
+
+		ctx.command_buffer.draw(count, vertex_buffer, instance_offset, material);
 
 		instance_count += count;
 	}

@@ -204,6 +204,7 @@
     <ClInclude Include="include\engine\application.h" />
     <ClInclude Include="include\engine\engine.h" />
     <ClInclude Include="include\graphics\assets\asset_manager.h" />
+    <ClInclude Include="include\graphics\assets\material_manager.h" />
     <ClInclude Include="include\graphics\culling\aabb.h" />
     <ClInclude Include="include\graphics\pass\render_graph.h" />
     <ClInclude Include="include\graphics\renderer\terrain.h" />
@@ -214,7 +215,6 @@
     <ClInclude Include="include\graphics\rhi\frame_buffer.h" />
     <ClInclude Include="include\graphics\renderer\grass.h" />
     <ClInclude Include="include\graphics\renderer\ibl.h" />
-    <ClInclude Include="include\graphics\assets\material_manager.h" />
     <ClInclude Include="include\graphics\renderer\material_system.h" />
     <ClInclude Include="include\graphics\renderer\model_rendering.h" />
     <ClInclude Include="include\graphics\pass\pass.h" />

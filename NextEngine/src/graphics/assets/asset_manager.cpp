@@ -1,9 +1,12 @@
 #include "stdafx.h"
-#include "graphics/assets/model.h"
-#include "graphics/assets/texture.h"
+#include "graphics/assets/asset_manager.h"
 #include "core/container/hash_map.h"
 #include "core/container/sstring.h"
 #include "core/serializer.h"
+
+AssetManager::AssetManager(string_view level_path) : models(level), shaders(level), textures(level) {
+	level.set(level_path);
+}
 
 //REFLECT_STRUCT_BEGIN(Model)
 //REFLECT_STRUCT_MEMBER(path)

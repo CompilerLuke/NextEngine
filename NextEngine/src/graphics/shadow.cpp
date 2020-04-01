@@ -14,7 +14,7 @@
 #include <glad/glad.h>
 
 DepthMap::DepthMap(AssetManager& assets, unsigned int width, unsigned int height, bool stencil) 
-: shader_manager(assets.shaders), texture_manager(assets.textures) {
+: asset_manager(assets) {
 	type = Pass::Depth_Only;
 
 	AttachmentDesc attachment(this->depth_map);
@@ -209,16 +209,14 @@ void calc_ortho_proj(RenderCtx& params, glm::mat4& light_m, float width, float h
 }
 
 void DepthMap::render_maps(Renderer& renderer, World& world, RenderCtx& ctx, glm::mat4 projection_m, glm::mat4 view_m, bool is_shadow_pass) {
-	RenderCtx new_ctx = ctx;
+	CommandBuffer cmd_buffer(asset_manager);
+	
+	RenderCtx new_ctx(ctx, is_shadow_pass ? ctx.command_buffer : cmd_buffer, this);
 	new_ctx.view = view_m;
 	new_ctx.projection = projection_m;
-	new_ctx.pass = this;
-
-	CommandBuffer cmd_buffer(asset_manager);
+	
 	if (is_shadow_pass) {
 		new_ctx.layermask |= SHADOW_LAYER;
-		new_ctx.command_buffer = &cmd_buffer;
-
 		renderer.render_view(world, new_ctx);
 	}
 
@@ -257,7 +255,7 @@ void ShadowPass::render(World& world, RenderCtx& params) {
 		auto& proj_info = info[i];
 
 		deffered_map_cascade.id = (Pass::PassID)(Pass::Shadow0 + i);
-		deffered_map_cascade.render_maps(world, params, proj_info.toLight, glm::mat4(1.0f), true);
+		deffered_map_cascade.render_maps(renderer, world, params, proj_info.toLight, glm::mat4(1.0f), true);
 
 		shadow_mask.shadow_mask_map_fbo.bind();
 

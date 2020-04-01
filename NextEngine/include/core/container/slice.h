@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/core.h"
+#include <assert.h>
 
 template<typename T>
 struct slice {

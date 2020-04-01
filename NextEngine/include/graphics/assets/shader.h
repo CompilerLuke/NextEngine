@@ -67,13 +67,13 @@ ENGINE_API struct Shader {
 	long long f_time_modified = 0;
 
 	void bind();
-	void set_mat4(const char*, glm::mat4&, shader_config_handle config = { 0 });
-	void set_vec3(const char*, glm::vec3&, shader_config_handle config = { 0 });
-	void set_vec2(const char*, glm::vec2&, shader_config_handle config = { 0 });
-	void set_int(const char*, int, shader_config_handle config = { 0 });
-	void set_float(const char*, float, shader_config_handle config = { 0 });
+	void set_mat4(const char*, glm::mat4&);
+	void set_vec3(const char*, glm::vec3&);
+	void set_vec2(const char*, glm::vec2&);
+	void set_int(const char*, int);
+	void set_float(const char*, float);
 	
-	uint get_flag(shader_handle, string_view);
+	uint get_flag(string_view);
 	
 	uniform_handle location(string_view);
 
