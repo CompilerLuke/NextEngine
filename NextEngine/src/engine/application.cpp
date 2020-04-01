@@ -1,5 +1,8 @@
 #include "stdafx.h"
 #include "engine/application.h"
+#include "engine/engine.h"
+#include "core/profiler.h"
+#include "core/io/input.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -15,11 +18,20 @@ void destroy_DLL(void* dll) {
 	FreeLibrary((HINSTANCE)dll);
 }
 
-void* load_DLL(StringView path) {
+void* load_DLL(string_view path) {
 	wchar_t path_w[100];
 	to_wide_char(path.c_str(), path_w, 100);
-	HINSTANCE dll = LoadLibrary(path_w);
 
+	wchar_t path_w_copy[100];
+	int insert_at = path.length - 4;
+	to_wide_char(path.c_str(), path_w_copy, 100);
+	to_wide_char("copy.dll", path_w_copy + insert_at, 100 - insert_at);
+
+	bool result = CopyFile(path_w, path_w_copy, false);
+	if (!result) throw "Could not copy DLL!";
+
+	HINSTANCE dll = LoadLibrary(path_w_copy);
+	if (!dll) throw "Could not load DLL!";
 	return (void*)dll;
 }
 
@@ -27,11 +39,11 @@ void* get_Func(void* dll, const char* name) {
 	return GetProcAddress((HINSTANCE)dll, name);
 }
 
-Application::Application(StringView path, struct Engine* engine) : path(path), engine(engine) {}
+Application::Application(Engine* engine, string_view path) : engine(engine), path(path) {}
 
 void Application::init(void* args) {
 	load_functions();
-	application_state = init_func(engine, args);
+	application_state = init_func(args, engine);
 }
 
 void Application::load_functions() {
@@ -63,8 +75,23 @@ bool Application::is_running() {
 
 void Application::run() {
 	while (is_running()) {
-		update();
-		render();
+		if (engine.input.key_pressed('R')) {
+			reload();
+		}
+
+		engine.begin_frame();
+
+		{
+			Profile profile("Update");
+			update();
+		}
+		
+		{
+			Profile profile("Render");
+			render();
+		}
+
+		engine.end_frame();
 	}
 }
 

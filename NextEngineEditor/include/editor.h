@@ -3,24 +3,26 @@
 #include "core/core.h"
 #include <string>
 #include "ecs/id.h"
-#include "core/eventDispatcher.h"
+#include "core/container/event_dispatcher.h"
 #include "assetTab.h"
-#include "reflection/reflection.h"
+#include "core/reflection.h"
 #include "lister.h"
 #include "displayComponents.h"
 #include "ecs/ecs.h"
 #include "gizmo.h"
 #include "picking.h"
-#include "graphics/renderPass.h"
+#include "graphics/pass/render_pass.h"
 #include "diffUtil.h"
-#include "graphics/frameBuffer.h"
+#include "graphics/rhi/frame_buffer.h"
 #include "shaderGraph.h"
 #include "visualize_profiler.h"
 #include "engine/application.h"
+#include "components/flyover.h"
+#include "graphics/assets/shader.h"
 
 struct DroppableField {
 	void* ptr;
-	StringBuffer typ;
+	string_buffer typ;
 	ID id;
 };
 
@@ -42,20 +44,22 @@ struct DeleteComponent {
 };
 
 struct Icon {
-	StringBuffer name;
-	Handle<struct Texture> texture_id;
+	string_buffer name;
+	texture_handle texture_id;
 };
 
 struct Editor {
-	class Engine& engine;
+	struct Engine& engine;
 
-	Handle<Texture> scene_view;
+	texture_handle scene_view;
 	Framebuffer scene_view_fbo;
 
 	PickingPass picking_pass;
-	MainPass main_pass;
 
 	int selected_id = -1;
+
+	float viewport_width;
+	float viewport_height;
 
 	bool playing_game = false;
 	bool exit = false;
@@ -71,8 +75,9 @@ struct Editor {
 
 	void submit_action(EditorAction*);
 
-	uint64_t get_icon(StringView name);
+	uint64_t get_icon(string_view name);
 	
+	FlyOverSystem fly_over_system;
 	VisualizeProfiler profiler;
 	ShaderEditor shader_editor;
 	AssetTab asset_tab;
@@ -99,6 +104,6 @@ struct Editor {
 };
 
 namespace ImGui {
-	void InputText(const char*, StringBuffer&);
+	void InputText(const char*, string_buffer&);
 }
 

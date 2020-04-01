@@ -2,7 +2,7 @@
 
 #include <glm/vec3.hpp>
 #include "ecs/id.h"
-#include "reflection/reflection.h"
+#include "core/reflection.h"
 #include "ecs/system.h"
 
 struct DirLight {

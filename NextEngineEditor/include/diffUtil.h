@@ -1,8 +1,8 @@
 #pragma once
 
 #include "ecs/id.h"
-#include "reflection/reflection.h"
-#include "core/vector.h"
+#include "core/reflection.h"
+#include "core/container/vector.h"
 #include "ecs/ecs.h"
 
 struct EditorAction {

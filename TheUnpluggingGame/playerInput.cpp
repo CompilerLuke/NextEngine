@@ -1,16 +1,16 @@
 #include "stdafx.h"
 #include "playerInput.h"
 #include <ecs/ecs.h>
-#include <core/input.h>
+#include <core/io/input.h>
 
-DEFINE_APP_COMPONENT_ID(PlayerInput, 50);
+DEFINE_APP_COMPONENT_ID(PlayerInput, 0);
 
 PlayerInput* get_player_input(World& world) {
-	auto result = world.filter<PlayerInput>(game_layer);
+	auto result = world.filter<PlayerInput>(GAME_LAYER);
 	return result.length > 0 ? result[0] : NULL;
 }
 
-void PlayerInputSystem::update(World& world, UpdateParams& params) {
+void PlayerInputSystem::update(World& world, UpdateCtx& params) {
 	Input& input = params.input;
 
 	for (PlayerInput* self : world.filter<PlayerInput>(params.layermask)) {

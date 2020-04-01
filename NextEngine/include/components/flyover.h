@@ -17,6 +17,6 @@ struct Flyover {
 	REFLECT(ENGINE_API)
 };
 
-struct FlyOverSystem : System {
-	void update(World&, UpdateParams&);
+struct ENGINE_API FlyOverSystem : System {
+	void update(World&, UpdateCtx&);
 };

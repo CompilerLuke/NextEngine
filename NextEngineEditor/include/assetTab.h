@@ -1,25 +1,53 @@
 #pragma once
 
-#include "core/vector.h"
+#include "core/container/vector.h"
 #include "core/handle.h"
-#include <string>
-#include "graphics/frameBuffer.h"
+#include "graphics/rhi/frame_buffer.h"
 #include "ecs/ecs.h"
 #include <glm/gtc/quaternion.hpp>
-#include <unordered_map>
 #include "components/transform.h"
-#include "core/string_buffer.h"
-#include "graphics/materialSystem.h"
+#include "core/container/string_buffer.h"
+#include "graphics/renderer/material_system.h"
+
+struct ShaderGraph;
+struct AssetManager;
+struct ImFont;
+struct RenderCtx;
+struct Camera;
+struct World;
+struct CommandBuffer;
+struct Material;
+struct Renderer;
+
+struct asset_folder_handle {
+	uint id = INVALID_HANDLE;
+};
+
+struct texture_asset_handle {
+	uint id = INVALID_HANDLE;
+};
+
+struct model_asset_handle {
+	uint id = INVALID_HANDLE;
+};
+
+struct shader_asset_handle {
+	uint id = INVALID_HANDLE;
+};
+
+struct material_asset_handle {
+	uint id = INVALID_HANDLE;
+};
 
 struct TextureAsset {
-	Handle<struct Texture> handle;
-	StringBuffer name;
+	texture_handle handle;
+	string_buffer name;
 
 	REFLECT(NO_ARG)
 };
 
 struct RotatablePreview {
-	Handle<struct Texture> preview = { INVALID_HANDLE };
+	texture_handle preview = { INVALID_HANDLE };
 	glm::vec2 current;
 	glm::vec2 previous;
 	glm::vec2 rot_deg;
@@ -27,9 +55,9 @@ struct RotatablePreview {
 };
 
 struct ModelAsset {
-	Handle<struct Model> handle = { INVALID_HANDLE };
-	vector<Handle<struct Material>> materials;
-	StringBuffer name;
+	model_handle handle = { INVALID_HANDLE };
+	vector<material_handle> materials;
+	string_buffer name;
 	
 	Transform trans;
 
@@ -39,39 +67,42 @@ struct ModelAsset {
 };
 
 struct ShaderAsset {
-	Handle<struct Shader> handle = { INVALID_HANDLE };
-	StringBuffer name;
+	shader_handle handle = { INVALID_HANDLE };
+	string_buffer name;
 
 	vector<Param> shader_arguments;
 
-	std::unique_ptr<struct ShaderGraph> graph = NULL;
+	std::unique_ptr<ShaderGraph> graph = NULL;
 
 	REFLECT(NO_ARG)
 };
 
 struct MaterialAsset {
-	Handle<struct Material> handle = { INVALID_HANDLE };
+	material_handle handle = { INVALID_HANDLE };
 	RotatablePreview rot_preview;
-	StringBuffer name;
+	string_buffer name;
 
 	REFLECT()
 };
 
 struct AssetFolder {
-	Handle<AssetFolder> handle = { INVALID_HANDLE }; //contains id to itself, used to select folder to move
+	asset_folder_handle handle = { INVALID_HANDLE }; //contains id to itself, used to select folder to move
 	
-	StringBuffer name;
-	vector<unsigned int> contents;
+	string_buffer name;
+	vector<uint> contents;
 	int owner = -1;
 
 	REFLECT(NO_ARG)
 };
 
 struct AssetTab {
+	Renderer& renderer;
+	AssetManager& asset_manager;
+
 	Framebuffer preview_fbo;
 	Framebuffer preview_tonemapped_fbo;
-	Handle<struct Texture> preview_map;
-	Handle<struct Texture> preview_tonemapped_map;
+	texture_handle preview_map;
+	texture_handle preview_tonemapped_map;
 	struct ImFont* filename_font = NULL;
 	struct ImFont* default_font = NULL;
 
@@ -84,31 +115,30 @@ struct AssetTab {
 	ID current_folder;
 	int selected = -1;
 
-	Handle<Material> default_material;
+	material_handle default_material;
 	
-	StringBuffer filter;
+	string_buffer filter;
 
-	AssetTab();
+	AssetTab(Renderer&, AssetManager&);
 
 	void register_callbacks(struct Window&, struct Editor&);
-	void render(struct World&, struct Editor&, struct RenderParams&);
-	void update(struct World&, struct Editor&, struct UpdateParams&);
+	void render(struct World&, struct Editor&, struct RenderCtx&);
 
 	void on_save();
-	void on_load(struct World& world, struct RenderParams& params);
+	void on_load(struct World& world, struct RenderCtx& params);
 };
 
-MaterialAsset* register_new_material(World& world, AssetTab& self, Editor& editor, RenderParams& params, ID mat_asset_handle);
-MaterialAsset* create_new_material(struct World& world, struct AssetTab& self, struct Editor& editor, struct RenderParams& params);
+MaterialAsset* register_new_material(World& world, AssetTab& self, Editor& editor, RenderCtx& params, ID mat_asset_handle);
+MaterialAsset* create_new_material(struct World& world, struct AssetTab& self, struct Editor& editor, struct RenderCtx& params);
 
 void add_asset(AssetTab& self, ID id);
-void render_name(StringBuffer& name, struct ImFont* font);
+void render_name(string_buffer& name, struct ImFont* font);
 
-void edit_color(glm::vec3& color, StringView name, glm::vec2 size = glm::vec2(200, 200));
-void edit_color(glm::vec4& color, StringView name, glm::vec2 size = glm::vec2(200, 200));
+void edit_color(glm::vec3& color, string_view name, glm::vec2 size = glm::vec2(200, 200));
+void edit_color(glm::vec4& color, string_view name, glm::vec2 size = glm::vec2(200, 200));
 
-RenderParams create_preview_command_buffer(struct CommandBuffer& cmd_buffer, struct RenderParams& old_params, struct AssetTab& self, struct Camera* cam, struct World& world);
-void render_preview_to_buffer(struct AssetTab& self, struct RenderParams& params, struct CommandBuffer& cmd_buffer, Handle<struct Texture>& preview, struct World& world);
+RenderCtx create_preview_command_buffer(CommandBuffer& cmd_buffer, RenderCtx& old_params, AssetTab& self, Camera* cam, World& world);
+void render_preview_to_buffer(AssetTab& self, RenderCtx& params, CommandBuffer& cmd_buffer, texture_handle& preview, World& world);
 void rot_preview(RotatablePreview& self);
 
 bool accept_drop(const char* drop_type, void* ptr, unsigned int size);

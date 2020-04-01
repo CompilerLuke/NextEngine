@@ -1,18 +1,24 @@
 #pragma once
 
-#include "core/string_view.h"
+#include "core/container/string_view.h"
 #include "assetTab.h"
-#include "core/HandleManager.h"
+#include "core/container/handle_manager.h"
 #include <imgui/imgui.h>
 
 enum ChannelType { Channel1, Channel2, Channel3, Channel4, ChannelNone };
+
+struct shader_node_handle {
+	uint id = INVALID_HANDLE;
+
+	REFLECT()
+};
 
 struct ShaderNode {
 	enum Type { PBR_NODE, TEXTURE_NODE, TEX_COORDS, MATH_NODE, BLEND_NODE, TIME_NODE, CLAMP_NODE, VEC_NODE, REMAP_NODE, STEP_NODE, NOISE_NODE, PARAM_NODE } type;
 
 	struct Link {
-		Handle<ShaderNode> to{ INVALID_HANDLE };
-		Handle<ShaderNode> from{ INVALID_HANDLE };
+		shader_node_handle to{ INVALID_HANDLE };
+		shader_node_handle from{ INVALID_HANDLE };
 
 		unsigned int index = 0;
 
@@ -33,11 +39,11 @@ struct ShaderNode {
 			glm::vec4 value4;
 		};
 
-		InputChannel(StringView, ChannelType);
-		InputChannel(StringView, glm::vec4);
-		InputChannel(StringView, glm::vec3);
-		InputChannel(StringView, glm::vec2);
-		InputChannel(StringView, float);
+		InputChannel(string_view, ChannelType);
+		InputChannel(string_view, glm::vec4);
+		InputChannel(string_view, glm::vec3);
+		InputChannel(string_view, glm::vec2);
+		InputChannel(string_view, float);
 
 		REFLECT_UNION(NO_ARG)
 	};
@@ -68,7 +74,7 @@ struct ShaderNode {
 		bool from_param;
 		union {
 			unsigned int param_id;
-			Handle<struct Texture> tex_handle;
+			texture_handle tex_handle;
 		};
 	};
 
@@ -80,16 +86,16 @@ struct ShaderNode {
 };
 
 struct ShaderGraph {
-	vector<Handle<ShaderNode>> selected;
+	vector<shader_node_handle> selected;
 
-	HandleManager<ShaderNode> nodes_manager;
+	HandleManager<ShaderNode, shader_node_handle> nodes_manager;
 
-	Handle<ShaderNode> terminal_node = { INVALID_HANDLE };
+	shader_node_handle terminal_node = { INVALID_HANDLE };
 
 	struct Action {
 		enum { Dragging_Node, Moving_Node, Dragging_Connector, Releasing_Connector, None, ApplyMove, BoxSelect, BoxSelectApply } type = None;
 		
-		Handle<ShaderNode> drag_node;
+		shader_node_handle drag_node;
 		glm::vec2 mouse_pos;
 		glm::vec2 mouse_delta;
 		ShaderNode::Link* link = NULL;
@@ -99,14 +105,14 @@ struct ShaderGraph {
 
 	RotatablePreview rot_preview;
 
-	vector<StringBuffer> param_names;
+	vector<string_buffer> param_names;
 	vector<Param> parameters;
 	vector<Param> dependencies;
 	bool requires_time = false;
 
 	float scale = 1.0f;
 
-	void render(struct World&, struct Editor&, struct RenderParams&, struct Input&);
+	void render(struct World&, struct Editor&, struct RenderCtx&, struct Input&);
 };
 
 struct ShaderEditor {
@@ -115,13 +121,13 @@ struct ShaderEditor {
 	int current_shader = -1;
 
 	ShaderEditor();
-	void render(struct World&, struct Editor&, struct RenderParams&, struct Input&);
+	void render(struct World&, struct Editor&, struct RenderCtx&, struct Input&);
 
 	struct ImFont* font[10];
 };
 
 struct ShaderCompiler {
-	StringBuffer contents;
+	string_buffer contents;
 	ShaderGraph& graph;
 
 	ShaderCompiler(ShaderGraph&);
@@ -129,7 +135,7 @@ struct ShaderCompiler {
 	void begin();
 	void end();
 
-	void compile_node(Handle<ShaderNode> handle);
+	void compile_node(shader_node_handle handle);
 	void compile_input(ShaderNode::InputChannel& input);
 
 	void find_dependencies();
@@ -137,15 +143,15 @@ struct ShaderCompiler {
 	void compile();
 };
 
-void render_input(ShaderGraph& graph, Handle<ShaderNode> handle, unsigned int i, const char** names, bool render_default = true);
-void render_output(ShaderGraph& graph, Handle<ShaderNode> handle);
+void render_input(ShaderGraph& graph, shader_node_handle handle, unsigned int i, const char** names, bool render_default = true);
+void render_output(ShaderGraph& graph, shader_node_handle handle);
 glm::vec2 screenspace_to_position(ShaderGraph& graph, glm::vec2 position);
-StringBuffer get_dependency(Handle<ShaderNode> node);
+string_buffer get_dependency(shader_node_handle node);
 
-ShaderAsset* create_new_shader(World& world, AssetTab& self, Editor& editor, RenderParams& params);
-void asset_properties(struct ShaderAsset* tex, struct Editor& editor, struct World& world, struct AssetTab& self, struct RenderParams& params);
+ShaderAsset* create_new_shader(World& world, AssetTab& self, Editor& editor, RenderCtx& params);
+void asset_properties(struct ShaderAsset* tex, struct Editor& editor, struct World& world, struct AssetTab& self, struct RenderCtx& params);
 
-StringView get_param_name(ShaderGraph& graph, unsigned int i);
+string_view get_param_name(ShaderGraph& graph, unsigned int i);
 
 glm::vec2 to_vec2(ImVec2);
 ImVec2 from_vec2(glm::vec2);
@@ -155,4 +161,4 @@ void compile_shader_graph(ShaderAsset* asset);
 void serialize_shader_asset(struct SerializerBuffer& buffer, ShaderAsset* asset);
 void deserialize_shader_asset(struct DeserializerBuffer& buffer, ShaderAsset* asset);
 
-extern StringBuffer node_popup_filter;
+extern string_buffer node_popup_filter;

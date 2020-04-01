@@ -20,7 +20,7 @@ constexpr typeid_t type_id() noexcept
 
 struct Entity {
 	bool enabled = true;
-	Layermask layermask = game_layer | picking_layer;
+	Layermask layermask = GAME_LAYER | PICKING_LAYER;
 
 	REFLECT(ENGINE_API)
 };

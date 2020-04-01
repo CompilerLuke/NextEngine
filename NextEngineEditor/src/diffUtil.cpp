@@ -1,9 +1,9 @@
 #include "stdafx.h"
 #include "diffUtil.h"
-#include "core/temporary.h"
-#include "editor.h"
-#include "logger/logger.h"
+#include "core/memory/linear_allocator.h"
+#include "core/io/logger.h"
 #include <glm/gtc/epsilon.hpp>
+#include "editor.h"
 
 DiffUtil::DiffUtil(void* ptr, reflect::TypeDescriptor* type, Allocator* allocator) 
 : real_ptr(ptr), type(type) {

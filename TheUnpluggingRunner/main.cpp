@@ -3,19 +3,18 @@
 
 #include <engine/application.h>
 #include <engine/engine.h>
-#include <graphics/window.h>
-#include <core/vfs.h>
-#include <logger/logger.h>
-#include <core/string_buffer.h>
-#include <iostream>
+#include <graphics/rhi/window.h>
+#include <core/io/vfs.h>
+#include <core/io/logger.h>
+#include <core/container/string_buffer.h>
 
-#include <core/profiling.h>
+#include <core/profiler.h>
 #include <stdio.h>
 
 #include "../TheUnpluggingGame/playerInput.h"
 #include "../TheUnpluggingGame/fpsController.h"
 #include "../TheUnpluggingGame/bowWeapon.h"
-#include "ecs/ecs.h"
+#include <ecs/ecs.h>
 
 DEFINE_APP_COMPONENT_ID(PlayerInput, 0);
 DEFINE_APP_COMPONENT_ID(FPSController, 1);
@@ -42,47 +41,35 @@ REFLECT_STRUCT_END()
 REFLECT_STRUCT_BEGIN(Arrow)
 REFLECT_STRUCT_END()
 
-void register_systems_and_components(World& world) {
-	register_default_systems_and_components(world);
-
+void register_components(World& world) {
 	world.add(new Store<PlayerInput>(1));
 	world.add(new Store<FPSController>(10));
 	world.add(new Store<Bow>(5));
 	world.add(new Store<Arrow>(20));
 }
 
-#define BUILD_STANDALONE
-
 int main() {
-	//Window window;
-	//window.title = "The Unplugging";
-	//window.full_screen = false;
-	//window.width = 1980;
-	//window.height = 1080;
-	
-	//window.vSync = false;
-	//window.init();
+	string_view level = "C:\\Users\\User\\Desktop\\TopCCompiler\\TopCompiler\\Fernix\\assets\\level2\\";
 
-	StringView level = "C:\\Users\\User\\Desktop\\TopCCompiler\\TopCompiler\\Fernix\\assets\\level2\\";
-	//StringView level = "assets\\level2\\";
-	
-	Engine engine;
 
-	register_systems_and_components(engine.world);
+	Engine engine(level);
+	register_components(engine.world);
 
-	Level::set_level(level);
-
-	StringView game_dll_path = "C:\\Users\\User\\source\\repos\\NextEngine\\x64\\Debug\\TheUnpluggingGame.dll";
-	StringView engine_dll_path = "C:\\Users\\User\\source\\repos\\NextEngine\\x64\\Debug\\NextEngineEditor.dll";
-
-	Application game(game_dll_path, &engine);
-	game.init();
+#ifdef _DEBUG
+	const char* game_dll_path = "C:\\Users\\User\\source\\repos\\NextEngine\\x64\\Debug\\TheUnpluggingGame.dll";
+	const char* engine_dll_path = "C:\\Users\\User\\source\\repos\\NextEngine\\x64\\Debug\\NextEngineEditor.dll";
+#else
+	const char* game_dll_path = "C:\\Users\\User\\source\\repos\\NextEngine\\x64\\Release\\TheUnpluggingGame.dll";
+	const char* engine_dll_path = "C:\\Users\\User\\source\\repos\\NextEngine\\x64\\Release\\NextEngineEditor.dll";
+#endif
 
 #ifdef BUILD_STANDALONE
+	Application game(game_dll_path);
+	game.init();
 	game.run();
 #else
-	Application editor(engine_dll_path, &engine);
-	editor.init(&game);
+	Application editor(engine, engine_dll_path);
+	editor.init((void*)game_dll_path);
 	editor.run();
 
 #endif

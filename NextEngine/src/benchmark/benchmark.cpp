@@ -1,8 +1,8 @@
 #include "stdafx.h"
-#include "core/allocator.h"
+#include "core/memory/allocator.h"
 #include <iostream>
 #include <chrono>
-#include "core/vector.h"
+#include "core/container/vector.h"
 #include <vector>
 #include <string>
 

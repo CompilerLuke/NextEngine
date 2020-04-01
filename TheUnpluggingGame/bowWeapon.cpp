@@ -5,12 +5,12 @@
 #include "physics/physics.h"
 #include "components/transform.h"
 #include <glm/gtc/matrix_transform.hpp>
-#include "reflection/reflection.h"
-#include "logger/logger.h"
-#include "serialization/serializer.h"
+#include "core/reflection.h"
+#include "core/io/logger.h"
+#include "core/serializer.h"
 
-DEFINE_APP_COMPONENT_ID(Bow, 52)
-DEFINE_APP_COMPONENT_ID(Arrow, 53);
+DEFINE_APP_COMPONENT_ID(Bow, 2)
+DEFINE_APP_COMPONENT_ID(Arrow, 3);
 
 ID clone(World& world, ID id) {
 	ID new_id = world.make_ID();
@@ -127,7 +127,7 @@ glm::quat quat_look_rotation(glm::vec3 direction, glm::vec3 upDirection) {
 	*/
 }
 
-void BowSystem::update(World& world, UpdateParams& params) {
+void BowSystem::update(World& world, UpdateCtx& params) {
 	PlayerInput* input = get_player_input(world);
 
 	for (ID id : world.filter<Arrow, Transform, RigidBody>(params.layermask)) {

@@ -1,17 +1,18 @@
 #include "core/core.h"
-#include "core/string_buffer.h"
+#include "core/container/string_buffer.h"
+#include "ecs/system.h"
 
 #define APPLICATION_API extern "C" _declspec(dllexport)
 
-typedef void* (*InitFunction)(struct Engine*, void*);
-typedef void (*UpdateFunction)(void*, Engine*);
-typedef void (*RenderFunction)(void*, Engine*);
-typedef void (*DeinitFunction)(void*, Engine*);
-typedef bool (*IsRunningFunction)(void*, Engine*);
+typedef void* (*InitFunction)(void*,  struct Engine&);
+typedef void (*UpdateFunction)(void*, struct Engine&);
+typedef void (*RenderFunction)(void*, struct Engine&);
+typedef void (*DeinitFunction)(void*, struct Engine&);
+typedef bool (*IsRunningFunction)(void*, struct Engine&);
 
 class Application {
-	StringBuffer path;
-	struct Engine* engine;
+	string_buffer path;
+	struct Engine& engine;
 	void* application_state;
 	void* dll_handle;
 	
@@ -24,7 +25,7 @@ class Application {
 	void load_functions();
 
 public:
-	ENGINE_API Application(StringView, struct Engine*);
+	ENGINE_API Application(Engine& engine, string_view);
 	ENGINE_API ~Application();
 
 	void ENGINE_API reload();

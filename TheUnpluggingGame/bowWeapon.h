@@ -2,6 +2,7 @@
 
 #include "ecs/id.h"
 #include "ecs/system.h"
+#include "core/reflection.h"
 
 struct Bow {
 	ID attached;
@@ -29,5 +30,5 @@ struct Arrow {
 };
 
 struct BowSystem : System {
-	void update(World& world, UpdateParams& params);
+	void update(World& world, UpdateCtx& params);
 };

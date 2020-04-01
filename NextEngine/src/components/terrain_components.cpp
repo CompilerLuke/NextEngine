@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "components/terrain.h"
 #include "components/transform.h"
-#include "reflection/reflection.h"
+#include "core/reflection.h"
 
 REFLECT_STRUCT_BEGIN(TerrainControlPoint)
 REFLECT_STRUCT_END()

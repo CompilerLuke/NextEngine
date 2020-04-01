@@ -1,19 +1,18 @@
 #pragma once
 
-#include <vector>
 #include "layermask.h"
 
-#include "core/vector.h"
+#include "core/container/vector.h"
 #include <utility>
 #include <cassert>
 
 #include <memory>
 #include "id.h"
 #include "system.h"
-#include "reflection/reflection.h"
-#include "core/temporary.h"
+#include "core/reflection.h"
+#include "core/memory/linear_allocator.h"
 #include <functional>
-#include "core/eventDispatcher.h"
+#include "core/container/event_dispatcher.h"
 
 #if 1
 template<typename T>
@@ -118,7 +117,7 @@ struct Store : ComponentStore {
 		clear();
 	}
 
-	virtual ~Store() {
+	virtual ~Store() final {
 		fire_destructors();
 		delete[] components;
 	}
@@ -128,15 +127,15 @@ struct Store : ComponentStore {
 		return id_to_obj[id];
 	}
 
-	Component get_by_id(ID id) {
+	Component get_by_id(ID id) final {
 		return { id, this, reflect::TypeResolver<T>::get(), by_id(id) };
 	}
 
-	void free_by_id(ID id) { //delay freeing till end of frame
+	void free_by_id(ID id) final { //delay freeing till end of frame
 		this->freed.append(id);
 	}
 
-	void actually_free_by_id(ID id) { 
+	void actually_free_by_id(ID id) final { 
 		auto obj_ptr = this->by_id(id);
 		if (!obj_ptr) return;
 
@@ -167,7 +166,7 @@ struct Store : ComponentStore {
 		return obj_ptr;
 	}
 
-	void* make_by_id(ID id) {
+	void* make_by_id(ID id) final {
 		return make(id);
 	}
 
@@ -176,7 +175,7 @@ struct Store : ComponentStore {
 		id_to_obj[id] = obj;
 	}
 
-	void set_enabled(void* ptr, bool enabled) override {
+	void set_enabled(void* ptr, bool enabled) override final {
 		auto slot = (Slot<T>*) ptr;
 		slot->is_enabled = enabled;
 
@@ -203,11 +202,11 @@ struct Store : ComponentStore {
 		return arr;
 	}
 
-	reflect::TypeDescriptor* get_component_type() override {
+	reflect::TypeDescriptor* get_component_type() override final {
 		return reflect::TypeResolver<T>::get();
 	}
 
-	vector<Component> filter_untyped() override { //todo merge definitions
+	vector<Component> filter_untyped() override final { //todo merge definitions
 		vector<Component> arr;
 		arr.allocator = &temporary_allocator;
 
@@ -221,7 +220,7 @@ struct Store : ComponentStore {
 		return arr;
 	}
 
-	void fire_callbacks() override {
+	void fire_callbacks() override final {
 		if (created.length > 0) {
 			vector<ID> actually_created;
 			for (ID id : created) {
@@ -249,7 +248,8 @@ struct Store : ComponentStore {
 
 struct Entity {
 	bool enabled = true;
-	Layermask layermask = game_layer | picking_layer;
+	Layermask layermask = GAME_LAYER | PICKING_LAYER;
+	Flags flags = STATIC;
 
 	REFLECT(ENGINE_API)
 };
@@ -257,19 +257,13 @@ struct Entity {
 struct World {
 	static constexpr int components_hash_size = 100;
 
-	vector<std::unique_ptr<System>> systems;
 	std::unique_ptr<ComponentStore> components[components_hash_size];
 	vector<ID> skipped_ids;
-
 	vector<ID> delay_free_entity;
 
 	template<typename T>
 	constexpr void add(Store<T>* store) {
 		components[(size_t)type_id<T>()] = std::unique_ptr<ComponentStore>(store);
-	}
-
-	void add(System* system) {
-		systems.append(std::unique_ptr<System>(system));
 	}
 
 	template<typename T>
@@ -394,28 +388,26 @@ struct World {
 		return ids;
 	}
 
-	void update(UpdateParams& params) {		
-		for (unsigned int i = 0; i < components_hash_size; i++) {
+	void begin_frame() {		
+		//FIRE CREATION OR DELETION CALLBACKS
+		for (unsigned int i = 0; i < components_hash_size; i++) { 
 			if (components[i] != NULL) {
 				Store<char>* store = (Store<char>*)components[i].get();
 
 				for (ID id : delay_free_entity) {
 					store->freed.append(id);
 				}
+
 				components[i]->fire_callbacks();
 			}
 		}
 
+		//REMOVE DELAYED ENITITIES
 		for (ID id : delay_free_entity) {
 			free_ID(id);
 		}
 
 		delay_free_entity.clear();
-
-		for (unsigned int i = 0; i < systems.length; i++) {
-			auto system = systems[i].get();
-			system->update(*this, params);
-		}
 	}
 
 	void clear() {

@@ -2,7 +2,7 @@
 #include "components/camera.h"
 #include "components/transform.h"
 #include <glm/gtc/matrix_transform.hpp>
-#include "graphics/renderer.h"
+#include "graphics/renderer/renderer.h"
 
 REFLECT_STRUCT_BEGIN(Camera)
 REFLECT_STRUCT_MEMBER(near_plane)
@@ -34,10 +34,11 @@ glm::mat4 get_proj_matrix(World& world, ID id, float asp) {
 	);
 }
 
-void update_camera_matrices(World& world, ID id, RenderParams& params) {
-	params.projection = get_proj_matrix(world, id, params.width / params.height);
-	params.view = get_view_matrix(world, id);
-	params.cam = world.by_id<Camera>(id);
+void update_camera_matrices(World& world, ID id, RenderCtx& ctx) {
+	ctx.projection = get_proj_matrix(world, id, (float)ctx.width / ctx.height);
+	ctx.view = get_view_matrix(world, id);
+	ctx.cam = world.by_id<Camera>(id);
+	ctx.view_pos = world.by_id<Transform>(id)->position;
 }
 
 ID get_camera(World& world, Layermask layermask) {

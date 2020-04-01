@@ -1,1 +1,1 @@
-void edit_Terrain(struct Editor&, struct World&, struct UpdateParams&);
+void edit_Terrain(struct Editor&, struct World&, struct UpdateCtx&);

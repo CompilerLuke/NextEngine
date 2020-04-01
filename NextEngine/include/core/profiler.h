@@ -1,8 +1,8 @@
 #pragma once
 
-#include "core/string_view.h"
-#include "core/game_time.h"
-#include "core/vector.h"
+#include "core/container/vector.h"
+#include "core/container/string_view.h"
+#include "core/time.h"
 
 struct ENGINE_API Profile {
 	std::chrono::high_resolution_clock::time_point start_time;
@@ -33,6 +33,7 @@ struct Frame {
 };
 
 struct ENGINE_API Profiler {
+	static bool paused;
 	static vector<Frame> frames;
 	static int profile_depth;
 

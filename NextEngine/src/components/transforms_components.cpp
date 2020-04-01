@@ -45,8 +45,8 @@ void LocalTransform::calc_global_transform(World& world) {
 	trans->position = owner_trans->position + position;
 }
 
-void LocalTransformSystem::update(World& world, UpdateParams& params) {
-	for (ID id : world.filter<LocalTransform, Transform>(params.layermask | game_layer)) {
+void LocalTransformSystem::update(World& world, UpdateCtx& params) {
+	for (ID id : world.filter<LocalTransform, Transform>(params.layermask | GAME_LAYER)) {
 		world.by_id<LocalTransform>(id)->calc_global_transform(world);
 	}
 }

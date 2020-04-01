@@ -1,22 +1,22 @@
 #include "stdafx.h"
-#include "reflection/reflection.h"
+#include "core/reflection.h"
 #include "core/handle.h"
-#include "core/vector.h"
-#include "graphics/renderer.h"
+#include "core/container/vector.h"
+#include "graphics/renderer/renderer.h"
 #include "components/transform.h"
 #include "components/terrain.h"
 #include "ecs/ecs.h"
 #include "terrain.h"
 #include <glad/glad.h>
-#include "core/input.h"
+#include "core/io/input.h"
 #include "editor.h"
-#include "core/string_buffer.h"
-#include "graphics/texture.h"
+#include "core/container/string_buffer.h"
+#include "graphics/assets/texture.h"
 
-void edit_Terrain(Editor& editor, World& world, UpdateParams& params) {
-	if (!params.layermask & editor_layer) return;
+void edit_Terrain(Editor& editor, World& world, UpdateCtx& params) {
+	if (!params.layermask & EDITOR_LAYER) return;
 
-	for (ID id : world.filter<Terrain, Transform>(params.layermask | game_layer)) {
+	for (ID id : world.filter<Terrain, Transform>(params.layermask | GAME_LAYER)) {
 		auto self = world.by_id<Terrain>(id);
 		auto self_trans = world.by_id<Transform>(id);
 		auto width_quads = 32 * self->width;
@@ -25,7 +25,7 @@ void edit_Terrain(Editor& editor, World& world, UpdateParams& params) {
 		if (params.input.key_pressed('I')) {
 			ID id = world.make_ID();
 			Entity* e = world.make<Entity>(id);
-			e->layermask = editor_layer | picking_layer;
+			e->layermask = EDITOR_LAYER | PICKING_LAYER;
 
 			Transform* trans = world.make<Transform>(id);
 			trans->scale = glm::vec3(0.1);
@@ -45,7 +45,7 @@ void edit_Terrain(Editor& editor, World& world, UpdateParams& params) {
 		
 		if (!self->show_control_points) continue;
 
-		auto control_points_filtered = world.filter<TerrainControlPoint, Transform>(editor_layer);
+		auto control_points_filtered = world.filter<TerrainControlPoint, Transform>(EDITOR_LAYER);
 
 		auto& heightmap = self->heightmap_points;
 		heightmap.clear();

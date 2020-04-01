@@ -1,6 +1,6 @@
 #pragma once
 #include <ecs/system.h>
-#include <reflection/reflection.h>
+#include <core/reflection.h>
 
 struct PlayerInput {
 	float yaw = 0;
@@ -18,5 +18,5 @@ struct PlayerInput {
 PlayerInput* get_player_input(struct World&);
 
 struct PlayerInputSystem : System {
-	void update(struct World&, UpdateParams& params);
+	void update(struct World&, UpdateCtx& params);
 };

@@ -1,6 +1,8 @@
 #pragma once
 
-#include "reflection/reflection.h"
+#include "core/core.h"
+#include "core/reflection.h"
 
-using ID = unsigned int;
-using Layermask = unsigned int;
+using ID = uint;
+using Layermask = uint;
+using Flags = uint;

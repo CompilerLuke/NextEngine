@@ -1,127 +1,125 @@
 #include "stdafx.h"
-#include "graphics/terrain.h"
-#include "model/model.h"
-#include "components/terrain.h"
-#include "graphics/shader.h"
-#include "graphics/rhi.h"
-#include "logger/logger.h"
+#include "graphics/renderer/terrain.h"
+#include "graphics/assets/model.h"
+#include "graphics/assets/texture.h"
+#include "graphics/assets/shader.h"
+#include "core/io/logger.h"
 #include "components/transform.h"
-#include "graphics/texture.h"
-#include "graphics/materialSystem.h"
+#include "components/terrain.h"
 #include "components/camera.h"
-#include "graphics/renderer.h"
+#include "graphics/renderer/material_system.h"
+#include "graphics/renderer/renderer.h"
+#include "graphics/rhi/rhi.h"
 
-Handle<Model> load_subdivided(unsigned int num) {
-	return load_Model(format("subdivided_plane", num, ".fbx"));
-}
-
-void init_terrains(World& world, vector<ID>& terrains) {
+void init_terrains(TextureManager& texture_manager, World& world, vector<ID>& terrains) {
 	for (ID id : terrains) {
 		auto terrain = world.by_id<Terrain>(id);
 		if (!terrain) continue;
 
 		unsigned int texture_id;
 
-		glGenTextures(1, &texture_id);
-		glBindTexture(GL_TEXTURE_2D, texture_id);
+		TextureDesc tex_desc;
+		tex_desc.wrap_s = Wrap::ClampToBorder;
+		tex_desc.wrap_t = Wrap::ClampToBorder;
+		tex_desc.min_filter = Filter::LinearMipmapLinear;
+		tex_desc.mag_filter = Filter::Linear;
+		tex_desc.internal_format = InternalColorFormat::Red;
+		tex_desc.external_format = ColorFormat::Red;
+		tex_desc.texel_type = TexelType::Float;
+		
+		uint width_quads = 32 * terrain->width;
+		uint height_quads = 32 * terrain->height;
 
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		//glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 16); 
+		Image image;
+		image.width = width_quads;
+		image.height = height_quads;
+		image.data = terrain->heightmap_points.length == 0 ? NULL : terrain->heightmap_points.data;
 
-		unsigned int width_quads = 32 * terrain->width;
-		unsigned int height_quads = 32 * terrain->height;
+		terrain->heightmap = texture_manager.create_from(image, tex_desc);
 
-		if (terrain->heightmap_points.length == 0) {
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width_quads, height_quads, 0, GL_RED, GL_FLOAT, NULL);
-		}
-		else {
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width_quads, height_quads, 0, GL_RED, GL_FLOAT, terrain->heightmap_points.data);
-			glGenerateMipmap(GL_TEXTURE_2D);
-		}
-
-		glBindTexture(GL_TEXTURE_2D, 0);
-
-		terrain->heightmap = RHI::texture_manager.make(Texture{
-			"Heightmap",
-			texture_id
-			});
+		image.data = NULL; //todo image should not assume, pointer is from stbi
 	}
 }
 
-TerrainRenderSystem::TerrainRenderSystem(World& world, Editor* editor) {
-	world.on_make<Terrain>([this, &world](vector<ID>& terrains) { init_terrains(world, terrains); });
-
-	flat_shader = load_Shader("shaders/pbr.vert", "shaders/gizmo.frag");
-	terrain_shader = load_Shader("shaders/terrain.vert", "shaders/terrain.frag");
-
-	subdivided_plane32 = load_subdivided(32);
-	subdivided_plane16 = load_subdivided(16);
-	subdivided_plane8 = load_subdivided(8);
-	cube_model = load_Model("cube.fbx");
-
-	this->editor = editor;
-
-	Material mat(flat_shader);
-	mat.set_vec3("color", glm::vec3(1, 1, 0));
-
-	control_point_materials.append(RHI::material_manager.make(std::move(mat)));
+model_handle load_subdivided(ModelManager& model_manager, uint num) {
+	return model_manager.load(tformat("subdivided_plane", num, ".fbx"));
 }
 
-void TerrainRenderSystem::render(World& world, RenderParams& render_params) {
-	ID cam = get_camera(world, render_params.layermask);
+TerrainRenderSystem::TerrainRenderSystem(AssetManager& assets, World& world) {
+	world.on_make<Terrain>([&assets, &world](vector<ID>& terrains) { init_terrains(assets.textures, world, terrains); });
+
+	flat_shader = assets.shaders.load("shaders/pbr.vert", "shaders/gizmo.frag");
+	terrain_shader = assets.shaders.load("shaders/terrain.vert", "shaders/terrain.frag");
+
+	subdivided_plane[0] = load_subdivided(assets.models, 32);
+	subdivided_plane[1] = load_subdivided(assets.models, 16);
+	subdivided_plane[2] = load_subdivided(assets.models, 8);
+	cube_model = assets.models.load("cube.fbx");
+
+	Material mat(flat_shader);
+	mat.set_vec3(assets.shaders, "color", glm::vec3(1, 1, 0));
+
+	control_point_materials.append(assets.materials.assign_handle(std::move(mat)));
+
+	//vector<VertexAttrib> chunk_info_layout = INSTANCE_MAT4X4_LAYOUT;
+	//chunk_info_layout.append({2, Float, offsetof(ChunkInfo, displacement_offset)});
+	//chunk_info_layout.append({1, Int, offsetof(ChunkInfo, lod)});
+
+	for (int i = 0; i < 3; i++) {
+		chunk_instance_buffer[i] = RHI::alloc_instance_buffer(VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_TERRAIN_CHUNK, 144, NULL);
+	}
+}
+
+void TerrainRenderSystem::render(World& world, RenderCtx& render_ctx) {
+	CommandBuffer& cmd_buffer = render_ctx.command_buffer;
+	
+	ID cam = get_camera(world, render_ctx.layermask);
 	Transform* cam_trans = world.by_id<Transform>(cam);
 
 	glm::vec4 planes[6];
-	extract_planes(render_params, planes);
+	extract_planes(render_ctx, planes);
 
-	int rendering_block = 0;
+	//TODO THIS ASSUMES EITHER 0 or 1 TERRAINS
 
-	for (ID id : world.filter<Terrain, Transform, Materials>(render_params.layermask)) {
+	for (ID id : world.filter<Terrain, Transform, Materials>(render_ctx.layermask)) { //todo heavily optimize terrain
 		auto self = world.by_id<Terrain>(id);
 		auto self_trans = world.by_id<Transform>(id);
 		auto materials = world.by_id<Materials>(id);
 
-		unsigned int lod0 = 0;
-		unsigned int lod1 = 1;
-		unsigned int lod2 = 2;
+		Material* mat = TEMPORARY_ALLOC(Material);
+		mat->shader = terrain_shader;
+		mat->params.allocator = &temporary_allocator;
+		if (!(render_ctx.layermask & SHADOW_LAYER)) {
+			mat->retarget_from(materials->materials[0]);
+		}
+		mat->set_image("displacement", self->heightmap);
+		mat->set_float("max_height", self->max_height);
+		mat->set_vec2("displacement_scale", glm::vec2(1.0 / self->width, 1.0 / self->height));
+
+		vector<ChunkInfo> lod_chunks[3];
+		lod_chunks[0].allocator = &temporary_allocator;
+		lod_chunks[1].allocator = &temporary_allocator;
+		lod_chunks[2].allocator = &temporary_allocator;
 
 		for (unsigned int w = 0; w < self->width; w++) {
-			for (unsigned int h = 0; h < self->width; h++) {
+			for (unsigned int h = 0; h < self->height; h++) {
 				Transform t;
 				t.position = self_trans->position + glm::vec3(w * self->size_of_block, 0, (h + 1.0) * self->size_of_block);
 				t.scale = glm::vec3(self->size_of_block);
 
-				glm::mat4* model_m = TEMPORARY_ALLOC(glm::mat4);
-				*model_m = t.compute_model_matrix();
+				ChunkInfo chunk_info;
+				chunk_info.model_m = t.compute_model_matrix();
 
-				AABB aabb = RHI::model_manager.get(this->subdivided_plane8)->aabb;
-				aabb.max.y = 1.0f;
-				aabb = aabb.apply(*model_m);
+				AABB aabb;
+				aabb.min = glm::vec3(0, 0, 0) + t.position;
+				aabb.max = glm::vec3(self->size_of_block, self->max_height, self->size_of_block) + t.position;
 
-				if (cull(planes, aabb)) continue;
+				//if (frustum_test(planes, aabb) == OUTSIDE) continue;
 
-				Material* mat = TEMPORARY_ALLOC(Material);
-				mat->shader = terrain_shader;
-				mat->params.allocator = &temporary_allocator;
+				chunk_info.displacement_offset = glm::vec2(1.0 / self->width * w, 1.0 / self->height * h);
 
-				if (!(render_params.layermask & shadow_layer)) {
-					mat->retarget_from(materials->materials[0]);
-				}
-
-				mat->set_image("displacement", self->heightmap);
-				mat->set_vec2("displacement_offset", glm::vec2(1.0 / self->width * w, 1.0 / self->height * h));
-				mat->set_vec2("displacement_scale", glm::vec2(1.0 / self->width, 1.0 / self->height));
-				mat->set_float("max_height", self->max_height);
-
-				int lod = 0;
-
-				if (render_params.layermask & shadow_layer) {
-					lod = 2;
-				}
-				else {
+				int lod = 2;
+				if (!(render_ctx.layermask & SHADOW_LAYER)) {
 					float dist = glm::length(t.position - cam_trans->position);
 
 					if (dist < 50) lod = 0;
@@ -129,38 +127,35 @@ void TerrainRenderSystem::render(World& world, RenderParams& render_params) {
 					else lod = 2;
 				}
 
-				DrawCommand cmd(id, model_m, NULL, mat);
-
-				if (lod == 0) {
-					cmd.buffer = &RHI::model_manager.get(subdivided_plane32)->meshes[0].buffer;
-				}
-				else if (lod == 1) {
-					cmd.buffer = &RHI::model_manager.get(subdivided_plane16)->meshes[0].buffer;
-				}
-				else {
-					cmd.buffer = &RHI::model_manager.get(subdivided_plane8)->meshes[0].buffer;
-				}
-				mat->set_int("lod", lod);
-
-				rendering_block++;
-
-
-				render_params.command_buffer->submit(cmd);
+				lod_chunks[lod].append(chunk_info);
 			}
 		}
 
-		if (self->show_control_points && (render_params.layermask & editor_layer || render_params.layermask && picking_layer)) {
-			for (ID id : world.filter<TerrainControlPoint, Transform>(render_params.layermask)) {
+		int pass_id = render_ctx.pass->id;
+
+		if (pass_id != 0) return;
+
+		for (int i = 0; i < 3; i++) {
+			vector<ChunkInfo>& chunk_info = lod_chunks[i];
+			
+			RHI::upload_data(chunk_instance_buffer[i], chunk_info);
+
+			cmd_buffer.cmd_draw(chunk_info.length, subdivided_plane[i], &chunk_instance_buffer[i], mat);
+		}
+
+		/*
+		if (self->show_control_points && (render_ctx.layermask & EDITOR_LAYER || render_ctx.layermask && PICKING_LAYER)) {
+			for (ID id : world.filter<TerrainControlPoint, Transform>(render_ctx.layermask)) {
 				Transform* trans = world.by_id<Transform>(id);
 				trans->scale = glm::vec3(0.1);
 
-				world.by_id<Entity>(id)->layermask |= picking_layer;
+				world.by_id<Entity>(id)->layermask |= PICKING_LAYER;
 
-				auto model_m = TEMPORARY_ALLOC(glm::mat4);
-				*model_m = trans->compute_model_matrix();
-				RHI::model_manager.get(cube_model)->render(id, model_m, control_point_materials, render_params);
+				glm::mat4 model_m = trans->compute_model_matrix();
+				RHI::model_manager.get(cube_model)->render(id, model_m, control_point_materials, render_ctx);
 			}
 		}
+		*/
 	}
 }
 

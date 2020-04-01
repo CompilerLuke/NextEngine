@@ -1,39 +1,43 @@
 #pragma once
 
-#include "graphics/renderFeature.h"
-#include "graphics/shader.h"
-#include "graphics/renderer.h"
-#include "graphics/pass.h"
 #include "core/handle.h"
-#include "graphics/materialSystem.h"
-#include "graphics/frameBuffer.h"
+#include "graphics/renderer/renderer.h"
+#include "graphics/renderer/render_feature.h"
+#include "graphics/renderer/material_system.h"
+#include "graphics/pass/pass.h"
+#include "graphics/rhi/frame_buffer.h"
+
+struct World;
+struct RenderCtx;
+struct ShaderConfig;
+struct Input;
 
 struct PickingPass : Pass {
-	Handle<struct Shader> picking_shader;
+	shader_handle picking_shader;
 	Framebuffer framebuffer;
-	Handle<struct Texture> picking_map;
+	texture_handle picking_map;
 	struct MainPass* main_pass;
 	
-	void set_shader_params(Handle<struct Shader>, Handle<struct ShaderConfig>, struct World&, struct RenderParams&) override;
+	void set_shader_params(ShaderConfig&, RenderCtx&) override;
 
-	int pick(struct World&, struct Input&);
-	float pick_depth(struct World&, struct Input&);
+	int pick(World&, Input&);
+	float pick_depth(World&, Input&);
 
-	void render(struct World&, struct RenderParams&) override;
+	void render(World&, RenderCtx&) override;
 
-	glm::vec2 picking_location(struct Input&);
+	glm::vec2 picking_location(Input&);
 
-	PickingPass(struct Window&, struct MainPass*);
+	PickingPass(Window&, MainPass*);
 };
 
 struct PickingSystem : RenderFeature {
 	struct Editor& editor;
-	Handle<struct Shader> outline_shader;
+	shader_handle outline_shader;
 	Material outline_material;
 	DrawCommandState object_state;
 	DrawCommandState outline_state;
 
 	PickingSystem(Editor&);
 
-	void render(struct World&, struct RenderParams&) override;
+	void render(struct World&, struct RenderCtx&) override;
 };

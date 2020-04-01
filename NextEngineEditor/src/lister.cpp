@@ -5,8 +5,8 @@
 #include <unordered_map>
 #include <imgui/imgui.h>
 #include "editor.h"
-#include "core/temporary.h"
-#include "logger/logger.h"
+#include "core/memory/linear_allocator.h"
+#include "core/io/logger.h"
 #include "terrain.h"
 #include "grass.h"
 #include "components/terrain.h"
@@ -15,22 +15,22 @@ REFLECT_STRUCT_BEGIN(EntityEditor)
 REFLECT_STRUCT_MEMBER(name)
 REFLECT_STRUCT_END()
 
-StringBuffer name_with_id(World& world, ID id) {
+string_buffer name_with_id(World& world, ID id) {
 	auto name = world.by_id<EntityEditor>(id);
 	if (name) return tformat("#", id, " : ", name->name);
 	else return tformat("#", id);
 }
 
-void render_hierarchies(vector<struct NameHierarchy*> & top, World& world, Editor& editor, RenderParams& params, StringView filter, int indent = 0);
+void render_hierarchies(vector<struct NameHierarchy*> & top, World& world, Editor& editor, RenderCtx& params, string_view filter, int indent = 0);
 
 struct NameHierarchy {
-	StringView name;
+	string_view name;
 	vector<NameHierarchy*> children;
 	ID id;
 
-	NameHierarchy(StringView name) : name(name) {};
+	NameHierarchy(string_view name) : name(name) {};
 
-	void render_hierarchy(World& world, Editor& editor, RenderParams& params, StringView filter, int indent = 0) {
+	void render_hierarchy(World& world, Editor& editor, RenderCtx& params, string_view filter, int indent = 0) {
 		bool selected = editor.selected_id == id;
 		
 		ImGuiStyle* style = &ImGui::GetStyle();
@@ -55,7 +55,7 @@ struct NameHierarchy {
 	}
 };
 
-void render_hierarchies(vector<NameHierarchy*>& top, World& world, Editor& editor, RenderParams& params, StringView filter, int indent) {
+void render_hierarchies(vector<NameHierarchy*>& top, World& world, Editor& editor, RenderCtx& params, string_view filter, int indent) {
 	for (auto child : top) {
 		child->render_hierarchy(world, editor, params, filter, indent);
 	}
@@ -85,7 +85,7 @@ void get_hierarchy(vector<EntityEditor*>& active_named, World& world, vector<Nam
 	}
 }
 
-void Lister::render(World& world, Editor& editor, RenderParams& params) {
+void Lister::render(World& world, Editor& editor, RenderCtx& params) {
 	vector<NameHierarchy*> top;
 	top.allocator = &temporary_allocator;
 
@@ -103,7 +103,7 @@ void Lister::render(World& world, Editor& editor, RenderParams& params) {
 		char buf[50];
 		std::memcpy(buf, filter.c_str(), filter.size() + 1);
 		ImGui::InputText("filter", buf, 50);
-		this->filter = StringBuffer(buf);
+		this->filter = string_buffer(buf);
 
 		if (ImGui::IsWindowHovered()) {
 			if (ImGui::GetIO().MouseClicked[1]) ImGui::OpenPopup("CreateObject");

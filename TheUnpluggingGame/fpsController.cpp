@@ -6,11 +6,11 @@
 #include <physics/physics.h>
 #include "components/camera.h"
 
-DEFINE_APP_COMPONENT_ID(FPSController, 51);
+DEFINE_APP_COMPONENT_ID(FPSController, 1);
 
 float gravity = -9.81;
 
-void FPSControllerSystem::update(World& world, UpdateParams& params) {
+void FPSControllerSystem::update(World& world, UpdateCtx& params) {
 	PlayerInput* player_input = get_player_input(world);
 	
 	for (ID id : world.filter<FPSController, LocalTransform>(params.layermask)) {

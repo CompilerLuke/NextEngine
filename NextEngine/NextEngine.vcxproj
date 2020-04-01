@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -175,23 +175,27 @@
     <ClInclude Include="include\components\lights.h" />
     <ClInclude Include="include\components\terrain.h" />
     <ClInclude Include="include\components\transform.h" />
-    <ClInclude Include="include\core\allocator.h" />
+    <ClInclude Include="include\core\container\bitset.h" />
+    <ClInclude Include="include\core\memory\allocator.h" />
     <ClInclude Include="include\core\core.h" />
-    <ClInclude Include="include\core\eventDispatcher.h" />
-    <ClInclude Include="include\core\game_time.h" />
+    <ClInclude Include="include\core\container\event_dispatcher.h" />
+    <ClInclude Include="include\core\serializer.h" />
+    <ClInclude Include="include\core\time.h" />
     <ClInclude Include="include\core\handle.h" />
-    <ClInclude Include="include\core\HandleManager.h" />
-    <ClInclude Include="include\core\input.h" />
-    <ClInclude Include="include\core\platform.h" />
+    <ClInclude Include="include\core\container\handle_manager.h" />
+    <ClInclude Include="include\core\container\hash_map.h" />
+    <ClInclude Include="include\core\io\input.h" />
+    <ClInclude Include="include\core\math\vec.h" />
+    <ClInclude Include="include\core\container\pool.h" />
     <ClInclude Include="include\core\profiler.h" />
-    <ClInclude Include="include\core\resource.h" />
-    <ClInclude Include="include\core\resourceManager.h" />
-    <ClInclude Include="include\core\sort.h" />
-    <ClInclude Include="include\core\string_buffer.h" />
-    <ClInclude Include="include\core\string_view.h" />
-    <ClInclude Include="include\core\temporary.h" />
-    <ClInclude Include="include\core\vector.h" />
-    <ClInclude Include="include\core\vfs.h" />
+    <ClInclude Include="include\core\container\slice.h" />
+    <ClInclude Include="include\core\container\sort.h" />
+    <ClInclude Include="include\core\container\sstring.h" />
+    <ClInclude Include="include\core\container\string_buffer.h" />
+    <ClInclude Include="include\core\container\string_view.h" />
+    <ClInclude Include="include\core\memory\linear_allocator.h" />
+    <ClInclude Include="include\core\container\vector.h" />
+    <ClInclude Include="include\core\io\vfs.h" />
     <ClInclude Include="include\ecs\ecs.h" />
     <ClInclude Include="include\ecs\id.h" />
     <ClInclude Include="include\ecs\layermask.h" />
@@ -199,44 +203,57 @@
     <ClInclude Include="include\ecs\system.h" />
     <ClInclude Include="include\engine\application.h" />
     <ClInclude Include="include\engine\engine.h" />
-    <ClInclude Include="include\graphics\buffer.h" />
-    <ClInclude Include="include\graphics\culling.h" />
-    <ClInclude Include="include\graphics\device.h" />
-    <ClInclude Include="include\graphics\draw.h" />
-    <ClInclude Include="include\graphics\frameBuffer.h" />
-    <ClInclude Include="include\graphics\grass.h" />
-    <ClInclude Include="include\graphics\ibl.h" />
-    <ClInclude Include="include\graphics\materialManager.h" />
-    <ClInclude Include="include\graphics\materialSystem.h" />
-    <ClInclude Include="include\graphics\modelRendering.h" />
-    <ClInclude Include="include\graphics\pass.h" />
-    <ClInclude Include="include\graphics\primitives.h" />
-    <ClInclude Include="include\graphics\renderer.h" />
-    <ClInclude Include="include\graphics\renderFeature.h" />
-    <ClInclude Include="include\graphics\renderPass.h" />
-    <ClInclude Include="include\graphics\rhi.h" />
-    <ClInclude Include="include\graphics\shader.h" />
-    <ClInclude Include="include\graphics\shaderManager.h" />
-    <ClInclude Include="include\graphics\shadow.h" />
-    <ClInclude Include="include\graphics\terrain.h" />
-    <ClInclude Include="include\graphics\texture.h" />
-    <ClInclude Include="include\graphics\textureManager.h" />
-    <ClInclude Include="include\graphics\transforms.h" />
-    <ClInclude Include="include\graphics\volumetric.h" />
-    <ClInclude Include="include\graphics\window.h" />
-    <ClInclude Include="include\logger\logger.h" />
-    <ClInclude Include="include\model\model.h" />
-    <ClInclude Include="include\model\modelManager.h" />
+    <ClInclude Include="include\graphics\assets\asset_manager.h" />
+    <ClInclude Include="include\graphics\culling\aabb.h" />
+    <ClInclude Include="include\graphics\pass\render_graph.h" />
+    <ClInclude Include="include\graphics\renderer\terrain.h" />
+    <ClInclude Include="include\graphics\rhi\buffer.h" />
+    <ClInclude Include="include\graphics\culling\culling.h" />
+    <ClInclude Include="include\graphics\rhi\device.h" />
+    <ClInclude Include="include\graphics\rhi\draw.h" />
+    <ClInclude Include="include\graphics\rhi\frame_buffer.h" />
+    <ClInclude Include="include\graphics\renderer\grass.h" />
+    <ClInclude Include="include\graphics\renderer\ibl.h" />
+    <ClInclude Include="include\graphics\assets\material_manager.h" />
+    <ClInclude Include="include\graphics\renderer\material_system.h" />
+    <ClInclude Include="include\graphics\renderer\model_rendering.h" />
+    <ClInclude Include="include\graphics\pass\pass.h" />
+    <ClInclude Include="include\graphics\rhi\primitives.h" />
+    <ClInclude Include="include\graphics\renderer\renderer.h" />
+    <ClInclude Include="include\graphics\renderer\render_feature.h" />
+    <ClInclude Include="include\graphics\pass\render_pass.h" />
+    <ClInclude Include="include\graphics\culling\scene_partition.h" />
+    <ClInclude Include="include\graphics\assets\shader.h" />
+    <ClInclude Include="include\graphics\pass\shadow.h" />
+    <ClInclude Include="include\graphics\assets\texture.h" />
+    <ClInclude Include="include\graphics\renderer\transforms.h" />
+    <ClInclude Include="include\graphics\pass\volumetric.h" />
+    <ClInclude Include="include\graphics\rhi\rhi.h" />
+    <ClInclude Include="include\graphics\rhi\window.h" />
+    <ClInclude Include="include\core\io\logger.h" />
+    <ClInclude Include="include\graphics\assets\model.h" />
     <ClInclude Include="include\physics\btWrapper.h" />
     <ClInclude Include="include\physics\physics.h" />
-    <ClInclude Include="include\reflection\reflection.h" />
-    <ClInclude Include="src\core\eventDispatcher.h" />
+    <ClInclude Include="include\core\reflection.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="vendor\imgui\imconfig.h" />
+    <ClInclude Include="vendor\imgui\imgui.h" />
+    <ClInclude Include="vendor\imgui\imgui_impl_glfw.h" />
+    <ClInclude Include="vendor\imgui\imgui_impl_opengl3.h" />
+    <ClInclude Include="vendor\imgui\imgui_internal.h" />
+    <ClInclude Include="vendor\imgui\imstb_rectpack.h" />
+    <ClInclude Include="vendor\imgui\imstb_textedit.h" />
+    <ClInclude Include="vendor\imgui\imstb_truetype.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="src\graphics\assets\assimp_model_loader.cpp" />
+    <ClCompile Include="src\core\container\string_view.cpp" />
+    <ClCompile Include="src\graphics\renderer\grass_rendering.cpp" />
     <ClCompile Include="NextEngine.cpp" />
+    <ClCompile Include="src\graphics\assets\asset_manager.cpp" />
+    <ClCompile Include="src\graphics\assets\model.cpp" />
     <ClCompile Include="src\benchmark\benchmark.cpp" />
     <ClCompile Include="src\components\camera.cpp" />
     <ClCompile Include="src\components\flyover.cpp" />
@@ -244,32 +261,29 @@
     <ClCompile Include="src\components\lights.cpp" />
     <ClCompile Include="src\components\terrain_components.cpp" />
     <ClCompile Include="src\components\transforms_components.cpp" />
-    <ClCompile Include="src\core\allocator.cpp" />
-    <ClCompile Include="src\core\input.cpp" />
+    <ClCompile Include="src\core\memory\allocator.cpp" />
+    <ClCompile Include="src\core\io\input.cpp" />
     <ClCompile Include="src\core\profiler.cpp" />
-    <ClCompile Include="src\core\static_vector.cpp" />
-    <ClCompile Include="src\core\string_view.cpp" />
-    <ClCompile Include="src\core\temporary.cpp" />
+    <ClCompile Include="src\core\memory\temporary.cpp" />
     <ClCompile Include="src\core\time.cpp" />
-    <ClCompile Include="src\core\vfs.cpp" />
+    <ClCompile Include="src\core\io\vfs.cpp" />
     <ClCompile Include="src\ecs\ecs.cpp" />
     <ClCompile Include="src\ecs\new_ecs.cpp" />
     <ClCompile Include="src\ecs\system.cpp" />
     <ClCompile Include="src\ecs\update_params.cpp" />
     <ClCompile Include="src\engine\application.cpp" />
     <ClCompile Include="src\engine\engine.cpp" />
-    <ClCompile Include="src\graphics\buffer.cpp" />
-    <ClCompile Include="src\graphics\culling.cpp" />
-    <ClCompile Include="src\graphics\device.cpp" />
-    <ClCompile Include="src\graphics\draw.cpp" />
-    <ClCompile Include="src\graphics\frameBuffer.cpp" />
-    <ClCompile Include="src\graphics\ibl.cpp" />
-    <ClCompile Include="src\graphics\materialSystem.cpp" />
-    <ClCompile Include="src\graphics\modelRendering.cpp" />
-    <ClCompile Include="src\graphics\primitives.cpp" />
-    <ClCompile Include="src\graphics\renderer.cpp" />
-    <ClCompile Include="src\graphics\renderPass.cpp" />
-    <ClCompile Include="src\graphics\rhi.cpp" />
+    <ClCompile Include="src\graphics\rhi\GL\buffer.cpp" />
+    <ClCompile Include="src\graphics\culling\culling.cpp" />
+    <ClCompile Include="src\graphics\rhi\GL\device.cpp" />
+    <ClCompile Include="src\graphics\rhi\GL\draw.cpp" />
+    <ClCompile Include="src\graphics\rhi\GL\frameBuffer.cpp" />
+    <ClCompile Include="src\graphics\renderer\ibl.cpp" />
+    <ClCompile Include="src\graphics\renderer\material_system.cpp" />
+    <ClCompile Include="src\graphics\renderer\model_rendering.cpp" />
+    <ClCompile Include="src\graphics\rhi\GL\primitives.cpp" />
+    <ClCompile Include="src\graphics\renderer\renderer.cpp" />
+    <ClCompile Include="src\graphics\pass\render_pass.cpp" />
     <ClCompile Include="src\graphics\shader.cpp" />
     <ClCompile Include="src\graphics\shadow.cpp" />
     <ClCompile Include="src\graphics\terrain.cpp" />
@@ -281,19 +295,46 @@
     </ClCompile>
     <ClCompile Include="src\graphics\transforms.cpp" />
     <ClCompile Include="src\graphics\volumetric.cpp" />
-    <ClCompile Include="src\graphics\window.cpp" />
-    <ClCompile Include="src\logger\logger.cpp" />
-    <ClCompile Include="src\model\load_model.cpp" />
-    <ClCompile Include="src\model\mesh.cpp" />
-    <ClCompile Include="src\model\model.cpp" />
+    <ClCompile Include="src\graphics\rhi\GL\window.cpp" />
+    <ClCompile Include="src\core\io\logger.cpp" />
     <ClCompile Include="src\physics\physics.cpp" />
-    <ClCompile Include="src\reflection\reflection.cpp" />
-    <ClCompile Include="src\serialization\serializer.cpp" />
+    <ClCompile Include="src\core\reflection.cpp" />
+    <ClCompile Include="src\core\serializer.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\imgui.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\imgui_draw.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\imgui_impl_glfw.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\imgui_impl_opengl3.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\imgui_widgets.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -1,8 +1,8 @@
 #include "stdafx.h"
 #include "components/lights.h"
 #include "ecs/ecs.h"
-#include "graphics/materialSystem.h"
-#include "graphics/rhi.h"
+#include "graphics/renderer/material_system.h"
+#include "graphics/rhi/rhi.h"
 #include "components/transform.h"
 #include "components/camera.h"
 #include <glm/gtc/matrix_transform.hpp>

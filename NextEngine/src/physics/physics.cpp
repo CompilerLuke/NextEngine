@@ -11,10 +11,11 @@
 #include <btBulletDynamicsCommon.h>
 #include <LinearMath/btVector3.h>
 #include <LinearMath/btAlignedObjectArray.h>
-#include <BulletCollision\CollisionShapes/btHeightfieldTerrainShape.h>
-#include "graphics/buffer.h"
-#include "model/model.h"
+#include <BulletCollision/CollisionShapes/btHeightfieldTerrainShape.h>
+#include "graphics/rhi/buffer.h"
+#include "graphics/assets/model.h"
 
+#include "core/io/logger.h"
 
 struct BulletWrapper {
 	btDefaultCollisionConfiguration* collisionConfiguration;
@@ -272,10 +273,8 @@ PhysicsSystem::~PhysicsSystem() {
 	free_BulletWrapper(bt_wrapper);
 }
 
-#include "logger/logger.h"
-
-void PhysicsSystem::update(World& world, UpdateParams& params) {
-	if (params.layermask & game_layer) 
+void PhysicsSystem::update(World& world, UpdateCtx& params) {
+	if (params.layermask & GAME_LAYER) 
 		step_BulletWrapper(bt_wrapper, params.delta_time);
 
 	for (ID id : world.filter<RigidBody, Transform>(params.layermask)) {

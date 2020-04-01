@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "shaderGraph.h"
-#include "logger/logger.h"
-#include "graphics/texture.h"
+#include "core/io/logger.h"
+#include "graphics/assets/texture.h"
 #include "editor.h"
 
 vector<ShaderNode> node_defaults;
@@ -127,13 +127,13 @@ ShaderNode make_texture_node() {
 	return node;
 }
 
-void render_inputs(ShaderGraph& graph, Handle<ShaderNode> handle, unsigned int num, const char** names, unsigned int offset = 0) {
+void render_inputs(ShaderGraph& graph, shader_node_handle handle, unsigned int num, const char** names, unsigned int offset = 0) {
 	for (unsigned int i = 0; i < num; i++) {
 		render_input(graph, handle, i + offset, names);
 	}
 }
 
-void render_title(ShaderGraph& graph, StringView title) {
+void render_title(ShaderGraph& graph, string_view title) {
 	ImGui::Text(title.c_str());
 	ImGui::Dummy(ImVec2(0, 10 * graph.scale));
 }
@@ -146,7 +146,7 @@ float override_width_of_node(ShaderNode* self) {
 	return 300.0f;
 }
 
-void render_pbr_node(ShaderGraph& graph, ShaderNode* self, Handle<ShaderNode> handle) {
+void render_pbr_node(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle) {
 	render_title(graph, "PBR");
 	render_output(graph, handle);
 	render_inputs(graph, handle, 4, pbr_inputs);
@@ -156,24 +156,24 @@ void render_pbr_node(ShaderGraph& graph, ShaderNode* self, Handle<ShaderNode> ha
 	ImGui::Image((ImTextureID)texture::id_of(graph.rot_preview.preview), ImVec2(380 * graph.scale, 380 * graph.scale), ImVec2(0, 1), ImVec2(1, 0));
 }
 
-void render_remap_node(ShaderGraph& graph, ShaderNode* self, Handle<ShaderNode> handle) {
+void render_remap_node(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle) {
 	render_title(graph, "Remap");
 	render_output(graph, handle);
 	render_inputs(graph, handle, 3, remap_inputs);
 }
 
-void render_noise_node(ShaderGraph& graph, ShaderNode* self, Handle<ShaderNode> handle) {
+void render_noise_node(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle) {
 	render_title(graph, "Noise");
 	render_output(graph, handle);
 	render_input(graph, handle, 0, noise_inputs, false);
 }
 
-void render_time_node(ShaderGraph& graph, ShaderNode* self, Handle<ShaderNode> handle) {
+void render_time_node(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle) {
 	render_title(graph, "Time");
 	render_output(graph, handle);
 }
 
-void render_step_node(ShaderGraph& graph, ShaderNode* self, Handle<ShaderNode> handle) {
+void render_step_node(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle) {
 	render_title(graph, "Step");
 	render_output(graph, handle);
 	render_inputs(graph, handle, 2, step_inputs);
@@ -198,8 +198,8 @@ void node_select_type(ShaderGraph& graph, ShaderNode* self, ChannelType typ) {
 	self->output.type = typ;
 }
 
-void render_math_node(ShaderGraph& graph, ShaderNode* self, Handle<ShaderNode> handle) {
-	StringView ops[8] = {
+void render_math_node(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle) {
+	string_view ops[8] = {
 		"Add", "Sub", "Mul", "Div", "Sin", "Div", "Sin One", "Cos One"
 	};
 
@@ -224,7 +224,7 @@ void render_math_node(ShaderGraph& graph, ShaderNode* self, Handle<ShaderNode> h
 	node_select_type(graph, self, Channel1);
 }
 
-void render_vec_node(ShaderGraph& graph, ShaderNode* self, Handle<ShaderNode> handle) {
+void render_vec_node(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle) {
 	if (ImGui::Button(tformat("Vec", (int)self->output.type + 1, "##", handle.id).c_str())) {
 		ImGui::OpenPopup(tformat("OpenVec", handle.id).c_str());
 	}
@@ -248,24 +248,24 @@ void render_vec_node(ShaderGraph& graph, ShaderNode* self, Handle<ShaderNode> ha
 	self->inputs[1].type = (ChannelType)(self->output.type - self->inputs[0].type - 1);
 }
 
-void render_clamp_node(ShaderGraph& graph, ShaderNode* self, Handle<ShaderNode> handle) {
+void render_clamp_node(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle) {
 	render_title(graph, "Clamp");
 	render_output(graph, handle);
 	render_inputs(graph, handle, 3, clamp_inputs);
 }
 
-void render_blend_node(ShaderGraph& graph, ShaderNode* node, Handle<ShaderNode> handle) {
+void render_blend_node(ShaderGraph& graph, ShaderNode* node, shader_node_handle handle) {
 	render_title(graph, "Blend");
 	render_output(graph, handle);
 	render_inputs(graph, handle, 3, blend_inputs);
 	node_select_type(graph, node, Channel3);
 }
 
-void render_texture_node(ShaderGraph& graph, ShaderNode* self, Handle<ShaderNode> handle) {
-	Handle<Texture> tex_handle;
+void render_texture_node( ShaderGraph& graph, ShaderNode* self, shader_node_handle handle, TextureManager& texture_manager) {
+	texture_handle tex_handle;
 
 	if (self->tex_node.from_param) {
-		StringBuffer title = tformat("Texture Param ", get_param_name(graph, self->tex_node.param_id));
+		string_buffer title = tformat("Texture Param ", get_param_name(graph, self->tex_node.param_id));
 		render_title(graph, title);
 		render_output(graph, handle);
 
@@ -279,12 +279,12 @@ void render_texture_node(ShaderGraph& graph, ShaderNode* self, Handle<ShaderNode
 	}
 
 	render_input(graph, handle, 0, tex_inputs, false);
-	
-	ImGui::Image((ImTextureID)texture::id_of(tex_handle), ImVec2(380 * graph.scale, 380 * graph.scale), ImVec2(0, 1), ImVec2(1, 0));
+
+	ImGui::Image((ImTextureID)gl_id_of(texture_manager, tex_handle), ImVec2(380 * graph.scale, 380 * graph.scale), ImVec2(0, 1), ImVec2(1, 0));
 
 	if (ImGui::BeginDragDropTarget()) {
 		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DRAG_AND_DROP_IMAGE")) {
-			memcpy(&self->tex_node.tex_handle, payload->Data, sizeof(Handle<Texture>));
+			memcpy(&self->tex_node.tex_handle, payload->Data, sizeof(texture_handle));
 			self->tex_node.from_param = false;
 		}
 
@@ -297,20 +297,20 @@ void render_texture_node(ShaderGraph& graph, ShaderNode* self, Handle<ShaderNode
 	}
 }
 
-void render_tex_coords(ShaderGraph& graph, ShaderNode* self, Handle<ShaderNode> handle) {
+void render_tex_coords(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle) {
 	render_title(graph, "Tex Coords");
 	render_output(graph, handle);
 	render_inputs(graph, handle, 2, tex_coords_inputs);
 }
 
-void render_param_node(ShaderGraph& graph, ShaderNode* self, Handle<ShaderNode> handle) {
+void render_param_node(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle) {
 	render_title(graph, tformat("Param ", get_param_name(graph, self->param_id)).c_str());
 	render_output(graph, handle);
 }
 
-void render_node_inner(ShaderGraph& graph, ShaderNode* self, Handle<ShaderNode> handle) {
+void render_node_inner(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle, TextureManager& texture_manager) {
 	if (self->type == ShaderNode::PBR_NODE) render_pbr_node(graph, self, handle);
-	if (self->type == ShaderNode::TEXTURE_NODE) render_texture_node(graph, self, handle);
+	if (self->type == ShaderNode::TEXTURE_NODE) render_texture_node(graph, self, handle, texture_manager);
 	if (self->type == ShaderNode::TEX_COORDS) render_tex_coords(graph, self, handle);
 	if (self->type == ShaderNode::MATH_NODE) render_math_node(graph, self, handle);
 	if (self->type == ShaderNode::BLEND_NODE) render_blend_node(graph, self, handle);
@@ -326,14 +326,14 @@ void render_node_inner(ShaderGraph& graph, ShaderNode* self, Handle<ShaderNode> 
 //Spawning
 void spawn_node(ShaderGraph& graph, glm::vec2 position, ShaderNode&& node) {
 	node.position = position;
-	graph.nodes_manager.make(std::move(node), true);
+	graph.nodes_manager.assign_handle(std::move(node), true);
 }
 
-StringBuffer node_popup_filter = "";
+string_buffer node_popup_filter = "";
 
 #include <GLFW/glfw3.h>
 
-void node_option(StringView name, ShaderAsset* asset, glm::vec2 mouse_rel, bool& first, ShaderNode (make_node)()) {
+void node_option(string_view name, ShaderAsset* asset, glm::vec2 mouse_rel, bool& first, ShaderNode (make_node)()) {
 	if (!name.starts_with_ignore_case(node_popup_filter)) return;
 	
 	bool enter_to_create_node = first && ImGui::IsKeyPressed(GLFW_KEY_ENTER);
@@ -410,7 +410,7 @@ void compile_func(ShaderCompiler* self, ShaderNode* node, const char* name, unsi
 	self->contents += ")";
 }
 
-void ShaderCompiler::compile_node(Handle<ShaderNode> handle) {
+void ShaderCompiler::compile_node(shader_node_handle handle) {
 	ShaderNode* node = graph.nodes_manager.get(handle);
 
 	if (node->type == ShaderNode::PBR_NODE) {

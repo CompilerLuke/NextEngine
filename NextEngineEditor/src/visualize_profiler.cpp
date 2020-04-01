@@ -3,13 +3,13 @@
 #include "visualize_profiler.h"
 #include "ecs/system.h"
 #include "core/profiler.h"
-#include "core/temporary.h"
+#include "core/memory/linear_allocator.h"
 
 void drawRectFilled(ImDrawList* drawList, ImVec2 ref, glm::vec2 pos, glm::vec2 size, ImColor color) {
 	drawList->AddRectFilled(ImVec2(ref.x + pos.x, ref.y + pos.y), ImVec2(ref.x + pos.x + size.x, ref.y + pos.y + size.y), color);
 }
 
-void VisualizeProfiler::render(struct World& world, struct Editor& editor, struct RenderParams& params) {
+void VisualizeProfiler::render(struct World& world, struct Editor& editor, struct RenderCtx& ctx) {
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
 	if (ImGui::Begin("Profiler", NULL)) {
@@ -19,7 +19,11 @@ void VisualizeProfiler::render(struct World& world, struct Editor& editor, struc
 
 		auto drawList = ImGui::GetWindowDrawList();
 
-
+		if (Profiler::paused) {
+			if (ImGui::Button("Resume")) Profiler::paused = false;
+		} else {
+			if (ImGui::Button("Pause")) Profiler::paused = true;
+		}
 
 		ImVec2 p = ImGui::GetCursorScreenPos();
 		p.x += 500;
@@ -37,12 +41,16 @@ void VisualizeProfiler::render(struct World& world, struct Editor& editor, struc
 			fps_times.append(1.0 / frame.frame_swap_duration * 1000);
 		}
 
-		drawList->ChannelsSplit(5);
+		int max_depth = 10;
+
+		drawList->ChannelsSplit(max_depth);
 
 		if (Profiler::frames.length > 1) {
 			Frame& frame = Profiler::frames[Profiler::frames.length - 2];
 			for (int i = 0; i < frame.profiles.length; i++) {
 				ProfileData& profile = frame.profiles[i];
+
+				assert(profile.profile_depth < max_depth);
 
 				float in_frame_ratio = profile.start.count() / frame.frame_duration;
 				float duration_ratio = profile.duration.count() / frame.frame_duration;
@@ -50,7 +58,9 @@ void VisualizeProfiler::render(struct World& world, struct Editor& editor, struc
 
 				drawList->ChannelsSetCurrent(profile.profile_depth);
 
-				drawRectFilled(drawList, p, glm::vec2(in_frame_ratio * width, offset_profile_depth), glm::vec2(duration_ratio * 1000, height - offset_profile_depth), ImColor(255 * (i + 1) / frame.profiles.length, 0, 0));
+				ImColor color(255 * (i + 1) / frame.profiles.length, 255 * profile.profile_depth / max_depth, 0);
+
+				drawRectFilled(drawList, p, glm::vec2(in_frame_ratio * width, offset_profile_depth), glm::vec2(duration_ratio * 1000, height - offset_profile_depth), color);
 
 				char buffer[100];
 				sprintf_s(buffer, "%s - %3.f ms", profile.name, profile.duration.count());

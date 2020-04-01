@@ -1,15 +1,16 @@
-#include "reflection/reflection.h"
+#include "core/core.h"
+#include "core/reflection.h"
 
 struct TerrainControlPoint {
 	REFLECT(ENGINE_API)
 };
 
 struct Terrain {
-	unsigned int width = 12;
-	unsigned int height = 12;
-	unsigned int size_of_block = 10;
+	uint width = 12;
+	uint height = 12;
+	uint size_of_block = 10;
 	bool show_control_points;
-	Handle<struct Texture> heightmap;
+	texture_handle heightmap;
 
 	vector<float> heightmap_points;
 	float max_height = 10.0f;

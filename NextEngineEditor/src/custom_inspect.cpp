@@ -1,17 +1,15 @@
 #include "stdafx.h"
 #include "custom_inspect.h"
 #include "displayComponents.h"
-#include "graphics/rhi.h"
 #include <imgui/imgui.h>
-#include "logger/logger.h"
+#include "core/io/logger.h"
 #include "assetTab.h"
 #include <glm/gtc/type_ptr.hpp>
-#include "graphics/ibl.h"
+#include "graphics/renderer/ibl.h"
 #include "grass.h"
-#include "model/model.h"
-#include "graphics/texture.h"
+#include "graphics/assets/asset_manager.h"
 
-bool Quat_inspect(void* data, StringView prefix, struct World& world) {
+bool Quat_inspect(void* data, string_view prefix, struct World& world) {
 	ImGui::PushID((long long)data);
 
 	glm::quat* ptr = (glm::quat*)data;
@@ -28,7 +26,7 @@ bool Quat_inspect(void* data, StringView prefix, struct World& world) {
 	return true;
 }
 
-bool Vec3_inspect(void* data, StringView prefix, struct World& world) {
+bool Vec3_inspect(void* data, string_view prefix, struct World& world) {
 	
 	glm::vec3* ptr = (glm::vec3*)data;
 	ImGui::PushID((long long)data);
@@ -38,7 +36,7 @@ bool Vec3_inspect(void* data, StringView prefix, struct World& world) {
 	return true;
 }
 
-bool Vec2_inspect(void* data, StringView prefix, struct World& world) {
+bool Vec2_inspect(void* data, string_view prefix, struct World& world) {
 	glm::vec2* ptr = (glm::vec2*)data;
 
 	ImGui::PushID((long long)data);
@@ -47,15 +45,15 @@ bool Vec2_inspect(void* data, StringView prefix, struct World& world) {
 	return true;
 }
 
-bool Mat4_inspect(void* data, StringView prefix, struct World& world) {
+bool Mat4_inspect(void* data, string_view prefix, World& world) {
 	ImGui::LabelText("Matrix", prefix.c_str());
 	return true;
 }
 
 //Shaders
-bool Shader_inspect(void* data, StringView prefix, struct World& world) {
-	auto handle_shader = (Handle<Shader>*)data;
-	auto shader = RHI::shader_manager.get(*handle_shader);
+bool Shader_inspect(void* data, string_view prefix, World& world, ShaderManager& manager) { //todo how do we pass state into these functions
+	auto handle_shader = (shader_handle*)data;
+	auto shader = manager.get(*handle_shader);
 
 	auto name = format(shader->v_filename, ", ", shader->f_filename);
 	ImGui::LabelText(prefix.c_str(), name.c_str());
@@ -63,9 +61,9 @@ bool Shader_inspect(void* data, StringView prefix, struct World& world) {
 	return true;
 }
 
-template<typename T>
-bool render_asset_preview(Handle<T>* handle_ptr, vector<T*>& to_asset, StringView prefix, const char * drag_and_drop) {
-	Handle<T> asset_id = *handle_ptr;
+template<typename H, typename T>
+bool render_asset_preview(H* handle_ptr, vector<T*>& to_asset, string_view prefix, const char * drag_and_drop) {
+	H asset_id = *handle_ptr;
 
 	T* asset = NULL;
 	if (asset_id.id < to_asset.length) asset = to_asset[asset_id.id]; //todo probably want reference to editor
@@ -78,7 +76,7 @@ bool render_asset_preview(Handle<T>* handle_ptr, vector<T*>& to_asset, StringVie
 		ImGui::Image((ImTextureID)texture::id_of(asset->rot_preview.preview), ImVec2(128, 128), ImVec2(0, 1), ImVec2(1, 0));
 	}
 
-	accept_drop(drag_and_drop, handle_ptr, sizeof(Handle<T>));
+	accept_drop(drag_and_drop, handle_ptr, sizeof(uint));
 
 	ImGui::SameLine();
 	if (asset) ImGui::Text(tformat(prefix, " : ", asset->name).c_str());
@@ -86,24 +84,24 @@ bool render_asset_preview(Handle<T>* handle_ptr, vector<T*>& to_asset, StringVie
 	return true;
 }
 
-bool Model_inspect(void* data, StringView prefix, World& world) {
-	return render_asset_preview((Handle<ModelAsset>*)data, AssetTab::model_handle_to_asset, prefix, "DRAG_AND_DROP_MODEL");
+bool Model_inspect(void* data, string_view prefix, World& world) {
+	return render_asset_preview((model_asset_handle*)data, AssetTab::model_handle_to_asset, prefix, "DRAG_AND_DROP_MODEL");
 }
 
-bool Layermask_inspect(void* data, StringView prefix, World& world) {
+bool Layermask_inspect(void* data, string_view prefix, World& world) {
 	Layermask* mask_ptr = (Layermask*)(data);
 	Layermask mask = *mask_ptr;
 
-	if (ImGui::RadioButton("game", mask & game_layer)) {
-		mask ^= game_layer;
+	if (ImGui::RadioButton("game", mask & GAME_LAYER)) {
+		mask ^= GAME_LAYER;
 	}
 
 
 
 	ImGui::SameLine();
 
-	if (ImGui::RadioButton("editor", mask & editor_layer)) {
-		mask ^= editor_layer;
+	if (ImGui::RadioButton("editor", mask & EDITOR_LAYER)) {
+		mask ^= EDITOR_LAYER;
 	}
 
 	ImGui::SameLine();
@@ -113,7 +111,7 @@ bool Layermask_inspect(void* data, StringView prefix, World& world) {
 	return true;
 }
 
-bool EntityEditor_inspect(void* data, StringView prefix, World& world) {
+bool EntityEditor_inspect(void* data, string_view prefix, World& world) {
 	return false;
 }
 
@@ -130,11 +128,11 @@ bool accept_drop(const char* drop_type, void* ptr, unsigned int size) {
 }
 
 //Materials
-bool Material_inspect(void* data, StringView prefix, World& world) {
-	return render_asset_preview((Handle<MaterialAsset>*)data, AssetTab::material_handle_to_asset, prefix, "DRAG_AND_DROP_MATERIAL");
+bool Material_inspect(void* data, string_view prefix, World& world) {
+	return render_asset_preview((material_asset_handle*)data, AssetTab::material_handle_to_asset, prefix, "DRAG_AND_DROP_MATERIAL");
 }
 
-bool Materials_inspect(void* data, StringView prefix, World& world) {
+bool Materials_inspect(void* data, string_view prefix, World& world) {
 	Materials* materials = (Materials*)data;
 	auto material_type = reflect::TypeResolver<Material>::get();
 
@@ -148,7 +146,7 @@ bool Materials_inspect(void* data, StringView prefix, World& world) {
 	return false;
 }
 
-bool Skybox_inspect(void* data, StringView prefix, World& world) {
+bool Skybox_inspect(void* data, string_view prefix, World& world) {
 	if (ImGui::CollapsingHeader("Skylight")) {
 		if (ImGui::Button("Capture")) {
 			((Skybox*)data)->capture_scene = true;
@@ -160,18 +158,28 @@ bool Skybox_inspect(void* data, StringView prefix, World& world) {
 	return false;
 }
 
-bool Grass_inspect(void* data, StringView prefix, World& world) {
+bool Grass_inspect(void* data, string_view prefix, World& world, ModelManager& model_manager) {
+	static glm::vec2 density_range(0, 0.1);
+	
 	if (ImGui::CollapsingHeader("Grass")) {
+		Grass* grass = (Grass*)data;
+		
 		auto type = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<Grass>::get();
 		for (auto& member : type->members) {
 			if (member.tag == reflect::HideInInspectorTag) continue;
+			if (member.name == "density") {
+				ImGui::InputFloat2("density range", &density_range.x);
+				ImGui::SliderFloat("density", &grass->density, density_range.x, density_range.y);
+				continue;
+			}
+
 			render_fields(member.type, (char*)data + member.offset, member.name, world);
 		}
 
 		ImGui::NewLine();
 
 		if (ImGui::Button("Place")) {
-			place_Grass((Grass*)data, world);
+			place_Grass(grass, world);
 		}
 
 		return true;
@@ -179,7 +187,7 @@ bool Grass_inspect(void* data, StringView prefix, World& world) {
 
 	ID id = world.id_of<Grass>((Grass*)data);
 
-	Model* model = RHI::model_manager.get(((Grass*)data)->placement_model);
+	Model* model = model_manager.get(((Grass*)data)->placement_model);
 	Materials* materials = world.by_id<Materials>(id);
 	if (materials) {
 		int diff = model->materials.length - materials->materials.length;
@@ -203,8 +211,8 @@ void register_on_inspect_callbacks() {
 	register_on_inspect_gui("Skybox", Skybox_inspect);
 	register_on_inspect_gui("Material", Material_inspect);
 	register_on_inspect_gui("Materials", Materials_inspect);
-	register_on_inspect_gui("Handle<Shader>", Shader_inspect);
-	register_on_inspect_gui("Handle<Model>", Model_inspect);
+	register_on_inspect_gui("shader_handle", Shader_inspect);
+	register_on_inspect_gui("model_handle", Model_inspect);
 	register_on_inspect_gui("Layermask", Layermask_inspect);
 	register_on_inspect_gui("EntityEditor", EntityEditor_inspect);
 	register_on_inspect_gui("Grass", Grass_inspect);

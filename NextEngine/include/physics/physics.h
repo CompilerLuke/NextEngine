@@ -4,7 +4,7 @@
 #include "ecs/system.h"
 #include <glm/vec3.hpp>
 #include "physics/btWrapper.h"
-#include "reflection/reflection.h"
+#include "core/reflection.h"
 
 struct CapsuleCollider {
 	float radius;
@@ -58,5 +58,5 @@ struct PhysicsSystem : System {
 	PhysicsSystem(struct World&);
 	~PhysicsSystem();
 
-	void update(struct World&, UpdateParams&) override;
+	void update(struct World&, UpdateCtx&) override;
 };

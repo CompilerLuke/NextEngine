@@ -1,15 +1,15 @@
 #include "stdafx.h"
 #include "components/flyover.h"
-#include "core/input.h"
+#include "core/io/input.h"
 #include "components/transform.h"
-#include "logger/logger.h"
+#include "core/io/logger.h"
 
 REFLECT_STRUCT_BEGIN(Flyover)
 REFLECT_STRUCT_MEMBER(mouse_sensitivity)
 REFLECT_STRUCT_MEMBER(movement_speed)
 REFLECT_STRUCT_END()
 
-float get_speed(Flyover& self, UpdateParams& params, float height) {
+float get_speed(Flyover& self, UpdateCtx& params, float height) {
 	auto height_multiplier = 1.0f + height / 10.0f; 
 	
 	if (params.input.key_down(GLFW_KEY_LEFT_SHIFT))
@@ -18,7 +18,7 @@ float get_speed(Flyover& self, UpdateParams& params, float height) {
 	return (float)(self.movement_speed * height_multiplier * params.delta_time);
 }
 
-void FlyOverSystem::update(World& world, UpdateParams& params) {
+void FlyOverSystem::update(World& world, UpdateCtx& params) {
 	auto debugging = world.get<Flyover>();
 
 	for (ID id : world.filter <Flyover, Transform>(params.layermask)) {

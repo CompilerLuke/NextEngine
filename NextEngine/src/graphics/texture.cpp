@@ -1,11 +1,9 @@
 #include "stdafx.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
-#include "graphics/texture.h"
-#include "ecs/ecs.h"
-#include "graphics/rhi.h"
+#include "graphics/assets/texture.h"
 #include "glad/glad.h"
-#include "core/vfs.h"
+#include "core/io/vfs.h"
 
 REFLECT_STRUCT_BEGIN(Texture)
 REFLECT_STRUCT_MEMBER(filename)
@@ -15,8 +13,8 @@ REFLECT_STRUCT_BEGIN(Cubemap)
 REFLECT_STRUCT_MEMBER(filename)
 REFLECT_STRUCT_END()
 
-Image load_Image(StringView filename) {
-	StringBuffer real_filename = Level::asset_path(filename);
+Image load_Image(string_view filename) {
+	string_buffer real_filename = gb::level.asset_path(filename);
 
 	if (filename.starts_with("Aset") || filename.starts_with("tgh") || filename.starts_with("ta") || filename.starts_with("smen")) stbi_set_flip_vertically_on_load(false);
 	else stbi_set_flip_vertically_on_load(true);
@@ -68,45 +66,107 @@ void Texture::on_load() {
 	submit(image);
 }
 
-Handle<Texture> make_Texture(Texture&& tex) {
+texture_handle TextureManager::assign_handle(Texture&& tex) {
 	bool serialized = tex.filename.length > 0;
-	return RHI::texture_manager.make(std::move(tex), serialized);
+	return HandleManager::assign_handle(std::move(tex), serialized);
 }
 
-Handle<Cubemap> make_Cubemap(Cubemap&& tex) {
-	return RHI::cubemap_manager.make(std::move(tex));
+void gl_bind_to(TextureManager& manager, texture_handle handle, unsigned int num) {
+	glActiveTexture(GL_TEXTURE0 + num);
+	glBindTexture(GL_TEXTURE_2D, gl_id_of(manager, handle));
 }
 
-namespace texture {
-	void bind_to(Handle<Texture> handle, unsigned int num) {
-		glActiveTexture(GL_TEXTURE0 + num);
-		glBindTexture(GL_TEXTURE_2D, id_of(handle));
-	}
-
-	unsigned int id_of(Handle<Texture> handle) {
-		if (handle.id == INVALID_HANDLE) return 0;
-		return RHI::texture_manager.get(handle)->texture_id;
-	}
+int gl_id_of(TextureManager& manager, texture_handle handle) {
+	if (handle.id == INVALID_HANDLE) return 0;
+	return manager.get(handle)->texture_id;
 }
 
-namespace cubemap {
-	void bind_to(Handle<Cubemap> handle, unsigned int num) {
-		Cubemap* tex = RHI::cubemap_manager.get(handle);
-		glActiveTexture(GL_TEXTURE0 + num);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, tex->texture_id);
-	}
-}
-
-Handle<Texture> load_Texture(StringView filename) {
-	for (int i = 0; i < RHI::texture_manager.slots.length; i++) { //todo move out into Texture manager
-		auto& slot = RHI::texture_manager.slots[i];
+texture_handle TextureManager::load(string_view filename) {
+	for (int i = 0; i < slots.length; i++) { //todo move out into Texture manager
+		auto& slot = slots[i];
 		if (slot.filename == filename) {
-			return RHI::texture_manager.index_to_handle(i);
+			return index_to_handle(i);
 		}
 	}
 
 	Texture texture;
 	texture.filename = filename;
 	texture.on_load();
-	return make_Texture(std::move(texture));
+	return assign_handle(std::move(texture));
 }
+
+void gl_copy_sub(int width, int height) {
+	glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+//todo this should really be an array lookup
+int to_opengl(InternalColorFormat format) {
+	if (format == InternalColorFormat::Rgb16f) return GL_RGB16F;
+	if (format == InternalColorFormat::R32I) return GL_R32I;
+	if (format == InternalColorFormat::Red) return GL_RED;
+	return 0;
+}
+
+int to_opengl(ColorFormat format) {
+	if (format == ColorFormat::Rgb) return GL_RGB;
+	if (format == ColorFormat::Red_Int) return GL_RED_INTEGER;
+	if (format == ColorFormat::Red) return GL_RED;
+	return 0;
+}
+
+int to_opengl(TexelType format) {
+	if (format == TexelType::Float) return GL_FLOAT;
+	if (format == TexelType::Int) return GL_INT;
+	return 0;
+}
+
+int to_opengl(Filter filter) {
+	if (filter == Filter::Nearest) return GL_NEAREST;
+	if (filter == Filter::Linear) return GL_LINEAR;
+	if (filter == Filter::LinearMipmapLinear) return GL_LINEAR_MIPMAP_LINEAR;
+	return 0;
+}
+
+int to_opengl(Wrap wrap) {
+	if (wrap == Wrap::ClampToBorder) return GL_CLAMP_TO_BORDER;
+	if (wrap == Wrap::Repeat) return GL_REPEAT;
+	return 0;
+}
+
+int gen_gl_texture() {
+	unsigned int tex;
+	glGenTextures(1, &tex);
+	glBindTexture(GL_TEXTURE_2D, tex);
+
+	return tex;
+}
+
+texture_handle set_texture_settings(TextureManager& texture_manager, const TextureDesc& self, unsigned int tex) {
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, to_opengl(self.min_filter));
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, to_opengl(self.mag_filter));
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, to_opengl(self.wrap_s));
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, to_opengl(self.wrap_t));
+
+	Texture texture;
+	texture.texture_id = tex;
+
+	return texture_manager.assign_handle(std::move(texture));
+}
+
+texture_handle TextureManager::create_from(const Image& image, const TextureDesc& self) {
+	int tex = gl_gen_texture();
+	texture_handle handle = set_texture_settings(*this, self, tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, to_opengl(self.internal_format), image.width, image.height, 0, to_opengl(self.external_format), to_opengl(self.texel_type), image.data);
+		
+	return handle;
+}
+
+void gl_bind_to(CubemapManager& cubemap_manager, cubemap_handle handle, unsigned int num) {
+	Cubemap* tex = cubemap_manager.get(handle);
+	glActiveTexture(GL_TEXTURE0 + num);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, tex->texture_id);
+}
+

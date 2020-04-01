@@ -1,6 +1,6 @@
 #pragma once
 
-#include <reflection/reflection.h>
+#include <core/reflection.h>
 
 #define COMPONENT()
 

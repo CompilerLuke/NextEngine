@@ -1,35 +1,35 @@
 ﻿#include "stdafx.h"
 #include "editor.h"
-#include "graphics/window.h"
-#include "core/input.h"
-#include "graphics/renderer.h"
-#include "logger/logger.h"
-#include "reflection/reflection.h"
+#include "graphics/rhi/window.h"
+#include "core/io/input.h"
+#include "graphics/renderer/renderer.h"
+#include "core/io/logger.h"
+#include "core/reflection.h"
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_opengl3.h>
 #include <imgui/imgui_impl_glfw.h>
 #include "ecs/ecs.h"
-#include "graphics/shader.h"
-#include "model/model.h"
-#include "graphics/texture.h"
-#include "core/game_time.h"
-#include "graphics/renderPass.h"
-#include "graphics/ibl.h"
+#include "graphics/assets/shader.h"
+#include "graphics/assets/model.h"
+#include "graphics/assets/texture.h"
+#include "core/time.h"
+#include "graphics/pass/render_pass.h"
+#include "graphics/renderer/ibl.h"
 #include "components/lights.h"
 #include "components/transform.h"
 #include "components/camera.h"
 #include "components/flyover.h"
-#include "graphics/rhi.h"
 #include "custom_inspect.h"
 #include "picking.h"
-#include "core/vfs.h"
-#include "graphics/materialSystem.h"
-#include "serialization/serializer.h"
+#include "core/io/vfs.h"
+#include "graphics/renderer/material_system.h"
+#include "core/serializer.h"
 #include "terrain.h"
 #include <ImGuizmo/ImGuizmo.h>
 #include "core/profiler.h"
-#include "graphics/renderer.h"
+#include "graphics/renderer/renderer.h"
 #include "engine/engine.h"
+#include "graphics/assets/asset_manager.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
@@ -109,16 +109,15 @@ void set_darcula_theme() {
 static bool is_scene_hovered = false;
 
 void override_key_callback(GLFWwindow* window_ptr, int key, int scancode, int action, int mods) {
-	auto window = (Window*)glfwGetWindowUserPointer(window_ptr);
-	
 	ImGui_ImplGlfw_KeyCallback(window_ptr, key, scancode, action, mods);
+	Window* window = (Window*)glfwGetWindowUserPointer(window_ptr);
+	
 	window->on_key.broadcast({ key, scancode, action, mods });
 }
 
 void override_mouse_button_callback(GLFWwindow* window_ptr, int button, int action, int mods) {
-	auto window = (Window*)glfwGetWindowUserPointer(window_ptr);
-	
 	ImGui_ImplGlfw_MouseButtonCallback(window_ptr, button, action, mods);
+	Window* window = (Window*)glfwGetWindowUserPointer(window_ptr);
 
 	window->on_mouse_button.broadcast({ button, action, mods });
 }
@@ -158,11 +157,11 @@ void hotreload(Editor& editor) {
 #include "physics/physics.h"
 
 World& get_World(Editor& editor) {
-	return editor.engine.world;
+	return gb::world;
 }
 
-StringBuffer save_component_to(ComponentStore* store) {
-	return StringBuffer("data/") + store->get_component_type()->name + ".ne";
+string_buffer save_component_to(ComponentStore* store) {
+	return string_buffer("data/") + store->get_component_type()->name + ".ne";
 }
 
 void on_load_world(Editor& editor) {
@@ -209,15 +208,15 @@ void on_load_world(Editor& editor) {
 	//if (save_files_available == 0) default_scene(editor, params);
 }
 
-void on_load(Editor& editor, RenderParams& params) {
+void on_load(Editor& editor, RenderCtx& ctx) {
 	World& world = get_World(editor);
 
 	on_load_world(editor);
 
 	world.get<Skybox>()->fire_callbacks();
-	params.skybox = world.filter<Skybox>()[0];
+	ctx.skybox = world.filter<Skybox>()[0];
 
-	editor.asset_tab.on_load(world, params);
+	editor.asset_tab.on_load(world, ctx);
 }
 
 void on_save_world(Editor& editor) {
@@ -258,23 +257,22 @@ void on_save(Editor& editor) {
 
 
 Editor::Editor(Engine& engine, const char* game_code) : 
-	main_pass(engine.world, glm::vec2(engine.window.width, engine.window.height)), 
-	picking_pass(engine.window, &main_pass), 
-	engine(engine),
-	game(game_code, &engine)
+	engine(engine), picking_pass(engine.window, engine.renderer.main_pass), 
+	game(engine, game_code),
+	asset_tab(engine.asset_manager)
 {
-
+	Window& window = engine.window;
 	World& world = engine.world;
+	
 	world.add(new Store<EntityEditor>(100));
+
 	//world.add(new DebugShaderReloadSystem());
 	//world.add(new TerrainSystem(world, this));
 	//world.add(new PickingSystem(*this));
 
 	register_on_inspect_callbacks();
 
-	this->selected.listen([this](ID id) { 
-		World& world = this->engine.world;
-
+	this->selected.listen([this, &world](ID id) { 
 		auto rb = world.by_id<RigidBody>(id);
 		if (rb) {
 			rb->bt_rigid_body = NULL; //todo fix leak
@@ -283,43 +281,41 @@ Editor::Editor(Engine& engine, const char* game_code) :
 
 	gizmo.register_callbacks(*this);
 
-	Window& window = engine.window;
+	AttachmentDesc color_attachment(scene_view);
+	color_attachment.min_filter = Filter::Linear;
+	color_attachment.mag_filter = Filter::Linear;
 
-	AttachmentSettings color_attachment(scene_view);
-	color_attachment.min_filter = Linear;
-	color_attachment.mag_filter = Linear;
-
-	FramebufferSettings settings;
+	FramebufferDesc settings;
 	settings.width = window.width;
 	settings.height = window.height;
 	settings.color_attachments.append(color_attachment);
 
-	scene_view_fbo = Framebuffer(settings);
+	scene_view_fbo = Framebuffer(engine.asset_manager.textures, settings);
 
 	this->asset_tab.register_callbacks(window, *this);
 
 	init_imgui();
 
-	Input input(window);
 	Time time;
 
+	TextureManager& texture_manager = engine.asset_manager.textures;
+
 	icons = {
-		{ "play", load_Texture("editor/play_button3.png") },
-		{ "folder", load_Texture("editor/folder_icon.png") },
-		{ "shader", load_Texture("editor/shader-works-icon.png") }
+		{ "play",   texture_manager.load("editor/play_button3.png") },
+		{ "folder", texture_manager.load("editor/folder_icon.png") },
+		{ "shader", texture_manager.load("editor/shader-works-icon.png") }
 	};
 
-	
+	MainPass* main_pass = engine.renderer.main_pass;
+	main_pass->post_process.append(&picking_pass);
 
-	main_pass.post_process.append(&picking_pass);
+	CommandBuffer cmd_buffer(engine.asset_manager);
+	RenderCtx render_ctx(cmd_buffer, main_pass);
+	render_ctx.layermask = GAME_LAYER | EDITOR_LAYER;
+	render_ctx.width = window.width;
+	render_ctx.height = window.height;
 
-	CommandBuffer cmd_buffer;
-	RenderParams render_params(engine.renderer, &cmd_buffer, &main_pass);
-	render_params.layermask = game_layer | editor_layer;
-	render_params.width = window.width;
-	render_params.height = window.height;
-
-	on_load(*this, render_params); //todo remove any rendering from load
+	on_load(*this, render_ctx); //todo remove any rendering from load
 
 	/*
 	{
@@ -334,18 +330,20 @@ Editor::Editor(Engine& engine, const char* game_code) :
 	}
 	*/
 
-	input.capture_mouse(false);
+	engine.input.capture_mouse(false);
 
-	load_Shader("shaders/pbr.vert", "shaders/paralax_pbr.frag");
+	engine.asset_manager.shaders.load("shaders/pbr.vert", "shaders/paralax_pbr.frag");
 
-	render_params.dir_light = get_dir_light(world, render_params.layermask);
+	render_ctx.dir_light = get_dir_light(world, render_ctx.layermask);
 
 	/*
 	*/
 
-	PreRenderParams pre_render_params(engine.renderer, game_layer);
+	PreRenderParams pre_render_ctx(GAME_LAYER);
 
-	render_params.dir_light = get_dir_light(world, render_params.layermask);
+	render_ctx.dir_light = get_dir_light(world, render_ctx.layermask);
+
+	game.init();
 }
 
 void Editor::init_imgui() {
@@ -361,7 +359,7 @@ void Editor::init_imgui() {
 
 	ImFontConfig icons_config; icons_config.MergeMode = false; icons_config.PixelSnapH = true; icons_config.FontDataOwnedByAtlas = true; icons_config.FontDataSize = 32.0f;
 
-	auto font_path = Level::asset_path("fonts/segoeui.ttf");
+	auto font_path = engine.level.asset_path("fonts/segoeui.ttf");
 	ImFont* font = io.Fonts->AddFontFromFileTTF(font_path.c_str(), 32.0f, &icons_config, io.Fonts->GetGlyphRangesDefault());
 
 	io.FontAllowUserScaling = true;
@@ -382,32 +380,34 @@ void Editor::init_imgui() {
 	ImGui_ImplGlfw_InitForOpenGL(window_ptr, false);
 	ImGui_ImplOpenGL3_Init();
 
-	glfwSetKeyCallback(window_ptr, override_key_callback);
-	glfwSetCharCallback(window_ptr, ImGui_ImplGlfw_CharCallback);
-	glfwSetMouseButtonCallback(window_ptr, override_mouse_button_callback);
+	engine.window.override_key_callback(override_key_callback);
+	engine.window.override_char_callback(ImGui_ImplGlfw_CharCallback);
+	engine.window.override_mouse_button_callback(override_mouse_button_callback);
 }
 
-uint64_t Editor::get_icon(StringView name) {
+uint64_t Editor::get_icon(string_view name) {
+	TextureManager& textures = engine.asset_manager.textures;
+	
 	for (auto& icon : icons) {
 		if (icon.name == name) {
-			return texture::id_of(icon.texture_id);
+			return gl_id_of(textures, icon.texture_id);
 		}
 	}
 	
 	throw "Could not find icon";
 }
 
-void ImGui::InputText(const char* str, StringBuffer& buffer) {
+void ImGui::InputText(const char* str, string_buffer& buffer) {
 	char buf[50];
 	std::memcpy(buf, buffer.c_str(), buffer.size() + 1);
 	ImGui::InputText(str, buf, 50);
-	buffer = StringView(buf);
+	buffer = string_view(buf);
 }
 
-void default_scene(Editor& editor, RenderParams& params) {
+void default_scene(Editor& editor, RenderCtx& ctx) {
 	World& world = get_World(editor);
 
-	editor.asset_tab.default_material = create_new_material(world, editor.asset_tab, editor, params)->handle;
+	editor.asset_tab.default_material = create_new_material(world, editor.asset_tab, editor, ctx)->handle;
 
 	auto model_renderer_id = world.make_ID();
 
@@ -463,7 +463,7 @@ void default_scene(Editor& editor, RenderParams& params) {
 		asset->name = "Skybox Material";
 		asset->handle = world.by_id<Materials>(world.id_of(skybox))->materials[0];
 
-		register_new_material(world, asset_tab, *this, render_params, id);
+		register_new_material(world, asset_tab, *this, render_ctx, id);
 	}
 	*/
 }
@@ -473,8 +473,8 @@ struct EditorRendererExtension : RenderExtension {
 
 	EditorRendererExtension(Editor& editor) : editor(editor) {}
 
-	void render_view(World& world, RenderParams& params) override {
-		editor.picking_pass.render(world, params);
+	void render_view(World& world, RenderCtx& ctx) override {
+		//editor.picking_pass.render(world, ctx);
 		//render_settings.render_features.append(new DebugShaderReloadSystem());
 		//render_settings.render_features.append(new PickingSystem(world));
 
@@ -484,13 +484,10 @@ struct EditorRendererExtension : RenderExtension {
 		//world.add(new PickingSystem(*this));
 	}
 
-	void render(World& world, RenderParams& params) override {
-		MainPass& main_pass = editor.main_pass;
-		
-		//params.width = width;
-		//params.height = height;
+	void render(World& world, RenderCtx& ctx) override {
+		MainPass& main_pass = *editor.engine.renderer.main_pass;
 
-		main_pass.render_to_buffer(world, params, [this]() {
+		main_pass.render_to_buffer(world, ctx, [this]() {
 			editor.scene_view_fbo.bind();
 			editor.scene_view_fbo.clear_color(glm::vec4(0, 0, 0, 1));
 			editor.scene_view_fbo.clear_depth(glm::vec4(0, 0, 0, 1));
@@ -549,7 +546,7 @@ void on_set_play_mode(Editor& editor, bool playing) {
 		on_save_world(editor);
 	}
 	else {
-		editor.engine.world.clear(); //todo leaks memory
+		get_World(editor).clear(); //todo leaks memory
 		on_load_world(editor);
 	}
 }
@@ -558,12 +555,14 @@ glm::vec3 Editor::place_at_cursor() {
 	World& world = get_World(*this);
 	Input& input = engine.input;
 
-	ID cam = get_camera(world, editor_layer);
+	ID cam = get_camera(world, EDITOR_LAYER);
 
-	RenderParams params(engine, editor_layer);
-	update_camera_matrices(world, cam, params);
+	RenderCtx ctx(EDITOR_LAYER); //todo is there a need for ctx
+	ctx.width = viewport_width;
+	ctx.height = viewport_height;
+	update_camera_matrices(world, cam, ctx);
 
-	glm::mat4 to_world = glm::inverse(params.projection * params.view);
+	glm::mat4 to_world = glm::inverse(ctx.projection * ctx.view);
 
 	float height = input.region_max.y - input.region_min.y;
 	float width = input.region_max.x - input.region_min.x;
@@ -579,7 +578,7 @@ glm::vec3 Editor::place_at_cursor() {
 	return pos;
 }
 
-void spawn_Model(World& world, Editor& editor, Handle<Model> model_handle) { //todo maybe move to assetTab
+void spawn_Model(World& world, Editor& editor, model_handle model_handle) { //todo maybe move to assetTab
 	ModelAsset* model_asset = AssetTab::model_handle_to_asset[model_handle.id];
 
 	if (model_asset) {
@@ -598,7 +597,7 @@ void spawn_Model(World& world, Editor& editor, Handle<Model> model_handle) { //t
 		ModelRenderer* mr = world.make<ModelRenderer>(id);
 		mr->model_id = model_asset->handle;
 
-		ID cam = get_camera(world, editor_layer);
+		ID cam = get_camera(world, EDITOR_LAYER);
 
 		Transform* cam_trans = world.by_id<Transform>(cam);
 		trans->position = editor.place_at_cursor();
@@ -636,7 +635,9 @@ void Editor::end_imgui() {
 	render_imgui.end();
 }
 
-void render_Editor(Editor& editor, RenderParams& params, Input& input) {
+void render_Editor(Editor& editor, RenderCtx& ctx) {
+	Input& input = editor.engine.input;
+	
 	editor.begin_imgui(input);
 	
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -710,20 +711,23 @@ void render_Editor(Editor& editor, RenderParams& params, Input& input) {
 
 		input.region_min.x = ImGui::GetWindowPos().x + ImGui::GetCursorPos().x;
 		input.region_min.y = ImGui::GetWindowPos().y + ImGui::GetCursorPos().y;
-		input.region_max = input.region_min + glm::vec2(width, height);
+		input.region_max =  input.region_min + glm::vec2(width, height);
 
 		ImGui::Image((ImTextureID)texture::id_of(editor.scene_view), ImVec2(width, height), ImVec2(0, 1), ImVec2(1, 0));
 
 		if (ImGui::BeginDragDropTarget()) {
 			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DRAG_AND_DROP_MODEL")) {
-				spawn_Model(world, editor, *(Handle<Model>*)payload->Data);
+				spawn_Model(world, editor, *(model_handle*)payload->Data);
 			}
 			ImGui::EndDragDropTarget();
 		}
 
+		editor.viewport_width = width;
+		editor.viewport_height = height;
+
 		is_scene_hovered = ImGui::IsItemHovered();
 
-		editor.gizmo.render(world, editor, params, input);
+		editor.gizmo.render(world, editor, ctx, input);
 	}
 
 	ImGui::End();
@@ -732,12 +736,12 @@ void render_Editor(Editor& editor, RenderParams& params, Input& input) {
 
 	Profile render_editor("Render Editor");
 
-	editor.display_components.render(world, params, editor);
-	editor.lister.render(world, editor, params);
+	editor.display_components.render(world, ctx, editor);
+	editor.lister.render(world, editor, ctx);
 
-	editor.asset_tab.render(world, editor, params);
-	editor.shader_editor.render(world, editor, params, input);
-	editor.profiler.render(world, editor, params);
+	editor.asset_tab.render(world, editor, ctx);
+	editor.shader_editor.render(world, editor, ctx, editor.engine.input);
+	editor.profiler.render(world, editor, ctx);
 
 	ImGui::PopFont();
 	ImGui::EndFrame();
@@ -764,7 +768,7 @@ void delete_object(Editor& editor) {
 }
 
 void mouse_click_select(Editor& editor) {
-	editor.select(editor.picking_pass.pick(editor.engine.world, editor.engine.input));
+	editor.select(editor.picking_pass.pick(get_World(editor), editor.engine.input));
 }
 
 void respond_to_shortcut(Editor& editor) {
@@ -782,54 +786,48 @@ void respond_to_shortcut(Editor& editor) {
 	if (input.key_pressed(89, true) && input.key_down(GLFW_KEY_LEFT_CONTROL, true)) on_undo(editor);
 	if (input.key_pressed('R', true) && input.key_down(GLFW_KEY_LEFT_CONTROL, true)) on_redo(editor);
 	if (input.key_pressed('S', true) && input.key_down(GLFW_KEY_LEFT_CONTROL, true)) on_save(editor);
-}
 
-void update_Editor(Editor& editor) {
-	World& world = get_World(editor);
-
-	if (editor.playing_game) return;
-
-	UpdateParams params(editor.engine.input);
-
-	editor.display_components.update(world, params);
-	editor.gizmo.update(world, editor, params);
-	editor.asset_tab.update(world, editor, params);
+	UpdateCtx ctx(editor.engine.time, editor.engine.input);
+	editor.gizmo.update(world, editor, ctx);
 }
 
 //Application
-APPLICATION_API Editor* init(Engine& engine, const char* args) {
+APPLICATION_API Editor* init(const char* args, Engine& engine) {
 	return new Editor(engine, args);
 }
 
-APPLICATION_API bool is_running(Editor* editor) {
-	return editor->engine.window.should_close() && !editor->exit;
+APPLICATION_API bool is_running(Editor* editor, Engine& engine) {
+	return !engine.window.should_close() && !editor->exit;
 }
 
-APPLICATION_API void update(Editor& editor) {
-	Engine& engine = editor.engine;
+APPLICATION_API void update(Editor& editor, Engine& engine) {
+	respond_to_shortcut(editor);
 
-	temporary_allocator.clear();
+	UpdateCtx update_ctx(engine.time, editor.engine.input);
+	update_ctx.layermask = editor.playing_game ? GAME_LAYER : EDITOR_LAYER;
 
-	UpdateParams update_params(engine.input);
-	update_params.layermask = editor.playing_game ? game_layer : editor_layer;
-		
-	engine.input.clear();
-	engine.time.update_time(update_params);
-	engine.window.poll_inputs();
-
-	editor.game.update();
+	if (editor.playing_game) editor.game.update();
+	else {
+		editor.fly_over_system.update(engine.world, update_ctx);
+		//FlyOverSystem::update(engine.world, update_ctx);
+	}
 }
+
+#include "graphics/renderer/model_rendering.h"
+#include "graphics/renderer/transforms.h"
 
 APPLICATION_API void render(Editor& editor) {
-	Engine& engine = editor.engine;
 	World& world = get_World(editor);
 
 	EditorRendererExtension ext(editor);
 
-	RenderParams render_params(engine, editor.playing_game ? game_layer : game_layer | editor_layer);
-	render_params.extension = &ext;
+	RenderCtx ctx(editor.playing_game ? GAME_LAYER : GAME_LAYER | EDITOR_LAYER);
+	ctx.width = editor.viewport_width;
+	ctx.height = editor.viewport_height;
+	ctx.extension = &ext;
 
-	Renderer::render(world, render_params);
+	Renderer::render(world, ctx);
+	render_Editor(editor, ctx);
 }
 
 APPLICATION_API void deinit(Editor* editor) {

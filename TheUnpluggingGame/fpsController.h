@@ -14,5 +14,5 @@ struct FPSController {
 };
 
 struct FPSControllerSystem : System {
-	void update(struct World&, struct UpdateParams&);
+	void update(struct World&, struct UpdateCtx&);
 };

@@ -3,7 +3,7 @@
 #include <glm/vec3.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include "ecs/ecs.h"
-#include "reflection/reflection.h"
+#include "core/reflection.h"
 
 struct Transform {
 	glm::vec3 position;
@@ -33,5 +33,5 @@ struct LocalTransform {
 };
 
 struct LocalTransformSystem : System {
-	void update(World&, UpdateParams&) override;
+	void update(World&, UpdateCtx&) override;
 };

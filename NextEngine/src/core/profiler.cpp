@@ -1,22 +1,27 @@
 #include "stdafx.h"
 #include "core/profiler.h"
-#include "logger/logger.h"
+#include "core/io/logger.h"
 
 //TODO rewrite using custom time API
 
 //Profiler
 vector<Frame> Profiler::frames;
 int Profiler::profile_depth;
+bool Profiler::paused = false;
 
 Frame& get_current_frame() {
 	return Profiler::frames.last();
 }
 
 void Profiler::begin_profile() {
+	if (paused) return;
 	profile_depth++;
 }
 
 void Profiler::record_profile(const Profile& profile) {
+	if (paused) return;
+
+	if (profile_depth == 0) throw "Bad record!";
 	profile_depth--;
 
 	Frame& frame = get_current_frame();
@@ -33,6 +38,7 @@ void Profiler::record_profile(const Profile& profile) {
 }
 
 void Profiler::begin_frame() {
+	if (paused) return;
 	auto current_time = std::chrono::high_resolution_clock::now();
 
 	if (frames.length > 0) {
@@ -50,9 +56,12 @@ void Profiler::begin_frame() {
 
 
 	frames.append(std::move(frame));
+
+	profile_depth = 0;
 }
 
 void Profiler::end_frame() {
+	if (paused) return;
 	Frame& current_frame = get_current_frame();
 
 	std::chrono::duration<double, std::milli> duration = std::chrono::high_resolution_clock::now() - current_frame.start_of_frame;
@@ -64,6 +73,7 @@ void Profiler::end_frame() {
 Profile::Profile(const char* name) {
 	this->name = name;
 	this->start_time = std::chrono::high_resolution_clock::now();
+	this->ended = false;
 
 	Profiler::begin_profile();
 };

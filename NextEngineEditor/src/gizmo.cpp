@@ -2,7 +2,7 @@
 #include "gizmo.h"
 #include "ecs/ecs.h"
 #include "editor.h"
-#include "core/input.h"
+#include "core/io/input.h"
 #include "GLFW/glfw3.h"
 #include <ImGuizmo/ImGuizmo.h>
 #include <glm/gtc/matrix_transform.hpp>
@@ -19,7 +19,7 @@ void Gizmo::register_callbacks(Editor& editor) {
 	});
 }
 
-void Gizmo::update(World& world, Editor& editor, UpdateParams& params) {
+void Gizmo::update(World& world, Editor& editor, UpdateCtx& params) {
 	if (editor.selected_id == -1) {
 		this->mode = GizmoMode::DisabledGizmo;
 		return;
@@ -49,7 +49,7 @@ Gizmo::~Gizmo() {
 	delete this->diff_util;
 }
 
-void Gizmo::render(World& world, Editor& editor, RenderParams& params, Input& input) {
+void Gizmo::render(World& world, Editor& editor, RenderCtx& params, Input& input) {
 	if (editor.selected_id == -1) return;
 
 	Transform* trans = world.by_id<Transform>(editor.selected_id);

@@ -3,14 +3,16 @@
 #include <imgui/imgui.h>
 #include "ecs/ecs.h"
 #include "editor.h"
-#include "graphics/rhi.h"
 #include <imgui/imgui_internal.h>
 #include "components/camera.h"
-#include "logger/logger.h"
-#include "core/vfs.h"
-#include "core/input.h"
-#include "model/model.h"
-#include "graphics/texture.h"
+#include "core/io/logger.h"
+#include "core/io/vfs.h"
+#include "core/io/input.h"
+#include "graphics/assets/asset_manager.h"
+
+REFLECT_STRUCT_BEGIN(shader_node_handle)
+REFLECT_STRUCT_MEMBER(id)
+REFLECT_STRUCT_END()
 
 float GRID_SZ = 64.0f;
 
@@ -31,25 +33,25 @@ ShaderNode::ShaderNode() {}
 
 ShaderEditor::ShaderEditor() {}
 
-ShaderNode::InputChannel::InputChannel(StringView name, ChannelType type) {
+ShaderNode::InputChannel::InputChannel(string_view name, ChannelType type) {
 	memset(this, 0, sizeof(InputChannel));
 
 	this->type = type;
 }
 
-ShaderNode::InputChannel::InputChannel(StringView name, glm::vec4 value) : InputChannel(name, Channel4) {
+ShaderNode::InputChannel::InputChannel(string_view name, glm::vec4 value) : InputChannel(name, Channel4) {
 	this->value4 = value;
 }
 
-ShaderNode::InputChannel::InputChannel(StringView name, glm::vec3 value) : InputChannel(name, Channel3) {
+ShaderNode::InputChannel::InputChannel(string_view name, glm::vec3 value) : InputChannel(name, Channel3) {
 	this->value3 = value;
 }
 
-ShaderNode::InputChannel::InputChannel(StringView name, glm::vec2 value) : InputChannel(name, Channel2) {
+ShaderNode::InputChannel::InputChannel(string_view name, glm::vec2 value) : InputChannel(name, Channel2) {
 	this->value2 = value;
 }
 
-ShaderNode::InputChannel::InputChannel(StringView name, float value) : InputChannel(name, Channel1) {
+ShaderNode::InputChannel::InputChannel(string_view name, float value) : InputChannel(name, Channel1) {
 	this->value1 = value;
 }
 
@@ -97,17 +99,17 @@ bool mouse_hovering_node(ShaderGraph& graph, ShaderNode* self) {
 }
 
 template<typename T>
-ShaderNode::Link* make_link(T& channel, Handle<ShaderNode>) {}
+ShaderNode::Link* make_link(T& channel, shader_node_handle) {}
 
 template<>
-ShaderNode::Link* make_link(ShaderNode::InputChannel& channel, Handle<ShaderNode> node) {
+ShaderNode::Link* make_link(ShaderNode::InputChannel& channel, shader_node_handle node) {
 	channel.link.to = node;
 	channel.link.from.id = { INVALID_HANDLE };
 	return &channel.link;
 }
 
 template<>
-ShaderNode::Link* make_link(ShaderNode::OutputChannel& channel, Handle<ShaderNode> node) {
+ShaderNode::Link* make_link(ShaderNode::OutputChannel& channel, shader_node_handle node) {
 	channel.links.append(ShaderNode::Link());
 	ShaderNode::Link* link = &channel.links[channel.links.length - 1];
 	link->to.id = { INVALID_HANDLE };
@@ -116,10 +118,10 @@ ShaderNode::Link* make_link(ShaderNode::OutputChannel& channel, Handle<ShaderNod
 }
 
 template<typename T>
-void connect_link(ShaderGraph& graph, T& channel, Handle<ShaderNode>, unsigned int index) {}
+void connect_link(ShaderGraph& graph, T& channel, shader_node_handle, unsigned int index) {}
 
 template<>
-void connect_link(ShaderGraph& graph, ShaderNode::InputChannel& channel, Handle<ShaderNode> node, unsigned int index) {
+void connect_link(ShaderGraph& graph, ShaderNode::InputChannel& channel, shader_node_handle node, unsigned int index) {
 	ShaderNode::Link* link = graph.action.link;
 
 	if (!link->to.id || !link->from.id) return;
@@ -144,10 +146,10 @@ void connect_link(ShaderGraph& graph, ShaderNode::InputChannel& channel, Handle<
 }
 
 template<typename T>
-void connect_temporary_link(ShaderGraph& graph, T& channel, Handle<ShaderNode>, unsigned int index) {}
+void connect_temporary_link(ShaderGraph& graph, T& channel, shader_node_handle, unsigned int index) {}
 
 template<>
-void connect_temporary_link(ShaderGraph& graph, ShaderNode::OutputChannel& channel, Handle<ShaderNode> node, unsigned int index) {
+void connect_temporary_link(ShaderGraph& graph, ShaderNode::OutputChannel& channel, shader_node_handle node, unsigned int index) {
 	ShaderNode::Link* link = graph.action.link;
 	
 	if (link->from.id) return; //already is an output
@@ -158,7 +160,7 @@ void connect_temporary_link(ShaderGraph& graph, ShaderNode::OutputChannel& chann
 
 
 template<>
-void connect_temporary_link(ShaderGraph& graph, ShaderNode::InputChannel& channel, Handle<ShaderNode> node, unsigned int index) {
+void connect_temporary_link(ShaderGraph& graph, ShaderNode::InputChannel& channel, shader_node_handle node, unsigned int index) {
 	ShaderNode::Link* link = graph.action.link;
 	
 	if (link->to.id) return; //already is an input
@@ -178,7 +180,7 @@ template<>
 bool is_input(ShaderNode::OutputChannel& channel) { return false; }
 
 template<typename T>
-void draw_connector(ShaderGraph& graph, glm::vec2 start_position, Handle<ShaderNode> node, T& connector, unsigned int index = 0) {
+void draw_connector(ShaderGraph& graph, glm::vec2 start_position, shader_node_handle node, T& connector, unsigned int index = 0) {
 	auto window = ImGui::GetCurrentWindow();
 	auto draw_list = window->DrawList;
 
@@ -207,13 +209,13 @@ void draw_connector(ShaderGraph& graph, glm::vec2 start_position, Handle<ShaderN
 	//draw_list->AddRectFilled(ImVec2(begin_hitbox.x, begin_hitbox.y), ImVec2(begin_hitbox.x + hitbox_size.x, begin_hitbox.y + hitbox_size.y), ImColor(255, 255, 255));
 }
 
-glm::vec2 calc_pos_of_node(ShaderGraph& graph, Handle<ShaderNode> handle, bool is_selected);
+glm::vec2 calc_pos_of_node(ShaderGraph& graph, shader_node_handle handle, bool is_selected);
 
-glm::vec2 calc_pos_of_output(ShaderGraph& graph, Handle<ShaderNode> handle) {
+glm::vec2 calc_pos_of_output(ShaderGraph& graph, shader_node_handle handle) {
 	return graph.nodes_manager.get(handle)->output.position;
 }
 
-glm::vec2 calc_pos_of_input(ShaderGraph& graph, Handle<ShaderNode> handle, unsigned int index) {
+glm::vec2 calc_pos_of_input(ShaderGraph& graph, shader_node_handle handle, unsigned int index) {
 	return graph.nodes_manager.get(handle)->inputs[index].position;
 }
 
@@ -297,7 +299,7 @@ void render_link(ShaderGraph& graph, ShaderNode::Link* link, bool is_input) {
 	}
 }
 
-void render_input(ShaderGraph& graph, Handle<ShaderNode> handle, unsigned int i, const char** names, bool render_default) {
+void render_input(ShaderGraph& graph, shader_node_handle handle, unsigned int i, const char** names, bool render_default) {
 	const char* name = names[i];
 	
 	ShaderNode* node = graph.nodes_manager.get(handle);
@@ -341,7 +343,7 @@ void render_input(ShaderGraph& graph, Handle<ShaderNode> handle, unsigned int i,
 	ImGui::PopID();
 }
 
-void render_output(ShaderGraph& graph, Handle<ShaderNode> handle) {
+void render_output(ShaderGraph& graph, shader_node_handle handle) {
 	ShaderNode* node = graph.nodes_manager.get(handle);
 	ShaderNode::OutputChannel& output = node->output;
 	float width = override_width_of_node(node);
@@ -368,7 +370,7 @@ glm::vec2 screenspace_to_position(ShaderGraph& graph, glm::vec2 position) {
 }
 
 
-glm::vec2 calc_pos_of_node(ShaderGraph& graph, Handle<ShaderNode> handle, bool is_selected) {
+glm::vec2 calc_pos_of_node(ShaderGraph& graph, shader_node_handle handle, bool is_selected) {
 	auto self = graph.nodes_manager.get(handle);
 
 	glm::vec2 position = calc_screen_space(graph, self->position);
@@ -406,9 +408,9 @@ glm::vec2 calc_pos_of_node(ShaderGraph& graph, Handle<ShaderNode> handle, bool i
 	return position;
 }
 
-void render_node_inner(ShaderGraph& graph, ShaderNode* self, Handle<ShaderNode> handle);
+void render_node_inner(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle);
 
-void deselect(ShaderGraph& graph, Handle<ShaderNode> handle) {
+void deselect(ShaderGraph& graph, shader_node_handle handle) {
 	for (auto& selected_handle : graph.selected) {
 		if (selected_handle.id == handle.id) {
 			selected_handle = graph.selected.pop();
@@ -417,7 +419,7 @@ void deselect(ShaderGraph& graph, Handle<ShaderNode> handle) {
 	}
 }
 
-void render_node(ShaderGraph& graph, Handle<ShaderNode> handle) {
+void render_node(ShaderGraph& graph, shader_node_handle handle) {
 	auto self = graph.nodes_manager.get(handle);
 
 	glm::vec2 size = calc_size(graph, self);
@@ -548,7 +550,10 @@ void set_params_for_shader_graph(Material* mat_ptr) {
 	mat_ptr->set_vec2("transformUVs", glm::vec2(1.0f));
 }
 
-void render_preview(ShaderAsset* asset, World& world, Editor& editor, RenderParams& old_params) {
+//todo Refactor into Preview Class
+void render_preview(ShaderAsset* asset, World& world, AssetTab& tab, RenderCtx& old_ctx) {
+	AssetManager& assets = tab.asset_manager;
+	
 	ShaderGraph& graph = *asset->graph;
 	
 	ID id = world.make_ID();
@@ -557,32 +562,32 @@ void render_preview(ShaderAsset* asset, World& world, Editor& editor, RenderPara
 	trans->position.z = 2.5;
 	Camera* cam = world.make<Camera>(id);
 
-	Model* model = RHI::model_manager.get(load_Model("sphere.fbx"));
+	model_handle sphere = assets.models.load("sphere.fbx");
 
 	Transform trans_of_sphere;
 	trans_of_sphere.rotation = graph.rot_preview.rot;
 
 	glm::mat4 model_m = trans_of_sphere.compute_model_matrix();
 	
-	Handle<Material> mat_handle;
-	if (asset->handle.id == INVALID_HANDLE) mat_handle = editor.asset_tab.default_material;
+	material_handle mat_handle;
+	if (asset->handle.id == INVALID_HANDLE) mat_handle = tab.default_material;
 	else {
-		static Handle<Material> preview_handle = RHI::material_manager.make({});
-		Material* mat_ptr = RHI::material_manager.get(preview_handle);
+		static material_handle preview_handle = assets.materials.assign_handle({});
+		Material* mat_ptr = assets.materials.get(preview_handle);
 		*mat_ptr = Material(asset->handle);
 		set_params_for_shader_graph(mat_ptr);
 
 		mat_handle = preview_handle;
 	}
 
-	vector<Handle<Material>> materials = { mat_handle };
+	vector<material_handle> materials = { mat_handle };
 
 	CommandBuffer cmd_buffer;
-	RenderParams render_params = create_preview_command_buffer(cmd_buffer, old_params, editor.asset_tab, cam, world);
+	RenderCtx render_ctx = create_preview_command_buffer(cmd_buffer, old_ctx, tab, cam, world);
 
-	model->render(0, &model_m, materials, render_params);
+	render_Model(sphere, model_m, materials, render_ctx);
 
-	render_preview_to_buffer(editor.asset_tab, render_params, cmd_buffer, graph.rot_preview.preview, world);
+	render_preview_to_buffer(tab, render_ctx, cmd_buffer, graph.rot_preview.preview, world);
 
 	world.free_now_by_id(id);
 }
@@ -630,7 +635,7 @@ void set_scale(ShaderGraph* graph, Input& input, float scale) {
 	}
 }
 
-void ShaderGraph::render(World& world, Editor& editor, RenderParams& params, Input& input) {
+void ShaderGraph::render(World& world, Editor& editor, RenderCtx& ctx, Input& input) {
 	ImGui::PushClipRect(ImGui::GetCursorScreenPos(), ImVec2(ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionMax().x, ImGui::GetCursorScreenPos().y + ImGui::GetContentRegionMax().y), true);
 
 	float scroll_speed = 0.2f;
@@ -716,7 +721,7 @@ void ShaderGraph::render(World& world, Editor& editor, RenderParams& params, Inp
 	ImGui::PopClipRect();
 }
 
-StringBuffer get_dependency(Handle<ShaderNode> node) {
+string_buffer get_dependency(shader_node_handle node) {
 	return format("_dep", node.id);
 }
 
@@ -859,7 +864,7 @@ void ShaderCompiler::compile() {
 
 	begin();
 
-	Handle<ShaderNode> base_node = { INVALID_HANDLE };
+	shader_node_handle base_node = { INVALID_HANDLE };
 		
 	for (int i = 0; i < graph.nodes_manager.slots.length; i++) {
 		ShaderNode* node = graph.nodes_manager.get(graph.nodes_manager.index_to_handle(i));
@@ -879,21 +884,21 @@ void ShaderCompiler::compile() {
 	end();
 }
 
-void load_Shader_for_graph(ShaderAsset* asset) {
-	StringBuffer file_path = format("data/shader_output/", asset->name, ".frag");
+void load_Shader_for_graph(ShaderManager& shader_manager, ShaderAsset* asset) {
+	string_buffer file_path = tformat("data/shader_output/", asset->name, ".frag");
 	
-	asset->handle = load_Shader("shaders/pbr.vert", file_path);
+	asset->handle = shader_manager.load("shaders/pbr.vert", file_path);
 }
 
-void compile_shader_graph(ShaderAsset* asset) {
-	static StringBuffer last_output;
+void compile_shader_graph(ShaderManager& shader_manager, ShaderAsset* asset) {
+	static string_buffer last_output;
 	
 	ShaderCompiler compiler(*asset->graph);
 	compiler.compile();
 
 	if (last_output == compiler.contents) return;
 
-	StringBuffer file_path = format("data/shader_output/", asset->name, ".frag");
+	string_buffer file_path = format("data/shader_output/", asset->name, ".frag");
 
 	File file;
 	if (file.open(file_path, File::WriteFile)) {
@@ -907,14 +912,14 @@ void compile_shader_graph(ShaderAsset* asset) {
 
 	insert_shader_handle_to_asset(asset);
 	
-	reload_shader(*RHI::shader_manager.get(asset->handle));
+	shader_manager.reload(asset->handle);
 
 	last_output = compiler.contents;
 }
 
 void new_node_popup(ShaderAsset* asset);
 
-void ShaderEditor::render(World& world, Editor& editor, RenderParams& params, Input& input) {
+void ShaderEditor::render(World& world, Editor& editor, RenderCtx& ctx, Input& input) {
 	if (!this->open) return;
 
 	AssetTab& tab = editor.asset_tab;
@@ -934,12 +939,12 @@ void ShaderEditor::render(World& world, Editor& editor, RenderParams& params, In
 		ImGui::SameLine();
 		if (ImGui::Button("Compile")) {
 			compile_shader_graph(asset);
-			render_preview(asset, world, editor, params);
+			render_preview(asset, world, tab, ctx);
 		}
 
 		if (input.key_pressed('R', true) && input.key_down(GLFW_KEY_LEFT_CONTROL, true)) {
 			compile_shader_graph(asset);
-			render_preview(asset, world, editor, params);
+			render_preview(asset, world, tab, ctx);
 		}
 
 		if (input.key_pressed('S', true) && input.key_down(GLFW_KEY_LEFT_SHIFT, true)) {
@@ -972,7 +977,7 @@ void ShaderEditor::render(World& world, Editor& editor, RenderParams& params, In
 		
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f * asset->graph->scale, 2.0f * asset->graph->scale));
 
-		asset->graph->render(world, editor, params, input);
+		asset->graph->render(world, editor, ctx, input);
 
 		glm::vec2 mouse_drag_begin(ImGui::GetMousePos().x, ImGui::GetMousePos().y);
 		mouse_drag_begin.x -= ImGui::GetMouseDragDelta().x;
@@ -1036,7 +1041,7 @@ void ShaderEditor::render(World& world, Editor& editor, RenderParams& params, In
 					ShaderNode node(ShaderNode::PARAM_NODE, Channel1);
 					node.param_id = param_id;
 					node.position = position;
-					asset->graph->nodes_manager.make(std::move(node));
+					asset->graph->nodes_manager.assign_handle(std::move(node));
 				}
 				ImGui::EndDragDropTarget();
 			}
@@ -1057,7 +1062,7 @@ void ShaderEditor::render(World& world, Editor& editor, RenderParams& params, In
 	ImGui::End();
 }
 
-ShaderAsset* create_new_shader(World& world, AssetTab& self, Editor& editor, RenderParams& params) {
+ShaderAsset* create_new_shader(World& world, AssetTab& self, Editor& editor, RenderCtx& ctx) {
 	ID id = self.assets.make_ID();
 	ShaderAsset* asset = self.assets.make<ShaderAsset>(id);
 	asset->name = "Shader Graph";
@@ -1069,7 +1074,7 @@ ShaderAsset* create_new_shader(World& world, AssetTab& self, Editor& editor, Ren
 
 ShaderNode make_pbr_node();
 
-void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTab& self, RenderParams& params) {
+void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTab& self, RenderCtx& ctx) {
 	render_name(shader->name, self.default_font);
 	
 	ImGui::SetNextTreeNodeOpen(true);
@@ -1082,7 +1087,7 @@ void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTa
 
 	if (shader->graph == NULL) {
 		shader->graph = std::unique_ptr<ShaderGraph>(new ShaderGraph());
-		shader->graph->nodes_manager.make(make_pbr_node(), true);
+		shader->graph->nodes_manager.assign_handle(make_pbr_node(), true);
 	}
 
 	compile_shader_graph(shader); //todo use undo redo system to detect change
@@ -1092,7 +1097,7 @@ void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTa
 
 	for (unsigned int i = 0; i < shader->graph->parameters.length; i++) {
 		Param& param = shader->graph->parameters[i];
-		StringView name = shader->graph->param_names[i];
+		string_view name = shader->graph->param_names[i];
 
 		if (param.type == Param_Float) {
 			ImGui::InputFloat(name.c_str(), &param.real);
@@ -1107,7 +1112,7 @@ void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTa
 		if (param.type == Param_Image) {
 			ImGui::Image((ImTextureID)texture::id_of(param.image), ImVec2(200, 200), ImVec2(0, 1), ImVec2(1, 0));
 			
-			accept_drop("DRAG_AND_DROP_IMAGE", &param.image, sizeof(Handle<Texture>));
+			accept_drop("DRAG_AND_DROP_IMAGE", &param.image, sizeof(texture_handle));
 			
 			ImGui::SameLine();
 
@@ -1115,7 +1120,7 @@ void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTa
 
 			if (ImGui::BeginDragDropSource()) {
 				ImGui::Image((ImTextureID)texture::id_of(param.image), ImVec2(200, 200), ImVec2(0, 1), ImVec2(1, 0));
-				ImGui::SetDragDropPayload("DRAG_AND_DROP_IMAGE_PARAM", &i, sizeof(StringView));
+				ImGui::SetDragDropPayload("DRAG_AND_DROP_IMAGE_PARAM", &i, sizeof(string_view));
 				ImGui::EndDragDropSource();
 			}
 
@@ -1125,7 +1130,7 @@ void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTa
 
 	ImGui::NewLine();
 	
-	static StringBuffer buffer_name;
+	static string_buffer buffer_name;
 	
 	if (ImGui::Button("New Property")) {
 		buffer_name.length = 0;
@@ -1161,10 +1166,10 @@ void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTa
 	}
 
 	rot_preview(shader->graph->rot_preview);
-	render_preview(shader, world, editor, params);
+	render_preview(shader, world, editor, ctx);
 }
 
-#include "serialization/serializer.h"
+#include "core/serializer.h"
 
 REFLECT_BEGIN_ENUM(ChannelType)
 REFLECT_ENUM_VALUE(Channel1)
@@ -1194,7 +1199,7 @@ REFLECT_STRUCT_MEMBER(links)
 REFLECT_STRUCT_MEMBER(position)
 REFLECT_STRUCT_END()
 
-StringView get_param_name(ShaderGraph& graph, unsigned int i) {
+string_view get_param_name(ShaderGraph& graph, unsigned int i) {
 	return graph.param_names[i];
 }
 
@@ -1209,7 +1214,7 @@ void deserialize_shader_asset(DeserializerBuffer& buffer, ShaderAsset* asset) {
 	unsigned int num = buffer.read_int();
 
 	for (unsigned int i = 0; i < num; i++) {
-		Handle<ShaderNode> handle = { buffer.read_int() };
+		shader_node_handle handle = { buffer.read_int() };
 
 		ShaderNode node;
 		node.type = (ShaderNode::Type) buffer.read_int();
@@ -1229,7 +1234,7 @@ void deserialize_shader_asset(DeserializerBuffer& buffer, ShaderAsset* asset) {
 			node.param_id = buffer.read_int();
 		}
 
-		graph->nodes_manager.make(handle, std::move(node));
+		graph->nodes_manager.assign_handle(handle, std::move(node));
 	}
 
 	buffer.read_array((reflect::TypeDescriptor_Vector*) reflect::TypeResolver<decltype(graph->parameters)>::get(), &graph->parameters);
@@ -1238,7 +1243,7 @@ void deserialize_shader_asset(DeserializerBuffer& buffer, ShaderAsset* asset) {
 	graph->param_names.reserve(num_names);
 
 	for (int i = 0; i < num_names; i++) {
-		StringBuffer param_name;
+		string_buffer param_name;
 		buffer.read_string(param_name);
 		graph->param_names.append(std::move(param_name));
 	}

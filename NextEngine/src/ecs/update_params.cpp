@@ -1,4 +1,9 @@
 #include "stdafx.h"
 #include "ecs/system.h"
+#include "engine/engine.h"
+#include "core/time.h"
+#include "core/io/input.h"
 
-UpdateParams::UpdateParams(struct Input& input) : input(input) {};
+UpdateCtx::UpdateCtx(Time* time, Input* input) : 
+	input(*input), 
+	delta_time(gb::time.delta_time) {};

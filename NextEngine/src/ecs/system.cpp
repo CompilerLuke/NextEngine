@@ -3,17 +3,17 @@
 #include "ecs/system.h"
 #include "components/transform.h"
 #include "components/camera.h"
-#include "core/input.h"
+#include "core/io/input.h"
 #include "components/flyover.h"
-#include "graphics/shader.h"
-#include "model/model.h"
-#include "graphics/texture.h"
+#include "graphics/assets/shader.h"
+#include "graphics/assets/model.h"
+#include "graphics/assets/texture.h"
 #include "components/lights.h"
-#include "graphics/ibl.h"
+#include "graphics/renderer/ibl.h"
 #include "physics/physics.h"
 #include "components/terrain.h"
 #include "components/grass.h"
-#include "graphics/materialSystem.h"
+#include "graphics/renderer/material_system.h"
 
 DEFINE_COMPONENT_ID(Entity, 0)
 DEFINE_COMPONENT_ID(Transform, 1)

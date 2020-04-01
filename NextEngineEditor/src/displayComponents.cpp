@@ -4,28 +4,27 @@
 #include "editor.h"
 #include "ecs/system.h"
 #include "ecs/ecs.h"
-#include "graphics/rhi.h"
-#include "logger/logger.h"
+#include "core/io/logger.h"
+#include "core/container/hash_map.h"
 
-std::unordered_map<std::string, OnInspectGUICallback> override_inspect;
+hash_map<sstring, OnInspectGUICallback, 103> override_inspect;
 
-OnInspectGUICallback get_on_inspect_gui(StringView on_type) {
-	return override_inspect[std::string(on_type.data)];
+OnInspectGUICallback get_on_inspect_gui(string_view on_type) {
+	return override_inspect[on_type];
 }
 
-
-void register_on_inspect_gui(StringView on_type, OnInspectGUICallback func) {
-	override_inspect[std::string(on_type.data)] = func;
+void register_on_inspect_gui(string_view on_type, OnInspectGUICallback func) {
+	override_inspect[on_type.data] = func;
 }
 
-bool render_fields_primitive(int* ptr, StringView prefix) {
+bool render_fields_primitive(int* ptr, string_view prefix) {
 	ImGui::PushID((long long)ptr);
 	ImGui::InputInt(prefix.c_str(), ptr);
 	ImGui::PopID();
 	return true;
 }
 
-bool render_fields_primitive(unsigned int* ptr, StringView prefix) {
+bool render_fields_primitive(unsigned int* ptr, string_view prefix) {
 	int as_int = *ptr;
 	ImGui::PushID((long long)ptr);
 
@@ -35,21 +34,21 @@ bool render_fields_primitive(unsigned int* ptr, StringView prefix) {
 	return true;
 }
 
-bool render_fields_primitive(float* ptr, StringView prefix) {
+bool render_fields_primitive(float* ptr, string_view prefix) {
 	ImGui::PushID((long long)ptr);
 	ImGui::InputFloat(prefix.c_str(), ptr);
 	ImGui::PopID();
 	return true;
 }
 
-bool render_fields_primitive(StringBuffer* str, StringView prefix) {
+bool render_fields_primitive(string_buffer* str, string_view prefix) {
 	ImGui::PushID((long long)str);
 	ImGui::InputText(prefix.c_str(), *str);
 	ImGui::PopID();
 	return true;
 }
 
-bool render_fields_primitive(bool* ptr, StringView prefix) {
+bool render_fields_primitive(bool* ptr, string_view prefix) {
 	ImGui::PushID((long long)ptr);
 	ImGui::Checkbox(prefix.c_str(), ptr);
 	ImGui::PopID();
@@ -62,7 +61,7 @@ const char* destroy_component_popup_name(reflect::TypeDescriptor_Struct* type) {
 	return tformat("DestroyComponent", type->name).c_str();
 }
 
-bool render_fields_struct(reflect::TypeDescriptor_Struct* self, void* data, StringView prefix, World& world) {
+bool render_fields_struct(reflect::TypeDescriptor_Struct* self, void* data, string_view prefix, World& world) {
 	if (override_inspect.find(self->name) != override_inspect.end()) {
 		return override_inspect[self->name](data, prefix, world);
 	}
@@ -71,7 +70,7 @@ bool render_fields_struct(reflect::TypeDescriptor_Struct* self, void* data, Stri
 
 	auto id = ImGui::GetID(name.c_str());
 
-	if (self->members.size() == 1 && prefix != "Component") {
+	if (self->members.length == 1 && prefix != "Component") {
 		auto& field = self->members[0];
 		render_fields(field.type, (char*)data + field.offset, field.name, world);
 		return true;
@@ -110,7 +109,7 @@ bool render_fields_struct(reflect::TypeDescriptor_Struct* self, void* data, Stri
 	return open;
 }
 
-bool render_fields_union(reflect::TypeDescriptor_Union* self, void* data, StringView prefix, struct World& world) {
+bool render_fields_union(reflect::TypeDescriptor_Union* self, void* data, string_view prefix, struct World& world) {
 
 	int tag = *((char*)data + self->tag_offset);
 
@@ -137,13 +136,13 @@ bool render_fields_union(reflect::TypeDescriptor_Union* self, void* data, String
 	return false;
 }
 
-bool render_fields_enum(reflect::TypeDescriptor_Enum* self, void* data, StringView prefix, struct World& world) {
+bool render_fields_enum(reflect::TypeDescriptor_Enum* self, void* data, string_view prefix, struct World& world) {
 	int tag = *((int*)data);
 
 	int i = 0;
 	for (auto& value : self->values) {
 		if (i > 0) ImGui::SameLine();
-		ImGui::RadioButton(value.first.c_str(), value.second == tag);
+		ImGui::RadioButton(value.name, value.value == tag);
 		i++;
 	}
 
@@ -153,7 +152,7 @@ bool render_fields_enum(reflect::TypeDescriptor_Enum* self, void* data, StringVi
 	return true;
 }
 
-bool render_fields_ptr(reflect::TypeDescriptor_Pointer* self, void* data, StringView prefix, struct World& world) {
+bool render_fields_ptr(reflect::TypeDescriptor_Pointer* self, void* data, string_view prefix, struct World& world) {
 	if (*(void**)data == NULL) {
 		ImGui::LabelText(prefix.c_str(), "NULL");
 		return false;
@@ -161,7 +160,7 @@ bool render_fields_ptr(reflect::TypeDescriptor_Pointer* self, void* data, String
 	return render_fields(self->itemType, *(void**)data, prefix, world);
 }
 
-bool render_fields_vector(reflect::TypeDescriptor_Vector* self, void* data, StringView prefix, struct World& world) {
+bool render_fields_vector(reflect::TypeDescriptor_Vector* self, void* data, string_view prefix, struct World& world) {
 	auto ptr = (vector<char>*)data;
 	data = ptr->data;
 
@@ -177,7 +176,7 @@ bool render_fields_vector(reflect::TypeDescriptor_Vector* self, void* data, Stri
 	return false;
 }
 
-bool render_fields(reflect::TypeDescriptor* type, void* data, StringView prefix, World& world) {
+bool render_fields(reflect::TypeDescriptor* type, void* data, string_view prefix, World& world) {
 	if (type->kind == reflect::Struct_Kind) return render_fields_struct((reflect::TypeDescriptor_Struct*)type, data, prefix, world);
 	else if (type->kind == reflect::Union_Kind) return render_fields_union((reflect::TypeDescriptor_Union*)type, data, prefix, world);
 	else if (type->kind == reflect::Vector_Kind) return render_fields_vector((reflect::TypeDescriptor_Vector*)type, data, prefix, world);
@@ -186,12 +185,12 @@ bool render_fields(reflect::TypeDescriptor* type, void* data, StringView prefix,
 	else if (type->kind == reflect::Int_Kind) return render_fields_primitive((int*)data, prefix);
 	else if (type->kind == reflect::Bool_Kind) return render_fields_primitive((bool*)data, prefix);
 	else if (type->kind == reflect::Unsigned_Int_Kind) return render_fields_primitive((unsigned int*)data, prefix);
-	else if (type->kind == reflect::StringBuffer_Kind) return render_fields_primitive((StringBuffer*)data, prefix);
+	else if (type->kind == reflect::StringBuffer_Kind) return render_fields_primitive((string_buffer*)data, prefix);
 }
 
-void DisplayComponents::update(World& world, UpdateParams& params) {}
+void DisplayComponents::update(World& world, UpdateCtx& params) {}
 
-void DisplayComponents::render(World& world, RenderParams& params, Editor& editor) {
+void DisplayComponents::render(World& world, RenderCtx& params, Editor& editor) {
 	//ImGui::SetNextWindowSize(ImVec2(params.width * editor.editor_tab_width, params.height));
 	//ImGui::SetNextWindowPos(ImVec2(0, 0));
 
@@ -232,7 +231,7 @@ void DisplayComponents::render(World& world, RenderParams& params, Editor& edito
 					if (ImGui::Button("Delete")) {
 						for (int i = 0; i < world.components_hash_size; i++) {
 							ComponentStore* store = world.components[i].get();
-							if (store && StringView(store->get_component_type()->name) == comp.type->name) {
+							if (store && string_view(store->get_component_type()->name) == comp.type->name) {
 								editor.submit_action(new DestroyComponentAction(store, selected_id));
 
 								break;
@@ -256,14 +255,14 @@ void DisplayComponents::render(World& world, RenderParams& params, Editor& edito
 				char buff[50];
 				memcpy(buff, filter.c_str(), filter.length + 1);
 				ImGui::InputText("filter", buff, 50);
-				filter = StringBuffer(buff);
+				filter = string_buffer(buff);
 
 				for (int i = 0; i < world.components_hash_size; i++) {
 					ComponentStore* store = world.components[i].get();
 					if (store == NULL) continue;
 					if (store->get_by_id(selected_id).data != NULL) continue;
 
-					StringView type_name = StringView(store->get_component_type()->name);
+					string_view type_name = string_view(store->get_component_type()->name);
 
 					if (!type_name.starts_with_ignore_case(filter)) continue;
 

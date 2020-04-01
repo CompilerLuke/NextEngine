@@ -2,14 +2,7 @@
 #include "ecs/ecs.h"
 #include "grass.h"
 #include "components/terrain.h"
-#include "ecs/ecs.h"
-#include "graphics/draw.h"
-#include "graphics/materialSystem.h"
-#include "graphics/culling.h"
-#include "graphics/rhi.h"
-#include <cstdlib>
-#include "logger/logger.h"
-#include "graphics/renderer.h"
+#include "graphics/renderer/grass.h"
 
 void place_Grass(Grass* grass, World& world) {
 	auto terrains = world.filter<Terrain>(); //todo move this code into ecs.h
@@ -42,5 +35,5 @@ void place_Grass(Grass* grass, World& world) {
 		}
 	}
 
-	grass->dirty = true;
+	GrassRenderSystem::update_buffers(world, world.id_of(grass));
 }

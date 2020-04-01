@@ -1,8 +1,8 @@
 #include "stdafx.h"
-#include "graphics/transforms.h"
+#include "graphics/renderer/transforms.h"
 #include "ecs/layermask.h"
 #include "components/transform.h"
-#include "core/allocator.h"
+#include "core/memory/allocator.h"
 #include <glm/gtc/matrix_transform.hpp>
 
 void compute_model_matrices(glm::mat4* model_m, World& world, Layermask mask) {
