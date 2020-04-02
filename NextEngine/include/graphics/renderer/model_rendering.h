@@ -6,13 +6,17 @@
 #include "graphics/pass/pass.h"
 #include "core/container/hash_map.h"
 
+using RenderFlags = uint;
+constexpr RenderFlags CAST_SHADOWS = 1 << 0;
+
 struct MeshBucket {
 	material_handle mat_id;
 	model_handle model_id;
 	uint mesh_id;
+	uint flags;
 
 	inline bool operator==(const MeshBucket& other) {
-		return mat_id.id == other.mat_id.id && model_id.id == other.model_id.id && mesh_id == other.mesh_id;
+		return mat_id.id == other.mat_id.id && model_id.id == other.model_id.id && mesh_id == other.mesh_id && flags == other.flags;
 	}
 };
 

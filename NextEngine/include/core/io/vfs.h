@@ -10,6 +10,7 @@ struct Level {
 	bool ENGINE_API to_asset_path(string_view filename, string_buffer* result);
 	long long ENGINE_API time_modified(string_view filename);
 
+	ENGINE_API Level(string_view);
 	void ENGINE_API set(string_view filename);
 };
 

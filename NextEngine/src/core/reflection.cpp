@@ -60,13 +60,25 @@ namespace reflect {
 	//--------------------------------------------------------
 
 	struct TypeDescriptor_StringBuffer : TypeDescriptor {
-		TypeDescriptor_StringBuffer() : TypeDescriptor{ StringBuffer_Kind, "StringBuffer", sizeof(string_buffer) } {
+		TypeDescriptor_StringBuffer() : TypeDescriptor{ StringBuffer_Kind, "string_buffer", sizeof(string_buffer) } {
 		}
 	};
 
 	template <>
 	TypeDescriptor* getPrimitiveDescriptor<string_buffer>() {
 		static TypeDescriptor_StringBuffer typeDesc;
+		return &typeDesc;
+	}
+
+	struct TypeDescriptor_SString : TypeDescriptor {
+		TypeDescriptor_SString() : TypeDescriptor{ SString_Kind, "sstring", sizeof(sstring) } {
+
+		}
+	};
+
+	template<>
+	TypeDescriptor* getPrimitiveDescriptor<sstring>() {
+		static TypeDescriptor_SString typeDesc;
 		return &typeDesc;
 	}
 

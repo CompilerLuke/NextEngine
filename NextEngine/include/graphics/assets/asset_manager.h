@@ -6,10 +6,10 @@
 #include "texture.h"
 #include "shader.h"
 
-struct AssetManager {
-	AssetManager(string_view level_path);
+struct ENGINE_API AssetManager {
+	AssetManager(Level& level);
 
-	Level level;
+	Level& level;
 	ModelManager models;
 	TextureManager textures;
 	CubemapManager cubemaps;

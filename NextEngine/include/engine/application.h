@@ -1,3 +1,5 @@
+#pragma once
+
 #include "core/core.h"
 #include "core/container/string_buffer.h"
 #include "ecs/system.h"
@@ -9,6 +11,7 @@ typedef void (*UpdateFunction)(void*, struct Engine&);
 typedef void (*RenderFunction)(void*, struct Engine&);
 typedef void (*DeinitFunction)(void*, struct Engine&);
 typedef bool (*IsRunningFunction)(void*, struct Engine&);
+typedef void(*ReloadFunction)(void*, struct Engine&);
 
 class Application {
 	string_buffer path;
@@ -21,6 +24,7 @@ class Application {
 	RenderFunction render_func;
 	IsRunningFunction is_running_func;
 	DeinitFunction deinit_func;
+	ReloadFunction reload_func;
 
 	void load_functions();
 

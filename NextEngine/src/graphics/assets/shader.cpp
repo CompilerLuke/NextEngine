@@ -11,7 +11,7 @@ REFLECT_STRUCT_MEMBER(v_filename)
 REFLECT_STRUCT_MEMBER(f_filename)
 REFLECT_STRUCT_END()
 
-bool load_in_place_with_err(ShaderConfig* self, string_buffer* err, string_view v_filename, string_view f_filename, Shader* shader, bool create_flags);
+bool load_in_place_with_err(Level& level, ShaderConfig* self, string_buffer* err, string_view v_filename, string_view f_filename, Shader* shader, bool create_flags);
 
 shader_handle ShaderManager::load(string_view vfilename, string_view ffilename, bool serialized) {
 	auto& existing_shaders = slots;
@@ -35,12 +35,16 @@ shader_handle ShaderManager::load(string_view vfilename, string_view ffilename, 
 	ShaderConfig default_config;
 
 	string_buffer err;
-	if (!load_in_place_with_err(&default_config, &err, vfilename, ffilename, &shad, true)) {
+	if (!load_in_place_with_err(level, &default_config, &err, vfilename, ffilename, &shad, true)) {
 		throw err;
 	}
 
 	shad.configurations.append(std::move(default_config));
 	return assign_handle(std::move(shad), serialized);
+}
+
+Shader* ShaderManager::load_get(string_view vfilename, string_view ffilename) {
+	return get(load(vfilename, ffilename));
 }
 
 ShaderConfig::ShaderConfig() {
@@ -393,7 +397,7 @@ shader_config_handle ShaderManager::get_config_handle(shader_handle shader_handl
 	config.desc = desc;
 	
 	string_buffer err;
-	if (!load_in_place_with_err(&config, &err, shader->v_filename, shader->f_filename, shader, false)) {
+	if (!load_in_place_with_err(level, &config, &err, shader->v_filename, shader->f_filename, shader, false)) {
 		throw err;
 	}
 
@@ -469,6 +473,26 @@ void Shader::set_int(const char* uniform, int value) {
 	return configurations[0].set_int(uniform, value);
 }
 
+void Shader::set_float(const char* uniform, float value) {
+	return configurations[0].set_float(uniform, value);
+}
+
+void Shader::set_vec3(const char* uniform, glm::vec3& value) {
+	return configurations[0].set_vec3(uniform, value);
+}
+
+void Shader::set_vec2(const char* uniform, glm::vec2& value) {
+	return configurations[0].set_vec2(uniform, value);
+}
+
+void Shader::set_mat4(const char* uniform, glm::mat4& value) {
+	return configurations[0].set_mat4(uniform, value);
+}
+
+void Shader::bind() {
+	return configurations[0].bind();
+}
+
 int ShaderConfig::get_binding(uniform_handle handle) {
 	return uniform_bindings[handle.id];
 }
@@ -476,6 +500,8 @@ int ShaderConfig::get_binding(uniform_handle handle) {
 void gl_bind(ShaderManager& manager, shader_handle shader, shader_config_handle config) {
 	manager.get_config(shader, config)->bind();
 }
+
+ShaderManager::ShaderManager(Level& level) : level(level) {}
 
 ShaderConfig* ShaderManager::get_config(shader_handle shader, shader_config_handle config) {
 	return &get(shader)->configurations[config.id];
@@ -490,7 +516,7 @@ void ShaderManager::reload(shader_handle handle) {
 		auto previous = shad.id;
 
 		string_buffer err;
-		if (load_in_place_with_err(&shad, &err, shad_factory.v_filename, shad_factory.f_filename, &shad_factory, false)) {
+		if (load_in_place_with_err(level, &shad, &err, shad_factory.v_filename, shad_factory.f_filename, &shad_factory, false)) {
 			glDeleteProgram(previous);
 
 			for (int i = 0; i < shad.uniform_bindings.length; i++) {

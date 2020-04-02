@@ -4,9 +4,7 @@
 #include "core/container/sstring.h"
 #include "core/serializer.h"
 
-AssetManager::AssetManager(string_view level_path) : models(level), shaders(level), textures(level) {
-	level.set(level_path);
-}
+AssetManager::AssetManager(Level& level) : level(level), models(level), shaders(level), textures(level) {}
 
 //REFLECT_STRUCT_BEGIN(Model)
 //REFLECT_STRUCT_MEMBER(path)

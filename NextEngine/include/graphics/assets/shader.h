@@ -30,32 +30,33 @@ struct ShaderConfigDesc {
 	unsigned int flags = 0;
 };
 
-struct ShaderConfig {
+struct ENGINE_API ShaderConfig {
 	ShaderConfigDesc desc;
 	vector<int> uniform_bindings;
 	int id;
 
-	void ENGINE_API bind();
-	void ENGINE_API set_mat4(uniform_handle uniform, glm::mat4&);
-	void ENGINE_API set_vec3(uniform_handle uniform, glm::vec3&);
-	void ENGINE_API set_vec2(uniform_handle uniform, glm::vec2&);
-	void ENGINE_API set_int(uniform_handle uniform, int);
-	void ENGINE_API set_float(uniform_handle uniform, float);
+	void bind();
+	void set_mat4(uniform_handle uniform, glm::mat4&);
+	void set_vec3(uniform_handle uniform, glm::vec3&);
+	void set_vec2(uniform_handle uniform, glm::vec2&);
+	void set_int(uniform_handle uniform, int);
+	void set_float(uniform_handle uniform, float);
 	
-	void ENGINE_API set_mat4(const char*, glm::mat4&);
-	void ENGINE_API set_vec3(const char*, glm::vec3&);
-	void ENGINE_API set_vec2(const char*, glm::vec2&);
-	void ENGINE_API set_int(const char*, int);
-	void ENGINE_API set_float(const char*, float);
+	void set_mat4(const char*, glm::mat4&);
+	void set_vec3(const char*, glm::vec3&);
+	void set_vec2(const char*, glm::vec2&);
+	void set_int(const char*, int);
+	void set_float(const char*, float);
 
 	int get_binding(uniform_handle);
 
 	ShaderConfig();
+	ShaderConfig(const ShaderConfig&);
 	ShaderConfig(ShaderConfig&&);
 	~ShaderConfig();
 };
 
-ENGINE_API struct Shader {
+ struct ENGINE_API Shader {
 	sstring v_filename;
 	sstring f_filename;
 
@@ -77,12 +78,16 @@ ENGINE_API struct Shader {
 	
 	uniform_handle location(string_view);
 
-	REFLECT(ENGINE_API);
+	Shader() = default;
+	Shader(Shader&&) = default;
+	Shader(const Shader&) = delete;
+
+	REFLECT(NO_ARG);
 };
 
 struct Level;
 
-ENGINE_API struct ShaderManager : HandleManager<Shader, shader_handle> {
+struct ENGINE_API ShaderManager : HandleManager<Shader, shader_handle> {
 	Level& level;
 
 	ShaderManager(Level&);

@@ -54,11 +54,14 @@ void Application::load_functions() {
 	render_func = (RenderFunction)get_Func(dll_handle, "render");
 	is_running_func = (IsRunningFunction)get_Func(dll_handle, "is_running");
 	deinit_func = (DeinitFunction)get_Func(dll_handle, "deinint");
+	reload_func = (ReloadFunction)get_Func(dll_handle, "reload");
 }
+
 
 void Application::reload() {
 	destroy_DLL(dll_handle);
 	load_functions();
+	if (reload_func) reload_func(application_state, engine);
 }
 
 void Application::update() {

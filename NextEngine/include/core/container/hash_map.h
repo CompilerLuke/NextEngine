@@ -108,8 +108,8 @@ struct hash_map_it {
 
 template<typename K, typename V, int N>
 struct hash_map {
-	hash_set<K, N> keys;
-	V values[N];
+	hash_set<K, N> keys = {};
+	V values[N] = {};
 
 	void set(K key, const V& value) {
 		int index = keys.add(key);

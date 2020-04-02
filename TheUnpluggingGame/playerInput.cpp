@@ -10,13 +10,13 @@ PlayerInput* get_player_input(World& world) {
 	return result.length > 0 ? result[0] : NULL;
 }
 
-void PlayerInputSystem::update(World& world, UpdateCtx& params) {
-	Input& input = params.input;
+void PlayerInputSystem::update(World& world, UpdateCtx& ctx) {
+	Input& input = ctx.input;
 
-	for (PlayerInput* self : world.filter<PlayerInput>(params.layermask)) {
-		params.input.capture_mouse(true);
+	for (PlayerInput* self : world.filter<PlayerInput>(ctx.layermask)) {
+		ctx.input.capture_mouse(true);
 
-		glm::vec2 mouse_offset = params.input.mouse_offset * self->mouse_sensitivity;
+		glm::vec2 mouse_offset = ctx.input.mouse_offset * self->mouse_sensitivity;
 
 		float yaw = -mouse_offset.x + self->yaw;
 		float pitch = mouse_offset.y + self->pitch;
@@ -35,6 +35,6 @@ void PlayerInputSystem::update(World& world, UpdateCtx& params) {
 		self->shift = input.key_down(GLFW_KEY_LEFT_SHIFT);
 		self->space = input.key_pressed(' ');
 
-		self->holding_mouse_left = params.input.mouse_button_down(MouseButton::Left);
+		self->holding_mouse_left = ctx.input.mouse_button_down(MouseButton::Left);
 	}
 }

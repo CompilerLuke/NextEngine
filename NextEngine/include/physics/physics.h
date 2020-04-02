@@ -55,7 +55,8 @@ struct CharacterController {
 struct PhysicsSystem : System {
 	BulletWrapper* bt_wrapper;
 
-	PhysicsSystem(struct World&);
+	PhysicsSystem();
+	void init(struct World&);
 	~PhysicsSystem();
 
 	void update(struct World&, UpdateCtx&) override;

@@ -93,6 +93,7 @@ void ModelRendererSystem::render(World& world, RenderCtx& ctx) {
 		CulledMeshBucket & instances = buckets[i];
 		int count = instances.model_m.length;
 
+		if (!(bucket.flags & CAST_SHADOWS) && ctx.layermask & SHADOW_LAYER) continue;
 		if (count == 0) continue;
 
 		memcpy(instance_data + instance_count, instances.model_m.data, instances.model_m.length * sizeof(glm::mat4));
@@ -105,7 +106,7 @@ void ModelRendererSystem::render(World& world, RenderCtx& ctx) {
 		instance_offset->base += instance_count;
 		instance_offset->size = count * sizeof(glm::mat4);
 
-		Material* material = RHI::material_manager.get(bucket.mat_id);
+		Material* material = asset_manager.materials.get(bucket.mat_id);
 
 		/*for (int j = 0; j < count; j++) {
 			instance_data[j + instance_count] = instances.model_m[j];

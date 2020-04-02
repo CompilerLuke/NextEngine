@@ -6,16 +6,14 @@
 
 constexpr unsigned int INVALID_SLOT = 0;
 
-template<typename T, typename H>
+template<typename T, typename H, int MAX_HANDLES = 200>
 struct HandleManager {
 	unsigned int generation_counter = 0;
-	vector<unsigned int> free_serialized_ids;
-	vector<unsigned int> free_ids;
-
-	static constexpr unsigned int MAX_HANDLES = 200;
-
-	vector<T> slots;
-	vector<unsigned int> id_of_slots;
+	
+	static_vector<MAX_HANDLES, unsigned int> free_serialized_ids;
+	static_vector<MAX_HANDLES, unsigned int > free_ids;
+	static_vector<MAX_HANDLES, T> slots;
+	static_vector<MAX_HANDLES, unsigned int> id_of_slots;
 	T* by_handle[MAX_HANDLES];
 
 	unsigned int handle_to_index(H handle) {
@@ -60,16 +58,18 @@ struct HandleManager {
 		return by_handle[handle.id - 1];
 	}
 
-	void free(H handle) {
+	void free(H handle) { 
 		unsigned int index = handle_to_index(handle);
 		auto last_id = id_of_slots.pop();
-		auto popped = slots.pop();
 
 		if (index != slots.length) { //poped is the element we are trying to delete
-			//slots[index].~T(); todo not sure of this is a leak
-			new (&slots[index]) T(std::move(popped)); //Move assign doesnt work on Material
+			slots[index].~T(); //todo not sure of this is a leak
+			new (&slots[index]) T(std::move(slots.pop())); //Move assign doesnt work on Material
 			by_handle[last_id - 1] = &slots[index];
 			id_of_slots[index] = last_id;
+		}
+		else {
+			slots.pop();
 		}
 		by_handle[handle.id - 1] = NULL;
 	}
@@ -86,8 +86,6 @@ struct HandleManager {
 		for (int i = MAX_HANDLES - 100; i > 0; i--) {
 			free_serialized_ids.append(i);
 		}
-
-		slots.reserve(MAX_HANDLES);
 	}
 };
 

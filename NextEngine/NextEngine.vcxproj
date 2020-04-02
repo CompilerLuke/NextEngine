@@ -250,7 +250,6 @@
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="src\graphics\assets\assimp_model_loader.cpp" />
     <ClCompile Include="src\core\container\string_view.cpp" />
-    <ClCompile Include="src\graphics\renderer\grass_rendering.cpp" />
     <ClCompile Include="NextEngine.cpp" />
     <ClCompile Include="src\graphics\assets\asset_manager.cpp" />
     <ClCompile Include="src\graphics\assets\model.cpp" />
@@ -273,6 +272,8 @@
     <ClCompile Include="src\ecs\update_params.cpp" />
     <ClCompile Include="src\engine\application.cpp" />
     <ClCompile Include="src\engine\engine.cpp" />
+    <ClCompile Include="src\graphics\renderer\grass_rendering.cpp" />
+    <ClCompile Include="src\graphics\renderer\terrain.cpp" />
     <ClCompile Include="src\graphics\rhi\GL\buffer.cpp" />
     <ClCompile Include="src\graphics\culling\culling.cpp" />
     <ClCompile Include="src\graphics\rhi\GL\device.cpp" />
@@ -284,17 +285,16 @@
     <ClCompile Include="src\graphics\rhi\GL\primitives.cpp" />
     <ClCompile Include="src\graphics\renderer\renderer.cpp" />
     <ClCompile Include="src\graphics\pass\render_pass.cpp" />
-    <ClCompile Include="src\graphics\shader.cpp" />
-    <ClCompile Include="src\graphics\shadow.cpp" />
-    <ClCompile Include="src\graphics\terrain.cpp" />
-    <ClCompile Include="src\graphics\texture.cpp">
+    <ClCompile Include="src\graphics\assets\shader.cpp" />
+    <ClCompile Include="src\graphics\pass\shadow.cpp" />
+    <ClCompile Include="src\graphics\assets\texture.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">MaxSpeed</Optimization>
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">MaxSpeed</Optimization>
       <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Default</BasicRuntimeChecks>
       <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Default</BasicRuntimeChecks>
     </ClCompile>
-    <ClCompile Include="src\graphics\transforms.cpp" />
-    <ClCompile Include="src\graphics\volumetric.cpp" />
+    <ClCompile Include="src\graphics\renderer\transforms.cpp" />
+    <ClCompile Include="src\graphics\pass\volumetric.cpp" />
     <ClCompile Include="src\graphics\rhi\GL\window.cpp" />
     <ClCompile Include="src\core\io\logger.cpp" />
     <ClCompile Include="src\physics\physics.cpp" />

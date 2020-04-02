@@ -11,7 +11,7 @@ struct AssetManager;
 struct ModelRenderer;
 struct ShaderConfig;
 
-struct ENGINE_API Skybox {
+struct ENGINE_API Skybox { 
 	sstring filename;
 	bool capture_scene = true;
 
@@ -24,7 +24,7 @@ struct ENGINE_API Skybox {
 };
 
 
-struct SkyboxSystem : RenderFeature {
+struct ENGINE_API SkyboxSystem : RenderFeature {
 	AssetManager& asset_manager;
 	model_handle cube_model;
 

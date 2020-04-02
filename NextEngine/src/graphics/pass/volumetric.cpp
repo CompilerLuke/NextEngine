@@ -104,6 +104,8 @@ void VolumetricPass::render_upsampled(World& world, texture_handle current_frame
 
 	glDisable(GL_DEPTH_TEST);
 
+	upsample_shader->bind();
+
 	upsample_shader->set_int("depthPrepass", 0);
 	gl_bind_to(asset_manager.textures, depth_prepass, 0);
 

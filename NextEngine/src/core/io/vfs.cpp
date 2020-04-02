@@ -6,6 +6,10 @@
 #include <stdio.h>
 #include <functional>
 
+Level::Level(string_view asset_folder_path) {
+	set(asset_folder_path);
+}
+
 void Level::set(string_view asset_folder_path) {
 	this->asset_folder_path = asset_folder_path;
 }

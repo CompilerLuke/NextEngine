@@ -3,7 +3,6 @@
 #include "core/container/string_view.h"
 #include "assetTab.h"
 #include "core/container/handle_manager.h"
-#include <imgui/imgui.h>
 
 enum ChannelType { Channel1, Channel2, Channel3, Channel4, ChannelNone };
 
@@ -112,7 +111,7 @@ struct ShaderGraph {
 
 	float scale = 1.0f;
 
-	void render(struct World&, struct Editor&, struct RenderCtx&, struct Input&);
+	void render(struct World&, struct RenderCtx&, struct Input&, struct TextureManager&);
 };
 
 struct ShaderEditor {
@@ -153,11 +152,11 @@ void asset_properties(struct ShaderAsset* tex, struct Editor& editor, struct Wor
 
 string_view get_param_name(ShaderGraph& graph, unsigned int i);
 
-glm::vec2 to_vec2(ImVec2);
-ImVec2 from_vec2(glm::vec2);
+struct AssetTab;
+struct SerializerBuffer;
 
-void load_Shader_for_graph(ShaderAsset* asset);
-void compile_shader_graph(ShaderAsset* asset);
+void load_Shader_for_graph(ShaderManager&, ShaderAsset* asset);
+void compile_shader_graph(AssetTab&, ShaderManager&, ShaderAsset* asset);
 void serialize_shader_asset(struct SerializerBuffer& buffer, ShaderAsset* asset);
 void deserialize_shader_asset(struct DeserializerBuffer& buffer, ShaderAsset* asset);
 

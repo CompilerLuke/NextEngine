@@ -18,6 +18,7 @@ struct string_view {
 	inline string_view(const char* data, unsigned int length) : data(data), length(length) {}
 
 	inline string_view(const char* data) {
+		if (data == NULL) data = "";
 		this->data = data;
 		this->length = strlen(data);
 	}

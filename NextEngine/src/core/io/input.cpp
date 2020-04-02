@@ -35,6 +35,8 @@ void on_scroll(Input* self, glm::vec2 offset) {
 void on_key(Input* self, KeyData& key_data) {
 	if (!self->active) return;
 
+	log("Key pressed", key_data.key, " ", key_data.action, "\n");
+
 	self->keys[key_data.key] = key_data.action;
 }
 

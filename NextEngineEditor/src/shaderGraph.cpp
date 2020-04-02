@@ -16,14 +16,6 @@ REFLECT_STRUCT_END()
 
 float GRID_SZ = 64.0f;
 
-glm::vec2 to_vec2(ImVec2 vec) {
-	return glm::vec2(vec.x, vec.y);
-}
-
-ImVec2 from_vec2(glm::vec2 vec) {
-	return ImVec2(vec.x, vec.y);
-}
-
 ShaderNode::ShaderNode(Type type, ChannelType output_type) {
 	this->output.type = output_type;
 	this->type = type;
@@ -267,7 +259,7 @@ void render_complete_link(ShaderGraph& graph, ShaderNode::Link* link) {
 		glm::vec2 pos1 = calc_pos_of_output(graph, link->from); 
 		glm::vec2 pos2 = calc_pos_of_input(graph, link->to, link->index);
 
-		render_bezier_link(graph, from_vec2(pos1), from_vec2(pos2));
+		render_bezier_link(graph, pos1, pos2);
 	}
 }
 
@@ -408,7 +400,7 @@ glm::vec2 calc_pos_of_node(ShaderGraph& graph, shader_node_handle handle, bool i
 	return position;
 }
 
-void render_node_inner(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle);
+void render_node_inner(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle, TextureManager& texture_manager);
 
 void deselect(ShaderGraph& graph, shader_node_handle handle) {
 	for (auto& selected_handle : graph.selected) {
@@ -419,7 +411,7 @@ void deselect(ShaderGraph& graph, shader_node_handle handle) {
 	}
 }
 
-void render_node(ShaderGraph& graph, shader_node_handle handle) {
+void render_node(ShaderGraph& graph, shader_node_handle handle, TextureManager& texture_manager) {
 	auto self = graph.nodes_manager.get(handle);
 
 	glm::vec2 size = calc_size(graph, self);
@@ -486,7 +478,7 @@ void render_node(ShaderGraph& graph, shader_node_handle handle) {
 	ImGui::BeginGroup(); // Lock horizontal position
 	//ImGui::PopID();
 
-	render_node_inner(graph, self, handle);
+	render_node_inner(graph, self, handle, texture_manager);
 
 	for (int i = 0; i < self->inputs.length; i++) {
 		auto& input = self->inputs[i];
@@ -523,10 +515,10 @@ void render_node(ShaderGraph& graph, shader_node_handle handle) {
 
 #include "GLFW/glfw3.h"
 
-void set_params_for_shader_graph(ShaderManager& shaders, Material* mat_ptr) {
+void set_params_for_shader_graph(AssetTab& asset_tab, ShaderManager& shaders, Material* mat_ptr) {
 	mat_ptr->params.clear();
 
-	ShaderAsset* asset = AssetTab::shader_handle_to_asset[mat_ptr->shader.id];
+	ShaderAsset* asset = asset_tab.shader_handle_to_asset[mat_ptr->shader.id];
 
 	if (asset->graph->requires_time) {
 		Param p;
@@ -575,7 +567,7 @@ void render_preview(ShaderAsset* asset, World& world, AssetTab& tab, RenderCtx& 
 		static material_handle preview_handle = assets.materials.assign_handle({});
 		Material* mat_ptr = assets.materials.get(preview_handle);
 		*mat_ptr = Material(asset->handle);
-		set_params_for_shader_graph(assets.shaders, mat_ptr);
+		set_params_for_shader_graph(tab, assets.shaders, mat_ptr);
 
 		mat_handle = preview_handle;
 	}
@@ -635,7 +627,7 @@ void set_scale(ShaderGraph* graph, Input& input, float scale) {
 	}
 }
 
-void ShaderGraph::render(World& world, Editor& editor, RenderCtx& ctx, Input& input) {
+void ShaderGraph::render(World& world, RenderCtx& ctx, Input& input, TextureManager& texture_manager) {
 	ImGui::PushClipRect(ImGui::GetCursorScreenPos(), ImVec2(ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionMax().x, ImGui::GetCursorScreenPos().y + ImGui::GetContentRegionMax().y), true);
 
 	float scroll_speed = 0.2f;
@@ -667,7 +659,7 @@ void ShaderGraph::render(World& world, Editor& editor, RenderCtx& ctx, Input& in
 
 	//Draw Nodes
 	for (unsigned int i = 0; i < nodes_manager.slots.length; i++) {
-		render_node(*this, nodes_manager.index_to_handle(i));
+		render_node(*this, nodes_manager.index_to_handle(i), texture_manager);
 	}
 
 	draw_list->ChannelsSetCurrent(0);
@@ -689,7 +681,7 @@ void ShaderGraph::render(World& world, Editor& editor, RenderCtx& ctx, Input& in
 
 	if (action.type == Action::BoxSelect) {
 		glm::vec2 start = action.mouse_pos;
-		glm::vec2 end = start + to_vec2(ImGui::GetMouseDragDelta());
+		glm::vec2 end = start + glm::vec2(ImGui::GetMouseDragDelta());
 
 		float length = 5.0f;
 
@@ -890,7 +882,7 @@ void load_Shader_for_graph(ShaderManager& shader_manager, ShaderAsset* asset) {
 	asset->handle = shader_manager.load("shaders/pbr.vert", file_path);
 }
 
-void compile_shader_graph(ShaderManager& shader_manager, ShaderAsset* asset) {
+void compile_shader_graph(AssetTab& asset_tab, ShaderManager& shader_manager, ShaderAsset* asset) {
 	static string_buffer last_output;
 	
 	ShaderCompiler compiler(*asset->graph);
@@ -908,9 +900,9 @@ void compile_shader_graph(ShaderManager& shader_manager, ShaderAsset* asset) {
 	file.write(compiler.contents);
 	file.close();
 
-	load_Shader_for_graph(asset);
+	load_Shader_for_graph(shader_manager, asset);
 
-	insert_shader_handle_to_asset(asset);
+	insert_shader_handle_to_asset(asset_tab, asset);
 	
 	shader_manager.reload(asset->handle);
 
@@ -923,6 +915,7 @@ void ShaderEditor::render(World& world, Editor& editor, RenderCtx& ctx, Input& i
 	if (!this->open) return;
 
 	AssetTab& tab = editor.asset_tab;
+	ShaderManager& shaders = tab.asset_manager.shaders;
 
 	if (ImGui::Begin("Shader Graph Editor", &this->open, ImGuiWindowFlags_NoScrollbar)) {
 		if (this->current_shader == -1) {
@@ -938,12 +931,12 @@ void ShaderEditor::render(World& world, Editor& editor, RenderCtx& ctx, Input& i
 
 		ImGui::SameLine();
 		if (ImGui::Button("Compile")) {
-			compile_shader_graph(asset);
+			compile_shader_graph(tab, shaders, asset);
 			render_preview(asset, world, tab, ctx);
 		}
 
 		if (input.key_pressed('R', true) && input.key_down(GLFW_KEY_LEFT_CONTROL, true)) {
-			compile_shader_graph(asset);
+			compile_shader_graph(tab, shaders, asset);
 			render_preview(asset, world, tab, ctx);
 		}
 
@@ -977,7 +970,7 @@ void ShaderEditor::render(World& world, Editor& editor, RenderCtx& ctx, Input& i
 		
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f * asset->graph->scale, 2.0f * asset->graph->scale));
 
-		asset->graph->render(world, editor, ctx, input);
+		asset->graph->render(world, ctx, input, tab.asset_manager.textures);
 
 		glm::vec2 mouse_drag_begin(ImGui::GetMousePos().x, ImGui::GetMousePos().y);
 		mouse_drag_begin.x -= ImGui::GetMouseDragDelta().x;
@@ -1030,9 +1023,9 @@ void ShaderEditor::render(World& world, Editor& editor, RenderCtx& ctx, Input& i
 		{
 			unsigned int param_id;
 
-			glm::vec2 position = screenspace_to_position(*asset->graph, to_vec2(ImGui::GetMousePos()));
+			glm::vec2 position = screenspace_to_position(*asset->graph, ImGui::GetMousePos());
 
-			mouse_hovering(to_vec2(ImGui::GetWindowPos()) + glm::vec2(0, 100), to_vec2(ImGui::GetWindowSize()) - glm::vec2(0, 100));
+			mouse_hovering(glm::vec2(ImGui::GetWindowPos()) + glm::vec2(0, 100), glm::vec2(ImGui::GetWindowSize()) - glm::vec2(0, 100));
 
 			if (ImGui::BeginDragDropTarget()) {
 				if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DRAG_AND_DROP_PARAM_FLOAT")) {
@@ -1076,6 +1069,7 @@ ShaderNode make_pbr_node();
 
 void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTab& self, RenderCtx& ctx) {
 	TextureManager& textures = self.asset_manager.textures;
+	ShaderManager& shaders = self.asset_manager.shaders;
 	
 	render_name(shader->name, self.default_font);
 	
@@ -1092,7 +1086,7 @@ void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTa
 		shader->graph->nodes_manager.assign_handle(make_pbr_node(), true);
 	}
 
-	compile_shader_graph(shader); //todo use undo redo system to detect change
+	compile_shader_graph(self, shaders, shader); //todo use undo redo system to detect change
 
 	ImGui::SetNextTreeNodeOpen(true);
 	ImGui::CollapsingHeader("Properties");

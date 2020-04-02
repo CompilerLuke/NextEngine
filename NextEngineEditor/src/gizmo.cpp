@@ -4,6 +4,7 @@
 #include "editor.h"
 #include "core/io/input.h"
 #include "GLFW/glfw3.h"
+#include <imgui/imgui.h>
 #include <ImGuizmo/ImGuizmo.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include "components/transform.h"

@@ -30,9 +30,6 @@
     <ClInclude Include="include\custom_inspect.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\diffUtil.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\displayComponents.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -68,6 +65,9 @@
     </ClInclude>
     <ClInclude Include="vendor\ImGuizmo\ImGuizmo.h">
       <Filter>vendor</Filter>
+    </ClInclude>
+    <ClInclude Include="include\diffUtil.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

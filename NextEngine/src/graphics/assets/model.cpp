@@ -24,3 +24,6 @@ REFLECT_STRUCT_MEMBER(indices_length)
 REFLECT_STRUCT_MEMBER(indices_offset)
 REFLECT_STRUCT_END()*/
 
+ModelManager::ModelManager(Level& level) : level(level) {
+
+}

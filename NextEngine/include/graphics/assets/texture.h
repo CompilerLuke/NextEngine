@@ -51,9 +51,9 @@ struct ENGINE_API Cubemap {
 	REFLECT(NO_ARG)
 };
 
-ENGINE_API struct CubemapManager : HandleManager<Cubemap, cubemap_handle> {};
+struct ENGINE_API CubemapManager : HandleManager<Cubemap, cubemap_handle> {};
 
-ENGINE_API struct TextureManager : HandleManager<Texture, texture_handle> {
+struct ENGINE_API TextureManager : HandleManager<Texture, texture_handle> {
 	Level& level;
 	
 	TextureManager(Level& level);
@@ -66,14 +66,14 @@ ENGINE_API struct TextureManager : HandleManager<Texture, texture_handle> {
 	void on_load(texture_handle handle);
 };
 
-ENGINE_API void gl_bind_cubemap(CubemapManager&, cubemap_handle, uint);
-ENGINE_API void gl_bind_to(TextureManager&, texture_handle, uint);
-ENGINE_API int  gl_id_of(TextureManager&, texture_handle);
-ENGINE_API int  gl_format(InternalColorFormat format);
-ENGINE_API int  gl_format(ColorFormat format);
-ENGINE_API int  gl_format(TexelType format);
-ENGINE_API int  gl_format(Filter filter);
-ENGINE_API int  gl_format(Wrap wrap);
-ENGINE_API int  gl_gen_texture();
-ENGINE_API void gl_copy_sub(int width, int height); //todo abstract away
-ENGINE_API uint gl_submit(Image&);
+void ENGINE_API gl_bind_cubemap(CubemapManager&, cubemap_handle, uint);
+void ENGINE_API gl_bind_to(TextureManager&, texture_handle, uint);
+int  ENGINE_API gl_id_of(TextureManager&, texture_handle);
+int  ENGINE_API gl_format(InternalColorFormat format);
+int  ENGINE_API gl_format(ColorFormat format);
+int  ENGINE_API gl_format(TexelType format);
+int  ENGINE_API gl_format(Filter filter);
+int  ENGINE_API gl_format(Wrap wrap);
+int  ENGINE_API gl_gen_texture();
+void ENGINE_API gl_copy_sub(int width, int height); //todo abstract away
+uint ENGINE_API gl_submit(Image&);

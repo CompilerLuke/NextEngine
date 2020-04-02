@@ -96,24 +96,6 @@
     <ClCompile Include="src\physics\physics.cpp">
       <Filter>src\physics</Filter>
     </ClCompile>
-    <ClCompile Include="src\graphics\shader.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\shadow.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\terrain.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\texture.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\transforms.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\volumetric.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
     <ClCompile Include="src\benchmark\benchmark.cpp">
       <Filter>src\benchmark</Filter>
     </ClCompile>
@@ -186,7 +168,6 @@
     <ClCompile Include="src\graphics\renderer\model_rendering.cpp">
       <Filter>src\graphics</Filter>
     </ClCompile>
-    <ClCompile Include="src\graphics\renderer\grass_rendering.cpp" />
     <ClCompile Include="src\graphics\rhi\GL\primitives.cpp">
       <Filter>src\graphics</Filter>
     </ClCompile>
@@ -221,6 +202,23 @@
     <ClCompile Include="src\graphics\assets\asset_manager.cpp" />
     <ClCompile Include="src\graphics\assets\assimp_model_loader.cpp" />
     <ClCompile Include="src\graphics\assets\model.cpp" />
+    <ClCompile Include="src\graphics\assets\shader.cpp">
+      <Filter>src\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\assets\texture.cpp">
+      <Filter>src\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\pass\shadow.cpp">
+      <Filter>src\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\renderer\transforms.cpp">
+      <Filter>src\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\pass\volumetric.cpp">
+      <Filter>src\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\renderer\terrain.cpp" />
+    <ClCompile Include="src\graphics\renderer\grass_rendering.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="vendor\imgui\imconfig.h">

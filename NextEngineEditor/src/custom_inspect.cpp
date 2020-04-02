@@ -89,7 +89,7 @@ bool render_asset_preview(TextureManager& texture_manager, H* handle_ptr, vector
 }
 
 bool Model_inspect(void* data, string_view prefix, Editor& editor) {
-	return render_asset_preview(editor.engine.asset_manager.textures, (model_asset_handle*)data, AssetTab::model_handle_to_asset, prefix, "DRAG_AND_DROP_MODEL");
+	return render_asset_preview(editor.engine.asset_manager.textures, (model_asset_handle*)data, editor.asset_tab.model_handle_to_asset, prefix, "DRAG_AND_DROP_MODEL");
 }
 
 bool Layermask_inspect(void* data, string_view prefix, Editor& editor) {
@@ -133,7 +133,7 @@ bool accept_drop(const char* drop_type, void* ptr, unsigned int size) {
 
 //Materials
 bool Material_inspect(void* data, string_view prefix, Editor& editor) {
-	return render_asset_preview(editor.engine.asset_manager.textures, (material_asset_handle*)data, AssetTab::material_handle_to_asset, prefix, "DRAG_AND_DROP_MATERIAL");
+	return render_asset_preview(editor.engine.asset_manager.textures, (material_asset_handle*)data, editor.asset_tab.material_handle_to_asset, prefix, "DRAG_AND_DROP_MATERIAL");
 }
 
 bool Materials_inspect(void* data, string_view prefix, Editor& editor) {

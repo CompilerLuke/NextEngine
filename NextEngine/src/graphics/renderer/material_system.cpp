@@ -144,9 +144,9 @@ void Material::retarget_from(AssetManager& manager, material_handle mat_handle) 
 	}
 }
 
-void Material::set_flag(ShaderManager& manager, string_view flag, bool enabled) {
-	this->shader_flags ^= (-enabled ^ this->shader_flags) & manager.get(shader)->get_flag(flag);
-}
+//void Material::set_flag(ShaderManager& manager, string_view flag, bool enabled) {
+//	this->shader_flags ^= (-enabled ^ this->shader_flags) & manager.get(shader)->get_flag(flag);
+//}
 
 void Material::set_channel3(ShaderManager& shaders, string_view name, glm::vec3 value, texture_handle tex) {
 	//if (tex.id == INVALID_HANDLE) {

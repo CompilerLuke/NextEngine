@@ -68,35 +68,31 @@ DEFINE_APP_COMPONENT_ID(ShaderAsset, 2)
 DEFINE_APP_COMPONENT_ID(ModelAsset, 3)
 DEFINE_APP_COMPONENT_ID(MaterialAsset, 4)
 
-vector<MaterialAsset*> AssetTab::material_handle_to_asset;
-vector<ModelAsset*> AssetTab::model_handle_to_asset;
-vector<ShaderAsset*> AssetTab::shader_handle_to_asset;
-
-void insert_material_handle_to_asset(MaterialAsset* asset) {
-	int diff = asset->handle.id - AssetTab::material_handle_to_asset.length + 1;
+void insert_material_handle_to_asset(AssetTab& asset_tab, MaterialAsset* asset) {
+	int diff = asset->handle.id - asset_tab.material_handle_to_asset.length + 1;
 
 	for (int i = 0; i < diff; i++) {
-		AssetTab::material_handle_to_asset.append(NULL);
+		asset_tab.material_handle_to_asset.append(NULL);
 	}
-	AssetTab::material_handle_to_asset[asset->handle.id] = asset;
+	asset_tab.material_handle_to_asset[asset->handle.id] = asset;
 }
 
-void insert_model_handle_to_asset(ModelAsset* asset) {
-	int diff = asset->handle.id - AssetTab::model_handle_to_asset.length + 1;
+void insert_model_handle_to_asset(AssetTab& asset_tab, ModelAsset* asset) {
+	int diff = asset->handle.id - asset_tab.model_handle_to_asset.length + 1;
 
 	for (int i = 0; i < diff; i++) {
-		AssetTab::model_handle_to_asset.append(NULL);
+		asset_tab.model_handle_to_asset.append(NULL);
 	}
-	AssetTab::model_handle_to_asset[asset->handle.id] = asset;
+	asset_tab.model_handle_to_asset[asset->handle.id] = asset;
 }
 
-void insert_shader_handle_to_asset(ShaderAsset* asset) {
-	int diff = asset->handle.id - AssetTab::shader_handle_to_asset.length + 1;
+void insert_shader_handle_to_asset(AssetTab& asset_tab, ShaderAsset* asset) {
+	int diff = asset->handle.id - asset_tab.shader_handle_to_asset.length + 1;
 
 	for (int i = 0; i < diff; i++) {
-		AssetTab::shader_handle_to_asset.append(NULL);
+		asset_tab.shader_handle_to_asset.append(NULL);
 	}
-	AssetTab::shader_handle_to_asset[asset->handle.id] = asset;
+	asset_tab.shader_handle_to_asset[asset->handle.id] = asset;
 }
 
 void AssetTab::register_callbacks(Window& window, Editor& editor) {
@@ -544,7 +540,7 @@ void channel_image(TextureManager& textures, texture_handle& image, string_view 
 	ImGui::SameLine(ImGui::GetWindowWidth() - 300);
 }
 
-void set_params_for_shader_graph(ShaderManager& shader_manager, Material* mat);
+void set_params_for_shader_graph(AssetTab& asset_tab, ShaderManager& shader_manager, Material* mat);
 
 //todo refactor Editor into smaller chunks
 void inspect_material_params(Editor& editor, Material* material) {
@@ -607,7 +603,7 @@ void inspect_material_params(Editor& editor, Material* material) {
 }
 
 void asset_properties(MaterialAsset* mat_asset, Editor& editor, World& world, AssetTab& self, RenderCtx& ctx) {
-	AssetManager& asset_manager = editor.engine.asset_manager;
+	AssetManager& asset_manager = self.asset_manager;
 	ShaderManager& shader_manager = asset_manager.shaders;
 	TextureManager& texture_manager = asset_manager.textures;
 	MaterialManager& material_manager = asset_manager.materials;
@@ -634,7 +630,7 @@ void asset_properties(MaterialAsset* mat_asset, Editor& editor, World& world, As
 			}
 
 			if (accept_drop("DRAG_AND_DROP_SHADER", &material->shader, sizeof(shader_handle))) {
-				set_params_for_shader_graph(shader_manager, material);
+				set_params_for_shader_graph(self, shader_manager, material);
 			}
 
 			if (ImGui::BeginPopup("StandardShaders")) {
@@ -747,7 +743,7 @@ void import_model(World& world, Editor& editor, AssetTab& self, RenderCtx& ctx, 
 
 	model_asset->handle = handle;
 
-	insert_model_handle_to_asset(model_asset);
+	insert_model_handle_to_asset(self, model_asset);
 
 	for (sstring& material : model->materials) {
 		model_asset->materials.append(self.default_material);
@@ -826,7 +822,7 @@ MaterialAsset* register_new_material(World& world, AssetTab& self, Editor& edito
 	render_preview_for(world, self, *asset, ctx);
 	add_asset(self, id);
 
-	insert_material_handle_to_asset(asset);
+	insert_material_handle_to_asset(self, asset);
 	return asset;
 }
 
@@ -1179,7 +1175,7 @@ void AssetTab::on_load(World& world, RenderCtx& ctx) {
 
 			serializer.read(reflect::TypeResolver<MaterialAsset>::get(), mat_asset);
 
-			insert_material_handle_to_asset(mat_asset);
+			insert_material_handle_to_asset(*this, mat_asset);
 
 			asset_manager.materials.assign_handle(mat_asset->handle, std::move(mat));
 
@@ -1206,7 +1202,7 @@ void AssetTab::on_load(World& world, RenderCtx& ctx) {
 
 			asset_manager.models.load_in_place(mod_asset->handle, mod_asset->trans.compute_model_matrix());
 
-			insert_model_handle_to_asset(mod_asset);
+			insert_model_handle_to_asset(*this, mod_asset);
 
 			render_preview_for(world, *this, *mod_asset, ctx);
 		}
@@ -1223,9 +1219,9 @@ void AssetTab::on_load(World& world, RenderCtx& ctx) {
 			assets.skipped_ids.append(id);
 
 			deserialize_shader_asset(serializer, shad_asset);
-			insert_shader_handle_to_asset(shad_asset);
+			insert_shader_handle_to_asset(*this, shad_asset);
 			
-			load_Shader_for_graph(shad_asset);
+			load_Shader_for_graph(asset_manager.shaders, shad_asset);
 		}
 	}
 

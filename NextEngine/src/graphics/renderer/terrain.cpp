@@ -26,7 +26,7 @@ void init_terrains(TextureManager& texture_manager, World& world, vector<ID>& te
 		tex_desc.internal_format = InternalColorFormat::Red;
 		tex_desc.external_format = ColorFormat::Red;
 		tex_desc.texel_type = TexelType::Float;
-		
+
 		uint width_quads = 32 * terrain->width;
 		uint height_quads = 32 * terrain->height;
 
@@ -34,6 +34,7 @@ void init_terrains(TextureManager& texture_manager, World& world, vector<ID>& te
 		image.width = width_quads;
 		image.height = height_quads;
 		image.data = terrain->heightmap_points.length == 0 ? NULL : terrain->heightmap_points.data;
+
 
 		terrain->heightmap = texture_manager.create_from(image, tex_desc);
 
@@ -73,7 +74,7 @@ TerrainRenderSystem::TerrainRenderSystem(AssetManager& assets, World& world) : a
 void TerrainRenderSystem::render(World& world, RenderCtx& render_ctx) {
 	ShaderManager& shaders = asset_manager.shaders;
 	CommandBuffer& cmd_buffer = render_ctx.command_buffer;
-	
+
 	ID cam = get_camera(world, render_ctx.layermask);
 	Transform* cam_trans = world.by_id<Transform>(cam);
 
@@ -105,17 +106,17 @@ void TerrainRenderSystem::render(World& world, RenderCtx& render_ctx) {
 		for (unsigned int w = 0; w < self->width; w++) {
 			for (unsigned int h = 0; h < self->height; h++) {
 				Transform t;
-				t.position = self_trans->position + glm::vec3(w * self->size_of_block, 0, (h + 1.0) * self->size_of_block);
+				t.position = self_trans->position + glm::vec3(w * self->size_of_block, 0, (h + 1) * self->size_of_block);
 				t.scale = glm::vec3(self->size_of_block);
 
 				ChunkInfo chunk_info;
 				chunk_info.model_m = t.compute_model_matrix();
 
 				AABB aabb;
-				aabb.min = glm::vec3(0, 0, 0) + t.position;
-				aabb.max = glm::vec3(self->size_of_block, self->max_height, self->size_of_block) + t.position;
+				aabb.min = glm::vec3(0, 0, -(int)self->size_of_block) + t.position;
+				aabb.max = glm::vec3(self->size_of_block, self->max_height, 0) + t.position;
 
-				//if (frustum_test(planes, aabb) == OUTSIDE) continue;
+				if (frustum_test(planes, aabb) == OUTSIDE) continue;
 
 				chunk_info.displacement_offset = glm::vec2(1.0 / self->width * w, 1.0 / self->height * h);
 
@@ -138,7 +139,7 @@ void TerrainRenderSystem::render(World& world, RenderCtx& render_ctx) {
 
 		for (int i = 0; i < 3; i++) {
 			vector<ChunkInfo>& chunk_info = lod_chunks[i];
-			
+
 			RHI::upload_data(chunk_instance_buffer[i], chunk_info);
 
 			Model* model = asset_manager.models.get(subdivided_plane[i]);
@@ -148,15 +149,15 @@ void TerrainRenderSystem::render(World& world, RenderCtx& render_ctx) {
 
 		/*
 		if (self->show_control_points && (render_ctx.layermask & EDITOR_LAYER || render_ctx.layermask && PICKING_LAYER)) {
-			for (ID id : world.filter<TerrainControlPoint, Transform>(render_ctx.layermask)) {
-				Transform* trans = world.by_id<Transform>(id);
-				trans->scale = glm::vec3(0.1);
+		for (ID id : world.filter<TerrainControlPoint, Transform>(render_ctx.layermask)) {
+		Transform* trans = world.by_id<Transform>(id);
+		trans->scale = glm::vec3(0.1);
 
-				world.by_id<Entity>(id)->layermask |= PICKING_LAYER;
+		world.by_id<Entity>(id)->layermask |= PICKING_LAYER;
 
-				glm::mat4 model_m = trans->compute_model_matrix();
-				RHI::model_manager.get(cube_model)->render(id, model_m, control_point_materials, render_ctx);
-			}
+		glm::mat4 model_m = trans->compute_model_matrix();
+		RHI::model_manager.get(cube_model)->render(id, model_m, control_point_materials, render_ctx);
+		}
 		}
 		*/
 	}

@@ -9,19 +9,25 @@
 #include "core/memory/linear_allocator.h"
 #include "ecs/ecs.h"
 #include "graphics/assets/asset_manager.h"
+#include "core/time.h"
+
+#include "physics/physics.h"
+#include "components/transform.h"
 
 Engine::Engine(string_view level_path) :
-	input(*PERMANENT_ALLOC(Input)),
-	time(*PERMANENT_ALLOC(Time)),
-	world(*PERMANENT_ALLOC(World)),
-	window(*PERMANENT_ALLOC(Window)),
-	renderer(*PERMANENT_ALLOC(Renderer)),
-	asset_manager(*PERMANENT_ALLOC(AssetManager, level_path)),
-	level(asset_manager.level)
+	level(level_path),
+	input(*new Input()),
+	time(*new Time()),
+	world(*new World()),
+	window(*new Window()),
+	renderer(*new Renderer()),
+	asset_manager(*new AssetManager(level)),
+	local_transforms_system(*new LocalTransformSystem()),
+	physics_system(*new PhysicsSystem())
 {
-	level.set(level_path);
-
 	register_default_systems_and_components(world);
+
+	physics_system.init(world);
 
 	window.full_screen = false;
 	window.vSync = false;

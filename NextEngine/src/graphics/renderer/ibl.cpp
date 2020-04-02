@@ -140,7 +140,7 @@ void SkyboxSystem::load(Skybox* skybox) { //todo cleanup
 	// pbr: load the HDR environment map
 	// ---------------------------------
 	if (!skybox->capture_scene) {
-		stbi_set_flip_vertically_on_load(false); //this seems different
+		stbi_set_flip_vertically_on_load(true); //this seems different
 		int width, height, nrComponents;
 		float *data = stbi_loadf(asset_manager.level.asset_path(skybox->filename).c_str(), &width, &height, &nrComponents, 0);
 		if (data)

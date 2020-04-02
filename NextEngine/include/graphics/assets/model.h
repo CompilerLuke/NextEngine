@@ -48,7 +48,7 @@ struct ModelRenderer {
 
 struct Level;
 
-ENGINE_API struct ModelManager : HandleManager<Model, model_handle> {
+ struct ENGINE_API ModelManager : HandleManager<Model, model_handle> {
 	Level& level;
 
 	ModelManager(Level& level);

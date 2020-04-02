@@ -211,7 +211,7 @@ void calc_ortho_proj(RenderCtx& params, glm::mat4& light_m, float width, float h
 void DepthMap::render_maps(Renderer& renderer, World& world, RenderCtx& ctx, glm::mat4 projection_m, glm::mat4 view_m, bool is_shadow_pass) {
 	CommandBuffer cmd_buffer(asset_manager);
 	
-	RenderCtx new_ctx(ctx, is_shadow_pass ? ctx.command_buffer : cmd_buffer, this);
+	RenderCtx new_ctx(ctx, is_shadow_pass ? cmd_buffer : ctx.command_buffer, this);
 	new_ctx.view = view_m;
 	new_ctx.projection = projection_m;
 	

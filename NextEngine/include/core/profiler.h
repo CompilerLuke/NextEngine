@@ -2,11 +2,10 @@
 
 #include "core/container/vector.h"
 #include "core/container/string_view.h"
-#include "core/time.h"
 
 struct ENGINE_API Profile {
-	std::chrono::high_resolution_clock::time_point start_time;
-	std::chrono::high_resolution_clock::time_point end_time;
+	double start_time;
+	double end_time;
 
 	const char* name;
 	bool ended;
@@ -20,13 +19,13 @@ struct ENGINE_API Profile {
 
 struct ProfileData {
 	const char* name;
-	std::chrono::duration<double, std::milli> start;
-	std::chrono::duration<double, std::milli> duration;
+	double start;
+	double duration;
 	int profile_depth;
 };
 
 struct Frame {
-	std::chrono::high_resolution_clock::time_point start_of_frame;
+	double start_of_frame;
 	double frame_duration;
 	double frame_swap_duration; //includes time waiting for vSync
 	vector<ProfileData> profiles;

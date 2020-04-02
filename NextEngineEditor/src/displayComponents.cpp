@@ -78,13 +78,13 @@ bool render_fields_struct(reflect::TypeDescriptor_Struct* self, void* data, stri
 
 	bool open;
 	if (prefix == "Component") {
-		open = ImGui::CollapsingHeader(self->name, ImGuiTreeNodeFlags_Framed);
+		open = ImGui::CollapsingHeader(self->name.c_str(), ImGuiTreeNodeFlags_Framed);
 		if (ImGui::IsItemHovered() && ImGui::GetIO().MouseClicked[1]) {
 
 			ImGui::OpenPopup(destroy_component_popup_name(self));
 		}
 
-		ImGui::PushID(self->name);
+		ImGui::PushID(self->name.c_str());
 		//ImGui::CloseButton(ImGui::GetActiveID(), ImVec2(ImGui::GetCurrentWindow()->DC.CursorPos.x + ImGui::GetWindowWidth() - 35, ImGui::GetCurrentWindow()->DC.CursorPos.y - 23.0f), 15.0f);
 		ImGui::PopID();
 	}
@@ -142,7 +142,7 @@ bool render_fields_enum(reflect::TypeDescriptor_Enum* self, void* data, string_v
 	int i = 0;
 	for (auto& value : self->values) {
 		if (i > 0) ImGui::SameLine();
-		ImGui::RadioButton(value.name, value.value == tag);
+		ImGui::RadioButton(value.name.c_str(), value.value == tag);
 		i++;
 	}
 

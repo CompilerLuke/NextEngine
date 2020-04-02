@@ -61,7 +61,7 @@ void MainPass::render_to_buffer(World& world, RenderCtx& ctx, std::function<void
 	
 	ctx.command_buffer.clear();
 
-	update_camera_matrices(world, get_camera(world, ctx.layermask), ctx);
+	//update_camera_matrices(world, get_camera(world, ctx.layermask), ctx);
 
 	renderer.render_view(world, ctx);
 	renderer.render_overlay(world, ctx);
@@ -78,6 +78,10 @@ void MainPass::render_to_buffer(World& world, RenderCtx& ctx, std::function<void
 	current_frame.clear_depth(glm::vec4(0, 0, 0, 1));
 
 	glBlitNamedFramebuffer(depth_prepass.depth_map_FBO.fbo, current_frame.fbo, 0, 0, 0, 0, current_frame.width, current_frame.height, current_frame.width, current_frame.height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+
+	current_frame.bind();
+	current_frame.clear_color(glm::vec4(0, 0, 0, 1));
+	current_frame.clear_depth(glm::vec4(0, 0, 0, 1));
 
 	CommandBuffer::submit_to_gpu(ctx);
 

@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "core/profiler.h"
 #include "core/io/logger.h"
+#include <GLFW/glfw3.h>
 
 //TODO rewrite using custom time API
 
@@ -39,13 +40,13 @@ void Profiler::record_profile(const Profile& profile) {
 
 void Profiler::begin_frame() {
 	if (paused) return;
-	auto current_time = std::chrono::high_resolution_clock::now();
+	auto current_time = glfwGetTime();
 
 	if (frames.length > 0) {
 		Frame& frame = get_current_frame();
-		std::chrono::duration<double, std::milli> duration = current_time - frame.start_of_frame;
+		double duration = current_time - frame.start_of_frame;
 
-		frame.frame_swap_duration = duration.count();
+		frame.frame_swap_duration = duration;
 	}
 
 	Frame frame;
@@ -64,15 +65,14 @@ void Profiler::end_frame() {
 	if (paused) return;
 	Frame& current_frame = get_current_frame();
 
-	std::chrono::duration<double, std::milli> duration = std::chrono::high_resolution_clock::now() - current_frame.start_of_frame;
-
-	current_frame.frame_duration = duration.count();
+	double duration = glfwGetTime() - current_frame.start_of_frame;
+	current_frame.frame_duration = duration;
 }
 
 //Profile
 Profile::Profile(const char* name) {
 	this->name = name;
-	this->start_time = std::chrono::high_resolution_clock::now();
+	this->start_time = glfwGetTime();
 	this->ended = false;
 
 	Profiler::begin_profile();
@@ -80,7 +80,7 @@ Profile::Profile(const char* name) {
 
 void Profile::end() {
 	this->ended = true;
-	this->end_time = std::chrono::high_resolution_clock::now();
+	this->end_time = glfwGetTime();
 
 	Profiler::record_profile(*this);
 }

@@ -126,3 +126,7 @@ Window::~Window() {
 	glfwDestroyWindow(window_ptr);
 	glfwTerminate();
 }
+
+Window* Window::from(GLFWwindow* ptr) {
+	return (Window*)glfwGetWindowUserPointer(ptr);
+}

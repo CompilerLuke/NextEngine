@@ -110,14 +110,14 @@ static bool is_scene_hovered = false;
 
 void override_key_callback(GLFWwindow* window_ptr, int key, int scancode, int action, int mods) {
 	ImGui_ImplGlfw_KeyCallback(window_ptr, key, scancode, action, mods);
-	Window* window = (Window*)glfwGetWindowUserPointer(window_ptr);
+	Window* window = Window::from(window_ptr);
 	
 	window->on_key.broadcast({ key, scancode, action, mods });
 }
 
 void override_mouse_button_callback(GLFWwindow* window_ptr, int button, int action, int mods) {
 	ImGui_ImplGlfw_MouseButtonCallback(window_ptr, button, action, mods);
-	Window* window = (Window*)glfwGetWindowUserPointer(window_ptr);
+	Window* window = Window::from(window_ptr);
 
 	window->on_mouse_button.broadcast({ button, action, mods });
 }
@@ -257,6 +257,27 @@ void on_save(Editor& editor) {
 	editor.asset_tab.on_save();
 }
 
+void register_callbacks(Editor& editor, Engine& engine) {
+	Window& window = engine.window;
+	World& world = engine.world;
+	
+	editor.selected.listeners.clear();
+
+	register_on_inspect_callbacks(engine.asset_manager);
+
+	editor.asset_tab.register_callbacks(window, editor);
+
+	editor.selected.listen([&engine, &world](ID id) {
+		auto rb = world.by_id<RigidBody>(id);
+		if (rb) {
+			rb->bt_rigid_body = NULL; //todo fix leak
+		}
+	});
+
+	engine.window.override_key_callback(override_key_callback);
+	engine.window.override_char_callback(ImGui_ImplGlfw_CharCallback);
+	engine.window.override_mouse_button_callback(override_mouse_button_callback);
+}
 
 Editor::Editor(Engine& engine, const char* game_code) : 
 	engine(engine), 
@@ -266,23 +287,14 @@ Editor::Editor(Engine& engine, const char* game_code) :
 {
 	Window& window = engine.window;
 	World& world = engine.world;
-	
-	world.add(new Store<EntityEditor>(100));
+
 
 	//world.add(new DebugShaderReloadSystem());
 	//world.add(new TerrainSystem(world, this));
 	//world.add(new PickingSystem(*this));
 
-	register_on_inspect_callbacks();
-
-	this->selected.listen([this, &world](ID id) { 
-		auto rb = world.by_id<RigidBody>(id);
-		if (rb) {
-			rb->bt_rigid_body = NULL; //todo fix leak
-		}
-	});
-
-	gizmo.register_callbacks(*this);
+	init_imgui();
+	register_callbacks(*this, engine);
 
 	AttachmentDesc color_attachment(scene_view);
 	color_attachment.min_filter = Filter::Linear;
@@ -294,10 +306,6 @@ Editor::Editor(Engine& engine, const char* game_code) :
 	settings.color_attachments.append(color_attachment);
 
 	scene_view_fbo = Framebuffer(engine.asset_manager.textures, settings);
-
-	this->asset_tab.register_callbacks(window, *this);
-
-	init_imgui();
 
 	Time time;
 
@@ -320,22 +328,9 @@ Editor::Editor(Engine& engine, const char* game_code) :
 
 	on_load(*this, render_ctx); //todo remove any rendering from load
 
-	/*
-	{
-	auto id = world.make_ID();
-	auto e = world.make<Entity>(id);
-	e->layermask |= editor_layer;
-	auto trans = world.make<Transform>(id);
-	auto camera = world.make <Camera>(id);
-	auto flyover = world.make<Flyover>(id);
-	auto name = world.make<EntityEditor>(id);
-	name->name = "Editor Camera";
-	}
-	*/
-
 	engine.input.capture_mouse(false);
 
-	engine.asset_manager.shaders.load("shaders/pbr.vert", "shaders/paralax_pbr.frag");
+	//engine.asset_manager.shaders.load("shaders/pbr.vert", "shaders/paralax_pbr.frag");
 
 	render_ctx.dir_light = get_dir_light(world, render_ctx.layermask);
 
@@ -383,9 +378,6 @@ void Editor::init_imgui() {
 	ImGui_ImplGlfw_InitForOpenGL(window_ptr, false);
 	ImGui_ImplOpenGL3_Init();
 
-	engine.window.override_key_callback(override_key_callback);
-	engine.window.override_char_callback(ImGui_ImplGlfw_CharCallback);
-	engine.window.override_mouse_button_callback(override_mouse_button_callback);
 }
 
 uint64_t Editor::get_icon(string_view name) {
@@ -472,6 +464,8 @@ void default_scene(Editor& editor, RenderCtx& ctx) {
 	*/
 }
 
+float fullscreen = false;
+
 struct EditorRendererExtension : RenderExtension {
 	Editor& editor;
 
@@ -490,6 +484,15 @@ struct EditorRendererExtension : RenderExtension {
 
 	void render(World& world, RenderCtx& ctx) override {
 		MainPass& main_pass = *editor.engine.renderer.main_pass;
+
+		if (fullscreen && editor.playing_game) {
+			main_pass.output.bind();
+			main_pass.output.clear_color(glm::vec4(0, 0, 0, 1));
+			main_pass.output.clear_depth(glm::vec4(0, 0, 0, 1));
+
+			main_pass.render(world, ctx);
+			return;
+		}
 
 		main_pass.render_to_buffer(world, ctx, [this]() {
 			editor.scene_view_fbo.bind();
@@ -581,7 +584,7 @@ glm::vec3 Editor::place_at_cursor() {
 }
 
 void spawn_Model(World& world, Editor& editor, model_handle model_handle) { //todo maybe move to assetTab
-	ModelAsset* model_asset = AssetTab::model_handle_to_asset[model_handle.id];
+	ModelAsset* model_asset = editor.asset_tab.model_handle_to_asset[model_handle.id];
 
 	if (model_asset) {
 
@@ -707,7 +710,9 @@ void render_Editor(Editor& editor, RenderCtx& ctx) {
 
 	if (ImGui::Begin("Scene", NULL, ImGuiWindowFlags_NoScrollbar)) {
 		
-		ImGui::ImageButton((ImTextureID)editor.get_icon("play"), ImVec2(40, 40));
+		if (ImGui::ImageButton((ImTextureID)editor.get_icon("play"), ImVec2(40, 40))) {
+			on_set_play_mode(editor, true);
+		}
 
 		float width = ImGui::GetContentRegionMax().x;
 		float height = ImGui::GetContentRegionMax().y - ImGui::GetCursorPos().y;

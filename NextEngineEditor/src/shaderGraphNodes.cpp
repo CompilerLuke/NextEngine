@@ -3,6 +3,7 @@
 #include "core/io/logger.h"
 #include "graphics/assets/texture.h"
 #include "editor.h"
+#include <imgui/imgui.h>
 
 vector<ShaderNode> node_defaults;
 
@@ -348,11 +349,11 @@ void node_option(string_view name, ShaderAsset* asset, glm::vec2 mouse_rel, bool
 }
 
 void new_node_popup(ShaderAsset* asset) {
-	glm::vec2 window_pos = to_vec2(ImGui::GetWindowPos());
+	glm::vec2 window_pos = ImGui::GetWindowPos();
 
 	if (ImGui::BeginPopup("NewNode")) {
 
-		glm::vec2 position = to_vec2(ImGui::GetWindowPos()); //todo move back into assetTab
+		glm::vec2 position = ImGui::GetWindowPos(); //todo move back into assetTab
 		position /= asset->graph->scale;
 
 		position.x -= window_pos.x + asset->graph->scrolling.x;

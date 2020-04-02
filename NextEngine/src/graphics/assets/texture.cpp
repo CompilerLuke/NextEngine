@@ -164,12 +164,21 @@ TextureManager::TextureManager(Level& level) : level(level) {
 
 }
 
-texture_handle TextureManager::create_from(const Image& image, const TextureDesc& self) {
+void TextureManager::assign_handle(texture_handle handle, Texture&& tex) {
+	HandleManager::assign_handle(handle, std::move(tex));
+}
+
+texture_handle TextureManager::create_from(const Image& image, const TextureDesc& desc) {
 	int tex = gl_gen_texture();
-	texture_handle handle = set_texture_settings(*this, self, tex);
-	glTexImage2D(GL_TEXTURE_2D, 0, gl_format(self.internal_format), image.width, image.height, 0, gl_format(self.external_format), gl_format(self.texel_type), image.data);
-		
+	texture_handle handle = set_texture_settings(*this, desc, tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, gl_format(desc.internal_format), image.width, image.height, 0, gl_format(desc.external_format), gl_format(desc.texel_type), image.data);
+	glGenerateMipmap(GL_TEXTURE_2D);
+
 	return handle;
+}
+
+texture_handle TextureManager::create_from_gl(uint id, const TextureDesc& desc) {
+	return set_texture_settings(*this, desc, id);
 }
 
 void gl_bind_cubemap(CubemapManager& cubemap_manager, cubemap_handle handle, unsigned int num) {

@@ -150,6 +150,7 @@ struct vector {
 		}
 	}
 
+
 	vector<T>& operator=(const vector<T>& other) {
 		free_data();
 
@@ -222,12 +223,12 @@ struct static_vector {
 
 	}
 
-	static_vector(const static_vector<N, T>& other) {
+	/*static_vector(const static_vector<N, T>& other) {
 		length = other.length;
 		for (int i = 0; i < length; i++) {
 			new (data + i) T(other[i]);
 		}
-	}
+	}*/
 
 	static_vector(static_vector<N, T>&& other) {
 		length = other.length;
@@ -236,17 +237,19 @@ struct static_vector {
 		other.length = 0;
 	}
 
-	static_vector<N, T>& operator=(const static_vector<N, T>& other) {
+	/*static_vector<N, T>& operator=(const static_vector<N, T>& other) {
 		length = other.length;
 		for (int i = 0; i < length; i++) new (data + i) T(other[i]);
 		return *this;
-	}
+	}*/
 
 	static_vector<N, T>& operator=(static_vector<N, T>&& other) {
 		length = other.length;
 		memcpy(data, other.data, sizeof(T) * length);
 
 		other.length = 0;
+
+		return *this;
 	}
 
 	T& operator[](uint index) {
@@ -272,7 +275,7 @@ struct static_vector {
 	}
 
 	T pop() {
-		return data + --length;
+		return std::move(data[--length]);
 	}
 
 	inline T* begin() {

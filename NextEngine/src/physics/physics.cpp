@@ -256,10 +256,10 @@ REFLECT_STRUCT_MEMBER(override_velocity_z)
 REFLECT_STRUCT_MEMBER(continous)
 REFLECT_STRUCT_END()
 
-PhysicsSystem::PhysicsSystem(World& world) 
-: bt_wrapper(make_BulletWrapper()) {
+PhysicsSystem::PhysicsSystem()
+	: bt_wrapper(make_BulletWrapper()) {}
 
-
+void PhysicsSystem::init(World& world) {
 	world.on_free<RigidBody>([this, &world](vector<ID>& freed) {
 		for (ID id : freed) {
 			RigidBody* rb = world.by_id<RigidBody>(id);

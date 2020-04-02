@@ -14,6 +14,7 @@
 #include "../TheUnpluggingGame/playerInput.h"
 #include "../TheUnpluggingGame/fpsController.h"
 #include "../TheUnpluggingGame/bowWeapon.h"
+#include "../NextEngineEditor/include/editor.h"
 #include <ecs/ecs.h>
 
 DEFINE_APP_COMPONENT_ID(PlayerInput, 0);
@@ -41,11 +42,18 @@ REFLECT_STRUCT_END()
 REFLECT_STRUCT_BEGIN(Arrow)
 REFLECT_STRUCT_END()
 
+DEFINE_APP_COMPONENT_ID(EntityEditor, 15)
+
+REFLECT_STRUCT_BEGIN(EntityEditor)
+REFLECT_STRUCT_MEMBER(name)
+REFLECT_STRUCT_END()
+
 void register_components(World& world) {
 	world.add(new Store<PlayerInput>(1));
 	world.add(new Store<FPSController>(10));
 	world.add(new Store<Bow>(5));
 	world.add(new Store<Arrow>(20));
+	world.add(new Store<EntityEditor>(100));
 }
 
 int main() {

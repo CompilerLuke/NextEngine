@@ -104,6 +104,8 @@ RenderCtx Renderer::render(World& world, Layermask layermask, uint width, uint h
 	ctx.skybox = world.filter<Skybox>(ctx.layermask)[0];
 	ctx.dir_light = world.filter<DirLight>(ctx.layermask)[0];
 	ctx.extension = ext;
+	ctx.width = width;
+	ctx.height = height;
 
 	ID camera_id = get_camera(world, ctx.layermask & EDITOR_LAYER ? EDITOR_LAYER : GAME_LAYER);
 	update_camera_matrices(world, camera_id, ctx);

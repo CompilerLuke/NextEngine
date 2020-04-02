@@ -26,11 +26,12 @@ namespace reflect {
 		Unsigned_Int_Kind,
 		Float_Kind,
 		StringBuffer_Kind,
+		SString_Kind
 	};
 
 	struct TypeDescriptor {
 		TypeDescriptor_Kind kind;
-		const char* name;
+		string_view name;
 		size_t size;
 	};
 
@@ -86,7 +87,7 @@ namespace reflect {
 
 	struct TypeDescriptor_Struct : TypeDescriptor {
 		struct Member {
-			const char* name;
+			string_view name;
 			size_t offset;
 			TypeDescriptor* type;
 			TypeTag tag;
@@ -121,7 +122,7 @@ namespace reflect {
 
 	struct TypeDescriptor_Enum : TypeDescriptor {
 		struct Value {
-			const char* name;
+			string_view name;
 			int value;
 		};
 
@@ -264,7 +265,8 @@ TypeDescriptor* getPrimitiveDescriptor<glm::vec4>();
 template<> ENGINE_API
 TypeDescriptor* getPrimitiveDescriptor<string_buffer>();
 
-void ENGINE_API make_Handle_TypeDescriptor(TypeDescriptor_Struct* typeDesc);
+template<> ENGINE_API
+TypeDescriptor* getPrimitiveDescriptor<sstring>();
 
 struct TypeDescriptor_Pointer : TypeDescriptor {
 	TypeDescriptor* itemType;

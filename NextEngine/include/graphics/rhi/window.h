@@ -47,4 +47,6 @@ struct Window {
 	void ENGINE_API override_mouse_button_callback(GLFWmousebuttonfun func);
 
 	ENGINE_API ~Window();
+
+	ENGINE_API static Window* from(GLFWwindow*);
 };

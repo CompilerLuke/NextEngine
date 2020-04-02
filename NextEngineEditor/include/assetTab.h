@@ -108,9 +108,9 @@ struct AssetTab {
 	struct ImFont* filename_font = NULL;
 	struct ImFont* default_font = NULL;
 
-	static vector<MaterialAsset*> material_handle_to_asset; 
-	static vector<ModelAsset*> model_handle_to_asset;
-	static vector<ShaderAsset*> shader_handle_to_asset;
+	vector<MaterialAsset*> material_handle_to_asset; 
+	vector<ModelAsset*> model_handle_to_asset;
+	vector<ShaderAsset*> shader_handle_to_asset;
 
 	World assets;
 	ID toplevel;
@@ -145,5 +145,5 @@ void rot_preview(TextureManager& texture_manager, RotatablePreview& self);
 
 bool accept_drop(const char* drop_type, void* ptr, unsigned int size);
 
-void insert_shader_handle_to_asset(ShaderAsset* asset);
+void insert_shader_handle_to_asset(AssetTab& asset_tab, ShaderAsset* asset);
 void inspect_material_params(Editor& editor, Material* material);

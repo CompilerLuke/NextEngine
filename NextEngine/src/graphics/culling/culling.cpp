@@ -59,7 +59,6 @@ void extract_planes(RenderCtx& params, glm::vec4 planes[6]) {
 }
 CullResult frustum_test(glm::vec4 planes[6], const AABB& aabb) {
 	CullResult result = INSIDE;
-	return INSIDE;
 
 	for (int planeID = 0; planeID < 6; planeID++) {
 		glm::vec3 planeNormal(planes[planeID]);
@@ -256,6 +255,7 @@ void build_acceleration_structure(ScenePartition& scene_partition, hash_set<Mesh
 			bucket.model_id = model_renderer->model_id;
 			bucket.mesh_id = mesh_index;
 			bucket.mat_id = mat_handle;
+			bucket.flags = CAST_SHADOWS;
 
 			aabbs.append(mesh.aabb.apply(model_m));
 			meshes.append(mesh_buckets.add(bucket));
@@ -291,6 +291,7 @@ void build_acceleration_structure(ScenePartition& scene_partition, hash_set<Mesh
 			bucket.model_id = grass->placement_model;
 			bucket.mesh_id = mesh_index;
 			bucket.mat_id = mat_handle;
+			bucket.flags = grass->cast_shadows ? CAST_SHADOWS : 0;
 			
 			int bucket_id = mesh_buckets.add(bucket);
 
@@ -383,7 +384,7 @@ void render_node(RenderCtx& ctx, Material* mat, Model* cube, Node& node) {
 DrawCommandState draw_wireframe_state = default_draw_state;
 
 void CullingSystem::render_debug_bvh(World& world, RenderCtx& ctx) {
-	return;
+	return; //todo make toggle in editor
 
 	ModelManager& models = asset_manager.models;
 	ShaderManager& shaders = asset_manager.shaders;
