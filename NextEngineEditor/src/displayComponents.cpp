@@ -24,7 +24,6 @@ bool render_fields_primitive(int* ptr, string_view prefix) {
 	return true;
 }
 
-
 bool render_fields_primitive(unsigned int* ptr, string_view prefix) {
 	int as_int = *ptr;
 	ImGui::PushID((long long)ptr);
