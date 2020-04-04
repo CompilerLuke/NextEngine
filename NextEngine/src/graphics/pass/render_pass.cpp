@@ -82,6 +82,7 @@ void MainPass::render_to_buffer(World& world, RenderCtx& ctx, std::function<void
 	current_frame.bind();
 	current_frame.clear_color(glm::vec4(0, 0, 0, 1));
 	current_frame.clear_depth(glm::vec4(0, 0, 0, 1));
+	glClear(GL_STENCIL_BUFFER_BIT);
 
 	CommandBuffer::submit_to_gpu(ctx);
 

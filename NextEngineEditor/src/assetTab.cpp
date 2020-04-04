@@ -23,6 +23,7 @@
 #include <thread>
 #include <mutex>
 #include "diffUtil.h"
+#include "graphics/renderer/renderer.h"
 #include <imgui/imgui.h>
 
 #define GLFW_EXPOSE_NATIVE_WIN32
@@ -292,7 +293,7 @@ std::wstring open_dialog(Level& level, Window& window) {
 	memset(&ofn, 0, sizeof(ofn));
 	ofn.lStructSize = sizeof(ofn);
 
-	ofn.hwndOwner = glfwGetWin32Window(window.window_ptr);
+	ofn.hwndOwner = window.get_win32_window();
 	ofn.lpstrFilter = L"All Files\0*.*\0";
 	ofn.lpstrFile = filename;
 	ofn.nMaxFile = MAX_PATH;

@@ -3,6 +3,7 @@
 #include "ecs/ecs.h"
 #include "editor.h"
 #include "core/io/input.h"
+#include "graphics/renderer/renderer.h"
 #include "GLFW/glfw3.h"
 #include <imgui/imgui.h>
 #include <ImGuizmo/ImGuizmo.h>

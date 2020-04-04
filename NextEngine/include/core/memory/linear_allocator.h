@@ -13,8 +13,17 @@ struct LinearAllocator : Allocator {
 	ENGINE_API LinearAllocator(size_t);
 	ENGINE_API ~LinearAllocator();
 
-	ENGINE_API void* allocate(size_t) override;
+	ENGINE_API void* allocate(size_t) final override;
+	ENGINE_API void reset(size_t occupied);
 	ENGINE_API void clear();
+};
+
+struct LinearRegion {
+	LinearAllocator& allocator;
+	size_t watermark;
+
+	LinearRegion(LinearAllocator& allocator);
+	~LinearRegion();
 };
 
 extern ENGINE_API LinearAllocator temporary_allocator;

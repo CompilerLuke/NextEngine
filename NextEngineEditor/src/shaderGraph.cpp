@@ -9,6 +9,7 @@
 #include "core/io/vfs.h"
 #include "core/io/input.h"
 #include "graphics/assets/asset_manager.h"
+#include "graphics/renderer/renderer.h"
 
 REFLECT_STRUCT_BEGIN(shader_node_handle)
 REFLECT_STRUCT_MEMBER(id)
@@ -941,7 +942,7 @@ void ShaderEditor::render(World& world, Editor& editor, RenderCtx& ctx, Input& i
 		}
 
 		if (input.key_pressed('S', true) && input.key_down(GLFW_KEY_LEFT_SHIFT, true)) {
-			set_scale(asset->graph.get(), input, 1.0f);
+			set_scale(asset->graph, input, 1.0f);
 		}
 
 		if (input.key_pressed('C', true) && input.key_down(GLFW_KEY_LEFT_SHIFT, true)) {
@@ -1082,7 +1083,7 @@ void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTa
 	}
 
 	if (shader->graph == NULL) {
-		shader->graph = std::unique_ptr<ShaderGraph>(new ShaderGraph());
+		shader->graph = new ShaderGraph();
 		shader->graph->nodes_manager.assign_handle(make_pbr_node(), true);
 	}
 
@@ -1201,11 +1202,11 @@ string_view get_param_name(ShaderGraph& graph, unsigned int i) {
 
 void deserialize_shader_asset(DeserializerBuffer& buffer, ShaderAsset* asset) {
 	if (asset->graph == NULL) {
-		asset->graph = std::unique_ptr<ShaderGraph>(new ShaderGraph());
+		asset->graph = new ShaderGraph();
 	}
 	
 	buffer.read_string(asset->name);
-	ShaderGraph* graph = asset->graph.get();
+	ShaderGraph* graph = asset->graph;
 
 	unsigned int num = buffer.read_int();
 
@@ -1247,7 +1248,7 @@ void deserialize_shader_asset(DeserializerBuffer& buffer, ShaderAsset* asset) {
 }
 
 void serialize_shader_asset(SerializerBuffer& buffer,  ShaderAsset* asset) {
-	ShaderGraph* graph = asset->graph.get();
+	ShaderGraph* graph = asset->graph;
 
 	buffer.write_string(asset->name);
 	buffer.write_int(graph->nodes_manager.slots.length);

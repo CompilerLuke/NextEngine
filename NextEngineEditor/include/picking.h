@@ -1,46 +1,66 @@
 #pragma once
 
 #include "core/handle.h"
-#include "graphics/renderer/renderer.h"
-#include "graphics/renderer/render_feature.h"
 #include "graphics/renderer/material_system.h"
-#include "graphics/pass/pass.h"
-#include "graphics/rhi/frame_buffer.h"
+#include "graphics/culling/culling.h"
+#include "core/container/slice.h"
+#include <limits.h>
 
 struct World;
 struct RenderCtx;
 struct ShaderConfig;
 struct Input;
+struct Camera;
+struct AssetManager;
 
-struct PickingPass : Pass {
-	Renderer& renderer;
-	AssetManager& asset_manager;
+#define MAX_PICKING_NODES 100
+#define MAX_PICKING_INSTANCES 1000
 
-	shader_handle picking_shader;
-	Framebuffer framebuffer;
-	texture_handle picking_map;
-	struct MainPass* main_pass;
-	
-	void set_shader_params(ShaderConfig&, RenderCtx&) override;
-
-	int pick(World&, Input&);
-	float pick_depth(World&, Input&);
-
-	void render(World&, RenderCtx&) override;
-
-	glm::vec2 picking_location(Input&);
-
-	PickingPass(AssetManager&, glm::vec2, MainPass*);
+struct PickingScenePartition : Partition {
+	AABB aabbs[MAX_PICKING_INSTANCES];
+	ID ids[MAX_PICKING_INSTANCES];
 };
 
-struct PickingSystem : RenderFeature {
-	struct Editor& editor;
+struct Ray {
+	glm::vec3 orig, dir;
+	glm::vec3 invdir;
+	float t;
+
+	int sign[3];
+
+	inline Ray(glm::vec3 o, glm::vec3 d, float t = FLT_MAX) : orig(o), dir(d), t(t) {
+		invdir = 1.0f / d;
+		sign[0] = invdir.x < 0;
+		sign[1] = invdir.y < 0;
+		sign[2] = invdir.z < 0;
+	}
+};
+
+struct RayHit {
+	float t = FLT_MAX;
+	glm::vec3 position;
+	ID id;
+};
+
+struct PickingSystem {
+	AssetManager& asset_manager;
+	PickingScenePartition partition;
+
+	PickingSystem(AssetManager&);
+	void rebuild_acceleration_structure(World& world);
+	bool ray_cast(const Ray&, RayHit&);
+	bool ray_cast(World& world, Input& input, RayHit& hit);
+	void visualize(World& world, Input& input, RenderCtx& ctx);
+	int pick(World& world, Input&);
+};
+
+struct OutlineSelected {
+	AssetManager& asset_manager;
 	shader_handle outline_shader;
 	Material outline_material;
 	DrawCommandState object_state;
 	DrawCommandState outline_state;
 
-	PickingSystem(Editor&, ShaderManager&);
-
-	void render(struct World&, struct RenderCtx&) override;
+	OutlineSelected(AssetManager&);
+	void render(struct World&, slice<ID> highlighted, struct RenderCtx&);
 };

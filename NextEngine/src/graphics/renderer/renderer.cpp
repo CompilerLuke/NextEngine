@@ -85,6 +85,7 @@ void Renderer::render_view(World& world, RenderCtx& ctx) {
 	terrain_renderer->render(world, ctx);
 	grass_renderer->render(world, ctx);
 	skybox_renderer->render(world, ctx);
+	if (ctx.extension) ctx.extension->render_view(world, ctx);
 }
 
 void Renderer::render_overlay(World& world, RenderCtx& ctx) {

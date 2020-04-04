@@ -48,13 +48,14 @@ struct Icon {
 	texture_handle texture_id;
 };
 
+//todo split up into multiple classes
 struct Editor {
 	struct Engine& engine;
 
+	struct World& copy_of_world;
+
 	texture_handle scene_view;
 	Framebuffer scene_view_fbo;
-
-	PickingPass picking_pass;
 
 	int selected_id = -1;
 
@@ -62,6 +63,7 @@ struct Editor {
 	float viewport_height;
 
 	bool playing_game = false;
+	bool game_fullscreen = false;
 	bool exit = false;
 
 	Application game;
@@ -84,6 +86,8 @@ struct Editor {
 	Lister lister;
 	DisplayComponents display_components;
 	Gizmo gizmo;
+	PickingSystem picking;
+	OutlineSelected outline_selected;
 	
 	bool droppable_field_active;
 	DroppableField droppable_field;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 #ifdef NEXTENGINE_EXPORTS
 #define ENGINE_API __declspec(dllexport)
 #endif
@@ -7,9 +9,9 @@
 #define ENGINE_API __declspec(dllimport)
 #endif
 
-using uint = unsigned int;
-using u64 = unsigned long long;
-using i64 = long long;
+using uint = uint32_t;
+using u64 = uint64_t;
+using i64 = int64_t;
 using f64 = double; 
 
 #define kb(num) num * 1024

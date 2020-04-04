@@ -93,6 +93,18 @@ struct string_buffer {
 		return *this;
 	}
 
+	inline string_buffer& operator=(const string_buffer& other) {
+		if (*this == other) return *this;
+
+		this->reserve(other.length);
+		this->length = other.length;
+
+		memcpy(this->data, other.data, this->length);
+		data[length] = '\0';
+
+		return *this;
+	}
+
 	inline string_buffer& operator+=(const string_view other) {
 		if (other.length == 0) return *this;
 		if (length + other.length > capacity) {

@@ -30,3 +30,14 @@ void* LinearAllocator::allocate(size_t size) {
 	return ptr;
 }
 
+void LinearAllocator::reset(size_t occupied) {
+	this->occupied = occupied;
+}
+
+LinearRegion::LinearRegion(LinearAllocator& allocator) : allocator(allocator) {
+	watermark = allocator.occupied;
+}
+
+LinearRegion::~LinearRegion() {
+	allocator.reset(watermark);
+}

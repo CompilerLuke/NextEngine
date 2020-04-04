@@ -5,8 +5,8 @@
 
 template<typename T>
 struct slice {
+	T* data;	
 	uint length;
-	T* data;
 
 	T& operator[](int i) {
 		assert(i < length);

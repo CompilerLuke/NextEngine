@@ -134,7 +134,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;NEXTENGINE_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\VulkanSDK\1.2.131.2\Include;C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -156,7 +156,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;NEXTENGINE_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\VulkanSDK\1.2.131.2\Include;C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -176,6 +176,8 @@
     <ClInclude Include="include\components\terrain.h" />
     <ClInclude Include="include\components\transform.h" />
     <ClInclude Include="include\core\container\bitset.h" />
+    <ClInclude Include="include\core\container\static_vector.h" />
+    <ClInclude Include="include\core\container\tvector.h" />
     <ClInclude Include="include\core\memory\allocator.h" />
     <ClInclude Include="include\core\core.h" />
     <ClInclude Include="include\core\container\event_dispatcher.h" />
@@ -229,6 +231,8 @@
     <ClInclude Include="include\graphics\renderer\transforms.h" />
     <ClInclude Include="include\graphics\pass\volumetric.h" />
     <ClInclude Include="include\graphics\rhi\rhi.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\device.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\vulkan.h" />
     <ClInclude Include="include\graphics\rhi\window.h" />
     <ClInclude Include="include\core\io\logger.h" />
     <ClInclude Include="include\graphics\assets\model.h" />
@@ -263,7 +267,7 @@
     <ClCompile Include="src\core\memory\allocator.cpp" />
     <ClCompile Include="src\core\io\input.cpp" />
     <ClCompile Include="src\core\profiler.cpp" />
-    <ClCompile Include="src\core\memory\temporary.cpp" />
+    <ClCompile Include="src\core\memory\linear_allocator.cpp" />
     <ClCompile Include="src\core\time.cpp" />
     <ClCompile Include="src\core\io\vfs.cpp" />
     <ClCompile Include="src\ecs\ecs.cpp" />
@@ -297,6 +301,7 @@
     <ClCompile Include="src\graphics\pass\volumetric.cpp" />
     <ClCompile Include="src\graphics\rhi\GL\window.cpp" />
     <ClCompile Include="src\core\io\logger.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vulkan.cpp" />
     <ClCompile Include="src\physics\physics.cpp" />
     <ClCompile Include="src\core\reflection.cpp" />
     <ClCompile Include="src\core\serializer.cpp" />

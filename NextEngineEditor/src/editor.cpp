@@ -218,6 +218,8 @@ void on_load(Editor& editor, RenderCtx& ctx) {
 	ctx.skybox = world.filter<Skybox>()[0];
 
 	editor.asset_tab.on_load(world, ctx);
+
+	editor.picking.rebuild_acceleration_structure(world);
 }
 
 void on_save_world(Editor& editor) {
@@ -281,9 +283,11 @@ void register_callbacks(Editor& editor, Engine& engine) {
 
 Editor::Editor(Engine& engine, const char* game_code) : 
 	engine(engine), 
-	picking_pass(engine.asset_manager, glm::vec2(engine.window.width, engine.window.height), engine.renderer.main_pass), 
+	picking(engine.asset_manager),
+	outline_selected(engine.asset_manager),
 	game(engine, game_code),
-	asset_tab(engine.renderer, engine.asset_manager, engine.window)
+	asset_tab(engine.renderer, engine.asset_manager, engine.window),
+	copy_of_world(*PERMANENT_ALLOC(World))
 {
 	Window& window = engine.window;
 	World& world = engine.world;
@@ -318,7 +322,7 @@ Editor::Editor(Engine& engine, const char* game_code) :
 	};
 
 	MainPass* main_pass = engine.renderer.main_pass;
-	main_pass->post_process.append(&picking_pass);
+	//main_pass->post_process.append(&picking_pass);
 
 	CommandBuffer cmd_buffer(engine.asset_manager);
 	RenderCtx render_ctx(cmd_buffer, main_pass);
@@ -464,14 +468,18 @@ void default_scene(Editor& editor, RenderCtx& ctx) {
 	*/
 }
 
-float fullscreen = false;
-
 struct EditorRendererExtension : RenderExtension {
 	Editor& editor;
 
 	EditorRendererExtension(Editor& editor) : editor(editor) {}
 
 	void render_view(World& world, RenderCtx& ctx) override {
+		editor.picking.visualize(world, editor.engine.input, ctx);
+
+		if (editor.selected_id != -1) {
+			ID selected = editor.selected_id;
+			editor.outline_selected.render(world, { 1, &selected }, ctx);
+		}
 		//editor.picking_pass.render(world, ctx);
 		//render_settings.render_features.append(new DebugShaderReloadSystem());
 		//render_settings.render_features.append(new PickingSystem(world));
@@ -485,7 +493,7 @@ struct EditorRendererExtension : RenderExtension {
 	void render(World& world, RenderCtx& ctx) override {
 		MainPass& main_pass = *editor.engine.renderer.main_pass;
 
-		if (fullscreen && editor.playing_game) {
+		if (editor.game_fullscreen && editor.playing_game) {
 			main_pass.output.bind();
 			main_pass.output.clear_color(glm::vec4(0, 0, 0, 1));
 			main_pass.output.clear_depth(glm::vec4(0, 0, 0, 1));
@@ -549,38 +557,22 @@ void on_set_play_mode(Editor& editor, bool playing) {
 	editor.playing_game = playing;
 
 	if (playing) { //this will not fully serialize this
-		editor.game.reload();
-		on_save_world(editor);
+		editor.copy_of_world = editor.engine.world;
 	}
 	else {
-		get_World(editor).clear(); //todo leaks memory
-		on_load_world(editor);
+		editor.engine.world = editor.copy_of_world;
 	}
 }
 
 glm::vec3 Editor::place_at_cursor() {
 	World& world = get_World(*this);
 	Input& input = engine.input;
-
-	ID cam = get_camera(world, EDITOR_LAYER);
 	
-	glm::mat4 view_m = get_view_matrix(world, cam);
-	glm::mat4 proj_m = get_proj_matrix(world, cam, viewport_width / viewport_height);
+	RayHit hit;
+	hit.position = glm::vec3();
+	picking.ray_cast(world, input, hit);
 
-	glm::mat4 to_world = glm::inverse(proj_m * view_m);
-
-	float height = input.region_max.y - input.region_min.y;
-	float width = input.region_max.x - input.region_min.x;
-
-	glm::vec4 pos = glm::vec4(input.mouse_position.x / width, 1.0 - (input.mouse_position.y / height), picking_pass.pick_depth(world, input), 1.0);
-
-	pos *= 2.0;
-	pos -= 1.0;
-
-	pos = to_world * pos;
-	pos /= pos.w;
-
-	return pos;
+	return hit.position;
 }
 
 void spawn_Model(World& world, Editor& editor, model_handle model_handle) { //todo maybe move to assetTab
@@ -713,6 +705,8 @@ void render_Editor(Editor& editor, RenderCtx& ctx) {
 		if (ImGui::ImageButton((ImTextureID)editor.get_icon("play"), ImVec2(40, 40))) {
 			on_set_play_mode(editor, true);
 		}
+		ImGui::SameLine();
+		ImGui::Checkbox("Game Fullscreen", &editor.game_fullscreen);
 
 		float width = ImGui::GetContentRegionMax().x;
 		float height = ImGui::GetContentRegionMax().y - ImGui::GetCursorPos().y;
@@ -776,7 +770,11 @@ void delete_object(Editor& editor) {
 }
 
 void mouse_click_select(Editor& editor) {
-	editor.select(editor.picking_pass.pick(get_World(editor), editor.engine.input));
+	World& world = get_World(editor);
+	Input& input = editor.engine.input;
+	
+	int selected = editor.picking.pick(world, input);
+	editor.select(selected);
 }
 
 void respond_to_shortcut(Editor& editor) {
@@ -787,7 +785,7 @@ void respond_to_shortcut(Editor& editor) {
 		on_set_play_mode(editor, !editor.playing_game);
 	}
 
-	if (editor.playing_game) return;
+	if (editor.game_fullscreen && editor.playing_game) return;
 
 	if (input.key_pressed(GLFW_KEY_X)) delete_object(editor);
 	if (input.mouse_button_pressed(MouseButton::Left) && !ImGuizmo::IsOver()) mouse_click_select(editor);
@@ -814,7 +812,10 @@ APPLICATION_API void update(Editor& editor, Engine& engine) {
 	UpdateCtx update_ctx(engine.time, editor.engine.input);
 	update_ctx.layermask = editor.playing_game ? GAME_LAYER : EDITOR_LAYER;
 
-	if (editor.playing_game) editor.game.update();
+	if (editor.playing_game) {
+		if (update_ctx.input.key_down('R')) editor.game.reload();
+		editor.game.update();
+	}
 	else {
 		editor.fly_over_system.update(engine.world, update_ctx);
 		//FlyOverSystem::update(engine.world, update_ctx);

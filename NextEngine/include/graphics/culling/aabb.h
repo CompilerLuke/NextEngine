@@ -13,6 +13,10 @@ struct ENGINE_API AABB {
 
 	AABB apply(const glm::mat4&);
 	void update_aabb(AABB&);
+
+	inline glm::vec3 operator[](int i) const { return (&min)[i]; };
+	inline glm::vec3 centroid() { return (min + max) / 2.0f; };
+	inline glm::vec3 size() { return max - min; };
 };
 
 void ENGINE_API aabb_to_verts(AABB* self, glm::vec4* verts);

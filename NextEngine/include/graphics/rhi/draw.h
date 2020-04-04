@@ -15,6 +15,7 @@ enum DrawOrder {
 	draw_over = 3
 };
 
+enum ColorMask { Color_All, Color_None };
 enum StencilOp { Stencil_Keep_Replace };
 enum StencilFunc { StencilFunc_Equal, StencilFunc_NotEqual, StencilFunc_Always, StencilFunc_None };
 using StencilMask = unsigned int;
@@ -29,6 +30,7 @@ struct DrawCommandState {
 	StencilOp stencil_op = Stencil_Keep_Replace;
 	StencilFunc stencil_func = StencilFunc_None;
 	StencilMask stencil_mask = 0;
+	ColorMask color_mask = Color_All;
 	DrawMode mode = DrawSolid;
 
 	bool operator==(DrawCommandState&);
@@ -64,6 +66,7 @@ struct VertexBuffer;
 struct InstanceBuffer;
 struct Material;
 struct AssetManager;
+struct RenderCtx;
 
 struct ENGINE_API CommandBuffer {
 	AssetManager& asset_manager;

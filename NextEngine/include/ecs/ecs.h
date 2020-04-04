@@ -3,9 +3,7 @@
 #include "layermask.h"
 
 #include "core/container/vector.h"
-#include <utility>
-#include <cassert>
-
+#include <assert.h>
 #include <memory>
 #include "id.h"
 #include "system.h"
@@ -14,12 +12,19 @@
 #include <functional>
 #include "core/container/event_dispatcher.h"
 
+
 #if 1
+template<typename A, typename B>
+struct Pair {
+	A first;
+	B second;
+};
+
 template<typename T>
 struct Slot {
 	union {
 		Slot<T>* next;
-		std::pair<T, ID> object;
+		Pair<T, ID> object;
 	};
 	bool is_enabled = false;
 
@@ -51,6 +56,8 @@ struct ComponentStore {
 	virtual void set_enabled(void*, bool) = 0;
 	virtual vector<Component> filter_untyped() = 0;
 	virtual reflect::TypeDescriptor* get_component_type() = 0;
+	virtual ComponentStore* clone() = 0;
+	virtual void copy_from(ComponentStore*) = 0;
 	virtual void fire_callbacks() = 0;
 	virtual void clear() = 0;
 	virtual ~ComponentStore() {};
@@ -244,6 +251,25 @@ struct Store : ComponentStore {
 			freed.clear();
 		}
 	}
+
+	ComponentStore* clone() final {
+		return new Store(N);
+	}
+
+	void copy_from(ComponentStore* component_store) final {
+		Store* store = (Store*)component_store;
+		clear();
+		
+		for (uint i = 0; i < store->N; i++) {
+			Slot<T>* slot = &store->components[i];
+			if (!slot->is_enabled) continue;
+
+			T* ptr = make(slot->object.second);
+			*ptr = *store->by_id(slot->object.second);
+		}
+
+		fire_callbacks();
+	}
 };
 
 struct Entity {
@@ -415,6 +441,8 @@ struct World {
 			if (components[i] != NULL) components[i]->clear();
 		}
 	}
+
+	void ENGINE_API operator=(const World&);
 
 	World() {
 		for (int i = 0; i < components_hash_size; i++) {

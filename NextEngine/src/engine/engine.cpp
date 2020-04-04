@@ -29,6 +29,7 @@ Engine::Engine(string_view level_path) :
 
 	physics_system.init(world);
 
+	window.title = "The Unplugging";
 	window.full_screen = false;
 	window.vSync = false;
 

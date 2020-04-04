@@ -185,6 +185,11 @@ void stencil_op_bind(StencilOp op) {
 	if (op == Stencil_Keep_Replace) glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 }
 
+void color_mask_bind(ColorMask mask) {
+	if (mask == Color_All) glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+	else glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+}
+
 void set_params(CommandBuffer& command_buffer, AssetManager& asset_manager, shader_config_handle config_handle, Material& mat) {	
 	TextureManager& texture_manager = asset_manager.textures;
 	ShaderManager& shader_manager = asset_manager.shaders;
@@ -383,11 +388,11 @@ void CommandBuffer::submit_to_gpu(RenderCtx& ctx) {
 		new_cmd.material = cmd.material;
 		new_cmd.instance_buffer = cmd.instance_buffer;
 
-		DrawSortKey key = //((unsigned long long)cmd.material->state->order << 36)
+		DrawSortKey key = (unsigned long long)cmd.material->state->order << 30
 			//| ((unsigned long long)cmd.material->state->depth_func << 32)
 			//| (cmd.material->state->cull << 30)
 			//| (cmd.buffer->layout << 15)
-			 (cmd.material->shader.id << 7)
+			| (cmd.material->shader.id << 7)
 			| ((unsigned long long)cmd.material % 64);
 
 		commands_data.append(new_cmd);
@@ -421,7 +426,8 @@ void CommandBuffer::submit_to_gpu(RenderCtx& ctx) {
 			depth_func_bind(mat.state->depth_func);
 			cull_bind(mat.state->cull);
 			if (mat.state->clear_depth_buffer) {
-				glClear(GL_DEPTH_BUFFER_BIT);
+				glDepthMask(GL_FALSE);
+				//glClear(GL_DEPTH_BUFFER_BIT);
 			}
 			if (mat.state->clear_stencil_buffer) {
 				glClear(GL_STENCIL_BUFFER_BIT);
@@ -475,8 +481,12 @@ void CommandBuffer::submit_to_gpu(RenderCtx& ctx) {
 				glClear(GL_STENCIL_BUFFER_BIT);
 			}
 
-			if (mat.state->clear_depth_buffer && !last_mat.state->clear_depth_buffer) {
-				glClear(GL_DEPTH_BUFFER_BIT);
+			if (mat.state->clear_depth_buffer != last_mat.state->clear_depth_buffer) {
+				glDepthMask(mat.state->clear_depth_buffer ? GL_FALSE : GL_TRUE);
+			}
+
+			if (mat.state->color_mask != last_mat.state->color_mask) {
+				color_mask_bind(mat.state->color_mask);
 			}
 
 			if (mat != last_mat || cmd.config.id != last_cmd.config.id) {
@@ -514,7 +524,8 @@ void CommandBuffer::submit_to_gpu(RenderCtx& ctx) {
 				glDrawElements(GL_TRIANGLES, cmd.buffer->length, GL_UNSIGNED_INT, (void*)(cmd.buffer->index_offset));
 			}
 			else {
-				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); //todo make setting in draw
+				glLineWidth(5.0);
 				glDrawElements(GL_TRIANGLES, cmd.buffer->length, GL_UNSIGNED_INT, (void*)(cmd.buffer->index_offset));
 				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 			}
@@ -522,4 +533,7 @@ void CommandBuffer::submit_to_gpu(RenderCtx& ctx) {
 		last_was_instanced = instanced;
 		i += 1;
 	}
+
+	glDepthMask(GL_TRUE);
+	glDisable(GL_STENCIL_TEST);
 }

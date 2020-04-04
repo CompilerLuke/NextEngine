@@ -73,7 +73,7 @@ struct ShaderAsset {
 
 	vector<Param> shader_arguments;
 
-	std::unique_ptr<ShaderGraph> graph = NULL;
+	ShaderGraph* graph = NULL; //todo this leaks now
 
 	REFLECT(NO_ARG)
 };

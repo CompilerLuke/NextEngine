@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/container/vector.h"
+#include "core/container/static_vector.h"
 #include "core/handle.h"
 #include "core/reflection.h"
 

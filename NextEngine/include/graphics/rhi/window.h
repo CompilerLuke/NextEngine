@@ -20,7 +20,7 @@ struct MouseButtonData {
 	int mods;
 };
 
-struct Window {
+struct ENGINE_API Window {
 	string_buffer title;
 	bool vSync = true;
 	bool full_screen = false;
@@ -36,17 +36,18 @@ struct Window {
 
 	struct GLFWwindow* window_ptr;
 
-	ENGINE_API Window() {};
-	void ENGINE_API init();
-	bool ENGINE_API should_close();
-	void ENGINE_API swap_buffers();
-	void ENGINE_API poll_inputs();
+	Window() {};
+	~Window();
 
-	void ENGINE_API override_key_callback(GLFWkeyfun func);
-	void ENGINE_API override_char_callback(GLFWcharfun func);
-	void ENGINE_API override_mouse_button_callback(GLFWmousebuttonfun func);
+	void init();
+	bool should_close();
+	void swap_buffers();
+	void poll_inputs();
+	void override_key_callback(GLFWkeyfun func);
+	void override_char_callback(GLFWcharfun func);
+	void override_mouse_button_callback(GLFWmousebuttonfun func);	
+	HWND get_win32_window();
+	glm::vec2 get_framebuffer_size();
 
-	ENGINE_API ~Window();
-
-	ENGINE_API static Window* from(GLFWwindow*);
+	static Window* from(GLFWwindow*);
 };

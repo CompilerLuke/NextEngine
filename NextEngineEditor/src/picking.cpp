@@ -13,146 +13,297 @@
 #include "core/io/logger.h"
 #include "graphics/assets/asset_manager.h"
 #include "engine/engine.h"
+#include "components/camera.h"
+#include "graphics/renderer/renderer.h"
+#include "core/container/tvector.h"
 
-PickingPass::PickingPass(AssetManager& asset_manager, glm::vec2 size, MainPass* main_pass)
-: asset_manager(asset_manager), picking_shader(asset_manager.shaders.load("shaders/picking.vert", "shaders/picking.frag")), renderer(main_pass->renderer) {
-	
-	AttachmentDesc color_attachment(picking_map);
-	color_attachment.internal_format = InternalColorFormat::R32I;
-	color_attachment.external_format = ColorFormat::Red_Int;
-	color_attachment.texel_type = TexelType::Int;
-	color_attachment.min_filter = Filter::Nearest;
-	color_attachment.mag_filter = Filter::Nearest;
+#define MAX_ENTITIES_PER_NODE 10
+#define MAX_PICKING_DEPTH 6
 
-	FramebufferDesc settings;
-	settings.color_attachments.append(color_attachment);
-	settings.width = size.x;
-	settings.height = size.y;
+Node* subdivide_BVH(PickingScenePartition& scene_partition, AABB& node_aabb, int depth, int mesh_count, AABB* aabbs, ID* ids) {
+	if (mesh_count <= MAX_ENTITIES_PER_NODE || depth >= MAX_PICKING_DEPTH) {
+		Node& node = alloc_leaf_node(scene_partition, node_aabb, MAX_PICKING_INSTANCES, mesh_count);
+		
+		copy_into_node(node, scene_partition.ids, ids);
+		copy_into_node(node, scene_partition.aabbs, aabbs);
 
-	framebuffer = Framebuffer(asset_manager.textures, settings);
+		return &node;
+	}
+	else {
+		BranchNodeInfo info = alloc_branch_node(scene_partition, node_aabb);
+		tvector<AABB> subdivided_aabbs[2];
+		tvector<ID> subdivided_ids[2];
 
-	this->main_pass = main_pass;
+		for (int i = 0; i < mesh_count; i++) {
+			AABB& aabb = aabbs[i];
+
+			if (bigger_than_leaf(info, aabb)) {
+				int offset = elem_offset(scene_partition, info, aabb);
+				scene_partition.aabbs[offset] = aabb;
+				scene_partition.ids[offset] = ids[i];
+			}
+			else {
+				bool node_index = split_index(info, aabb);
+				subdivided_aabbs[node_index].append(aabb);
+				subdivided_ids[node_index].append(ids[i]);
+			}
+		}
+
+		for (int i = 0; i < 2; i++) {
+			if (subdivided_aabbs[i].length == 0) continue;
+			info.node.child[i] = subdivide_BVH(scene_partition, info.child_aabbs[i], depth + 1, subdivided_aabbs[i].length, subdivided_aabbs[i].data, subdivided_ids[i].data);
+			info.node.aabb.update_aabb(info.node.child[i]->aabb);
+		}
+
+		bump_allocator(scene_partition, info);
+		return &info.node;
+	}
 }
 
-void PickingPass::set_shader_params(ShaderConfig& config, RenderCtx& params) {
+void build_acceleration_structure(PickingScenePartition& scene_partition, ModelManager& model_manager, World& world) { 
+	AABB world_bounds;
 
-}
+	int occupied = temporary_allocator.occupied;
 
-glm::vec2 PickingPass::picking_location(Input& input) {
-	auto mouse_position = input.mouse_position;
-	return mouse_position / (input.region_max - input.region_min) * glm::vec2(framebuffer.width, framebuffer.height);
-}
+	vector<AABB> aabbs;
+	vector<ID> ids;
 
-int PickingPass::pick(World& world, Input& input) {
-	int id = 0;
+	aabbs.allocator = &temporary_allocator;
+	ids.allocator = &temporary_allocator;
 
-	glm::vec2 pick_at = picking_location(input);
+	for (ID id : world.filter<ModelRenderer, Transform>(ANY_LAYER)) {
+		auto model_m = world.by_id<Transform>(id)->compute_model_matrix();
+		auto model_renderer = world.by_id<ModelRenderer>(id);
 
-	framebuffer.read_pixels(pick_at.x, framebuffer.height - pick_at.y, 1, 1, GL_RED, GL_INT, &id);
+		Model* model = model_manager.get(model_renderer->model_id);		
+		if (model == NULL) continue;
 
-	id -= 1;
-
-	return id;
-}
-
-float PickingPass::pick_depth(World& world, Input& input) { //todo pick from frame buffer
-	float depth = 0;
-
-	glm::vec2 pick_at = picking_location(input);
-
-	framebuffer.read_pixels(pick_at.x, framebuffer.height - pick_at.y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &depth);
-
-	log("got back ", depth);
-
-	return depth;
-}
-
-void PickingPass::render(World& world, RenderCtx& ctx) {
-	return;
-	/*if (!(ctx.layermask & EDITOR_LAYER)) return;
-
-	CommandBuffer cmd_buffer(asset_manager);
-	RenderCtx new_ctx(ctx, cmd_buffer, this);
-	new_ctx.width = framebuffer.width;
-	new_ctx.height = framebuffer.height;
-	new_ctx.layermask = PICKING_LAYER;
-
-	renderer.render_view(world, ctx);
-
-	uniform_handle loc = asset_manager.location(picking_shader, "id");
-
-	for (DrawCommand& cmd : cmd_buffer.commands) {
-		if (cmd.num_instances > 1) continue;
-
-		DrawCommandState* state = cmd.material->state;
-
-		cmd.material = TEMPORARY_ALLOC(Material, picking_shader);
-		cmd.material->state = state;
-		cmd.material->set_int("id", cmd.id);
+		AABB aabb = model->aabb.apply(model_m);
+		world_bounds.update_aabb(aabb);
+		aabbs.append(aabb);
+		ids.append(id);
 	}
 
-	framebuffer.bind();
-	framebuffer.clear_color(glm::vec4(0.0, 0.0, 0.0, 1.0));
-	framebuffer.clear_depth(glm::vec4(0.0, 0.0, 0.0, 1.0));
+	subdivide_BVH(scene_partition, world_bounds, 0, aabbs.length, aabbs.data, ids.data);
 
-	CommandBuffer::submit_to_gpu(ctx);
-
-	framebuffer.unbind();*/
+	temporary_allocator.occupied = occupied;
 }
 
-PickingSystem::PickingSystem(Editor& editor, ShaderManager& shader_manager) : editor(editor) {
-	this->outline_shader = shader_manager.load("shaders/outline.vert", "shaders/outline.frag"); //todo move into constructor
+Ray ray_from_mouse(World& world, ID camera_id, Input& input) {
+	glm::vec2 viewport_size = input.region_max - input.region_min;
 
-	outline_state.order = (DrawOrder)4;
+	glm::mat4 view = get_view_matrix(world, camera_id);
+	glm::mat4 proj = get_proj_matrix(world, camera_id, viewport_size.x / viewport_size.y);
+	glm::mat4 inv_proj_view = glm::inverse(proj * view);
+
+	glm::vec2 mouse_position = input.mouse_position; 
+	glm::vec2 mouse_position_clip = mouse_position / viewport_size;
+	mouse_position_clip.y = 1.0 - mouse_position_clip.y;
+	mouse_position_clip = mouse_position_clip * 2.0f - 1.0f;
+
+	glm::vec4 end = inv_proj_view * glm::vec4(mouse_position_clip, 1, 1.0);
+	glm::vec4 start = inv_proj_view * glm::vec4(mouse_position_clip, -1, 1.0);
+	
+	start /= start.w;
+	end /= end.w;
+
+	return Ray(start, glm::normalize(end - start), glm::length(end - start));
+}
+
+float max(glm::vec3 vec) {
+	return vec.x > vec.y ? (vec.x > vec.z ? vec.x : vec.z) : (vec.y > vec.z ? vec.y : vec.z);
+}
+
+//Math from - https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-box-intersection
+float intersect(const AABB& bounds, const Ray &r, glm::vec3& hit) {
+	float tmin, tmax, tymin, tymax, tzmin, tzmax;
+
+	tmin = (bounds[r.sign[0]].x - r.orig.x) * r.invdir.x;
+	tmax = (bounds[1 - r.sign[0]].x - r.orig.x) * r.invdir.x;
+	tymin = (bounds[r.sign[1]].y - r.orig.y) * r.invdir.y;
+	tymax = (bounds[1 - r.sign[1]].y - r.orig.y) * r.invdir.y;
+
+	if ((tmin > tymax) || (tymin > tmax))
+		return FLT_MAX;
+	if (tymin > tmin)
+		tmin = tymin;
+	if (tymax < tmax)
+		tmax = tymax;
+
+	tzmin = (bounds[r.sign[2]].z - r.orig.z) * r.invdir.z;
+	tzmax = (bounds[1 - r.sign[2]].z - r.orig.z) * r.invdir.z;
+
+	if ((tmin > tzmax) || (tzmin > tmax))
+		return FLT_MAX;
+	if (tzmin > tmin)
+		tmin = tzmin;
+	if (tzmax < tmax)
+		tmax = tzmax;
+
+	hit = bounds.min + glm::vec3(tmin, tymin, tzmin);
+
+	return glm::length(hit - r.orig);
+}
+
+bool intersect(AABB& bounds, const Ray& r) {
+	glm::vec3 hit;
+	return intersect(bounds, r, hit) < FLT_MAX;
+}
+
+void ray_cast_node(PickingScenePartition& partition, Node* node, const Ray& ray, RayHit& hit) {
+	for (int i = 0; i < 2; i++) {
+		Node* child = node->child[i];
+		if (child && intersect(child->aabb, ray)) ray_cast_node(partition, child, ray, hit);
+	}
+
+	float closest_t = hit.t;
+
+	for (int i = node->offset; i < node->offset + node->count; i++) {
+		AABB& aabb = partition.aabbs[i];
+
+		glm::vec3 new_hit;
+		float dist = intersect(aabb, ray, new_hit);
+
+		if (dist < closest_t && dist < ray.t) {
+			hit.position = new_hit;
+			hit.id = partition.ids[i];
+			hit.t = dist;
+		}
+	}
+}
+
+PickingSystem::PickingSystem(AssetManager& asset_manager) : asset_manager(asset_manager) {}
+
+void PickingSystem::rebuild_acceleration_structure(World& world) {
+	build_acceleration_structure(partition, asset_manager.models, world);
+}
+
+bool PickingSystem::ray_cast(const Ray& ray, RayHit& hit) {
+	ray_cast_node(partition, &partition.nodes[0], ray, hit);
+	return hit.t < FLT_MAX;
+}
+
+bool PickingSystem::ray_cast(World& world, Input& input, RayHit& hit) {
+	Ray ray = ray_from_mouse(world, get_camera(world, EDITOR_LAYER), input);
+	return ray_cast(ray, hit);
+}
+
+int PickingSystem::pick(World& world, Input& input) {
+	Ray ray = ray_from_mouse(world, get_camera(world, EDITOR_LAYER), input);
+	RayHit hit;
+
+	if (ray_cast(ray, hit)) return hit.id;
+	else return -1;
+}
+
+void render_cube(RenderCtx& ctx, Material* mat, Model* model,  glm::vec3 center, glm::vec3 scale) {
+	Transform trans;
+	trans.position = center;
+	trans.scale = scale * 0.5f;
+
+	glm::mat4 model_m = trans.compute_model_matrix();
+
+	ctx.command_buffer.draw(model_m, &model->meshes[0].buffer, mat);
+}
+
+void render_node(RenderCtx& ctx, Material* mat, PickingScenePartition& partition, Model* cube, Node& node, Ray& ray) {
+	//render_cube(ctx, mat, cube, (node.aabb.max + node.aabb.min) * 0.5f, node.aabb.max - node.aabb.min);
+
+	for (int i = 0; i < 2; i++) {
+		Node* child = node.child[i];
+		if (child && intersect(child->aabb, ray)) render_node(ctx, mat, partition, cube, *child, ray);
+	}
+
+
+	for (int i = node.offset; i < node.offset + node.count; i++) {
+		AABB& aabb = partition.aabbs[i];
+		if (intersect(aabb, ray)) render_cube(ctx, mat, cube, (aabb.max + aabb.min) * 0.5f, aabb.max - aabb.min);
+	}
+}
+
+
+#include "graphics/renderer/material_system.h"
+
+DrawCommandState draw_wireframe_state = default_draw_state;
+
+void PickingSystem::visualize(World& world, Input& input, RenderCtx& ctx) {
+	if (ctx.layermask & SHADOW_LAYER) return;
+
+	Ray ray = ray_from_mouse(world, get_camera(world, EDITOR_LAYER), input);
+
+	ModelManager& models = asset_manager.models;
+	ShaderManager& shaders = asset_manager.shaders;
+
+	model_handle cube = models.load("cube.fbx");
+
+	draw_wireframe_state.mode = DrawWireframe;
+
+	Material* mat = TEMPORARY_ALLOC(Material);
+	mat->shader = shaders.load("shaders/pbr.vert", "shaders/gizmo.frag");
+	mat->set_vec3(shaders, "color", glm::vec3(1.0f, 0.0f, 0.0f));
+	mat->state = &draw_wireframe_state;
+
+	render_node(ctx, mat, partition, models.get(cube), partition.nodes[0], ray);
+
+	//ray.dir = glm::vec3(0, 0, -1) * world.by_id<Transform>(get_camera(world, EDITOR_LAYER))->rotation;
+
+	render_cube(ctx, mat, models.get(cube), ray.orig + ray.dir * 5.0f, glm::vec3(0.1f));
+	render_cube(ctx, mat, models.get(cube), ray.orig + ray.dir * 10.0f, glm::vec3(0.1f));
+	render_cube(ctx, mat, models.get(cube), ray.orig + ray.dir * 20.0f, glm::vec3(0.1f));
+}
+
+OutlineSelected::OutlineSelected(AssetManager& assets) : asset_manager(assets) {
+	outline_shader = assets.shaders.load("shaders/outline.vert", "shaders/outline.frag");
+	
+	outline_state.order = (DrawOrder)6;
 	outline_state.mode = DrawWireframe;
 	outline_state.stencil_func = StencilFunc_NotEqual;
 	outline_state.stencil_op = Stencil_Keep_Replace;
 	outline_state.stencil_mask = 0x00;
-	object_state.clear_depth_buffer = false;
+	outline_state.clear_depth_buffer = true;
+	outline_state.clear_stencil_buffer = false;
+	outline_state.depth_func = DepthFunc_None;
 
-	object_state.order = (DrawOrder)3;
+	object_state.order = (DrawOrder)5;
 	object_state.stencil_func = StencilFunc_Always;
 	object_state.stencil_mask = 0xFF;
 	object_state.stencil_op = Stencil_Keep_Replace;
 	object_state.clear_stencil_buffer = true;
-	object_state.clear_depth_buffer = false;
+	object_state.clear_depth_buffer = true;
+	object_state.color_mask = Color_None;
+	object_state.depth_func = DepthFunc_None;
 
 	this->outline_material = Material(outline_shader);
 	this->outline_material.state = &outline_state;
 }
 
-void PickingSystem::render(World& world, RenderCtx& params) { //THIS NO LONGER WORKS!!!
-	/*
-	if (!(params.layermask & EDITOR_LAYER)) return;
-	if (params.layermask & PICKING_LAYER) return;
+void OutlineSelected::render(World& world, slice<ID> ids, RenderCtx& ctx) {
+	if (!(ctx.layermask & EDITOR_LAYER)) return;
+	if (ctx.layermask & SHADOW_LAYER) return;
 
-	//Render Outline
-	int selected = editor.selected_id;
-	if (selected == -1) return;
+	for (ID id : ids) {
+		Transform* trans = world.by_id<Transform>(id);
+		ModelRenderer* model_renderer = world.by_id<ModelRenderer>(id);
+		Materials* materials = world.by_id<Materials>(id);
 
-	for (DrawCommand& cmd : params.command_buffer.commands) {
-		if (cmd.num_instances > 1) continue;
+		if (trans && model_renderer && materials) {
+			glm::mat4 model_m = trans->compute_model_matrix();
+			Model* model = asset_manager.models.get(model_renderer->model_id);
 
-		{
-			//Shader* shad = RHI::shader_manager.get(cmd.material->shader);
-			Material* mat = TEMPORARY_ALLOC(Material);
-			mat->params.allocator = &temporary_allocator;
+			for (Mesh& mesh : model->meshes) {
+				material_handle should_be_handle = materials->materials[mesh.material_id];
+				Material* should_be = asset_manager.materials.get(should_be_handle);
 
-			*mat = *cmd.material;
+				Material* mat = TEMPORARY_ALLOC(Material);
+				mat->params.allocator = &temporary_allocator;
+				*mat = *should_be;
 
-			mat->state = &object_state;
-			cmd.material = mat;
-			
-		}
-
-		{
-			DrawCommand new_cmd = cmd;
-			new_cmd.material = TEMPORARY_ALLOC(Material, outline_material); //todo change vertex shader
-			params.command_buffer;
+				mat->state = &object_state;
+					
+				ctx.command_buffer.draw(model_m, &mesh.buffer, mat);
+				ctx.command_buffer.draw(model_m, &mesh.buffer, TEMPORARY_ALLOC(Material, outline_material)); //this might be leaking memory!
+			}
 		}
 	}
-
-	glLineWidth(5.0);
-	*/
 }
 

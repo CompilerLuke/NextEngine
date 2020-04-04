@@ -1,6 +1,9 @@
 #include "stdafx.h"
 #include "graphics/rhi/window.h"
 #include "core/io/logger.h"
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#include <GLFW/glfw3native.h>
 
 void framebuffer_size_callback(GLFWwindow* window_ptr, int width, int height) {
 	auto window = (Window*)glfwGetWindowUserPointer(window_ptr);
@@ -96,6 +99,16 @@ void Window::init() {
 	else {
 		glfwSwapInterval(0);
 	}
+}
+
+HWND Window::get_win32_window() {
+	return glfwGetWin32Window(window_ptr);
+}
+
+glm::vec2 Window::get_framebuffer_size() {
+	int width, height;
+	glfwGetFramebufferSize(window_ptr, &width, &height);
+	return glm::vec2(width, height);
 }
 
 void Window::override_key_callback(GLFWkeyfun func) {

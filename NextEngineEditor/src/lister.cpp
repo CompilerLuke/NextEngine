@@ -91,8 +91,7 @@ void Lister::render(World& world, Editor& editor, RenderCtx& params) {
 
 	std::unordered_map<ID, NameHierarchy*> names;
 
-
-	ImGui::SetNextWindowSize(ImVec2(0.15 * params.width, params.height));
+	//ImGui::SetNextWindowSize(ImVec2(0.15 * params.width, params.height));
 
 	if (ImGui::Begin("Lister")) {
 		auto no_filter_active_named = world.filter<EntityEditor>();

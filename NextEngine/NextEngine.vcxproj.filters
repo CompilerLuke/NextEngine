@@ -192,9 +192,6 @@
     <ClCompile Include="src\core\io\logger.cpp">
       <Filter>src\logger</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\memory\temporary.cpp">
-      <Filter>src\core</Filter>
-    </ClCompile>
     <ClCompile Include="src\core\io\vfs.cpp">
       <Filter>src\core</Filter>
     </ClCompile>
@@ -219,6 +216,10 @@
     </ClCompile>
     <ClCompile Include="src\graphics\renderer\terrain.cpp" />
     <ClCompile Include="src\graphics\renderer\grass_rendering.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vulkan.cpp" />
+    <ClCompile Include="src\core\memory\linear_allocator.cpp">
+      <Filter>src\core</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="vendor\imgui\imconfig.h">
@@ -431,5 +432,9 @@
     <ClInclude Include="include\graphics\pass\render_graph.h" />
     <ClInclude Include="include\graphics\rhi\rhi.h" />
     <ClInclude Include="include\graphics\assets\material_manager.h" />
+    <ClInclude Include="include\core\container\tvector.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\vulkan.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\device.h" />
+    <ClInclude Include="include\core\container\static_vector.h" />
   </ItemGroup>
 </Project>

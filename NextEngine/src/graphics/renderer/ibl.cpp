@@ -113,6 +113,8 @@ void SkyboxSystem::load(Skybox* skybox) { //todo cleanup
 	ModelManager& models = asset_manager.models;
 	CubemapManager& cubemaps = asset_manager.cubemaps;
 
+	if (skybox->brdf_LUT.id != INVALID_HANDLE) return;
+
 	bool take_capture = false;
 	
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);

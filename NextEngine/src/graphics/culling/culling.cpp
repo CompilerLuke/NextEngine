@@ -10,6 +10,7 @@
 #include "graphics/renderer/material_system.h"
 #include "components/grass.h"
 #include "core/io/logger.h"
+#include "core/container/tvector.h"
 
 void aabb_to_verts(AABB* self, glm::vec4* verts) {
 	verts[0] = glm::vec4(self->max.x, self->max.y, self->max.z, 1);
@@ -109,115 +110,110 @@ CullResult frustum_test(glm::vec4 planes[6], const AABB& aabb) {
 #define MAX_DEPTH 7
 //#define DEBUG_OCTREE
 
-Node* subdivide_BVH(ScenePartition& scene_partition, AABB& node_aabb, int depth, int mesh_count, AABB* aabbs, int* meshes, glm::mat4* models_m) {
-	assert(scene_partition.node_count < MAX_NODES);
-	
+Node& alloc_node(Partition& scene_partition) {
+	assert(scene_partition.count <= MAX_MESH_INSTANCES);
+
 	Node& node = scene_partition.nodes[scene_partition.node_count++];
 	node = {};
-	node.offset = scene_partition.meshes_count;
+	node.offset = scene_partition.count;
 
+	return node;
+}
+
+Node& alloc_leaf_node(Partition& scene_partition, AABB& node_aabb, int max, int count) {
+	Node& node = alloc_node(scene_partition);
+	node.aabb = node_aabb;
+	node.count = count;
+	
+	scene_partition.count += count;
+
+	assert(scene_partition.count <= max);
+
+	return node;
+}
+
+BranchNodeInfo alloc_branch_node(Partition& scene_partition, AABB& node_aabb) {
+	BranchNodeInfo info = { alloc_node(scene_partition) };
+	glm::vec3 size = node_aabb.size();
+
+	info.watermark = temporary_allocator.occupied;
+	info.axis = size.x > size.y ? (size.x > size.z ? 0 : 2) : (size.y > size.z ? 1 : 2);
+	info.pivot = 0.5f * node_aabb.centroid();
+	info.half_size = size[info.axis] * 0.5f;
+
+	return info;
+}
+
+int elem_offset(Partition& scene_partition, BranchNodeInfo& info, AABB& aabb) {
+	int offset = scene_partition.count++;
+	assert(scene_partition.count <= MAX_MESH_INSTANCES);
+	info.node.aabb.update_aabb(aabb);
+	info.node.count++;
+
+	return offset;
+}
+
+
+bool bigger_than_leaf(BranchNodeInfo& info, AABB& aabb) {
+	return aabb.size()[info.axis] > info.half_size;
+}
+
+int split_index(BranchNodeInfo& info, AABB& aabb) {
+	int node_index = aabb.centroid()[info.axis] > info.pivot[info.axis];
+	info.child_aabbs[node_index].update_aabb(aabb);
+	return node_index;
+}
+
+void bump_allocator(Partition& partition, BranchNodeInfo& info) {
+	temporary_allocator.occupied = info.watermark;
+	partition.count += info.node.count;
+}
+
+Node* subdivide_BVH(ScenePartition& scene_partition, AABB& node_aabb, int depth, int mesh_count, AABB* aabbs, int* meshes, glm::mat4* models_m) {
 	if (mesh_count <= MAX_MESHES_PER_NODE || depth >= MAX_DEPTH) {
-		node.aabb = node_aabb;
-		node.count = mesh_count;
-		
-		memcpy(scene_partition.meshes    + node.offset, meshes,   sizeof(int) * node.count);
-		memcpy(scene_partition.aabbs     + node.offset, aabbs,    sizeof(AABB) * node.count);
-		memcpy(scene_partition.model_m   + node.offset, models_m, sizeof(glm::mat4) * node.count);
+		Node& node = alloc_leaf_node(scene_partition, node_aabb, MAX_MESH_INSTANCES, mesh_count);
 
-		assert(scene_partition.meshes_count <= MAX_MESH_INSTANCES);
+		copy_into_node(node, scene_partition.meshes, meshes);
+		copy_into_node(node, scene_partition.aabbs, aabbs);
+		copy_into_node(node, scene_partition.model_m, models_m);
+
+		return &node;
 	}
 	else {
-		AABB child_aabbs[2];
-		vector<AABB> subdivided_aabbs[2];
-		vector<int> subdivided_meshes[2];
-		vector<glm::mat4> subdivided_model_m[2];
+		BranchNodeInfo info = alloc_branch_node(scene_partition, node_aabb);
 
-		int watermark = temporary_allocator.occupied;
-		
-		glm::vec3 size = node_aabb.max - node_aabb.min;
-		int axis = size.x > size.y ? (size.x > size.z ? 0 : 2)  : (size.y > size.z ? 1 : 2);
-
-		glm::vec3 pivot = 0.5f * (node_aabb.max + node_aabb.min);
-		
-		float half_size = size[axis] * 0.5f;
-
-		//glm::vec3 half_size = 0.5f * (node.aabb.max - node.aabb.min);
-
-		for (uint i = 0; i < 2; i++) {
-			subdivided_aabbs[i].allocator = &temporary_allocator;
-			subdivided_meshes[i].allocator = &temporary_allocator;
-			subdivided_model_m[i].allocator = &temporary_allocator;
-		}
+		tvector<AABB> subdivided_aabbs[2];
+		tvector<int> subdivided_meshes[2];
+		tvector<glm::mat4> subdivided_model_m[2];
 
 		for (int i = 0; i < mesh_count; i++) {
 			AABB& aabb = aabbs[i];
-			glm::vec3 centroid = (aabb.min + aabb.max) / 2.0f;
-			glm::vec3 size = aabb.max - aabb.min;
 
-			if (size[axis] > half_size) {
-				int offset = scene_partition.meshes_count++;
+			if (bigger_than_leaf(info, aabb)) {
+				int offset = elem_offset(scene_partition, info, aabb);
 
-				assert(scene_partition.meshes_count <= MAX_MESH_INSTANCES);
-
-				node.count++;
-				scene_partition.aabbs[offset] = aabb;
+				scene_partition.aabbs[offset] = aabbs[i];
 				scene_partition.meshes[offset] = meshes[i];
 				scene_partition.model_m[offset] = models_m[i];
-
-				node.aabb.update_aabb(aabb);
-
-				continue;
 			}
+			else {
+				bool node_index = split_index(info, aabb);
 
-
-			bool past_x_pivot = centroid.x > pivot.x;
-			bool past_y_pivot = centroid.y > pivot.y;
-			bool past_z_pivot = centroid.z > pivot.z;
-
-			bool node_index = centroid[axis] > pivot[axis];
-				
-				//past_x_pivot + past_y_pivot * 2 + past_z_pivot * 4; 
-
-			child_aabbs[node_index].update_aabb(aabb);
-
-			subdivided_aabbs[node_index].append(aabb);
-			subdivided_meshes[node_index].append(meshes[i]);
-			subdivided_model_m[node_index].append(models_m[i]);
+				subdivided_aabbs[node_index].append(aabb);
+				subdivided_meshes[node_index].append(meshes[i]);
+				subdivided_model_m[node_index].append(models_m[i]);
+			}
 		}
-
-#ifdef DEBUG_OCTREE
-		for (int i = 0; i < 8; i++) {
-			int value = i;
-			bool past_z_pivot = value / 4;
-			value -= past_z_pivot * 4;
-			bool past_y_pivot = value / 2;
-			bool past_x_pivot = value % 2;
-				
-			if (past_z_pivot) child_aabbs[i].min.z = node_aabb.min.z + half_size.z;
-			else child_aabbs[i].min.z = node_aabb.min.z;
-
-			if (past_y_pivot) child_aabbs[i].min.y = node_aabb.min.y + half_size.y;
-			else child_aabbs[i].min.y = node_aabb.min.y ;
-
-			if (past_x_pivot) child_aabbs[i].min.x = node_aabb.min.x + half_size.x;
-			else child_aabbs[i].min.x = node_aabb.min.x;
-
-			child_aabbs[i].max = child_aabbs[i].min + half_size;
-		}
-#endif
 
 		for (int i = 0; i < 2; i++) {
 			if (subdivided_aabbs[i].length == 0) continue;
-			node.child[i] = subdivide_BVH(scene_partition, child_aabbs[i], depth + 1, subdivided_aabbs[i].length, subdivided_aabbs[i].data, subdivided_meshes[i].data, subdivided_model_m[i].data);
-			node.aabb.update_aabb(node.child[i]->aabb);
+			info.node.child[i] = subdivide_BVH(scene_partition, info.child_aabbs[i], depth + 1, subdivided_aabbs[i].length, subdivided_aabbs[i].data, subdivided_meshes[i].data, subdivided_model_m[i].data);
+			info.node.aabb.update_aabb(info.node.child[i]->aabb);
 		}
 
-		temporary_allocator.occupied = watermark;
+		bump_allocator(scene_partition, info);
+		return &info.node;
 	}
-
-	scene_partition.meshes_count += node.count;
-
-	return &node;
 }
 
 void build_acceleration_structure(ScenePartition& scene_partition, hash_set<MeshBucket, MAX_MESH_BUCKETS> & mesh_buckets, ModelManager& model_manager, World& world) { //todo UGH THE CURRENT SYSTEM LIMITS HOW DATA ORIENTED THIS CAN BE

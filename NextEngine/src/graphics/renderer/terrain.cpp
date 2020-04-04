@@ -71,6 +71,7 @@ TerrainRenderSystem::TerrainRenderSystem(AssetManager& assets, World& world) : a
 	}
 }
 
+
 void TerrainRenderSystem::render(World& world, RenderCtx& render_ctx) {
 	ShaderManager& shaders = asset_manager.shaders;
 	CommandBuffer& cmd_buffer = render_ctx.command_buffer;
