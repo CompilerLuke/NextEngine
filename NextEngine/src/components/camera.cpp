@@ -1,4 +1,9 @@
 #include "stdafx.h"
+
+#ifdef RENDER_API_VULKAN
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#endif
+
 #include "components/camera.h"
 #include "components/transform.h"
 #include <glm/gtc/matrix_transform.hpp>

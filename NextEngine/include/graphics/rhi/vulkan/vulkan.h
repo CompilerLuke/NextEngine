@@ -1,9 +1,10 @@
 #pragma once
 
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
+#include "volk.h"
 
 struct Window;
+struct Level;
+struct ModelManager;
 
 struct VulkanDesc {
 	const char* app_name = "No name";
@@ -18,7 +19,13 @@ struct VulkanDesc {
 	const char** validation_layers;
 };
 
-void init(const VulkanDesc&, Window*);
-void drawFrame();
-void deinit();
+struct FrameData {
+	glm::mat4 model_matrix;
+	glm::mat4 view_matrix;
+	glm::mat4 proj_matrix;
+};
+
+void vk_init(const VulkanDesc&, ModelManager& model_manager, Level&, Window*);
+void vk_draw_frame(FrameData& data);
+void vk_deinit();
 

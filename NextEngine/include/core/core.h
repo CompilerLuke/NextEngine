@@ -17,3 +17,4 @@ using f64 = double;
 #define kb(num) num * 1024
 #define mb(num) kb(num) * 1024
 #define gb(num) mb(num) * 1024l
+

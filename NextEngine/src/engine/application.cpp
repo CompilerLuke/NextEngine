@@ -7,30 +7,20 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-void to_wide_char(const char* orig, wchar_t* wcstring, int buffer_length) {
-	unsigned int newsize = strlen(orig) + 1;
-	assert(newsize <= buffer_length);
-	size_t convertedChars;
-	mbstowcs_s(&convertedChars, wcstring, newsize, orig, _TRUNCATE);
-}
-
 void destroy_DLL(void* dll) {
 	FreeLibrary((HINSTANCE)dll);
 }
 
 void* load_DLL(string_view path) {
-	wchar_t path_w[100];
-	to_wide_char(path.c_str(), path_w, 100);
-
-	wchar_t path_w_copy[100];
+	char dest[100];
 	int insert_at = path.length - 4;
-	to_wide_char(path.c_str(), path_w_copy, 100);
-	to_wide_char("copy.dll", path_w_copy + insert_at, 100 - insert_at);
+	memcpy(dest, path.data, insert_at);
+	memcpy(dest + insert_at, "copy.dll", 9);
 
-	bool result = CopyFile(path_w, path_w_copy, false);
+	bool result = CopyFileA(path.c_str(), dest, false);
 	if (!result) throw "Could not copy DLL!";
 
-	HINSTANCE dll = LoadLibrary(path_w_copy);
+	HINSTANCE dll = LoadLibraryA(path.c_str());
 	if (!dll) throw "Could not load DLL!";
 	return (void*)dll;
 }
@@ -53,8 +43,12 @@ void Application::load_functions() {
 	update_func = (UpdateFunction)get_Func(dll_handle, "update");
 	render_func = (RenderFunction)get_Func(dll_handle, "render");
 	is_running_func = (IsRunningFunction)get_Func(dll_handle, "is_running");
-	deinit_func = (DeinitFunction)get_Func(dll_handle, "deinint");
+	deinit_func = (DeinitFunction)get_Func(dll_handle, "deinit");
 	reload_func = (ReloadFunction)get_Func(dll_handle, "reload");
+
+	if (!init_func || !deinit_func || !update_func || !render_func) {
+		throw "Missing application functions";
+	}
 }
 
 

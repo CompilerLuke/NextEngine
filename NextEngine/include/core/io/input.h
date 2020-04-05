@@ -38,7 +38,7 @@ struct ENGINE_API Input {
 	float get_vertical_axis();
 	float get_horizontal_axis();
 
-	GLFWwindow* window_ptr;
+	struct GLFWwindow* window_ptr;
 	void capture_mouse(bool);
 	void clear();
 

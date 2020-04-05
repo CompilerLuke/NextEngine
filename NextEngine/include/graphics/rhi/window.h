@@ -1,7 +1,6 @@
 #pragma once
 
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
+
 #include "core/container/event_dispatcher.h"
 #include "core/container/string_buffer.h"
 #include <glm/vec2.hpp>
@@ -18,7 +17,12 @@ struct MouseButtonData {
 	int button;
 	int action;
 	int mods;
-};
+};	
+
+struct GLFWwindow;
+typedef void(*keyfun) (GLFWwindow *, int, int, int, int);
+typedef void(*charfun) (GLFWwindow *, unsigned int);
+typedef void(*mousebuttonfun) (GLFWwindow *, int, int, int);
 
 struct ENGINE_API Window {
 	string_buffer title;
@@ -34,7 +38,7 @@ struct ENGINE_API Window {
 	EventDispatcher<MouseButtonData> on_mouse_button;
 	EventDispatcher<glm::vec2> on_scroll;
 
-	struct GLFWwindow* window_ptr;
+	GLFWwindow* window_ptr;
 
 	Window() {};
 	~Window();
@@ -43,11 +47,13 @@ struct ENGINE_API Window {
 	bool should_close();
 	void swap_buffers();
 	void poll_inputs();
-	void override_key_callback(GLFWkeyfun func);
-	void override_char_callback(GLFWcharfun func);
-	void override_mouse_button_callback(GLFWmousebuttonfun func);	
-	HWND get_win32_window();
-	glm::vec2 get_framebuffer_size();
+	void override_key_callback(keyfun func);
+	void override_char_callback(charfun func);
+	void override_mouse_button_callback(mousebuttonfun func);	
+	void wait_events();
+	void get_framebuffer_size(int* width, int* height);
+
+	void* get_win32_window();
 
 	static Window* from(GLFWwindow*);
 };

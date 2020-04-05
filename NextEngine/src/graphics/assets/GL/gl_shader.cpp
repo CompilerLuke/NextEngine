@@ -1,4 +1,6 @@
 #include "stdafx.h"
+#ifdef RENDER_API_OPENGL
+
 #include "graphics/assets/shader.h"
 #include "core/io/vfs.h"
 #include "core/io/logger.h"
@@ -546,3 +548,5 @@ void ShaderManager::reload_modified() {
 		}
 	}
 }
+
+#endif

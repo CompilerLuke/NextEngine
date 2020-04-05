@@ -259,7 +259,7 @@ void ShadowPass::render(World& world, RenderCtx& params) {
 
 		shadow_mask.shadow_mask_map_fbo.bind();
 
-		glDisable(GL_DEPTH_TEST);
+		//glDisable(GL_DEPTH_TEST);
 
 		Shader* shadow_mask_shader = asset_manager.shaders.get(this->shadow_mask_shader);
 
@@ -288,7 +288,7 @@ void ShadowPass::render(World& world, RenderCtx& params) {
 
 		render_quad();
 
-		glEnable(GL_DEPTH_TEST);
+		//glEnable(GL_DEPTH_TEST);
 
 		shadow_mask.shadow_mask_map_fbo.unbind();
 
@@ -307,7 +307,7 @@ void ShadowPass::render(World& world, RenderCtx& params) {
 	bool horizontal = true;
 	bool first_iteration = true;
 
-	glDisable(GL_DEPTH_TEST);
+	//glDisable(GL_DEPTH_TEST);
 
 	constexpr int amount = 0;
 
@@ -338,5 +338,5 @@ void ShadowPass::render(World& world, RenderCtx& params) {
 	}
 
 	shadow_mask.shadow_mask_map_fbo.unbind();
-	glEnable(GL_DEPTH_TEST);
+	//glEnable(GL_DEPTH_TEST);
 }

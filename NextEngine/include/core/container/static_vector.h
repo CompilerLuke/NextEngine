@@ -1,22 +1,23 @@
 #pragma once
 
 #include "core/core.h"
+#include <initializer_list>
 
 template<int N, typename T>
-struct static_vector {
+struct array {
 	T data[N];
 	uint length = 0;
 
-	static_vector() {
+	array() {
 
 	}
 
 	void resize(int length) {
-		assert(length < N);
+		assert(length <= N);
 		this->length = length;
 	}
 
-	static_vector(int length) {
+	array(int length) {
 		resize(length);
 	}
 
@@ -27,11 +28,24 @@ struct static_vector {
 	}
 	}*/
 
-	static_vector(static_vector<N, T>&& other) {
+	array(array<N, T>&& other) {
 		length = other.length;
 		memcpy(data, other.data, sizeof(T) * length);
 
 		other.length = 0;
+	}
+
+	inline array(std::initializer_list<T> list) {
+		for (const auto& i : list) {
+			append(i);
+		}
+	}
+
+	inline array(T* new_data, int count) {
+		length = count;
+		for (int i = 0; i < count; i++) {
+			data[i] = new_data[i];
+		}
 	}
 
 	/*static_vector<N, T>& operator=(const static_vector<N, T>& other) {
@@ -40,7 +54,7 @@ struct static_vector {
 	return *this;
 	}*/
 
-	static_vector<N, T>& operator=(static_vector<N, T>&& other) {
+	array<N, T>& operator=(array<N, T>&& other) {
 		length = other.length;
 		memcpy(data, other.data, sizeof(T) * length);
 
@@ -52,7 +66,7 @@ struct static_vector {
 	T& operator[](uint index) { return data[index]; }
 	const T& operator[](uint index) const { return data[index]; }
 
-	~static_vector() {
+	~array() {
 		for (int i = 0; i < length; i++) {
 			data[i].~T();
 		}
@@ -64,6 +78,11 @@ struct static_vector {
 
 	void append(T&& elem) {
 		new (data + length++) T(std::move(elem));
+	}
+
+	void clear() {
+		for (int i = 0; i < length; i++) data[i].~T();		
+		length = 0;
 	}
 
 	T pop() { return std::move(data[--length]); }

@@ -3,6 +3,8 @@
 #include <glad/glad.h>
 #include "graphics/assets/texture.h"
 
+#ifdef RENDER_API_OPENGL
+
 AttachmentDesc::AttachmentDesc(texture_handle& id) 
 : tex_id(id) {}
 
@@ -99,3 +101,5 @@ void Framebuffer::clear_depth(glm::vec4 color) {
 void Framebuffer::unbind() {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
+
+#endif

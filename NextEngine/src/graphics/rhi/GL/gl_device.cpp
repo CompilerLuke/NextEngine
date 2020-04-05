@@ -2,6 +2,8 @@
 #include "graphics/rhi/device.h"
 #include <glad/glad.h>
 
+#ifdef RENDER_API_OPENGL
+
 void Device::bind() {
 	glEnable(GL_DEPTH_TEST);
 	//glEnable(GL_MULTISAMPLE);
@@ -11,3 +13,5 @@ void Device::bind() {
 
 	glViewport(0, 0, width, height);
 }
+
+#endif

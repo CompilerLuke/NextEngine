@@ -8,6 +8,10 @@ struct slice {
 	T* data;	
 	uint length;
 
+	slice() : data(nullptr), length(0) {}
+	slice(T& value) :  data(&value), length(1) {}
+	slice(T* data, uint length) : data(data), length(length) {}
+
 	T& operator[](int i) {
 		assert(i < length);
 		return data[i];

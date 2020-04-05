@@ -115,6 +115,8 @@ void SkyboxSystem::load(Skybox* skybox) { //todo cleanup
 
 	if (skybox->brdf_LUT.id != INVALID_HANDLE) return;
 
+#ifdef RENDER_API_OPENGL
+
 	bool take_capture = false;
 	
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
@@ -445,8 +447,9 @@ void SkyboxSystem::load(Skybox* skybox) { //todo cleanup
 		cubemaps.get(skybox->irradiance_cubemap)->texture_id = irradianceMap;
 		cubemaps.get(skybox->prefilter_cubemap)->texture_id = prefilterMap;
 	}
+#endif
 
-	return; //todo update textures in place
+	//todo update textures in place
 }
 
 //#include "lister.h"

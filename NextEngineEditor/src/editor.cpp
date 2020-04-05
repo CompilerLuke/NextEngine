@@ -478,7 +478,7 @@ struct EditorRendererExtension : RenderExtension {
 
 		if (editor.selected_id != -1) {
 			ID selected = editor.selected_id;
-			editor.outline_selected.render(world, { 1, &selected }, ctx);
+			editor.outline_selected.render(world, selected, ctx);
 		}
 		//editor.picking_pass.render(world, ctx);
 		//render_settings.render_features.append(new DebugShaderReloadSystem());
@@ -832,8 +832,11 @@ APPLICATION_API void render(Editor& editor, Engine& engine) {
 
 	Layermask layermask = editor.playing_game ? GAME_LAYER : GAME_LAYER | EDITOR_LAYER;
 
+	editor.viewport_width = engine.window.width;
+	editor.viewport_height = engine.window.height;
+
 	RenderCtx ctx = engine.renderer.render(world, layermask, editor.viewport_width, editor.viewport_height, &ext);
-	render_Editor(editor, ctx);
+	//render_Editor(editor, ctx);
 }
 
 APPLICATION_API void deinit(Editor* editor) {

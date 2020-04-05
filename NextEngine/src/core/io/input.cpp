@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "core/io/input.h"
 #include "core/io/logger.h"
+#include <GLFW/glfw3.h>
 
 void on_cursor_pos(Input* self, glm::vec2 mouse_position) {
 	if (!self->mouse_captured && (mouse_position.x > self->region_max.x || mouse_position.y > self->region_max.y || mouse_position.x < self->region_min.x || mouse_position.y < self->region_min.y)) {

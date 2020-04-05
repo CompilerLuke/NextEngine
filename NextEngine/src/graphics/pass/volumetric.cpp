@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "graphics/pass/volumetric.h"
 #include "graphics/assets/asset_manager.h"
-#include "graphics/rhi/window.h"
 #include "graphics/rhi/primitives.h"
 #include "graphics/renderer/renderer.h"
 
@@ -53,10 +52,10 @@ void VolumetricPass::render_with_cascade(World& world, RenderCtx& render_params,
 
 	calc_fog.fbo.bind();
 	
-	glDisable(GL_DEPTH_TEST);
-	glEnable(GL_BLEND);
+	//glDisable(GL_DEPTH_TEST);
+	//glEnable(GL_BLEND);
 
-	glBlendFunc(GL_ONE, GL_ONE);
+	//glBlendFunc(GL_ONE, GL_ONE);
 
 	auto dir_light = get_dir_light(world, GAME_LAYER);
 	auto dir_light_trans = world.by_id<Transform>(world.id_of(dir_light));
@@ -90,8 +89,8 @@ void VolumetricPass::render_with_cascade(World& world, RenderCtx& render_params,
 
 	render_quad();
 
-	glDisable(GL_BLEND);
-	glEnable(GL_DEPTH_TEST);
+	//glDisable(GL_BLEND);
+	//glEnable(GL_DEPTH_TEST);
 
 	calc_fog.fbo.unbind();
 }
@@ -102,7 +101,7 @@ void VolumetricPass::render_upsampled(World& world, texture_handle current_frame
 	
 	Shader* upsample_shader = asset_manager.shaders.get(this->upsample_shader);
 
-	glDisable(GL_DEPTH_TEST);
+	//glDisable(GL_DEPTH_TEST);
 
 	upsample_shader->bind();
 
@@ -124,5 +123,5 @@ void VolumetricPass::render_upsampled(World& world, texture_handle current_frame
 
 	render_quad();
 
-	glEnable(GL_DEPTH_TEST);
+	//glEnable(GL_DEPTH_TEST);
 }

@@ -141,21 +141,6 @@
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="NextEngine.cpp" />
     <ClCompile Include="stdafx.cpp" />
-    <ClCompile Include="src\graphics\rhi\GL\buffer.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\rhi\GL\device.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\rhi\GL\draw.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\rhi\GL\frameBuffer.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\rhi\GL\window.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
     <ClCompile Include="src\graphics\culling\culling.cpp">
       <Filter>src\graphics</Filter>
     </ClCompile>
@@ -166,9 +151,6 @@
       <Filter>src\graphics</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\renderer\model_rendering.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\rhi\GL\primitives.cpp">
       <Filter>src\graphics</Filter>
     </ClCompile>
     <ClCompile Include="src\graphics\pass\render_pass.cpp">
@@ -197,14 +179,6 @@
     </ClCompile>
     <ClCompile Include="src\core\container\string_view.cpp" />
     <ClCompile Include="src\graphics\assets\asset_manager.cpp" />
-    <ClCompile Include="src\graphics\assets\assimp_model_loader.cpp" />
-    <ClCompile Include="src\graphics\assets\model.cpp" />
-    <ClCompile Include="src\graphics\assets\shader.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\assets\texture.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
     <ClCompile Include="src\graphics\pass\shadow.cpp">
       <Filter>src\graphics</Filter>
     </ClCompile>
@@ -220,6 +194,40 @@
     <ClCompile Include="src\core\memory\linear_allocator.cpp">
       <Filter>src\core</Filter>
     </ClCompile>
+    <ClCompile Include="src\graphics\rhi\vulkan\volk.cpp" />
+    <ClCompile Include="src\graphics\assets\assimp_model_loader.cpp" />
+    <ClCompile Include="src\graphics\assets\GL\gl_model.cpp" />
+    <ClCompile Include="src\graphics\assets\GL\gl_shader.cpp">
+      <Filter>src\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\assets\GL\gl_texture.cpp">
+      <Filter>src\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\assets\VULKAN\vk_model.cpp" />
+    <ClCompile Include="src\graphics\assets\VULKAN\vk_texture.cpp" />
+    <ClCompile Include="src\graphics\assets\VULKAN\vk_shader.cpp" />
+    <ClCompile Include="src\graphics\rhi\GL\gl_buffer.cpp">
+      <Filter>src\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\rhi\window.cpp">
+      <Filter>src\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\rhi\primitives.cpp">
+      <Filter>src\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\rhi\GL\gl_framebuffer.cpp">
+      <Filter>src\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\rhi\GL\gl_draw.cpp">
+      <Filter>src\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\rhi\GL\gl_device.cpp">
+      <Filter>src\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_buffer.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_framebuffer.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_draw.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_device.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="vendor\imgui\imconfig.h">
@@ -436,5 +444,6 @@
     <ClInclude Include="include\graphics\rhi\vulkan\vulkan.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\device.h" />
     <ClInclude Include="include\core\container\static_vector.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\volk.h" />
   </ItemGroup>
 </Project>

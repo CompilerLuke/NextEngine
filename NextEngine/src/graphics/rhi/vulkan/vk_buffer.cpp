@@ -7,6 +7,8 @@
 #include "graphics/assets/model.h"
 #include "graphics/renderer/terrain.h"
 
+#ifdef RENDER_API_VULKAN
+
 namespace RHI {
 	struct VertexAttrib {
 		enum Kind {
@@ -68,48 +70,31 @@ namespace RHI {
 		uint vbo = 0;
 		uint ebo = 0;
 
-		glGenBuffers(1, &vbo);
-		glGenBuffers(1, &ebo);
-
-		glBindBuffer(GL_ARRAY_BUFFER, vbo);
-		glBufferData(GL_ARRAY_BUFFER, vert_desc.vertices_size, NULL, GL_STATIC_DRAW);
-
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, vert_desc.indices_size, NULL, GL_STATIC_DRAW);
-
+	
 		for (InstanceLayoutDesc& instance_desc : desc.instances) {
 			InstanceBufferAllocator& buffer = instance_buffers[vert_desc.layout][instance_desc.layout];
 			
-			GLuint vao, obj = 0;
-			glGenVertexArrays(1, &vao);
-			glGenBuffers(1, &obj);
-
-			glBindVertexArray(vao);
-
-			glBindBuffer(GL_ARRAY_BUFFER, vbo);
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+			GLuint vao = 0, obj = 0;
+			
+			/**/
 	
 			for (int i = 0; i < vert_desc.attribs.length; i++) {
 				VertexAttrib& va = vert_desc.attribs[i];
 
-				glEnableVertexAttribArray(i);
-				glVertexAttribPointer(i, va.length, gl_attrib_kind[va.kind], false, vert_desc.elem_size, (void*)((std::size_t)va.offset));
+				/**/
 			}
 
-			glBindBuffer(GL_ARRAY_BUFFER, obj);
-			glBufferData(GL_ARRAY_BUFFER, instance_desc.size, NULL, GL_STREAM_DRAW);
+			/**/
 
 			uint offset = vert_desc.attribs.length;
 
 			for (int i = 0; i < instance_desc.attribs.length; i++) {
 				VertexAttrib& attrib = instance_desc.attribs[i];
 
-				glEnableVertexAttribArray(offset + i);
-				glVertexAttribPointer(offset + i, 4, gl_attrib_kind[attrib.kind], false, instance_desc.elem_size, (void*)(attrib.offset));
-				glVertexAttribDivisor(offset + i, 1);
+				/**/
 			}
 
-			glBindVertexArray(0);
+			/**/
 
 			assert(buffer.vao == 0);
 			buffer.vao = vao;			
@@ -155,11 +140,7 @@ namespace RHI {
 		allocator->vertex_length += vertices_length;
 		allocator->index_offset += indices_size;
 
-		glBindBuffer(GL_ARRAY_BUFFER, allocator->vbo);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, allocator->ebo);
-
-		glBufferSubData(GL_ARRAY_BUFFER, buffer.vertex_offset, vertices_size, vertices);
-		glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, buffer.index_offset, indices_size, indices);
+		/**/
 
 		return buffer;
 	}
@@ -173,8 +154,7 @@ namespace RHI {
 
 		GLuint underlying_buffer = allocator.buffer;
 
-		glBindBuffer(GL_ARRAY_BUFFER, underlying_buffer);
-		glBufferSubData(GL_ARRAY_BUFFER, buffer.base * allocator.elem_size, size, data);
+		/**/
 	}
 
 	InstanceBuffer alloc_instance_buffer(VertexLayout v_layout, InstanceLayout layout, int length, void* data) {
@@ -199,11 +179,11 @@ namespace RHI {
 
 	void bind_vertex_buffer(VertexLayout v_layout, InstanceLayout layout) {
 		GLuint vao = instance_buffers[v_layout][layout].vao;
-		glBindVertexArray(vao);
+		/**/
 	}
 
 	void render_vertex_buffer(VertexBuffer& buffer) {
-		glDrawElements(GL_TRIANGLES, buffer.length, GL_UNSIGNED_INT, (void*)buffer.index_offset);
+		/**/
 	}
 
 	void create_buffers() {
@@ -269,7 +249,8 @@ namespace RHI {
 			}
 		}
 
-		glDeleteVertexArrays(VERTEX_LAYOUT_COUNT, vaos);
-		glDeleteBuffers(GL_ARRAY_BUFFER, array_buffers);
+		/**/
 	}
 }
+
+#endif

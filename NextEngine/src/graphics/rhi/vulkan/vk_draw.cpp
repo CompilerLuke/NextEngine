@@ -10,6 +10,8 @@
 #include "core/io/logger.h"
 #include "core/time.h"
 
+#ifdef RENDER_API_VULKAN
+
 REFLECT_BEGIN_ENUM(DrawOrder)
 REFLECT_ENUM_VALUE(draw_opaque)
 REFLECT_ENUM_VALUE(draw_skybox)
@@ -127,34 +129,21 @@ void switch_shader(ShaderManager& shader_manager, RenderCtx& ctx, shader_handle 
 void depth_func_bind(DepthFunc func) {
 	switch (func) {
 	case DepthFunc_Lequal: 
-		glEnable(GL_DEPTH_TEST);
-		glDepthFunc(GL_LEQUAL);
 		break;
 	case DepthFunc_Less: 
-		glEnable(GL_DEPTH_TEST);
-		glDepthFunc(GL_LESS); 
 		break;
 	case DepthFunc_None:
-		glEnable(GL_DEPTH_TEST);
-		glDepthFunc(GL_ALWAYS);
 		break;
 	}
 }
 
 void cull_bind(Cull cull) {
-
-
 	switch (cull) {
 	case Cull_None: 
-		glDisable(GL_CULL_FACE); 
 		return;
 	case Cull_Back: 
-		glEnable(GL_CULL_FACE); 
-		glCullFace(GL_BACK);
 		return;
 	case Cull_Front:
-		glEnable(GL_CULL_FACE);
-		glCullFace(GL_FRONT);
 		return;
 	}
 }
@@ -164,30 +153,23 @@ void stencil_func_bind(StencilFunc func) {
 
 	switch (func) {
 	case StencilFunc_None:
-		glDisable(GL_STENCIL_TEST);
 		return;
 	case StencilFunc_Equal:
-		glEnable(GL_STENCIL_TEST);
-		glStencilFunc(GL_EQUAL, 1, 0xFF);
 		return;
 	case StencilFunc_NotEqual:
-		glEnable(GL_STENCIL_TEST);
-		glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
 		return;
 	case StencilFunc_Always:
-		glEnable(GL_STENCIL_TEST);
-		glStencilFunc(GL_ALWAYS, 1, 0xFF);
 		return;
 	};
 }
 
 void stencil_op_bind(StencilOp op) {
-	if (op == Stencil_Keep_Replace) glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+	if (op == Stencil_Keep_Replace) /**/;
 }
 
 void color_mask_bind(ColorMask mask) {
-	if (mask == Color_All) glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-	else glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+	if (mask == Color_All) 0; /**/
+	else 0; /**/
 }
 
 void set_params(CommandBuffer& command_buffer, AssetManager& asset_manager, shader_config_handle config_handle, Material& mat) {	
@@ -426,15 +408,15 @@ void CommandBuffer::submit_to_gpu(RenderCtx& ctx) {
 			depth_func_bind(mat.state->depth_func);
 			cull_bind(mat.state->cull);
 			if (mat.state->clear_depth_buffer) {
-				glDepthMask(GL_FALSE);
+				/**/
 				//glClear(GL_DEPTH_BUFFER_BIT);
 			}
 			if (mat.state->clear_stencil_buffer) {
-				glClear(GL_STENCIL_BUFFER_BIT);
+				/**/
 			}
 			stencil_op_bind(mat.state->stencil_op);
 			stencil_func_bind(mat.state->stencil_func);
-			glStencilMask(mat.state->stencil_mask);
+			/**/
 			set_params(self, assets, cmd.config, mat);
 		}
 		else {
@@ -474,15 +456,15 @@ void CommandBuffer::submit_to_gpu(RenderCtx& ctx) {
 			}
 
 			if (last_mat.state->stencil_mask != mat.state->stencil_mask) {
-				glStencilMask(mat.state->stencil_mask);
+				/**/
 			}
 
 			if (mat.state->clear_stencil_buffer && !last_mat.state->clear_stencil_buffer) {
-				glClear(GL_STENCIL_BUFFER_BIT);
+				/**/
 			}
 
 			if (mat.state->clear_depth_buffer != last_mat.state->clear_depth_buffer) {
-				glDepthMask(mat.state->clear_depth_buffer ? GL_FALSE : GL_TRUE);
+				/**/
 			}
 
 			if (mat.state->color_mask != last_mat.state->color_mask) {
@@ -516,24 +498,21 @@ void CommandBuffer::submit_to_gpu(RenderCtx& ctx) {
 
 		if (instanced) {
 			//log("DRAWING ", cmd.instance_buffer->base, " ", num_instanced, "\n");
-			glDrawElementsInstancedBaseInstance(GL_TRIANGLES, cmd.buffer->length, GL_UNSIGNED_INT, (void*)(cmd.buffer->index_offset), num_instanced, cmd.instance_buffer->base);
+			/**/
 		}
 		else {
 			shader_config->set_mat4(model_uniform, cmd.model_m);
 			if (cmd.material->state->mode == DrawSolid) {
-				glDrawElements(GL_TRIANGLES, cmd.buffer->length, GL_UNSIGNED_INT, (void*)(cmd.buffer->index_offset));
+				/**/
 			}
 			else {
-				glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); //todo make setting in draw
-				glLineWidth(5.0);
-				glDrawElements(GL_TRIANGLES, cmd.buffer->length, GL_UNSIGNED_INT, (void*)(cmd.buffer->index_offset));
-				glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+				/**/
 			}
 		}
 		last_was_instanced = instanced;
 		i += 1;
 	}
 
-	glDepthMask(GL_TRUE);
-	glDisable(GL_STENCIL_TEST);
+	/**/
 }
+#endif

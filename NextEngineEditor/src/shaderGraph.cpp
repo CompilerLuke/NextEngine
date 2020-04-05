@@ -10,6 +10,7 @@
 #include "core/io/input.h"
 #include "graphics/assets/asset_manager.h"
 #include "graphics/renderer/renderer.h"
+#include <GLFW/glfw3.h>
 
 REFLECT_STRUCT_BEGIN(shader_node_handle)
 REFLECT_STRUCT_MEMBER(id)

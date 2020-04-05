@@ -2,7 +2,6 @@
 
 #include "core/container/static_vector.h"
 #include "core/handle.h"
-#include "core/reflection.h"
 
 constexpr unsigned int INVALID_SLOT = 0;
 
@@ -10,10 +9,10 @@ template<typename T, typename H, int MAX_HANDLES = 200>
 struct HandleManager {
 	unsigned int generation_counter = 0;
 	
-	static_vector<MAX_HANDLES, unsigned int> free_serialized_ids;
-	static_vector<MAX_HANDLES, unsigned int > free_ids;
-	static_vector<MAX_HANDLES, T> slots;
-	static_vector<MAX_HANDLES, unsigned int> id_of_slots;
+	array<MAX_HANDLES, unsigned int> free_serialized_ids;
+	array<MAX_HANDLES, unsigned int > free_ids;
+	array<MAX_HANDLES, T> slots;
+	array<MAX_HANDLES, unsigned int> id_of_slots;
 	T* by_handle[MAX_HANDLES];
 
 	unsigned int handle_to_index(H handle) {

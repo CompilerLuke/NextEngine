@@ -1,5 +1,7 @@
 #include "stdafx.h"
 
+#ifdef RENDER_API_OPENGL
+
 #include "core/memory/linear_allocator.h"
 #include "graphics/rhi/draw.h"
 #include "graphics/renderer/renderer.h"
@@ -27,3 +29,4 @@ REFLECT_STRUCT_END()*/
 ModelManager::ModelManager(Level& level) : level(level) {
 
 }
+#endif

@@ -1,8 +1,9 @@
 #include "stdafx.h"
 #include "graphics/rhi/window.h"
 #include "core/io/logger.h"
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
+
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
 void framebuffer_size_callback(GLFWwindow* window_ptr, int width, int height) {
@@ -53,12 +54,16 @@ void gl_error_callback(GLenum source, GLenum typ, GLuint id, GLenum severity, GL
 void Window::init() {
 	glfwInit();
 
+#ifdef RENDER_API_OPENGL
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4); 
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); 
-
+#elif RENDER_API_VULKAN
+	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+#endif
+	
 	//glfwWindowHint(GLFW_SAMPLES, 4); 
-
 	auto c_title = title.c_str();
 
 	if (full_screen) {
@@ -85,6 +90,7 @@ void Window::init() {
 
 	glfwSetWindowUserPointer(window_ptr, this);
 
+#ifdef RENDER_API_OPENGL
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
 		throw "Failed to initialize GLAD!";
 	}
@@ -92,6 +98,7 @@ void Window::init() {
 	//glEnable(GL_DEBUG_OUTPUT);
 	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 	glDebugMessageCallback((GLDEBUGPROC)gl_error_callback, this); 
+#endif 
 
 	if (vSync) {
 		glfwSwapInterval(1);
@@ -101,14 +108,16 @@ void Window::init() {
 	}
 }
 
-HWND Window::get_win32_window() {
-	return glfwGetWin32Window(window_ptr);
+void* Window::get_win32_window() {
+	return (void*)glfwGetWin32Window(window_ptr);
 }
 
-glm::vec2 Window::get_framebuffer_size() {
-	int width, height;
-	glfwGetFramebufferSize(window_ptr, &width, &height);
-	return glm::vec2(width, height);
+void Window::wait_events() {
+	glfwWaitEvents();
+}
+
+void Window::get_framebuffer_size(int* width, int* height) {
+	glfwGetFramebufferSize(window_ptr, width, height);
 }
 
 void Window::override_key_callback(GLFWkeyfun func) {

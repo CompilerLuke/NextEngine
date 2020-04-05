@@ -88,9 +88,9 @@
       <WarningLevel>Level2</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_DEBUG;NEXTENGINE_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NEXTENGINE_EXPORTS;RENDER_API_VULKAN</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\VulkanSDK\1.2.131.2\Include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>
       </DisableSpecificWarnings>
       <ExceptionHandling>false</ExceptionHandling>
@@ -109,9 +109,9 @@
       <WarningLevel>Level2</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;NEXTENGINE_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NEXTENGINE_EXPORTS;RENDER_API_VULKAN</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\VulkanSDK\1.2.131.2\Include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>
       </DisableSpecificWarnings>
       <ExceptionHandling>false</ExceptionHandling>
@@ -132,9 +132,9 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;NDEBUG;NEXTENGINE_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NEXTENGINE_EXPORTS;RENDER_API_VULKAN</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\VulkanSDK\1.2.131.2\Include;C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\VulkanSDK\1.2.131.2\Include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -142,7 +142,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glfw3.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glad.o;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\assimp-vc140-mt.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\BulletCollision.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\BulletDynamics.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\LinearMath.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glfw3.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\assimp-vc140-mt.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\BulletCollision.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\BulletDynamics.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\LinearMath.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseFastLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
   </ItemDefinitionGroup>
@@ -154,9 +154,9 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;NEXTENGINE_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NEXTENGINE_EXPORTS;RENDER_API_VULKAN</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\VulkanSDK\1.2.131.2\Include;C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\VulkanSDK\1.2.131.2\Include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -164,7 +164,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glfw3.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glad.o;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\assimp-vc140-mt.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\BulletCollision.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\BulletDynamics.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\LinearMath.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glfw3.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\assimp-vc140-mt.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\BulletCollision.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\BulletDynamics.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\LinearMath.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseFastLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
   </ItemDefinitionGroup>
@@ -232,6 +232,7 @@
     <ClInclude Include="include\graphics\pass\volumetric.h" />
     <ClInclude Include="include\graphics\rhi\rhi.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\device.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\volk.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\vulkan.h" />
     <ClInclude Include="include\graphics\rhi\window.h" />
     <ClInclude Include="include\core\io\logger.h" />
@@ -256,7 +257,7 @@
     <ClCompile Include="src\core\container\string_view.cpp" />
     <ClCompile Include="NextEngine.cpp" />
     <ClCompile Include="src\graphics\assets\asset_manager.cpp" />
-    <ClCompile Include="src\graphics\assets\model.cpp" />
+    <ClCompile Include="src\graphics\assets\GL\gl_model.cpp" />
     <ClCompile Include="src\benchmark\benchmark.cpp" />
     <ClCompile Include="src\components\camera.cpp" />
     <ClCompile Include="src\components\flyover.cpp" />
@@ -276,22 +277,25 @@
     <ClCompile Include="src\ecs\update_params.cpp" />
     <ClCompile Include="src\engine\application.cpp" />
     <ClCompile Include="src\engine\engine.cpp" />
+    <ClCompile Include="src\graphics\assets\VULKAN\vk_model.cpp" />
+    <ClCompile Include="src\graphics\assets\VULKAN\vk_shader.cpp" />
+    <ClCompile Include="src\graphics\assets\VULKAN\vk_texture.cpp" />
     <ClCompile Include="src\graphics\renderer\grass_rendering.cpp" />
     <ClCompile Include="src\graphics\renderer\terrain.cpp" />
-    <ClCompile Include="src\graphics\rhi\GL\buffer.cpp" />
+    <ClCompile Include="src\graphics\rhi\GL\gl_buffer.cpp" />
     <ClCompile Include="src\graphics\culling\culling.cpp" />
-    <ClCompile Include="src\graphics\rhi\GL\device.cpp" />
-    <ClCompile Include="src\graphics\rhi\GL\draw.cpp" />
-    <ClCompile Include="src\graphics\rhi\GL\frameBuffer.cpp" />
+    <ClCompile Include="src\graphics\rhi\GL\gl_device.cpp" />
+    <ClCompile Include="src\graphics\rhi\GL\gl_draw.cpp" />
+    <ClCompile Include="src\graphics\rhi\GL\gl_framebuffer.cpp" />
     <ClCompile Include="src\graphics\renderer\ibl.cpp" />
     <ClCompile Include="src\graphics\renderer\material_system.cpp" />
     <ClCompile Include="src\graphics\renderer\model_rendering.cpp" />
-    <ClCompile Include="src\graphics\rhi\GL\primitives.cpp" />
+    <ClCompile Include="src\graphics\rhi\primitives.cpp" />
     <ClCompile Include="src\graphics\renderer\renderer.cpp" />
     <ClCompile Include="src\graphics\pass\render_pass.cpp" />
-    <ClCompile Include="src\graphics\assets\shader.cpp" />
+    <ClCompile Include="src\graphics\assets\GL\gl_shader.cpp" />
     <ClCompile Include="src\graphics\pass\shadow.cpp" />
-    <ClCompile Include="src\graphics\assets\texture.cpp">
+    <ClCompile Include="src\graphics\assets\GL\gl_texture.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">MaxSpeed</Optimization>
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">MaxSpeed</Optimization>
       <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Default</BasicRuntimeChecks>
@@ -299,8 +303,18 @@
     </ClCompile>
     <ClCompile Include="src\graphics\renderer\transforms.cpp" />
     <ClCompile Include="src\graphics\pass\volumetric.cpp" />
-    <ClCompile Include="src\graphics\rhi\GL\window.cpp" />
+    <ClCompile Include="src\graphics\rhi\window.cpp" />
     <ClCompile Include="src\core\io\logger.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_buffer.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_device.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_draw.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_framebuffer.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\volk.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="src\graphics\rhi\vulkan\vulkan.cpp" />
     <ClCompile Include="src\physics\physics.cpp" />
     <ClCompile Include="src\core\reflection.cpp" />

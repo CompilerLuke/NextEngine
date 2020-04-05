@@ -1,4 +1,6 @@
 #include "stdafx.h"
+#ifdef RENDER_API_OPENGL
+
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include "graphics/assets/texture.h"
@@ -187,3 +189,4 @@ void gl_bind_cubemap(CubemapManager& cubemap_manager, cubemap_handle handle, uns
 	glBindTexture(GL_TEXTURE_CUBE_MAP, tex->texture_id);
 }
 
+#endif

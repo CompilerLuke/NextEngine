@@ -8,7 +8,7 @@
 #include "graphics/renderer/grass.h"
 #include "graphics/renderer/model_rendering.h"
 #include "graphics/renderer/transforms.h"
-#include "graphics/assets/shader.h"
+#include "graphics/assets/asset_manager.h"
 #include "components/camera.h"
 #include "graphics/rhi/draw.h"
 #include "graphics/pass/render_pass.h"
@@ -17,6 +17,8 @@
 #include "core/memory/linear_allocator.h"
 #include "graphics/pass/pass.h"
 #include "graphics/rhi/window.h"
+
+#include "graphics/rhi/vulkan/vulkan.h"
 
 Renderer::Renderer() {}
 
@@ -27,6 +29,22 @@ void Renderer::init(AssetManager& asset_manager, Window& window, World& world) {
 	skybox_renderer   = PERMANENT_ALLOC(SkyboxSystem, asset_manager, world);
 	main_pass         = PERMANENT_ALLOC(MainPass, *this, asset_manager, glm::vec2(window.width, window.height));
 	culling			  = PERMANENT_ALLOC(CullingSystem, asset_manager, *model_renderer, world);
+
+	const char* validation_layers[1] = {
+		"VK_LAYER_KHRONOS_validation"
+	};
+
+	VulkanDesc vk_desc;
+	vk_desc.api_version = VK_MAKE_VERSION(1, 0, 0);
+	vk_desc.app_name = window.title.c_str();
+	vk_desc.app_version = VK_MAKE_VERSION(0, 0, 0);
+	vk_desc.engine_name = "NextEngine";
+	vk_desc.engine_version = VK_MAKE_VERSION(0, 0, 0);
+	vk_desc.min_log_severity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
+	vk_desc.validation_layers = validation_layers;
+	vk_desc.num_validation_layers = 1;
+
+	vk_init(vk_desc, asset_manager.models, asset_manager.level, &window);
 }
 
 Renderer::~Renderer() {
@@ -35,6 +53,7 @@ Renderer::~Renderer() {
 	destruct(terrain_renderer); 
 	destruct(skybox_renderer);
 	destruct(main_pass);
+	vk_deinit();
 }
 
 PreRenderParams::PreRenderParams(Layermask mask) : layermask(mask) {}
@@ -108,8 +127,18 @@ RenderCtx Renderer::render(World& world, Layermask layermask, uint width, uint h
 	ctx.width = width;
 	ctx.height = height;
 
+
+
 	ID camera_id = get_camera(world, ctx.layermask & EDITOR_LAYER ? EDITOR_LAYER : GAME_LAYER);
-	update_camera_matrices(world, camera_id, ctx);
+	update_camera_matrices(world, camera_id, ctx);	
+	
+	FrameData data;
+	data.model_matrix = glm::mat4(1.0);
+	data.proj_matrix = ctx.projection;
+	data.view_matrix = ctx.view;
+	
+	vk_draw_frame(data);
+	return ctx;
 
 	compute_model_matrices(model_m, world, ctx.layermask);
 	model_renderer->pre_render();

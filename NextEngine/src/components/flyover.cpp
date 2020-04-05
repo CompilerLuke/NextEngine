@@ -3,6 +3,7 @@
 #include "core/io/input.h"
 #include "components/transform.h"
 #include "core/io/logger.h"
+#include <GLFW/glfw3.h>
 
 REFLECT_STRUCT_BEGIN(Flyover)
 REFLECT_STRUCT_MEMBER(mouse_sensitivity)

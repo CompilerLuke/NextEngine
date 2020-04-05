@@ -3,7 +3,6 @@
 #include "ecs/ecs.h"
 #include "graphics/assets/asset_manager.h"
 #include "graphics/renderer/renderer.h"
-#include "graphics/rhi/window.h"
 #include "graphics/rhi/draw.h"
 #include "graphics/rhi/frame_buffer.h"
 #include "components/lights.h"
@@ -77,12 +76,13 @@ void MainPass::render_to_buffer(World& world, RenderCtx& ctx, std::function<void
 	current_frame.clear_color(glm::vec4(0, 0, 0, 1));
 	current_frame.clear_depth(glm::vec4(0, 0, 0, 1));
 
-	glBlitNamedFramebuffer(depth_prepass.depth_map_FBO.fbo, current_frame.fbo, 0, 0, 0, 0, current_frame.width, current_frame.height, current_frame.width, current_frame.height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+	//glBlitNamedFramebuffer(depth_prepass.depth_map_FBO.fbo, current_frame.fbo, 0, 0, 0, 0, current_frame.width, current_frame.height, current_frame.width, current_frame.height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 
 	current_frame.bind();
 	current_frame.clear_color(glm::vec4(0, 0, 0, 1));
 	current_frame.clear_depth(glm::vec4(0, 0, 0, 1));
-	glClear(GL_STENCIL_BUFFER_BIT);
+	
+	//glClear(GL_STENCIL_BUFFER_BIT);
 
 	CommandBuffer::submit_to_gpu(ctx);
 

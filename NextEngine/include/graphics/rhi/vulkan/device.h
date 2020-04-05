@@ -4,12 +4,12 @@
 
 struct Device {
 	VkInstance instance;
-	VkDebugUtilsMessengerEXT debugMessenger;
+	VkDebugUtilsMessengerEXT debug_messenger;
 
-	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+	VkPhysicalDevice physical_device = VK_NULL_HANDLE;
 	VkDevice device;
 
-	VkPhysicalDeviceFeatures deviceFeatures;
+	VkPhysicalDeviceFeatures device_features;
 
 	void create_instance(const VulkanDesc&);
 	void setup_debug_messenger();

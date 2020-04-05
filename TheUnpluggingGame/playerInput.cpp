@@ -2,6 +2,7 @@
 #include "playerInput.h"
 #include <ecs/ecs.h>
 #include <core/io/input.h>
+#include <GLFW/glfw3.h>
 
 DEFINE_APP_COMPONENT_ID(PlayerInput, 0);
 

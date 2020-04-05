@@ -293,7 +293,7 @@ std::wstring open_dialog(Level& level, Window& window) {
 	memset(&ofn, 0, sizeof(ofn));
 	ofn.lStructSize = sizeof(ofn);
 
-	ofn.hwndOwner = window.get_win32_window();
+	ofn.hwndOwner = (HWND)window.get_win32_window();
 	ofn.lpstrFilter = L"All Files\0*.*\0";
 	ofn.lpstrFile = filename;
 	ofn.nMaxFile = MAX_PATH;

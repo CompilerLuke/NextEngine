@@ -81,9 +81,9 @@ void edit_Terrain(Editor& editor, AssetManager& asset_manager, World& world, Upd
 			}
 		}
 	
-		glBindTexture(GL_TEXTURE_2D, texture_id);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_quads, height_quads, GL_RED, GL_FLOAT, heightmap.data);
-		glGenerateMipmap(GL_TEXTURE_2D);
+		//glBindTexture(GL_TEXTURE_2D, texture_id);
+		//glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_quads, height_quads, GL_RED, GL_FLOAT, heightmap.data);
+		//glGenerateMipmap(GL_TEXTURE_2D);
 	}
 }
 

@@ -7,6 +7,8 @@
 bool first_quad = true;
 VertexBuffer quad_mesh;
 
+
+
 void render_quad() {
 	if (first_quad) {
 		glm::vec3 vertices_pos[4] = {
