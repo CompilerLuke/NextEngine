@@ -50,6 +50,8 @@ VkBuffer vertexBuffer;
 VkDeviceMemory vertexBufferMemory;
 VkBuffer indexBuffer;
 VkDeviceMemory indexBufferMemory;
+VkBuffer instanceBuffer;
+VkDeviceMemory instanceBufferMemory;
 
 array<MAX_SWAP_CHAIN_IMAGES, VkBuffer> uniform_buffers;
 array<MAX_SWAP_CHAIN_IMAGES, VkDeviceMemory> uniform_buffers_memory;
@@ -64,8 +66,7 @@ VkDeviceMemory depth_image_memory;
 VkImageView depth_image_view;
 
 Level* level;
-
-
+BufferManager* buffer_manager;
 
 VkImageView make_ImageView(VkDevice device, VkImage image, VkFormat imageFormat, VkImageAspectFlags aspectFlags) {
 	VkImageViewCreateInfo makeInfo = {}; //todo abstract image view creation
@@ -135,7 +136,24 @@ void make_IndexBuffer(StagingQueue& staging_queue) {
 	make_StagedBuffer(staging_queue, (void*)indices.data, sizeof(indices[0]) * indices.length, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indexBuffer, indexBufferMemory);
 }
 
+#include <glm/gtc/matrix_transform.hpp>
+#include "core/container/tvector.h"
 
+tvector<glm::mat4> instances;
+
+void make_InstanceBuffer(StagingQueue& staging_queue) {
+	instances.reserve(10 * 10);
+	for (int x = 0; x < 10; x++) {
+		for (int y = 0; y < 10; y++) {
+			glm::mat4 model(1.0);
+			model = glm::translate(model, glm::vec3(x * 50, y * 20, 0));
+			model = glm::scale(model, glm::vec3(0.2));
+			instances.append(model);
+		}
+	}
+
+	make_StagedBuffer(staging_queue, (void*)instances.data, sizeof(glm::mat4) * instances.length, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, instanceBuffer, instanceBufferMemory);
+}
 
 void make_UniformBuffers(VkDevice device, VkPhysicalDevice physical_device, int frames_in_flight) {
 	VkDeviceSize bufferSize = sizeof(UniformBufferObject);
@@ -364,24 +382,11 @@ string_buffer read_file_or_fail(string_view src) {
 }
 
 ArrayVertexInputs Vertex_attribute_descriptions() {
-	VertexAttrib attribs[5] = {
-		{ 3, VertexAttrib::Float, offsetof(Vertex, position) },
-		{ 3, VertexAttrib::Float, offsetof(Vertex, normal) },
-		{ 2, VertexAttrib::Float, offsetof(Vertex, tex_coord) },
-		{ 3, VertexAttrib::Float, offsetof(Vertex, tangent) },
-		{ 3, VertexAttrib::Float, offsetof(Vertex, bitangent) }
-	};
-
-	return vk_input_attributes({ attribs, 5 });
+	return input_attributes(*buffer_manager, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4);
 }
 
-VkVertexInputBindingDescription Vertex_binding_descriptors() {
-	VkVertexInputBindingDescription bindingDescription = {};
-	bindingDescription.binding = 0;
-	bindingDescription.stride = sizeof(Vertex);
-	bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-	return bindingDescription;
+ArrayVertexBindings Vertex_binding_descriptors() {
+	return input_bindings(*buffer_manager, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4);
 }
 
 void make_GraphicsPipeline(VkDevice device, VkRenderPass render_pass, VkExtent2D extent) {
@@ -557,13 +562,16 @@ void make_CommandBuffers(VkDevice device, Swapchain& swapchain) {
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
 		VkBuffer vertex_buffers[] = { vertexBuffer };
+		VkBuffer instance_buffers[] = { instanceBuffer };
 		VkDeviceSize offsets[] = { 0 };
 
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertex_buffers, offsets);
+		vkCmdBindVertexBuffers(commandBuffers[i], 1, 1, instance_buffers, offsets);
 		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0, nullptr);
 
-		vkCmdDrawIndexed(commandBuffers[i], indices.length, 1, 0, 0, 0);
+		vkCmdDrawIndexed(commandBuffers[i], indices.length, instances.length, 0, 0, 0);
+
 
 		vkCmdEndRenderPass(commandBuffers[i]);
 
@@ -704,7 +712,9 @@ void make_DepthResources(VkDevice device, VkPhysicalDevice physical_device, VkEx
 
 RHI* make_RHI(const VulkanDesc& desc, ModelManager& model_manager, Level& level, Window& window) {
 	::level = &level; //todo remove soon
-	
+
+	//TODO extremely hacky do not leave this in
+
 	RHI* rhi = PERMANENT_ALLOC(RHI, { window, desc });
 
 	model_handle handle = model_manager.load("Aset_wood_log_L_rdeu3_LOD0.fbx");
@@ -729,10 +739,13 @@ RHI* make_RHI(const VulkanDesc& desc, ModelManager& model_manager, Level& level,
 	//a little wierd
 	rhi->graphics_queue = device.graphics_queue;
 	rhi->present_queue = device.present_queue;
+	rhi->device = device;
 
 	volkLoadDevice(device);
 	rhi->swapchain = make_SwapChain(device, device.physical_device, window, surface);
 	make_ImageViews(device, rhi->swapchain);
+
+	buffer_manager = make_BufferManager(*rhi);
 	
 	make_RenderPass(device, device.physical_device, rhi->swapchain.imageFormat);
 	make_DescriptorSetLayout(device);
@@ -745,6 +758,7 @@ RHI* make_RHI(const VulkanDesc& desc, ModelManager& model_manager, Level& level,
 	begin_staging_cmds(staging_queue);
 
 	int frames_in_flight = rhi->swapchain.images.length;
+
 	
 	make_UniformBuffers(device, device.physical_device, frames_in_flight);
 	make_TextureImage(device, device.physical_device);
@@ -755,6 +769,7 @@ RHI* make_RHI(const VulkanDesc& desc, ModelManager& model_manager, Level& level,
 	
 	make_VertexBuffer(staging_queue);
 	make_IndexBuffer(staging_queue);
+	make_InstanceBuffer(staging_queue);
 
 	end_staging_cmds(device, staging_queue);
 	
@@ -762,7 +777,7 @@ RHI* make_RHI(const VulkanDesc& desc, ModelManager& model_manager, Level& level,
 	make_SyncObjects(device, rhi->swapchain);
 
 	rhi->desc.validation_layers = nullptr;
-	rhi->device = device;
+
 
 	return rhi;
 }
@@ -840,6 +855,11 @@ void vk_destroy(RHI& rhi) {
 
 	vkDestroyBuffer(device, vertexBuffer, nullptr);
 	vkFreeMemory(device, vertexBufferMemory, nullptr);
+
+	vkDestroyBuffer(device, instanceBuffer, nullptr);
+	vkFreeMemory(device, instanceBufferMemory, nullptr);
+
+	destroy_BufferManager(buffer_manager);
 
 	vkDestroyCommandPool(device, commandPool, nullptr);
 	vkDestroyDevice(device, nullptr);

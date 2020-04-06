@@ -218,14 +218,13 @@ void staged_copy(VkDevice device, StagingBufferAllocator& staging, VkBuffer dst,
 	assert(staging.offset <= staging.capacity);
 }
 
-ArrayVertexInputs vk_input_attributes(slice<VertexAttrib> attribs, int offset) {
-	ArrayVertexInputs vertex_attributes(attribs.length);
+void input_attributes(ArrayVertexInputs& vertex_inputs, slice<VertexAttrib> attribs, int binding) {
 
 	for (int i = 0; i < attribs.length; i++) {
 		VertexAttrib& attrib = attribs[i];
 		VkVertexInputAttributeDescription input_attribute_desc = {};
-		input_attribute_desc.binding = 0;
-		input_attribute_desc.location = offset + i;
+		input_attribute_desc.binding = binding;
+		input_attribute_desc.location = vertex_inputs.length;
 		input_attribute_desc.offset = attrib.offset;
 
 		if (attrib.kind == VertexAttrib::Float) {
@@ -237,13 +236,30 @@ ArrayVertexInputs vk_input_attributes(slice<VertexAttrib> attribs, int offset) {
 			input_attribute_desc.format = format[attrib.length - 1];
 		}
 
-		vertex_attributes[i] = input_attribute_desc;
+		vertex_inputs.append(input_attribute_desc);
 	}
-
-	return vertex_attributes;
 }
 
-	
+ArrayVertexInputs input_attributes(BufferManager& self, VertexLayout layout) {
+	return self.vertex_buffers[layout].input_desc.copy();
+}
+
+VkVertexInputBindingDescription input_bindings(BufferManager& self, VertexLayout layout) {
+	return self.vertex_buffers[layout].binding_desc;
+}
+
+ArrayVertexInputs input_attributes(BufferManager& self, VertexLayout layout, InstanceLayout instance_layout) {
+	return self.instance_buffers[instance_layout].input_desc.copy();
+}
+
+ArrayVertexBindings input_bindings(BufferManager& self, VertexLayout layout, InstanceLayout instance_layout) {
+	return {
+		self.vertex_buffers[layout].binding_desc,
+		self.instance_buffers[layout].binding_desc
+	};
+}
+
+//todo, instance layout description depends on VertexLayout but not the underlying buffers	
 void alloc_layout_allocator(BufferManager& self, VertexLayoutDesc& vert_desc) {
 	VkVertexInputBindingDescription vertex_binding_description = {};
 	vertex_binding_description.binding = 0;
@@ -253,7 +269,7 @@ void alloc_layout_allocator(BufferManager& self, VertexLayoutDesc& vert_desc) {
 	VertexBufferAllocator& allocator = self.vertex_buffers[vert_desc.layout];
 	allocator.layout = vert_desc.layout;
 	allocator.binding_desc = vertex_binding_description;
-	allocator.input_desc = vk_input_attributes(vert_desc.attribs);
+	input_attributes(allocator.input_desc, vert_desc.attribs, 0);
 	allocator.elem_size = vert_desc.elem_size;	
 	allocator.vertex_capacity = vert_desc.vertices_size;
 	allocator.index_capacity = vert_desc.indices_size;
@@ -266,7 +282,7 @@ void alloc_layout_allocator(BufferManager& m, VertexLayoutDesc& vert_desc, Insta
 	alloc_layout_allocator(m, vert_desc);
 
 	VkVertexInputBindingDescription instance_binding_description = {};
-	instance_binding_description.binding = 0;
+	instance_binding_description.binding = 1;
 	instance_binding_description.stride = instance_desc.elem_size;
 	instance_binding_description.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
 
@@ -274,7 +290,9 @@ void alloc_layout_allocator(BufferManager& m, VertexLayoutDesc& vert_desc, Insta
 	allocator.vertex_layout = vert_desc.layout;
 	allocator.layout = instance_desc.layout;
 	allocator.binding_desc = instance_binding_description;
-	allocator.input_desc =  vk_input_attributes(instance_desc.attribs, instance_desc.attribs.length);
+	allocator.input_desc = m.vertex_buffers[vert_desc.layout].input_desc.copy();
+	input_attributes(allocator.input_desc, instance_desc.attribs, 1);
+
 	allocator.elem_size = instance_desc.elem_size;
 	allocator.capacity = instance_desc.size;
 

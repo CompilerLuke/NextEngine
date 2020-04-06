@@ -3,6 +3,8 @@
 #include "core/container/array.h"
 #include "vulkan.h"
 
+struct BufferManager;
+
 struct StagingQueue {
 	VkDevice device;
 	VkPhysicalDevice physical_device;
@@ -29,6 +31,7 @@ struct VertexAttrib {
 };
 
 using ArrayVertexInputs = array<10, VkVertexInputAttributeDescription>;
+using ArrayVertexBindings = array<2, VkVertexInputBindingDescription>;
 
 StagingQueue make_StagingQueue(VkDevice device, VkPhysicalDevice physical_device, VkCommandPool pool, VkQueue queue);
 void begin_staging_cmds(StagingQueue& queue);
@@ -38,4 +41,8 @@ uint32_t find_memory_type(VkPhysicalDevice physical_device, uint32_t typeFilter,
 void make_Buffer(VkDevice device, VkPhysicalDevice physical_device, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 void copy_Buffer(StagingQueue& staging_queue, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 void make_StagedBuffer(StagingQueue& staging_queue, void* bufferData, VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
-ArrayVertexInputs vk_input_attributes(slice<VertexAttrib> attribs, int offset = 0);
+void input_attributes(ArrayVertexInputs& vertex_inputs, slice<VertexAttrib> attribs, int binding);
+ArrayVertexInputs input_attributes(BufferManager&, VertexLayout);
+VkVertexInputBindingDescription input_bindings(BufferManager&, VertexLayout);
+ArrayVertexInputs input_attributes(BufferManager&, VertexLayout, InstanceLayout);
+ArrayVertexBindings input_bindings(BufferManager&, VertexLayout, InstanceLayout);
