@@ -9,7 +9,7 @@ VertexBuffer quad_mesh;
 
 
 
-void render_quad() {
+void render_quad(BufferManager& buffer_manager) {
 	if (first_quad) {
 		glm::vec3 vertices_pos[4] = {
 			glm::vec3(1,  1, 0),  // top right
@@ -37,10 +37,10 @@ void render_quad() {
 			vertices[i].tex_coord = tex_coords[i];
 		}
 
-		quad_mesh = RHI::alloc_vertex_buffer(VERTEX_LAYOUT_DEFAULT, 4, vertices, 6, indices);
+		quad_mesh = alloc_vertex_buffer(buffer_manager, VERTEX_LAYOUT_DEFAULT, 4, vertices, 6, indices);
 		first_quad = false;
 	}
 
-	RHI::bind_vertex_buffer(VERTEX_LAYOUT_DEFAULT);
-	RHI::render_vertex_buffer(quad_mesh);
+	bind_vertex_buffer(buffer_manager, VERTEX_LAYOUT_DEFAULT);
+	render_vertex_buffer(buffer_manager, quad_mesh);
 }

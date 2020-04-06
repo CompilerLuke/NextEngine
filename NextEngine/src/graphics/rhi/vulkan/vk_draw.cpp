@@ -403,7 +403,7 @@ void CommandBuffer::submit_to_gpu(RenderCtx& ctx) {
 			switch_shader(assets.shaders, ctx, mat.shader, cmd.config, &shader_config, &model_uniform);
 
 			extract_layout(cmd, &vertex_layout, &instance_layout);
-			RHI::bind_vertex_buffer(vertex_layout, instance_layout);
+			//bind_vertex_buffer(vertex_layout, instance_layout);
 
 			depth_func_bind(mat.state->depth_func);
 			cull_bind(mat.state->cull);
@@ -433,7 +433,7 @@ void CommandBuffer::submit_to_gpu(RenderCtx& ctx) {
 			extract_layout(cmd, &new_vertex_layout, &new_instance_layout);
 
 			if (new_vertex_layout != vertex_layout || new_instance_layout != instance_layout) {
-				RHI::bind_vertex_buffer(new_vertex_layout, new_instance_layout);
+				//RHI::bind_vertex_buffer(new_vertex_layout, new_instance_layout);
 				
 				vertex_layout = new_vertex_layout;
 				instance_layout = new_instance_layout;

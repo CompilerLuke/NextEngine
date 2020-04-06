@@ -286,7 +286,7 @@ void ShadowPass::render(World& world, RenderCtx& params) {
 
 		last_clip_space = proj_info.endClipSpace;
 
-		render_quad();
+		//render_quad();
 
 		//glEnable(GL_DEPTH_TEST);
 
@@ -331,7 +331,7 @@ void ShadowPass::render(World& world, RenderCtx& params) {
 		glm::mat4 m(1.0);
 		screenspace_blur_shader->set_mat4("model", m);
 
-		render_quad();
+		//render_quad();
 
 		horizontal = !horizontal;
 		first_iteration = false;

@@ -6,16 +6,16 @@
 
 #define APPLICATION_API extern "C" _declspec(dllexport)
 
-typedef void* (*InitFunction)(void*,  struct Engine&);
-typedef void (*UpdateFunction)(void*, struct Engine&);
-typedef void (*RenderFunction)(void*, struct Engine&);
-typedef void (*DeinitFunction)(void*, struct Engine&);
-typedef bool (*IsRunningFunction)(void*, struct Engine&);
-typedef void(*ReloadFunction)(void*, struct Engine&);
+typedef void* (*InitFunction)(void*,  struct Modules&);
+typedef void (*UpdateFunction)(void*, struct Modules&);
+typedef void (*RenderFunction)(void*, struct Modules&);
+typedef void (*DeinitFunction)(void*, struct Modules&);
+typedef bool (*IsRunningFunction)(void*, struct Modules&);
+typedef void(*ReloadFunction)(void*, struct Modules&);
 
 class Application {
 	string_buffer path;
-	struct Engine& engine;
+	struct Modules& engine;
 	void* application_state;
 	void* dll_handle;
 	
@@ -29,7 +29,7 @@ class Application {
 	void load_functions();
 
 public:
-	ENGINE_API Application(Engine& engine, string_view);
+	ENGINE_API Application(Modules& engine, string_view);
 	ENGINE_API ~Application();
 
 	void ENGINE_API reload();

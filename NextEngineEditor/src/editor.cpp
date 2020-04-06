@@ -157,7 +157,7 @@ void hotreload(Editor& editor) {
 #include "physics/physics.h"
 
 World& get_World(Editor& editor) {
-	return editor.engine.world;
+	return editor.world;
 }
 
 string_buffer save_component_to(ComponentStore* store) {
@@ -165,7 +165,7 @@ string_buffer save_component_to(ComponentStore* store) {
 }
 
 void on_load_world(Editor& editor) {
-	Level& level = editor.engine.level;
+	Level& level = editor.level;
 	World& world = get_World(editor);
 
 	unsigned int save_files_available = 0;
@@ -224,7 +224,7 @@ void on_load(Editor& editor, RenderCtx& ctx) {
 
 void on_save_world(Editor& editor) {
 	World& world = get_World(editor);
-	Level& level = editor.engine.asset_manager.level;
+	Level& level = editor.asset_manager.level;
 
 	for (int i = 0; i < world.components_hash_size; i++) {
 		auto store = world.components[i].get();
@@ -259,13 +259,13 @@ void on_save(Editor& editor) {
 	editor.asset_tab.on_save();
 }
 
-void register_callbacks(Editor& editor, Engine& engine) {
-	Window& window = engine.window;
-	World& world = engine.world;
+void register_callbacks(Editor& editor, Modules& engine) {
+	Window& window = *engine.window;
+	World& world = *engine.world;
 	
 	editor.selected.listeners.clear();
 
-	register_on_inspect_callbacks(engine.asset_manager);
+	register_on_inspect_callbacks(*engine.asset_manager);
 
 	editor.asset_tab.register_callbacks(window, editor);
 
@@ -276,29 +276,32 @@ void register_callbacks(Editor& editor, Engine& engine) {
 		}
 	});
 
-	engine.window.override_key_callback(override_key_callback);
-	engine.window.override_char_callback(ImGui_ImplGlfw_CharCallback);
-	engine.window.override_mouse_button_callback(override_mouse_button_callback);
+	engine.window->override_key_callback(override_key_callback);
+	engine.window->override_char_callback(ImGui_ImplGlfw_CharCallback);
+	engine.window->override_mouse_button_callback(override_mouse_button_callback);
 }
 
-Editor::Editor(Engine& engine, const char* game_code) : 
-	engine(engine), 
-	picking(engine.asset_manager),
-	outline_selected(engine.asset_manager),
-	game(engine, game_code),
-	asset_tab(engine.renderer, engine.asset_manager, engine.window),
+Editor::Editor(Modules& modules, const char* game_code) : 
+	asset_manager(*modules.asset_manager),
+	renderer(*modules.renderer),
+	world(*modules.world),
+	window(*modules.window),
+	input(*modules.input),
+	level(*modules.level),
+	time(*modules.time),
+
+	picking(asset_manager),
+	outline_selected(asset_manager),
+	game(modules, game_code),
+	asset_tab(renderer, asset_manager, window),
 	copy_of_world(*PERMANENT_ALLOC(World))
 {
-	Window& window = engine.window;
-	World& world = engine.world;
-
-
 	//world.add(new DebugShaderReloadSystem());
 	//world.add(new TerrainSystem(world, this));
 	//world.add(new PickingSystem(*this));
 
 	init_imgui();
-	register_callbacks(*this, engine);
+	register_callbacks(*this, modules);
 
 	AttachmentDesc color_attachment(scene_view);
 	color_attachment.min_filter = Filter::Linear;
@@ -309,11 +312,11 @@ Editor::Editor(Engine& engine, const char* game_code) :
 	settings.height = window.height;
 	settings.color_attachments.append(color_attachment);
 
-	scene_view_fbo = Framebuffer(engine.asset_manager.textures, settings);
+	scene_view_fbo = Framebuffer(modules.asset_manager->textures, settings);
 
 	Time time;
 
-	TextureManager& texture_manager = engine.asset_manager.textures;
+	TextureManager& texture_manager = modules.asset_manager->textures;
 
 	icons = {
 		{ "play",   texture_manager.load("editor/play_button3.png") },
@@ -321,10 +324,10 @@ Editor::Editor(Engine& engine, const char* game_code) :
 		{ "shader", texture_manager.load("editor/shader-works-icon.png") }
 	};
 
-	MainPass* main_pass = engine.renderer.main_pass;
+	MainPass* main_pass = modules.renderer->main_pass;
 	//main_pass->post_process.append(&picking_pass);
 
-	CommandBuffer cmd_buffer(engine.asset_manager);
+	CommandBuffer cmd_buffer(*modules.asset_manager);
 	RenderCtx render_ctx(cmd_buffer, main_pass);
 	render_ctx.layermask = GAME_LAYER | EDITOR_LAYER;
 	render_ctx.width = window.width;
@@ -332,7 +335,7 @@ Editor::Editor(Engine& engine, const char* game_code) :
 
 	on_load(*this, render_ctx); //todo remove any rendering from load
 
-	engine.input.capture_mouse(false);
+	modules.input->capture_mouse(false);
 
 	//engine.asset_manager.shaders.load("shaders/pbr.vert", "shaders/paralax_pbr.frag");
 
@@ -361,7 +364,7 @@ void Editor::init_imgui() {
 
 	ImFontConfig icons_config; icons_config.MergeMode = false; icons_config.PixelSnapH = true; icons_config.FontDataOwnedByAtlas = true; icons_config.FontDataSize = 32.0f;
 
-	auto font_path = engine.level.asset_path("fonts/segoeui.ttf");
+	auto font_path = level.asset_path("fonts/segoeui.ttf");
 	ImFont* font = io.Fonts->AddFontFromFileTTF(font_path.c_str(), 32.0f, &icons_config, io.Fonts->GetGlyphRangesDefault());
 
 	io.FontAllowUserScaling = true;
@@ -377,19 +380,15 @@ void Editor::init_imgui() {
 
 	set_darcula_theme();
 
-	GLFWwindow* window_ptr = engine.window.window_ptr;
-
-	ImGui_ImplGlfw_InitForOpenGL(window_ptr, false);
+	ImGui_ImplGlfw_InitForOpenGL(window.window_ptr, false);
 	ImGui_ImplOpenGL3_Init();
 
 }
 
 uint64_t Editor::get_icon(string_view name) {
-	TextureManager& textures = engine.asset_manager.textures;
-	
 	for (auto& icon : icons) {
 		if (icon.name == name) {
-			return gl_id_of(textures, icon.texture_id);
+			return gl_id_of(asset_manager.textures, icon.texture_id);
 		}
 	}
 	
@@ -405,7 +404,7 @@ void ImGui::InputText(const char* str, string_buffer& buffer) {
 
 void default_scene(Editor& editor, RenderCtx& ctx) {
 	World& world = get_World(editor);
-	AssetManager& assets = editor.engine.asset_manager;
+	AssetManager& assets = editor.asset_manager;
 
 	editor.asset_tab.default_material = create_new_material(world, editor.asset_tab, editor, ctx)->handle;
 
@@ -474,7 +473,7 @@ struct EditorRendererExtension : RenderExtension {
 	EditorRendererExtension(Editor& editor) : editor(editor) {}
 
 	void render_view(World& world, RenderCtx& ctx) override {
-		editor.picking.visualize(world, editor.engine.input, ctx);
+		editor.picking.visualize(world, editor.input, ctx);
 
 		if (editor.selected_id != -1) {
 			ID selected = editor.selected_id;
@@ -491,7 +490,7 @@ struct EditorRendererExtension : RenderExtension {
 	}
 
 	void render(World& world, RenderCtx& ctx) override {
-		MainPass& main_pass = *editor.engine.renderer.main_pass;
+		MainPass& main_pass = *editor.renderer.main_pass;
 
 		if (editor.game_fullscreen && editor.playing_game) {
 			main_pass.output.bind();
@@ -557,17 +556,14 @@ void on_set_play_mode(Editor& editor, bool playing) {
 	editor.playing_game = playing;
 
 	if (playing) { //this will not fully serialize this
-		editor.copy_of_world = editor.engine.world;
+		editor.copy_of_world = editor.world;
 	}
 	else {
-		editor.engine.world = editor.copy_of_world;
+		editor.world = editor.copy_of_world;
 	}
 }
 
 glm::vec3 Editor::place_at_cursor() {
-	World& world = get_World(*this);
-	Input& input = engine.input;
-	
 	RayHit hit;
 	hit.position = glm::vec3();
 	picking.ray_cast(world, input, hit);
@@ -633,8 +629,8 @@ void Editor::end_imgui() {
 }
 
 void render_Editor(Editor& editor, RenderCtx& ctx) {
-	Input& input = editor.engine.input;
-	TextureManager& textures = editor.engine.asset_manager.textures;
+	Input& input = editor.input;
+	TextureManager& textures = editor.asset_manager.textures;
 	
 	editor.begin_imgui(input);
 	
@@ -742,7 +738,7 @@ void render_Editor(Editor& editor, RenderCtx& ctx) {
 	editor.lister.render(world, editor, ctx);
 
 	editor.asset_tab.render(world, editor, ctx);
-	editor.shader_editor.render(world, editor, ctx, editor.engine.input);
+	editor.shader_editor.render(world, editor, ctx, editor.input);
 	editor.profiler.render(world, editor, ctx);
 
 	ImGui::PopFont();
@@ -771,14 +767,14 @@ void delete_object(Editor& editor) {
 
 void mouse_click_select(Editor& editor) {
 	World& world = get_World(editor);
-	Input& input = editor.engine.input;
+	Input& input = editor.input;
 	
 	int selected = editor.picking.pick(world, input);
 	editor.select(selected);
 }
 
 void respond_to_shortcut(Editor& editor) {
-	Input& input = editor.engine.input;
+	Input& input = editor.input;
 	World& world = get_World(editor);
 
 	if (input.key_pressed(GLFW_KEY_P)) {
@@ -793,23 +789,23 @@ void respond_to_shortcut(Editor& editor) {
 	if (input.key_pressed('R', true) && input.key_down(GLFW_KEY_LEFT_CONTROL, true)) on_redo(editor);
 	if (input.key_pressed('S', true) && input.key_down(GLFW_KEY_LEFT_CONTROL, true)) on_save(editor);
 
-	UpdateCtx ctx(editor.engine.time, editor.engine.input);
+	UpdateCtx ctx(editor.time, editor.input);
 	editor.gizmo.update(world, editor, ctx);
 }
 
 //Application
-APPLICATION_API Editor* init(const char* args, Engine& engine) {
-	return new Editor(engine, args);
+APPLICATION_API Editor* init(const char* args, Modules& modules) {
+	return new Editor(modules, args);
 }
 
-APPLICATION_API bool is_running(Editor* editor, Engine& engine) {
-	return !engine.window.should_close() && !editor->exit;
+APPLICATION_API bool is_running(Editor* editor, Modules& engine) {
+	return !engine.window->should_close() && !editor->exit;
 }
 
-APPLICATION_API void update(Editor& editor, Engine& engine) {
+APPLICATION_API void update(Editor& editor, Modules& modules) {
 	respond_to_shortcut(editor);
 
-	UpdateCtx update_ctx(engine.time, editor.engine.input);
+	UpdateCtx update_ctx(editor.time, editor.input);
 	update_ctx.layermask = editor.playing_game ? GAME_LAYER : EDITOR_LAYER;
 
 	if (editor.playing_game) {
@@ -817,7 +813,7 @@ APPLICATION_API void update(Editor& editor, Engine& engine) {
 		editor.game.update();
 	}
 	else {
-		editor.fly_over_system.update(engine.world, update_ctx);
+		editor.fly_over_system.update(editor.world, update_ctx);
 		//FlyOverSystem::update(engine.world, update_ctx);
 	}
 }
@@ -825,17 +821,17 @@ APPLICATION_API void update(Editor& editor, Engine& engine) {
 #include "graphics/renderer/model_rendering.h"
 #include "graphics/renderer/transforms.h"
 
-APPLICATION_API void render(Editor& editor, Engine& engine) {
+APPLICATION_API void render(Editor& editor, Modules& engine) {
 	World& world = get_World(editor);
 
 	EditorRendererExtension ext(editor);
 
 	Layermask layermask = editor.playing_game ? GAME_LAYER : GAME_LAYER | EDITOR_LAYER;
 
-	editor.viewport_width = engine.window.width;
-	editor.viewport_height = engine.window.height;
+	editor.viewport_width = engine.window->width;
+	editor.viewport_height = engine.window->height;
 
-	RenderCtx ctx = engine.renderer.render(world, layermask, editor.viewport_width, editor.viewport_height, &ext);
+	RenderCtx ctx = engine.renderer->render(world, layermask, editor.viewport_width, editor.viewport_height, &ext);
 	//render_Editor(editor, ctx);
 }
 

@@ -17,34 +17,18 @@
 #include "core/memory/linear_allocator.h"
 #include "graphics/pass/pass.h"
 #include "graphics/rhi/window.h"
-
+#include "graphics/rhi/vulkan/buffer.h"
 #include "graphics/rhi/vulkan/vulkan.h"
 
-Renderer::Renderer() {}
-
-void Renderer::init(AssetManager& asset_manager, Window& window, World& world) {
-	model_renderer    = PERMANENT_ALLOC(ModelRendererSystem, asset_manager);
+Renderer::Renderer(RHI& rhi, AssetManager& asset_manager, Window& window, World& world) : rhi(rhi) {
+	buffer_manager = make_BufferManager(rhi);
+	
+	model_renderer    = PERMANENT_ALLOC(ModelRendererSystem, asset_manager, *buffer_manager);
 	grass_renderer    = PERMANENT_ALLOC(GrassRenderSystem, world);
-	terrain_renderer  = PERMANENT_ALLOC(TerrainRenderSystem, asset_manager, world);
+	terrain_renderer  = PERMANENT_ALLOC(TerrainRenderSystem, asset_manager, *buffer_manager, world);
 	skybox_renderer   = PERMANENT_ALLOC(SkyboxSystem, asset_manager, world);
 	main_pass         = PERMANENT_ALLOC(MainPass, *this, asset_manager, glm::vec2(window.width, window.height));
 	culling			  = PERMANENT_ALLOC(CullingSystem, asset_manager, *model_renderer, world);
-
-	const char* validation_layers[1] = {
-		"VK_LAYER_KHRONOS_validation"
-	};
-
-	VulkanDesc vk_desc;
-	vk_desc.api_version = VK_MAKE_VERSION(1, 0, 0);
-	vk_desc.app_name = window.title.c_str();
-	vk_desc.app_version = VK_MAKE_VERSION(0, 0, 0);
-	vk_desc.engine_name = "NextEngine";
-	vk_desc.engine_version = VK_MAKE_VERSION(0, 0, 0);
-	vk_desc.min_log_severity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
-	vk_desc.validation_layers = validation_layers;
-	vk_desc.num_validation_layers = 1;
-
-	vk_init(vk_desc, asset_manager.models, asset_manager.level, &window);
 }
 
 Renderer::~Renderer() {
@@ -53,7 +37,7 @@ Renderer::~Renderer() {
 	destruct(terrain_renderer); 
 	destruct(skybox_renderer);
 	destruct(main_pass);
-	vk_deinit();
+	destroy_BufferManager(buffer_manager);
 }
 
 PreRenderParams::PreRenderParams(Layermask mask) : layermask(mask) {}
@@ -137,7 +121,7 @@ RenderCtx Renderer::render(World& world, Layermask layermask, uint width, uint h
 	data.proj_matrix = ctx.projection;
 	data.view_matrix = ctx.view;
 	
-	vk_draw_frame(data);
+	vk_draw_frame(rhi, data);
 	return ctx;
 
 	compute_model_matrices(model_m, world, ctx.layermask);

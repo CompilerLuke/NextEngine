@@ -29,7 +29,7 @@ void* get_Func(void* dll, const char* name) {
 	return GetProcAddress((HINSTANCE)dll, name);
 }
 
-Application::Application(Engine& engine, string_view path) : engine(engine), path(path) {}
+Application::Application(Modules& engine, string_view path) : engine(engine), path(path) {}
 
 void Application::init(void* args) {
 	load_functions();
@@ -72,7 +72,7 @@ bool Application::is_running() {
 
 void Application::run() {
 	while (is_running()) {
-		if (engine.input.key_pressed('R')) {
+		if (engine.input->key_pressed('R')) {
 			reload();
 		}
 

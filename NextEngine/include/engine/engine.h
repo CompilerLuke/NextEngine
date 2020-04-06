@@ -2,21 +2,21 @@
 
 #include "core/core.h"
 #include "core/container/string_view.h"
-#include "core/io/vfs.h"
 
-struct Engine {
-	Level level;
-	struct Window& window;
-	struct Time& time;
-	struct World& world;
-	struct Input& input;
-	struct Renderer& renderer;
-	struct AssetManager& asset_manager;
-	struct PhysicsSystem& physics_system;
-	struct LocalTransformSystem& local_transforms_system;
+struct ENGINE_API Modules {
+	struct Level* level;
+	struct Window* window;
+	struct Time* time;
+	struct World* world;
+	struct Input* input;
+	struct Renderer* renderer;
+	struct AssetManager* asset_manager;
+	struct PhysicsSystem* physics_system;
+	struct LocalTransformSystem* local_transforms_system;
+	struct RHI* rhi;
 
-	ENGINE_API Engine(string_view);
-	ENGINE_API ~Engine();
-	ENGINE_API void begin_frame();
-	ENGINE_API void end_frame();
+	Modules(const char* app_name, const char* level_path);
+	void begin_frame();
+	void end_frame();
+	~Modules();
 };

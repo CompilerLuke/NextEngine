@@ -12,9 +12,10 @@ REFLECT_STRUCT_MEMBER(visible)
 REFLECT_STRUCT_MEMBER_TAG(model_id)
 REFLECT_STRUCT_END()
 
-ModelRendererSystem::ModelRendererSystem(AssetManager& asset_manager) : asset_manager(asset_manager) {
+ModelRendererSystem::ModelRendererSystem(AssetManager& asset_manager, BufferManager& buffer_manager) 
+	: asset_manager(asset_manager), buffer_manager(buffer_manager) {
 	for (int i = 0; i < Pass::Count; i++) {
-		instance_buffer[i] = RHI::alloc_instance_buffer(VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4, MAX_MESH_INSTANCES, 0);
+		instance_buffer[i] = alloc_instance_buffer(buffer_manager, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4, MAX_MESH_INSTANCES, 0);
 	}
 }
 
@@ -120,7 +121,7 @@ void ModelRendererSystem::render(World& world, RenderCtx& ctx) {
 		instance_count += count;
 	}
 
-	RHI::upload_data(instance_buffer, instance_count, instance_data);
+	upload_data(buffer_manager, instance_buffer, instance_count, instance_data);
 
 	//flush_logger();
 }

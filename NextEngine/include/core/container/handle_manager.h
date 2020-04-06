@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/container/static_vector.h"
+#include "core/container/array.h"
 #include "core/handle.h"
 
 constexpr unsigned int INVALID_SLOT = 0;

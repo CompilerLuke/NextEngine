@@ -8,11 +8,13 @@
 #include "graphics/pass/render_pass.h"
 #include <glm/mat4x4.hpp>
 
-struct Engine;
+struct Modules;
 struct Window;
 struct World;
 struct RenderCtx;
 struct ShaderConfig;
+struct BufferManager;
+struct RHI;
 
 struct RenderSettings {
 	enum GraphicsQuality { Ultra, High, Medium, Low } quality = Ultra;
@@ -27,6 +29,8 @@ struct ENGINE_API RenderExtension {
 struct ENGINE_API Renderer {
 	RenderSettings settings;
 
+	struct RHI& rhi;
+	struct BufferManager* buffer_manager;
 	struct SkyboxSystem* skybox_renderer;
 	struct ModelRendererSystem* model_renderer;
 	struct GrassRenderSystem* grass_renderer;
@@ -43,8 +47,7 @@ struct ENGINE_API Renderer {
 	void render_overlay(World& world, RenderCtx&);
 	RenderCtx render(World& world, Layermask layermask, uint width, uint height, RenderExtension* ext);
 
-	Renderer();
-	void init(AssetManager& asset_manager, Window&, World&);
+	Renderer(RHI& rhi, AssetManager& asset_manager, Window&, World&);
 	~Renderer();
 };
 

@@ -87,7 +87,7 @@ void VolumetricPass::render_with_cascade(World& world, RenderCtx& render_params,
 	glm::mat4 ident(1.0);
 	volume_shader->set_mat4("model", ident);
 
-	render_quad();
+	//render_quad();
 
 	//glDisable(GL_BLEND);
 	//glEnable(GL_DEPTH_TEST);
@@ -121,7 +121,7 @@ void VolumetricPass::render_upsampled(World& world, texture_handle current_frame
 
 	upsample_shader->set_mat4("depthProj", depth_proj);
 
-	render_quad();
+	//render_quad();
 
 	//glEnable(GL_DEPTH_TEST);
 }

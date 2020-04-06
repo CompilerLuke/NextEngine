@@ -2,6 +2,7 @@
 
 #ifdef RENDER_API_VULKAN
 
+#include "graphics/rhi/vulkan/shader.h"
 #include "graphics/assets/shader.h"
 #include "core/io/vfs.h"
 #include "core/io/logger.h"
@@ -13,6 +14,20 @@ REFLECT_STRUCT_BEGIN(Shader)
 REFLECT_STRUCT_MEMBER(v_filename)
 REFLECT_STRUCT_MEMBER(f_filename)
 REFLECT_STRUCT_END()
+
+
+VkShaderModule make_ShaderModule(VkDevice device, string_view code) {
+	VkShaderModuleCreateInfo makeInfo = {};
+	makeInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	makeInfo.codeSize = code.length;
+	makeInfo.pCode = (const unsigned int*)code.data;
+
+	VkShaderModule shaderModule;
+
+	VK_CHECK(vkCreateShaderModule(device, &makeInfo, nullptr, &shaderModule))
+
+	return shaderModule;
+}
 
 bool load_in_place_with_err(Level& level, ShaderConfig* self, string_buffer* err, string_view v_filename, string_view f_filename, Shader* shader, bool create_flags);
 

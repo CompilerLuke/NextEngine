@@ -228,6 +228,8 @@
     <ClCompile Include="src\graphics\rhi\vulkan\vk_framebuffer.cpp" />
     <ClCompile Include="src\graphics\rhi\vulkan\vk_draw.cpp" />
     <ClCompile Include="src\graphics\rhi\vulkan\vk_device.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_swapchain.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_pipeline.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="vendor\imgui\imconfig.h">
@@ -438,12 +440,16 @@
     <ClInclude Include="include\core\container\bitset.h" />
     <ClInclude Include="include\graphics\assets\asset_manager.h" />
     <ClInclude Include="include\graphics\pass\render_graph.h" />
-    <ClInclude Include="include\graphics\rhi\rhi.h" />
     <ClInclude Include="include\graphics\assets\material_manager.h" />
     <ClInclude Include="include\core\container\tvector.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\vulkan.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\device.h" />
-    <ClInclude Include="include\core\container\static_vector.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\volk.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\swapchain.h" />
+    <ClInclude Include="include\core\container\array.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\buffer.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\pipeline.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\shader.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\rhi.h" />
   </ItemGroup>
 </Project>

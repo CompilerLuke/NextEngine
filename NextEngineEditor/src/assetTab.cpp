@@ -401,7 +401,7 @@ void render_preview_to_buffer(AssetTab& self, RenderCtx& ctx, CommandBuffer& cmd
 	tone_map->set_mat4("model", identity);
 	gl_bind_to(assets.textures, self.preview_map, 0);
 
-	render_quad();
+	//render_quad();
 
 	create_texture_for_preview(preview, self);
 
@@ -545,8 +545,8 @@ void set_params_for_shader_graph(AssetTab& asset_tab, ShaderManager& shader_mana
 
 //todo refactor Editor into smaller chunks
 void inspect_material_params(Editor& editor, Material* material) {
-	ShaderManager& shader_manager = editor.engine.asset_manager.shaders;
-	TextureManager& texture_manager = editor.engine.asset_manager.textures;
+	ShaderManager& shader_manager = editor.asset_manager.shaders;
+	TextureManager& texture_manager = editor.asset_manager.textures;
 	
 	for (auto& param : material->params) {
 		DiffUtil diff_util(&param, &temporary_allocator);

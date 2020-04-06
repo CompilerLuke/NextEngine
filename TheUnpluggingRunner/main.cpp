@@ -57,11 +57,11 @@ void register_components(World& world) {
 }
 
 int main() {
-	string_view level = "C:\\Users\\User\\Desktop\\TopCCompiler\\TopCompiler\\Fernix\\assets\\level2\\";
+	const char* level = "C:\\Users\\User\\Desktop\\TopCCompiler\\TopCompiler\\Fernix\\assets\\level2\\";
+	const char* app_name = "The Unplugging";
 
-
-	Engine engine(level);
-	register_components(engine.world);
+	Modules modules(app_name, level);
+	register_components(*modules.world);
 
 #ifdef _DEBUG
 	const char* game_dll_path = "C:\\Users\\User\\source\\repos\\NextEngine\\x64\\Debug\\TheUnpluggingGame.dll";
@@ -76,7 +76,7 @@ int main() {
 	game.init();
 	game.run();
 #else
-	Application editor(engine, engine_dll_path);
+	Application editor(modules, engine_dll_path);
 	editor.init((void*)game_dll_path);
 	editor.run();
 

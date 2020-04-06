@@ -32,12 +32,13 @@ constexpr int MAX_MESH_BUCKETS = 103;
 
 struct ENGINE_API ModelRendererSystem : RenderFeature {
 	struct AssetManager& asset_manager;
+	struct BufferManager& buffer_manager;
 	
 	InstanceBuffer instance_buffer[Pass::Count];
 	hash_set<MeshBucket, MAX_MESH_BUCKETS> mesh_buckets;
 	CulledMeshBucket pass_culled_bucket[Pass::Count][MAX_MESH_BUCKETS];
 
-	ModelRendererSystem(struct AssetManager&);
+	ModelRendererSystem(struct AssetManager&, struct BufferManager&);
 	void pre_render();
 	void render(World&, RenderCtx&) override;
 };

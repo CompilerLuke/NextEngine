@@ -30,30 +30,30 @@ struct ENGINE_API InstanceBuffer {
 	int capacity = 0;
 };
 
-namespace RHI {
-	VertexBuffer alloc_vertex_buffer(VertexLayout layout, int vertices_length, void* vertices, int indices_length, uint* indices);
-	InstanceBuffer alloc_instance_buffer(VertexLayout v_layout, InstanceLayout layout, int length, void* data);
+struct BufferManager;
+struct RHI;
 
-	template<typename T>
-	VertexBuffer alloc_vertex_buffer(VertexLayout layout, vector<T>& vertices, vector<unsigned int>& indices) {
-		return alloc_vertex_buffer(layout, vertices.length, vertices.data, indices.length, indices.data);
-	}
+VertexBuffer alloc_vertex_buffer(BufferManager& self, VertexLayout layout, int vertices_length, void* vertices, int indices_length, uint* indices);
+InstanceBuffer alloc_instance_buffer(BufferManager& self, VertexLayout v_layout, InstanceLayout layout, int length, void* data);
+void upload_data(BufferManager& self, InstanceBuffer& buffer, int length, void* data);
+void bind_vertex_buffer(BufferManager&, VertexLayout v_layout, InstanceLayout layout = INSTANCE_LAYOUT_MAT4X4);
+void render_vertex_buffer(BufferManager&, VertexBuffer& vertex_buffer);
 
-	template<typename T>
-	InstanceBuffer alloc_instance_buffer(VertexLayout v_layout, InstanceLayout layout, vector<T>& data) {
-		return alloc_instance_buffer(v_layout, layout, data.length, data.data);
-	}
+BufferManager* make_BufferManager(RHI& rhi);
+void destroy_BufferManager(BufferManager*);
 
-	void upload_data(InstanceBuffer& buffer, int length, void* data);
-
-	template<typename T>
-	void upload_data(InstanceBuffer& buffer, vector<T>& data) {
-		upload_data(buffer, data.length, data.data);
-	}
-
-	void bind_vertex_buffer(VertexLayout v_layout, InstanceLayout layout = INSTANCE_LAYOUT_MAT4X4);
-	void render_vertex_buffer(VertexBuffer& vertex_buffer);
-
-	void create_buffers();
-	void destroy_buffers();
+template<typename T>
+VertexBuffer alloc_vertex_buffer(BufferManager& self, VertexLayout layout, slice<T> vertices, slice<uint> indices) {
+	return alloc_vertex_buffer(self, layout, vertices.length, vertices.data, indices.length, indices.data);
 }
+
+template<typename T>
+InstanceBuffer alloc_instance_buffer(BufferManager& self, VertexLayout v_layout, InstanceLayout layout, slice<T>& data) {
+	return alloc_instance_buffer(v_layout, layout, data.length, data.data);
+}
+
+template<typename T>
+void upload_data(BufferManager& self, InstanceBuffer& buffer, vector<T>& data) {
+	upload_data(self, buffer, data.length, data.data);
+}
+

@@ -20,6 +20,11 @@
 #include "components/flyover.h"
 #include "graphics/assets/shader.h"
 
+struct World;
+struct Time;
+struct Input;
+struct AssetManager;
+
 struct DroppableField {
 	void* ptr;
 	string_buffer typ;
@@ -50,7 +55,13 @@ struct Icon {
 
 //todo split up into multiple classes
 struct Editor {
-	struct Engine& engine;
+	Level& level;
+	Window& window;
+	Renderer& renderer;
+	World& world;
+	Input& input;
+	Time& time;
+	AssetManager& asset_manager;
 
 	struct World& copy_of_world;
 
@@ -94,7 +105,7 @@ struct Editor {
 
 	EventDispatcher<ID> selected;
 
-	Editor(Engine& engine, const char* game_code);
+	Editor(Modules& engine, const char* game_code);
 	~Editor();
 
 	glm::vec3 place_at_cursor();

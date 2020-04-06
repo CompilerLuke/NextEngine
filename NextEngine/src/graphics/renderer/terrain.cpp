@@ -1,15 +1,12 @@
 #include "stdafx.h"
 #include "graphics/renderer/terrain.h"
-#include "graphics/assets/model.h"
-#include "graphics/assets/texture.h"
-#include "graphics/assets/shader.h"
+#include "graphics/assets/asset_manager.h"
 #include "core/io/logger.h"
 #include "components/transform.h"
 #include "components/terrain.h"
 #include "components/camera.h"
 #include "graphics/renderer/material_system.h"
 #include "graphics/renderer/renderer.h"
-#include "graphics/rhi/rhi.h"
 
 void init_terrains(TextureManager& texture_manager, World& world, vector<ID>& terrains) {
 	for (ID id : terrains) {
@@ -46,7 +43,7 @@ model_handle load_subdivided(ModelManager& model_manager, uint num) {
 	return model_manager.load(tformat("subdivided_plane", num, ".fbx"));
 }
 
-TerrainRenderSystem::TerrainRenderSystem(AssetManager& assets, World& world) : asset_manager(assets) {
+TerrainRenderSystem::TerrainRenderSystem(AssetManager& assets, BufferManager& buffer_manager, World& world) : asset_manager(assets), buffer_manager(buffer_manager) {
 	world.on_make<Terrain>([&assets, &world](vector<ID>& terrains) { init_terrains(assets.textures, world, terrains); });
 
 	flat_shader = assets.shaders.load("shaders/pbr.vert", "shaders/gizmo.frag");
@@ -67,7 +64,7 @@ TerrainRenderSystem::TerrainRenderSystem(AssetManager& assets, World& world) : a
 	//chunk_info_layout.append({1, Int, offsetof(ChunkInfo, lod)});
 
 	for (int i = 0; i < 3; i++) {
-		chunk_instance_buffer[i] = RHI::alloc_instance_buffer(VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_TERRAIN_CHUNK, 144, NULL);
+		chunk_instance_buffer[i] = alloc_instance_buffer(buffer_manager, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_TERRAIN_CHUNK, 144, NULL);
 	}
 }
 
@@ -141,7 +138,7 @@ void TerrainRenderSystem::render(World& world, RenderCtx& render_ctx) {
 		for (int i = 0; i < 3; i++) {
 			vector<ChunkInfo>& chunk_info = lod_chunks[i];
 
-			RHI::upload_data(chunk_instance_buffer[i], chunk_info);
+			upload_data(buffer_manager, chunk_instance_buffer[i], chunk_info);
 
 			Model* model = asset_manager.models.get(subdivided_plane[i]);
 
