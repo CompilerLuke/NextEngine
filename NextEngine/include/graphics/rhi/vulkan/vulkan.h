@@ -29,7 +29,9 @@ struct FrameData {
 };
 
 //todo abstract VulkanDesc
-RHI* make_RHI(const VulkanDesc&, ModelManager& model_manager, Level&, Window&);
+RHI* make_RHI(const VulkanDesc&, Level&, Window&);
+void init_RHI(RHI* rhi, ModelManager&);
+
 void vk_draw_frame(RHI& rhi, FrameData& data);
 void destroy_RHI(RHI* rhi);
 

@@ -12,10 +12,10 @@ REFLECT_STRUCT_MEMBER(visible)
 REFLECT_STRUCT_MEMBER_TAG(model_id)
 REFLECT_STRUCT_END()
 
-ModelRendererSystem::ModelRendererSystem(AssetManager& asset_manager, BufferManager& buffer_manager) 
-	: asset_manager(asset_manager), buffer_manager(buffer_manager) {
+ModelRendererSystem::ModelRendererSystem(AssetManager& assets) 
+	: asset_manager(assets) {
 	for (int i = 0; i < Pass::Count; i++) {
-		instance_buffer[i] = alloc_instance_buffer(buffer_manager, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4, MAX_MESH_INSTANCES, 0);
+		instance_buffer[i] = alloc_instance_buffer(assets.buffer_allocator, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4, MAX_MESH_INSTANCES, 0);
 	}
 }
 
@@ -105,7 +105,7 @@ void ModelRendererSystem::render(World& world, RenderCtx& ctx) {
 		InstanceBuffer* instance_offset = TEMPORARY_ALLOC(InstanceBuffer);
 		*instance_offset = instance_buffer;
 		instance_offset->base += instance_count;
-		instance_offset->size = count * sizeof(glm::mat4);
+		instance_offset->length = count;
 
 		Material* material = asset_manager.materials.get(bucket.mat_id);
 
@@ -121,7 +121,7 @@ void ModelRendererSystem::render(World& world, RenderCtx& ctx) {
 		instance_count += count;
 	}
 
-	upload_data(buffer_manager, instance_buffer, instance_count, instance_data);
+	upload_data(asset_manager.buffer_allocator, instance_buffer, instance_count, instance_data);
 
 	//flush_logger();
 }

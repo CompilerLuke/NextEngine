@@ -9,7 +9,7 @@ VertexBuffer quad_mesh;
 
 
 
-void render_quad(BufferManager& buffer_manager) {
+void render_quad(BufferAllocator& buffer_manager) {
 	if (first_quad) {
 		glm::vec3 vertices_pos[4] = {
 			glm::vec3(1,  1, 0),  // top right
@@ -41,6 +41,6 @@ void render_quad(BufferManager& buffer_manager) {
 		first_quad = false;
 	}
 
-	bind_vertex_buffer(buffer_manager, VERTEX_LAYOUT_DEFAULT);
-	render_vertex_buffer(buffer_manager, quad_mesh);
+	//bind_vertex_buffer(buffer_manager, VERTEX_LAYOUT_DEFAULT);
+	//render_vertex_buffer(buffer_manager, quad_mesh);
 }

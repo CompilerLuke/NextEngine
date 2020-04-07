@@ -16,7 +16,7 @@ struct ChunkInfo {
 
 struct TerrainRenderSystem : RenderFeature {
 	AssetManager& asset_manager;
-	BufferManager& buffer_manager;
+	BufferAllocator& buffer_manager;
 	
 	shader_handle terrain_shader;
 	shader_handle flat_shader;
@@ -27,7 +27,7 @@ struct TerrainRenderSystem : RenderFeature {
 
 	InstanceBuffer chunk_instance_buffer[3];
 
-	TerrainRenderSystem(AssetManager& asset_manager, BufferManager&, World&);
+	TerrainRenderSystem(AssetManager& asset_manager, World&);
 
 	void render(struct World&, struct RenderCtx&) override;
 };

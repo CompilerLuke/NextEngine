@@ -1,7 +1,9 @@
 #pragma once
 
-#include "vulkan.h"
+#include "volk.h"
 #include "core/container/array.h"
+
+struct Window;
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 const int MAX_SWAP_CHAIN_IMAGES = MAX_FRAMES_IN_FLIGHT + 1;

@@ -7,8 +7,9 @@
 #include "shader.h"
 
 struct ENGINE_API AssetManager {
-	AssetManager(Level& level);
+	AssetManager(BufferAllocator& buffer_manager, Level& level);
 
+	BufferAllocator& buffer_allocator;
 	Level& level;
 	ModelManager models;
 	TextureManager textures;

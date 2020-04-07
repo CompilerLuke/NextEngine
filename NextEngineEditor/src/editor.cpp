@@ -793,9 +793,14 @@ void respond_to_shortcut(Editor& editor) {
 	editor.gizmo.update(world, editor, ctx);
 }
 
+#include "graphics/rhi/rhi.h"
+
 //Application
 APPLICATION_API Editor* init(const char* args, Modules& modules) {
-	return new Editor(modules, args);
+	begin_gpu_upload(*modules.rhi);
+	Editor* editor = new Editor(modules, args);
+	end_gpu_upload(*modules.rhi);
+	return editor;
 }
 
 APPLICATION_API bool is_running(Editor* editor, Modules& engine) {

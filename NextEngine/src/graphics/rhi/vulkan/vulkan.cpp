@@ -12,10 +12,28 @@
 
 #include "graphics/assets/model.h"
 
+#include "graphics/rhi/rhi.h"
 #include "graphics/rhi/vulkan/rhi.h"
 #include "graphics/rhi/vulkan/buffer.h"
 #include "graphics/rhi/vulkan/pipeline.h"
 #include "graphics/rhi/vulkan/shader.h"
+
+#include "graphics/assets/model.h"
+#include "graphics/rhi/primitives.h"
+
+#include "graphics/rhi/vulkan/device.h"
+#include "graphics/rhi/vulkan/swapchain.h"
+
+struct RHI {
+	Window& window;
+	VulkanDesc desc;
+	Device device;
+	Swapchain swapchain;
+	BufferAllocator* buffer_manager;
+	VkQueue graphics_queue;
+	VkQueue present_queue;
+	VkCommandPool cmd_pool;
+};
 
 VkDescriptorSetLayout descriptorSetLayout;
 VkDescriptorPool descriptorPool;
@@ -27,12 +45,11 @@ VkPipeline graphicsPipeline;
 
 VkRenderPass renderPass;
 
-VkCommandPool commandPool;
 array<MAX_SWAP_CHAIN_IMAGES, VkCommandBuffer> commandBuffers;
 
 
 /*
-struct BufferManager {
+struct BufferAllocator {
 VkDeviceMemory block;
 
 };
@@ -42,16 +59,12 @@ VkBuffer buffer;
 };
 
 
-BufferManager buffer_manager;
+BufferAllocator buffer_manager;
 */
 
 //Resources
-VkBuffer vertexBuffer;
-VkDeviceMemory vertexBufferMemory;
-VkBuffer indexBuffer;
-VkDeviceMemory indexBufferMemory;
-VkBuffer instanceBuffer;
-VkDeviceMemory instanceBufferMemory;
+VertexBuffer vertex_buffer;
+InstanceBuffer instance_buffer;
 
 array<MAX_SWAP_CHAIN_IMAGES, VkBuffer> uniform_buffers;
 array<MAX_SWAP_CHAIN_IMAGES, VkDeviceMemory> uniform_buffers_memory;
@@ -66,7 +79,6 @@ VkDeviceMemory depth_image_memory;
 VkImageView depth_image_view;
 
 Level* level;
-BufferManager* buffer_manager;
 
 VkImageView make_ImageView(VkDevice device, VkImage image, VkFormat imageFormat, VkImageAspectFlags aspectFlags) {
 	VkImageViewCreateInfo makeInfo = {}; //todo abstract image view creation
@@ -103,9 +115,6 @@ struct UniformBufferObject {
 	glm::mat4 proj;
 };
 
-slice<Vertex> vertices;
-slice<uint> indices;
-
 struct CmdCopyBuffer {
 	VkBuffer srcBuffer;
 	VkBuffer dstBuffer;
@@ -125,23 +134,15 @@ struct CmdPipelineBarrier {
 	VkImageMemoryBarrier imageBarrier;
 };
 
-StagingQueue staging_queue;
-
-
-void make_VertexBuffer(StagingQueue& staging_queue) {
-	make_StagedBuffer(staging_queue, (void*)vertices.data, sizeof(vertices[0]) * vertices.length, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertexBuffer, vertexBufferMemory);
-}
-
-void make_IndexBuffer(StagingQueue& staging_queue) {
-	make_StagedBuffer(staging_queue, (void*)indices.data, sizeof(indices[0]) * indices.length, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indexBuffer, indexBufferMemory);
-}
-
 #include <glm/gtc/matrix_transform.hpp>
 #include "core/container/tvector.h"
 
 tvector<glm::mat4> instances;
 
-void make_InstanceBuffer(StagingQueue& staging_queue) {
+void upload_MeshData(ModelManager& model_manager, BufferAllocator& buffer_manager) {
+	model_handle handle = model_manager.load("Aset_wood_log_L_rdeu3_LOD0.fbx");
+	Model* model = model_manager.get(handle);
+	
 	instances.reserve(10 * 10);
 	for (int x = 0; x < 10; x++) {
 		for (int y = 0; y < 10; y++) {
@@ -152,7 +153,9 @@ void make_InstanceBuffer(StagingQueue& staging_queue) {
 		}
 	}
 
-	make_StagedBuffer(staging_queue, (void*)instances.data, sizeof(glm::mat4) * instances.length, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, instanceBuffer, instanceBufferMemory);
+	vertex_buffer = model->meshes[0].buffer;
+	instance_buffer = alloc_instance_buffer<glm::mat4>(buffer_manager, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4, instances);
+
 }
 
 void make_UniformBuffers(VkDevice device, VkPhysicalDevice physical_device, int frames_in_flight) {
@@ -189,7 +192,7 @@ bool has_StencilComponent(VkFormat format) {
 	return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 }
 
-void transition_ImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
+void transition_ImageLayout(VkCommandBuffer cmd_buffer, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
 	VkImageMemoryBarrier barrier = {};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 	barrier.oldLayout = oldLayout;
@@ -243,10 +246,8 @@ void transition_ImageLayout(VkImage image, VkFormat format, VkImageLayout oldLay
 		throw "Unsupported layout transition";
 	}
 
-	//vkCmdPipelineBarrier(transferQueue.commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, nullptr, nullptr, 1, &barrier);
-
 	vkCmdPipelineBarrier(
-		staging_queue.cmd_buffer,
+		cmd_buffer,
 		sourceStage, destinationStage,
 		0,
 		0, nullptr,
@@ -254,10 +255,9 @@ void transition_ImageLayout(VkImage image, VkFormat format, VkImageLayout oldLay
 		1, &barrier
 	);
 
-	//transferQueue.cmdsPipelineBarrier.append({sourceStage, destinationStage, barrier});
 }
 
-void copy_buffer_to_image(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
+void copy_buffer_to_image(VkCommandBuffer cmd_buffer, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
 	VkBufferImageCopy region = {};
 	region.bufferOffset = 0;
 	region.bufferRowLength = 0;
@@ -273,8 +273,7 @@ void copy_buffer_to_image(VkBuffer buffer, VkImage image, uint32_t width, uint32
 		width, height, 1
 	};
 
-	vkCmdCopyBufferToImage(staging_queue.cmd_buffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-	//transferQueue.cmdsCopyBufferToImage.append({buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, region});
+	vkCmdCopyBufferToImage(cmd_buffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 }
 
 void make_Image(VkDevice device, VkPhysicalDevice physical_device, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) {
@@ -314,7 +313,10 @@ void make_Image(VkDevice device, VkPhysicalDevice physical_device, uint32_t widt
 	vkBindImageMemory(device, image, imageMemory, 0);
 }
 
-void make_TextureImage(VkDevice device, VkPhysicalDevice physical_device) {
+void make_TextureImage(StagingQueue& staging_queue) {
+	VkDevice device = staging_queue.device;
+	VkPhysicalDevice physical_device = staging_queue.physical_device;
+
 	int texWidth = 0, texHeight = 0, texChannels = 0;
 
 	string_buffer tex_path = level->asset_path("wet_street/Pebble_Wet_street_basecolor.jpg");
@@ -339,9 +341,9 @@ void make_TextureImage(VkDevice device, VkPhysicalDevice physical_device) {
 
 	make_Image(device, physical_device, texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, texture_image, texture_image_memory);
 
-	transition_ImageLayout(texture_image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	copy_buffer_to_image(stagingBuffer, texture_image, texWidth, texHeight);
-	transition_ImageLayout(texture_image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	transition_ImageLayout(staging_queue.cmd_buffer, texture_image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	copy_buffer_to_image(staging_queue.cmd_buffer, stagingBuffer, texture_image, texWidth, texHeight);
+	transition_ImageLayout(staging_queue.cmd_buffer, texture_image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	staging_queue.destroyBuffers.append(stagingBuffer);
 	staging_queue.destroyDeviceMemory.append(stagingBufferMemory);
@@ -381,28 +383,28 @@ string_buffer read_file_or_fail(string_view src) {
 	return file.read();
 }
 
-ArrayVertexInputs Vertex_attribute_descriptions() {
-	return input_attributes(*buffer_manager, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4);
+ArrayVertexInputs Vertex_attribute_descriptions(BufferAllocator& buffer_manager) {
+	return input_attributes(buffer_manager, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4);
 }
 
-ArrayVertexBindings Vertex_binding_descriptors() {
-	return input_bindings(*buffer_manager, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4);
+ArrayVertexBindings Vertex_binding_descriptors(BufferAllocator& buffer_manager) {
+	return input_bindings(buffer_manager, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4);
 }
 
-void make_GraphicsPipeline(VkDevice device, VkRenderPass render_pass, VkExtent2D extent) {
+void make_GraphicsPipeline(VkDevice device, VkRenderPass render_pass, VkExtent2D extent, BufferAllocator& buffer_manager) {
 	size_t before = temporary_allocator.occupied;
 
 	string_buffer vert_shader_code = read_file_or_fail("shaders/cache/vert.spv");
 	string_buffer frag_shader_code = read_file_or_fail("shaders/cache/frag.spv");
 
 	//NEEDS REFERENCE
-	auto binding_descriptors = Vertex_binding_descriptors();
+	auto binding_descriptors = Vertex_binding_descriptors(buffer_manager);
 
 	PipelineDesc pipeline_desc;
 	pipeline_desc.vert_shader = make_ShaderModule(device, vert_shader_code);
 	pipeline_desc.frag_shader = make_ShaderModule(device, frag_shader_code);
 	pipeline_desc.extent = extent;
-	pipeline_desc.attribute_descriptions = Vertex_attribute_descriptions();
+	pipeline_desc.attribute_descriptions = Vertex_attribute_descriptions(buffer_manager);
 	pipeline_desc.binding_descriptions = binding_descriptors;
 	pipeline_desc.descriptor_layouts = descriptorSetLayout;
 	pipeline_desc.render_pass = renderPass;
@@ -503,30 +505,34 @@ void make_Framebuffers(VkDevice device, Swapchain& swapchain) {
 	}
 }
 
-void make_CommandPool(VkDevice device, VkPhysicalDevice physical_device, VkSurfaceKHR surface) {
+VkCommandPool make_CommandPool(VkDevice device, VkPhysicalDevice physical_device, VkSurfaceKHR surface) {
 	QueueFamilyIndices queueFamilyIndices = find_queue_families(physical_device, surface);
 
 	VkCommandPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	poolInfo.queueFamilyIndex = (uint32_t)queueFamilyIndices.graphicsFamily;
-	poolInfo.flags = 0;
+	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-	if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
+	VkCommandPool result;
+
+	if (vkCreateCommandPool(device, &poolInfo, nullptr, &result) != VK_SUCCESS) {
 		throw "Could not make pool!";
 	}
+
+	return result;
 }
 
 int frames_in_flight(Swapchain& swapchain) {
 	return swapchain.images.length;
 }
 
-void make_CommandBuffers(VkDevice device, Swapchain& swapchain) {
+void make_CommandBuffers(VkDevice device, VkCommandPool command_pool, BufferAllocator& buffer_manager, Swapchain& swapchain) {
 	int max_frames = frames_in_flight(swapchain);
 	commandBuffers.resize(max_frames);
 
 	VkCommandBufferAllocateInfo alloc_info = {};
 	alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	alloc_info.commandPool = commandPool;
+	alloc_info.commandPool = command_pool;
 	alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	alloc_info.commandBufferCount = commandBuffers.length;
 
@@ -558,20 +564,23 @@ void make_CommandBuffers(VkDevice device, Swapchain& swapchain) {
 		render_pass_info.clearValueCount = 2;
 		render_pass_info.pClearValues = clear_colors;
 
+
+
 		vkCmdBeginRenderPass(commandBuffers[i], &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-
-		VkBuffer vertex_buffers[] = { vertexBuffer };
-		VkBuffer instance_buffers[] = { instanceBuffer };
-		VkDeviceSize offsets[] = { 0 };
-
+		
+		/*
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertex_buffers, offsets);
 		vkCmdBindVertexBuffers(commandBuffers[i], 1, 1, instance_buffers, offsets);
 		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0, nullptr);
+		*/
+		
+		bind_vertex_buffer(buffer_manager, commandBuffers[i], VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4);
+		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0, nullptr);
 
-		vkCmdDrawIndexed(commandBuffers[i], indices.length, instances.length, 0, 0, 0);
 
+		vkCmdDrawIndexed(commandBuffers[i], vertex_buffer.length, instance_buffer.length, vertex_buffer.index_base, vertex_buffer.vertex_base, instance_buffer.base);
 
 		vkCmdEndRenderPass(commandBuffers[i]);
 
@@ -707,21 +716,44 @@ void make_DepthResources(VkDevice device, VkPhysicalDevice physical_device, VkEx
 
 }
 
-#include "graphics/assets/model.h"
-#include "graphics/rhi/primitives.h"
+VkDevice get_Device(RHI& rhi) {
+	return rhi.device.device;
+}
 
-RHI* make_RHI(const VulkanDesc& desc, ModelManager& model_manager, Level& level, Window& window) {
+VkPhysicalDevice get_PhysicalDevice(RHI& rhi) {
+	return rhi.device.physical_device;
+}
+
+VkInstance get_Instance(RHI& rhi) {
+	return rhi.device.instance;
+}
+
+BufferAllocator& get_BufferAllocator(RHI& rhi) {
+	return *rhi.buffer_manager;
+}
+
+VkCommandPool get_CommandPool(RHI& rhi) {
+	return rhi.cmd_pool;
+}
+
+VkQueue get_GraphicsQueue(RHI& rhi) {
+	return rhi.graphics_queue;
+}
+
+void begin_gpu_upload(RHI& rhi) {
+	begin_buffer_upload(*rhi.buffer_manager);
+}
+
+void end_gpu_upload(RHI& rhi) {
+	end_buffer_upload(*rhi.buffer_manager);
+}
+
+RHI* make_RHI(const VulkanDesc& desc, Level& level, Window& window) {
 	::level = &level; //todo remove soon
 
 	//TODO extremely hacky do not leave this in
 
 	RHI* rhi = PERMANENT_ALLOC(RHI, { window, desc });
-
-	model_handle handle = model_manager.load("Aset_wood_log_L_rdeu3_LOD0.fbx");
-	Model* model = model_manager.get(handle);
-
-	vertices = model->meshes[0].vertices;
-	indices = model->meshes[0].indices;
 
 	VK_CHECK(volkInitialize());
 
@@ -745,49 +777,55 @@ RHI* make_RHI(const VulkanDesc& desc, ModelManager& model_manager, Level& level,
 	rhi->swapchain = make_SwapChain(device, device.physical_device, window, surface);
 	make_ImageViews(device, rhi->swapchain);
 
-	buffer_manager = make_BufferManager(*rhi);
-	
+	rhi->cmd_pool = make_CommandPool(device.device, device.physical_device, surface);
+	rhi->buffer_manager = make_BufferAllocator(*rhi);
+
 	make_RenderPass(device, device.physical_device, rhi->swapchain.imageFormat);
 	make_DescriptorSetLayout(device);
-	make_GraphicsPipeline(device, renderPass, rhi->swapchain.extent);
-	make_CommandPool(device.device, device.physical_device, surface);
+	make_GraphicsPipeline(device, renderPass, rhi->swapchain.extent, *rhi->buffer_manager);
+
 	make_DepthResources(device.device, device.physical_device, rhi->swapchain.extent);
 	make_Framebuffers(device, rhi->swapchain);
-	
-	staging_queue = make_StagingQueue(device, device.physical_device, commandPool, rhi->graphics_queue);
+
+	StagingQueue& staging_queue = get_StagingQueue(*rhi->buffer_manager);
+	//make_StagingQueue(device, device.physical_device, rhi->cmd_pool, rhi->graphics_queue);
 	begin_staging_cmds(staging_queue);
+
+	return rhi;
+}
+
+void init_RHI(RHI* rhi, ModelManager& model_manager) {
+	VkDevice device = get_Device(*rhi);
+	VkPhysicalDevice physical_device = get_PhysicalDevice(*rhi);
+
+	StagingQueue& staging_queue = get_StagingQueue(*rhi->buffer_manager);
 
 	int frames_in_flight = rhi->swapchain.images.length;
 
 	
-	make_UniformBuffers(device, device.physical_device, frames_in_flight);
-	make_TextureImage(device, device.physical_device);
+	make_UniformBuffers(device, physical_device, frames_in_flight);
+	make_TextureImage(staging_queue);
 	make_TextureImageView(device);
 	make_TextureSampler(device);
 	make_DescriptorPool(device, frames_in_flight);
 	make_DescriptorSets(device, frames_in_flight);
 	
-	make_VertexBuffer(staging_queue);
-	make_IndexBuffer(staging_queue);
-	make_InstanceBuffer(staging_queue);
+	upload_MeshData(model_manager, *rhi->buffer_manager);
 
-	end_staging_cmds(device, staging_queue);
+	end_staging_cmds(staging_queue);
 	
-	make_CommandBuffers(device, rhi->swapchain);
+	make_CommandBuffers(device, rhi->cmd_pool, *rhi->buffer_manager, rhi->swapchain);
 	make_SyncObjects(device, rhi->swapchain);
 
 	rhi->desc.validation_layers = nullptr;
-
-
-	return rhi;
 }
 
-void destroy(VkDevice device, Swapchain& swapchain) {
+void destroy(VkDevice device, VkCommandPool command_pool, Swapchain& swapchain) {
 	vkDestroyImageView(device, depth_image_view, nullptr);
 	vkDestroyImage(device, depth_image, nullptr);
 	vkFreeMemory(device, depth_image_memory, nullptr);
 
-	vkFreeCommandBuffers(device, commandPool, commandBuffers.length, commandBuffers.data);
+	vkFreeCommandBuffers(device, command_pool, commandBuffers.length, commandBuffers.data);
 
 	for (int i = 0; i < swapchain.framebuffers.length; i++) {
 		vkDestroyFramebuffer(device, swapchain.framebuffers[i], nullptr);
@@ -808,7 +846,14 @@ void destroy(VkDevice device, Swapchain& swapchain) {
 	vkDestroySwapchainKHR(device, swapchain, nullptr);
 }
 
-void remakeSwapChain(VkDevice device, VkPhysicalDevice physical_device, Window& window, Swapchain& swapchain) {
+void remakeSwapChain(RHI& rhi) {
+	VkDevice device = rhi.device;
+	VkPhysicalDevice physical_device = rhi.device.physical_device;
+	Window& window = rhi.window;
+	Swapchain& swapchain = rhi.swapchain;
+	VkCommandPool cmd_pool = rhi.cmd_pool;
+	BufferAllocator& buffer_manager = *rhi.buffer_manager;
+
 	int width = 0, height = 0;
 
 	window.get_framebuffer_size(&width, &height);
@@ -819,28 +864,29 @@ void remakeSwapChain(VkDevice device, VkPhysicalDevice physical_device, Window& 
 	}
 
 	vkDeviceWaitIdle(device);
-	destroy(device, swapchain);
+	destroy(device, cmd_pool, swapchain);
 	swapchain = make_SwapChain(device, physical_device, window, swapchain.surface);
 	make_ImageViews(device, swapchain);
 
 	make_RenderPass(device, physical_device, swapchain.imageFormat);
-	make_GraphicsPipeline(device, renderPass, swapchain.extent);
+	make_GraphicsPipeline(device, renderPass, swapchain.extent, buffer_manager);
 	make_DepthResources(device, physical_device, swapchain.extent);
 	make_Framebuffers(device, swapchain);
 	make_UniformBuffers(device, physical_device, frames_in_flight(swapchain));
 	make_DescriptorPool(device, frames_in_flight(swapchain));
 	make_DescriptorSets(device, frames_in_flight(swapchain));
-	make_CommandBuffers(device, swapchain);
+	make_CommandBuffers(device, cmd_pool, buffer_manager, swapchain);
 }
 
 void vk_destroy(RHI& rhi) {
 	Device& device = rhi.device;
 	Swapchain& swapchain = rhi.swapchain;
+	BufferAllocator* buffer_manager = rhi.buffer_manager;
 
 	vkDeviceWaitIdle(device);
 
 	destroy_sync_objects(device, swapchain);
-	destroy(device, swapchain);
+	destroy(device, rhi.cmd_pool, swapchain);
 
 	vkDestroySampler(device, texture_sampler, nullptr);
 	vkDestroyImageView(device, texture_image_view, nullptr);
@@ -850,18 +896,9 @@ void vk_destroy(RHI& rhi) {
 
 	vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
-	vkDestroyBuffer(device, indexBuffer, nullptr);
-	vkFreeMemory(device, indexBufferMemory, nullptr);
+	destroy_BufferAllocator(buffer_manager);
 
-	vkDestroyBuffer(device, vertexBuffer, nullptr);
-	vkFreeMemory(device, vertexBufferMemory, nullptr);
-
-	vkDestroyBuffer(device, instanceBuffer, nullptr);
-	vkFreeMemory(device, instanceBufferMemory, nullptr);
-
-	destroy_BufferManager(buffer_manager);
-
-	vkDestroyCommandPool(device, commandPool, nullptr);
+	vkDestroyCommandPool(device, rhi.cmd_pool, nullptr);
 	vkDestroyDevice(device, nullptr);
 
 	destroy_validation_layers(device.instance, device.debug_messenger);
@@ -898,7 +935,7 @@ void vk_draw_frame(RHI& rhi, FrameData& frameData) {
 	VkResult result = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, swapchain.image_available_semaphore[current_frame], VK_NULL_HANDLE, &image_index);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-		remakeSwapChain(device, physical_device, window, swapchain);
+		remakeSwapChain(rhi);
 		return;
 	}
 	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
@@ -948,7 +985,7 @@ void vk_draw_frame(RHI& rhi, FrameData& frameData) {
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 		//framebufferResized = false;
-		remakeSwapChain(device, physical_device, window, swapchain);
+		remakeSwapChain(rhi);
 	}
 	else if (result != VK_SUCCESS) {
 		throw "failed to present swap chain image!";

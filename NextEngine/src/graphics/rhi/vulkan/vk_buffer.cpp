@@ -3,7 +3,8 @@
 #include "graphics/rhi/buffer.h"
 #include "graphics/rhi/vulkan/buffer.h"
 #include "graphics/rhi/vulkan/rhi.h"
-#include "core/io/logger.h"
+#include "graphics/rhi/vulkan/vulkan.h"
+#include <stdio.h>
 #include "core/container/tvector.h"
 #include "core/container/array.h"
 
@@ -43,7 +44,9 @@ void clear_StagingQueue(StagingQueue& queue) {
 	queue.destroyDeviceMemory.clear();
 }
 
-void end_staging_cmds(VkDevice device, StagingQueue& queue) {
+void end_staging_cmds(StagingQueue& queue) {
+	VkDevice device = queue.device;
+	
 	vkEndCommandBuffer(queue.cmd_buffer);
 
 	VkSubmitInfo submitInfo = {};
@@ -51,7 +54,7 @@ void end_staging_cmds(VkDevice device, StagingQueue& queue) {
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &queue.cmd_buffer;
 
-	vkQueueSubmit(queue.queue, 1, &submitInfo, VK_NULL_HANDLE);
+	VK_CHECK(vkQueueSubmit(queue.queue, 1, &submitInfo, VK_NULL_HANDLE));
 	vkQueueWaitIdle(queue.queue);
 
 	for (VkBuffer buffer : queue.destroyBuffers) {
@@ -155,7 +158,7 @@ struct VertexBufferAllocator {
 	VkVertexInputBindingDescription binding_desc;
 	int vertex_capacity;
 	int index_capacity;
-	int vertex_length;
+	int vertex_offset;
 	int index_offset;
 	int elem_size;
 };
@@ -196,10 +199,10 @@ struct StagingBufferAllocator {
 	int offset;
 };
 
-struct BufferManager {
+struct BufferAllocator {
 	VkDevice device;
 	VkPhysicalDevice physical_device;
-	StagingBufferAllocator staging;
+	StagingBufferAllocator staging = {};
 	VertexBufferAllocator vertex_buffers[VERTEX_LAYOUT_COUNT] = {};
 	InstanceBufferAllocator instance_buffers[INSTANCE_LAYOUT_COUNT] = {};
 };
@@ -240,19 +243,19 @@ void input_attributes(ArrayVertexInputs& vertex_inputs, slice<VertexAttrib> attr
 	}
 }
 
-ArrayVertexInputs input_attributes(BufferManager& self, VertexLayout layout) {
+ArrayVertexInputs input_attributes(BufferAllocator& self, VertexLayout layout) {
 	return self.vertex_buffers[layout].input_desc.copy();
 }
 
-VkVertexInputBindingDescription input_bindings(BufferManager& self, VertexLayout layout) {
+VkVertexInputBindingDescription input_bindings(BufferAllocator& self, VertexLayout layout) {
 	return self.vertex_buffers[layout].binding_desc;
 }
 
-ArrayVertexInputs input_attributes(BufferManager& self, VertexLayout layout, InstanceLayout instance_layout) {
+ArrayVertexInputs input_attributes(BufferAllocator& self, VertexLayout layout, InstanceLayout instance_layout) {
 	return self.instance_buffers[instance_layout].input_desc.copy();
 }
 
-ArrayVertexBindings input_bindings(BufferManager& self, VertexLayout layout, InstanceLayout instance_layout) {
+ArrayVertexBindings input_bindings(BufferAllocator& self, VertexLayout layout, InstanceLayout instance_layout) {
 	return {
 		self.vertex_buffers[layout].binding_desc,
 		self.instance_buffers[layout].binding_desc
@@ -260,7 +263,7 @@ ArrayVertexBindings input_bindings(BufferManager& self, VertexLayout layout, Ins
 }
 
 //todo, instance layout description depends on VertexLayout but not the underlying buffers	
-void alloc_layout_allocator(BufferManager& self, VertexLayoutDesc& vert_desc) {
+void alloc_layout_allocator(BufferAllocator& self, VertexLayoutDesc& vert_desc) {
 	VkVertexInputBindingDescription vertex_binding_description = {};
 	vertex_binding_description.binding = 0;
 	vertex_binding_description.stride = vert_desc.elem_size;
@@ -275,10 +278,10 @@ void alloc_layout_allocator(BufferManager& self, VertexLayoutDesc& vert_desc) {
 	allocator.index_capacity = vert_desc.indices_size;
 
 	make_Buffer(self.device, self.physical_device, vert_desc.vertices_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, allocator.vbo, allocator.vbo_memory);
-	make_Buffer(self.device, self.physical_device, vert_desc.vertices_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, allocator.ebo, allocator.ebo_memory);
+	make_Buffer(self.device, self.physical_device, vert_desc.indices_size,  VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, allocator.ebo, allocator.ebo_memory);
 }
 
-void alloc_layout_allocator(BufferManager& m, VertexLayoutDesc& vert_desc, InstanceLayoutDesc& instance_desc) {
+void alloc_layout_allocator(BufferAllocator& m, VertexLayoutDesc& vert_desc, InstanceLayoutDesc& instance_desc) {
 	alloc_layout_allocator(m, vert_desc);
 
 	VkVertexInputBindingDescription instance_binding_description = {};
@@ -299,49 +302,64 @@ void alloc_layout_allocator(BufferManager& m, VertexLayoutDesc& vert_desc, Insta
 	make_Buffer(m.device, m.physical_device, instance_desc.size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, allocator.buffer, allocator.buffer_memory);
 }
 
-VertexBuffer alloc_vertex_buffer(BufferManager& self, VertexLayout layout, int vertices_length, void* vertices, int indices_length, uint* indices) {		
+VertexBuffer alloc_vertex_buffer(BufferAllocator& self, VertexLayout layout, int vertices_length, void* vertices, int indices_length, uint* indices) {		
 	VertexBufferAllocator& allocator = self.vertex_buffers[layout];
-	int elem_size = allocator.elem_size;
-	int vertices_size = vertices_length * elem_size;
-	int indices_size = indices_length * sizeof(uint);
+	int vert_size = allocator.elem_size;
+	int index_size = sizeof(uint);
+	int vertices_size = vertices_length * vert_size;
+	int indices_size = indices_length * index_size;
 
-	log("UPLOADING VERTEX BUFFER Vertex:", elem_size, " ", vertices_length, ", size ",  vertices_size, " ", indices_size, "\n");
-		
-	assert(allocator.vertex_capacity >= allocator.vertex_length * elem_size + vertices_size);
+	log("UPLOADING VERTEX BUFFER Vertex: (", vert_size, ") ", vertices_length, " ", indices_length, ", size ",  vertices_size, " ", indices_size, "\n");
+
+	assert(allocator.vertex_capacity >= allocator.vertex_offset + vertices_size);
 	assert(allocator.index_capacity >= allocator.index_offset + indices_length * sizeof(uint));
 		
 	VertexBuffer buffer;
 	buffer.layout = layout;
 	buffer.length = indices_length;
+	buffer.vertex_capacity = vertices_length;
+	buffer.instance_capacity = indices_length;
 
-	buffer.vertex_offset = allocator.vertex_length * elem_size;
-	buffer.index_offset = allocator.index_offset;
-
-	for (int i = 0; i < indices_length; i++) {
-		indices[i] += allocator.vertex_length;
-	}
-
-	allocator.vertex_length += vertices_length;
+	int vertex_offset = allocator.vertex_offset;
+	int index_offset = allocator.index_offset;
+	
+	buffer.vertex_base = vertex_offset / vert_size;
+	buffer.index_base = index_offset / index_size;	
+	
+	allocator.vertex_offset += vertices_size;
 	allocator.index_offset += indices_size;
 
-	if (vertices) staged_copy(self.device, self.staging, allocator.vbo, buffer.vertex_offset, vertices, vertices_size);
-	if (indices) staged_copy(self.device, self.staging, allocator.ebo, buffer.index_offset, indices, indices_size);
+	printf("OFFSET vertex : %i, index : %i\n", vertex_offset, index_offset);
 
+	if (vertices) staged_copy(self.device, self.staging, allocator.vbo, vertex_offset, vertices, vertices_size);
+	if (indices) staged_copy(self.device, self.staging, allocator.ebo, index_offset, indices, indices_size);
+
+
+	
 	return buffer;
 }
 
-void upload_data(BufferManager& self, InstanceBuffer& buffer, int length, void* data) {
+void begin_buffer_upload(BufferAllocator& self) {
+	begin_staging_cmds(self.staging.queue);
+}
+
+void end_buffer_upload(BufferAllocator& self) {
+	end_staging_cmds(self.staging.queue);
+	self.staging.offset = 0;
+}
+
+void upload_data(BufferAllocator& self, InstanceBuffer& buffer, int length, void* data) {
 	InstanceBufferAllocator& allocator = self.instance_buffers[buffer.layout];
 	i64 size = allocator.elem_size * length;
 	i64 offset = allocator.elem_size * buffer.base;
 		
-	assert(size <= buffer.capacity);		
-	buffer.size = size;
+	assert(length <= buffer.capacity);		
+	buffer.length = length;
 
 	staged_copy(self.device, self.staging, allocator.buffer, offset, data, size);
 }
 
-InstanceBuffer alloc_instance_buffer(BufferManager& self, VertexLayout v_layout, InstanceLayout layout, int length, void* data) {
+InstanceBuffer alloc_instance_buffer(BufferAllocator& self, VertexLayout v_layout, InstanceLayout layout, int length, void* data) {
 	InstanceBufferAllocator& allocator = self.instance_buffers[layout];
 	int elem = allocator.elem_size;
 	int size = length * elem;
@@ -352,33 +370,43 @@ InstanceBuffer alloc_instance_buffer(BufferManager& self, VertexLayout v_layout,
 	buffer.vertex_layout = v_layout;
 	buffer.layout = layout;
 	buffer.base = allocator.offset / elem;
-	buffer.capacity = size;
+	buffer.capacity = length;
+	buffer.length = length;
 
 	allocator.offset += size;
 
-	if (data) upload_data(self, buffer, size, data);
+	if (data) upload_data(self, buffer, length, data);
 
 	return buffer;
 }
 
-void bind_vertex_buffer(BufferManager& self, VertexLayout v_layout, InstanceLayout layout) {
+void bind_vertex_buffer(BufferAllocator& self, VkCommandBuffer cmd_buffer, VertexLayout v_layout, InstanceLayout layout) {
 	VertexBufferAllocator& vertex_buffer = self.vertex_buffers[v_layout];
 	InstanceBufferAllocator& instance_buffer = self.instance_buffers[layout];
 
+	VkDeviceSize offset = 0;
+
+	//todo can we merge this!
+	vkCmdBindVertexBuffers(cmd_buffer, 0, 1, &vertex_buffer.vbo, &offset);
+	vkCmdBindVertexBuffers(cmd_buffer, 1, 1, &instance_buffer.buffer, &offset);
+	vkCmdBindIndexBuffer(cmd_buffer, vertex_buffer.ebo, 0, VK_INDEX_TYPE_UINT32);
+}
+
+void render_vertex_buffer(BufferAllocator& self, VertexBuffer& buffer) {
 	/**/
 }
 
-void render_vertex_buffer(BufferManager& self, VertexBuffer& buffer) {
-	/**/
-}
+BufferAllocator* make_BufferAllocator(RHI& rhi) {
+	BufferAllocator* self = PERMANENT_ALLOC(BufferAllocator);
 
-BufferManager* make_BufferManager(RHI& rhi) {
-	BufferManager* self = PERMANENT_ALLOC(BufferManager);
+	self->device = get_Device(rhi);
+	self->physical_device = get_PhysicalDevice(rhi);
+	VkCommandPool cmd_pool = get_CommandPool(rhi);
+	VkQueue graphics_queue = get_GraphicsQueue(rhi);
 
-	self->device = rhi.device.device;
-	self->physical_device = rhi.device.physical_device;
-
-	make_Buffer(self->device, self->physical_device, mb(20), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+	self->staging.queue = make_StagingQueue(self->device, self->physical_device, cmd_pool, graphics_queue);
+	self->staging.capacity = mb(50);
+	make_Buffer(self->device, self->physical_device, self->staging.capacity, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
 		self->staging.buffer, self->staging.buffer_memory);
 
@@ -427,7 +455,12 @@ BufferManager* make_BufferManager(RHI& rhi) {
 	return self;
 }
 
-void destroy_BufferManager(BufferManager* self) {
+//todo probably better to pass a staging queue in the constructor
+StagingQueue& get_StagingQueue(BufferAllocator& self) {
+	return self.staging.queue;
+}
+
+void destroy_BufferAllocator(BufferAllocator* self) {
 	VkDevice device = self->device;
 
 	vkDestroyBuffer(device, self->staging.buffer, nullptr);

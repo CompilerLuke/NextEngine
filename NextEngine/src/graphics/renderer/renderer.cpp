@@ -21,11 +21,9 @@
 #include "graphics/rhi/vulkan/vulkan.h"
 
 Renderer::Renderer(RHI& rhi, AssetManager& asset_manager, Window& window, World& world) : rhi(rhi) {
-	buffer_manager = make_BufferManager(rhi);
-	
-	model_renderer    = PERMANENT_ALLOC(ModelRendererSystem, asset_manager, *buffer_manager);
+	model_renderer    = PERMANENT_ALLOC(ModelRendererSystem, asset_manager);
 	grass_renderer    = PERMANENT_ALLOC(GrassRenderSystem, world);
-	terrain_renderer  = PERMANENT_ALLOC(TerrainRenderSystem, asset_manager, *buffer_manager, world);
+	terrain_renderer  = PERMANENT_ALLOC(TerrainRenderSystem, asset_manager, world);
 	skybox_renderer   = PERMANENT_ALLOC(SkyboxSystem, asset_manager, world);
 	main_pass         = PERMANENT_ALLOC(MainPass, *this, asset_manager, glm::vec2(window.width, window.height));
 	culling			  = PERMANENT_ALLOC(CullingSystem, asset_manager, *model_renderer, world);
@@ -37,7 +35,7 @@ Renderer::~Renderer() {
 	destruct(terrain_renderer); 
 	destruct(skybox_renderer);
 	destruct(main_pass);
-	destroy_BufferManager(buffer_manager);
+	destroy_BufferAllocator(buffer_manager);
 }
 
 PreRenderParams::PreRenderParams(Layermask mask) : layermask(mask) {}

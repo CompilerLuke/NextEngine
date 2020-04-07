@@ -47,11 +47,13 @@ struct ModelRenderer {
 };
 
 struct Level;
+struct BufferAllocator;
 
  struct ENGINE_API ModelManager : HandleManager<Model, model_handle> {
 	Level& level;
+	BufferAllocator& buffer_manager;
 
-	ModelManager(Level& level);
+	ModelManager(BufferAllocator&, Level& level);
 	model_handle load(string_view, bool serialized = false);
 	void load_in_place(model_handle, const glm::mat4& mat = glm::mat4(1.0));
 };

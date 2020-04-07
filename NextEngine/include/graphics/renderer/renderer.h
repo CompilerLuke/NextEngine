@@ -13,7 +13,7 @@ struct Window;
 struct World;
 struct RenderCtx;
 struct ShaderConfig;
-struct BufferManager;
+struct BufferAllocator;
 struct RHI;
 
 struct RenderSettings {
@@ -30,7 +30,7 @@ struct ENGINE_API Renderer {
 	RenderSettings settings;
 
 	struct RHI& rhi;
-	struct BufferManager* buffer_manager;
+	struct BufferAllocator* buffer_manager;
 	struct SkyboxSystem* skybox_renderer;
 	struct ModelRendererSystem* model_renderer;
 	struct GrassRenderSystem* grass_renderer;

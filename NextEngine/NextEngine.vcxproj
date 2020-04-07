@@ -230,6 +230,7 @@
     <ClInclude Include="include\graphics\assets\texture.h" />
     <ClInclude Include="include\graphics\renderer\transforms.h" />
     <ClInclude Include="include\graphics\pass\volumetric.h" />
+    <ClInclude Include="include\graphics\rhi\rhi.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\buffer.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\device.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\pipeline.h" />
@@ -307,6 +308,7 @@
     </ClCompile>
     <ClCompile Include="src\graphics\renderer\transforms.cpp" />
     <ClCompile Include="src\graphics\pass\volumetric.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\rhi.cpp" />
     <ClCompile Include="src\graphics\rhi\vulkan\vk_pipeline.cpp" />
     <ClCompile Include="src\graphics\rhi\vulkan\vk_swapchain.cpp" />
     <ClCompile Include="src\graphics\rhi\window.cpp" />

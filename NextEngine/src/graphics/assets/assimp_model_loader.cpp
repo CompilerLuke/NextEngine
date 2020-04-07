@@ -164,7 +164,7 @@ void ModelManager::load_in_place(model_handle handle, const glm::mat4& apply_tra
 		Mesh* mesh = scratch.meshes_base + i;
 
 		model->aabb.update_aabb(mesh->aabb);
-		mesh->buffer = {}; //RHI::alloc_vertex_buffer(VERTEX_LAYOUT_DEFAULT, mesh->vertices.length, mesh->vertices.data, mesh->indices.length, mesh->indices.data);
+		mesh->buffer = alloc_vertex_buffer(buffer_manager, VERTEX_LAYOUT_DEFAULT, mesh->vertices, mesh->indices);
 	}
 
 	model->materials.length = scene->mNumMaterials;

@@ -43,7 +43,8 @@ model_handle load_subdivided(ModelManager& model_manager, uint num) {
 	return model_manager.load(tformat("subdivided_plane", num, ".fbx"));
 }
 
-TerrainRenderSystem::TerrainRenderSystem(AssetManager& assets, BufferManager& buffer_manager, World& world) : asset_manager(assets), buffer_manager(buffer_manager) {
+TerrainRenderSystem::TerrainRenderSystem(AssetManager& assets, World& world) 
+	: asset_manager(assets), buffer_manager(assets.buffer_allocator) {
 	world.on_make<Terrain>([&assets, &world](vector<ID>& terrains) { init_terrains(assets.textures, world, terrains); });
 
 	flat_shader = assets.shaders.load("shaders/pbr.vert", "shaders/gizmo.frag");

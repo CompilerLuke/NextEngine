@@ -230,6 +230,7 @@
     <ClCompile Include="src\graphics\rhi\vulkan\vk_device.cpp" />
     <ClCompile Include="src\graphics\rhi\vulkan\vk_swapchain.cpp" />
     <ClCompile Include="src\graphics\rhi\vulkan\vk_pipeline.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\rhi.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="vendor\imgui\imconfig.h">
@@ -451,5 +452,6 @@
     <ClInclude Include="include\graphics\rhi\vulkan\pipeline.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\shader.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\rhi.h" />
+    <ClInclude Include="include\graphics\rhi\rhi.h" />
   </ItemGroup>
 </Project>

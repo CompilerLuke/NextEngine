@@ -1,13 +1,14 @@
 #pragma once
 
 #include "core/memory/linear_allocator.h"
+#include "core/container/slice.h"
 
 // REMINDER - NO RAII and no Polymorphic Allocator - HIGH PERFOMANCE
 template<typename T>
 struct tvector {
 	T* data = NULL;
-	int length = 0;
-	int capacity = 0;
+	uint length = 0;
+	uint capacity = 0;
 
 	inline void reserve(unsigned int count) {
 		if (count > capacity) {

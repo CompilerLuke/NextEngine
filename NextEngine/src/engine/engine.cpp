@@ -13,6 +13,7 @@
 
 #include "physics/physics.h"
 #include "components/transform.h"
+#include "graphics/rhi/vulkan/rhi.h"
 #include "graphics/rhi/vulkan/vulkan.h"
 
 Modules::Modules(const char* app_name, const char* level_path) {
@@ -21,7 +22,6 @@ Modules::Modules(const char* app_name, const char* level_path) {
 	input = new Input();
 	time = new Time();
 	world = new World();	
-	asset_manager = new AssetManager(*level);	
 	local_transforms_system = new LocalTransformSystem();
 	physics_system = new PhysicsSystem();
 
@@ -38,7 +38,7 @@ Modules::Modules(const char* app_name, const char* level_path) {
 	const char* validation_layers[1] = {
 		"VK_LAYER_KHRONOS_validation"
 	};
-	
+
 	VulkanDesc vk_desc = {};
 	vk_desc.api_version = VK_MAKE_VERSION(1, 0, 0);
 	vk_desc.app_name = app_name;
@@ -51,8 +51,12 @@ Modules::Modules(const char* app_name, const char* level_path) {
 	vk_desc.device_features.samplerAnisotropy = VK_TRUE;
 	vk_desc.device_features.multiDrawIndirect = VK_TRUE;
 
-	rhi = make_RHI(vk_desc, asset_manager->models, *level, *window);
+	rhi = make_RHI(vk_desc, *level, *window);
+	
+	asset_manager = new AssetManager(get_BufferAllocator(*rhi), *level);
 	renderer = new Renderer(*rhi, *asset_manager, *window, *world);
+	
+	init_RHI(rhi, asset_manager->models);
 }
 
 Modules::~Modules() {
