@@ -4,9 +4,9 @@
 #include <glad/glad.h>
 #include "graphics/pass/pass.h"
 #include "graphics/renderer/renderer.h"
-#include "graphics/renderer/material_system.h"
+#include "graphics/assets/material.h"
 #include "core/container/sort.h"
-#include "graphics/assets/asset_manager.h"
+#include "graphics/assets/assets.h"
 #include "core/io/logger.h"
 #include "core/time.h"
 
@@ -65,7 +65,7 @@ DrawCommandState draw_draw_over = {
 };
 
 
-CommandBuffer::CommandBuffer(AssetManager& asset_manager) : asset_manager(asset_manager) {
+CommandBuffer::CommandBuffer(AssetManager& assets) : assets(assets) {
 	commands.allocator = &temporary_allocator;
 }
 
@@ -90,11 +90,11 @@ void CommandBuffer::draw(int length, struct VertexBuffer* vertex_buffer, struct 
 }
 
 void CommandBuffer::draw(glm::mat4 model_m, model_handle handle, slice<material_handle> materials) {
-	Model* model = asset_manager.models.get(handle);
+	Model* model = assets.models.get(handle);
 
 	for (Mesh& mesh : model->meshes) {
 		material_handle mat_handle = materials[mesh.material_id];
-		Material* mat = asset_manager.materials.get(mat_handle);
+		Material* mat = assets.materials.get(mat_handle);
 		draw(model_m, &mesh.buffer, mat);
 	}
 }
@@ -192,10 +192,10 @@ void color_mask_bind(ColorMask mask) {
 	else glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 }
 
-void set_params(CommandBuffer& command_buffer, AssetManager& asset_manager, shader_config_handle config_handle, Material& mat) {	
-	TextureManager& texture_manager = asset_manager.textures;
-	ShaderManager& shader_manager = asset_manager.shaders;
-	CubemapManager& cubemap_manager = asset_manager.cubemaps;
+void set_params(CommandBuffer& command_buffer, AssetManager& assets, shader_config_handle config_handle, Material& mat) {	
+	TextureManager& texture_manager = assets.textures;
+	ShaderManager& shader_manager = assets.shaders;
+	CubemapManager& cubemap_manager = assets.cubemaps;
 	
 	static texture_handle empty_texture = texture_manager.load("solid_white.png");
 	
@@ -361,7 +361,7 @@ struct DrawElementsIndirectCommand {
 
 void CommandBuffer::submit_to_gpu(RenderCtx& ctx) {
 	CommandBuffer& self = ctx.command_buffer;
-	AssetManager& assets = self.asset_manager;
+	AssetManager& assets = self.assets;
 	
 	vector<SpecializedDrawCommand> commands_data;
 	commands_data.allocator = &temporary_allocator;

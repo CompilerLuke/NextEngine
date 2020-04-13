@@ -7,13 +7,13 @@
 
 struct ShaderManager;
 struct TextureManager;
-struct AssetManager;
+struct Assets;
 struct ShaderConfig;
 struct RenderCtx;
 struct Renderer;
 
 struct DepthMap : Pass {
-	AssetManager& asset_manager;
+	Assets& assets;
 
 	shader_handle depth_shader;
 	texture_handle depth_map;
@@ -21,24 +21,24 @@ struct DepthMap : Pass {
 
 	void set_shader_params(ShaderConfig&, RenderCtx&) override {};
 
-	DepthMap(AssetManager&, uint, uint, bool stencil = false);
+	DepthMap(Assets&, uint, uint, bool stencil = false);
 	void render_maps(Renderer& renderer, World&, RenderCtx&, glm::mat4 projection, glm::mat4 view, bool is_shadow_pass = false);
 };
 
 struct ShadowMask {
-	AssetManager& asset_manager;
+	Assets& assets;
 
 	texture_handle shadow_mask_map;
 	Framebuffer shadow_mask_map_fbo;
 
 	void set_shadow_params(ShaderConfig&, RenderCtx&);
 
-	ShadowMask(AssetManager&, glm::vec2);
+	ShadowMask(Assets&, glm::vec2);
 };
 
 struct ShadowPass : Pass {
 	Renderer& renderer;
-	AssetManager& asset_manager;
+	Assets& assets;
 
 	shader_handle shadow_mask_shader;
 	shader_handle screenspace_blur_shader;
@@ -54,5 +54,5 @@ struct ShadowPass : Pass {
 	void set_shader_params(ShaderConfig&, RenderCtx&) override {};
 	void set_shadow_params(ShaderConfig&, RenderCtx&);
 
-	ShadowPass(AssetManager& asset_manager, Renderer& renderer, glm::vec2, texture_handle depth_prepass);
+	ShadowPass(Assets& assets, Renderer& renderer, glm::vec2, texture_handle depth_prepass);
 };

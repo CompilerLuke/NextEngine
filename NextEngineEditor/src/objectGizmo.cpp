@@ -2,7 +2,7 @@
 
 #include "stdafx.h"
 #include "objectGizmo.h"
-#include "graphics/assets/asset_manager.h"
+#include "graphics/assets/assets.h"
 #include "components/transform.h"
 #include "components/lights.h"
 #include "components/camera.h"
@@ -10,16 +10,16 @@
 #include "graphics/renderer/renderer.h"
 #include "graphics/renderer/model_rendering.h"
 
-ObjectGizmoSystem::ObjectGizmoSystem(AssetManager& asset_manager) 
+ObjectGizmoSystem::ObjectGizmoSystem(Assets& assets) 
 : asset_manager(asset_manager) {
-	this->dir_light_model =  asset_manager.models.load("editor/dirLight.fbx", true);
-	this->grass_model =      asset_manager.models.load("editor/grass.fbx", true);
-	this->camera_model =     asset_manager.models.load("editor/camera.fbx", true);
+	this->dir_light_model =  load_Model(assets, "editor/dirLight.fbx");
+	this->grass_model =      load_Model(assets, "editor/grass.fbx");
+	this->camera_model =     load_Model(assets, "editor/camera.fbx");
 
-	Material gizmo_mat(asset_manager.shaders.load("shaders/pbr.vert", "shaders/diffuse.frag"));
-	gizmo_mat.set_vec3(asset_manager.shaders, "material.diffuse", glm::vec3(0, 0.8, 0.8));
+	//Material gizmo_mat(load_Shader(assets, "shaders/pbr.vert", "shaders/diffuse.frag"));
+	//gizmo_mat.set_vec3(asset_manager.shaders, "material.diffuse", glm::vec3(0, 0.8, 0.8));
 
-	this->gizmo_materials.append(asset_manager.materials.assign_handle(std::move(gizmo_mat)));
+	//this->gizmo_materials.append(asset_manager.materials.assign_handle(std::move(gizmo_mat)));
 }
 
 void render_gizmo(model_handle model, slice<material_handle> gizmo_materials, World& world, RenderCtx& ctx, ID id) {
@@ -28,7 +28,7 @@ void render_gizmo(model_handle model, slice<material_handle> gizmo_materials, Wo
 	glm::mat4 model_m = model_m = trans.compute_model_matrix();
 
 	if (ctx.layermask & EDITOR_LAYER || ctx.layermask & PICKING_LAYER) {
-		ctx.command_buffer.draw(model_m, model, gizmo_materials);
+	//	ctx.command_buffer.draw(model_m, model, gizmo_materials);
 	}
 }
 

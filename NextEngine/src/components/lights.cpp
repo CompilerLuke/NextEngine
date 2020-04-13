@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "components/lights.h"
 #include "ecs/ecs.h"
-#include "graphics/renderer/material_system.h"
+#include "graphics/assets/material.h"
 #include "components/transform.h"
 #include "components/camera.h"
 #include <glm/gtc/matrix_transform.hpp>

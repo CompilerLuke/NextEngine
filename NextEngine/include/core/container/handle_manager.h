@@ -29,7 +29,7 @@ struct HandleManager {
 		return { handle };
 	}
 
-	void assign_handle(H handle, T&& obj) {
+	T* assign_handle(H handle, T&& obj) {
 		bool found = false;
 
 		for (int i = 0; i < free_serialized_ids.length; i++) {
@@ -44,8 +44,11 @@ struct HandleManager {
 
 		slots.append(std::move(obj));
 
+		T* ptr = &slots[slots.length - 1];
+
 		id_of_slots.append(handle.id);
-		by_handle[handle.id - 1] = &slots[slots.length - 1];
+		by_handle[handle.id - 1] = ptr;
+		return ptr;
 	}
 
 	H index_to_handle(unsigned index) {

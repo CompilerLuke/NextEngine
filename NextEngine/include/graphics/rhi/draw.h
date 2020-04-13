@@ -65,11 +65,11 @@ struct Pipeline {
 struct VertexBuffer;
 struct InstanceBuffer;
 struct Material;
-struct AssetManager;
+struct Assets;
 struct RenderCtx;
 
-struct ENGINE_API CommandBuffer {
-	AssetManager& asset_manager;
+struct CommandBuffer {
+	Assets& assets;
 
 	vector<DrawCommand> commands;
 
@@ -77,14 +77,14 @@ struct ENGINE_API CommandBuffer {
 
 	unsigned int next_texture_index();
 
-	CommandBuffer(AssetManager& asset_manager);
-	~CommandBuffer();
+	ENGINE_API CommandBuffer(Assets& assets);
+	ENGINE_API ~CommandBuffer();
 
-	void draw(glm::mat4, VertexBuffer*, Material*);
-	void draw(glm::mat4, model_handle, slice<material_handle>);
-	void draw(int length, model_handle, InstanceBuffer*, slice<material_handle>);
-	void draw(int length, VertexBuffer*, InstanceBuffer*, Material*);
-	void clear();
+	void ENGINE_API draw(glm::mat4, VertexBuffer*, Material*);
+	void ENGINE_API draw(glm::mat4, model_handle, slice<material_handle>);
+	void ENGINE_API draw(int length, model_handle, InstanceBuffer*, slice<material_handle>);
+	void ENGINE_API draw(int length, VertexBuffer*, InstanceBuffer*, Material*);
+	void ENGINE_API clear();
 
-	static void submit_to_gpu(RenderCtx&);
+	static void ENGINE_API submit_to_gpu(RenderCtx&);
 };

@@ -37,36 +37,50 @@ const char* device_extensions[] = {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 };
 
-QueueFamilyIndices find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface) {
-	QueueFamilyIndices indices;
+array<20, VkQueueFamilyProperties> queue_family_properties(VkPhysicalDevice device) {
+	uint32_t queue_family_count = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, nullptr);
 
-	uint32_t queueFamilyCount = 0;
-	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+	array<20, VkQueueFamilyProperties> queue_families(queue_family_count);
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, queue_families.data);
 
-	array<20, VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data);
+	return queue_families;
+}
 
-	for (int i = 0; i < queueFamilyCount; i++) {
-		VkQueueFamilyProperties& queueFamily = queueFamilies[i];
-		if (queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-			indices.graphicsFamily = i;
-		}
+int32_t find_graphics_queue_family(VkPhysicalDevice device) {
+	auto queue_families = queue_family_properties(device);
 
-		VkBool32 presentSupport = false;
-		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
-
-		if (presentSupport) {
-			indices.presentFamily = i;
-		}
-
-		if (indices.is_complete()) {
-			break;
+	for (int i = 0; i < queue_families.length; i++) {
+		VkQueueFamilyProperties& queue_family = queue_families[i];
+		if (queue_family.queueCount > 0 && queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+			return i;
 		}
 	}
 
-	return indices;
+	return -1;
 }
 
+int32_t find_present_queue_family(VkPhysicalDevice device, VkSurfaceKHR surface) {
+	auto queue_families = queue_family_properties(device);
+
+	for (int i = 0; i < queue_families.length; i++) {
+		VkQueueFamilyProperties& queue_family = queue_families[i];
+		
+		VkBool32 present_support = false;
+		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &present_support);
+
+		if (present_support) return i;
+	}
+
+	return -1;
+}
+
+QueueFamilyIndices find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface) {
+	int32_t graphics_family = find_graphics_queue_family(device);
+	int32_t present_family = find_present_queue_family(device, surface);
+
+	return { graphics_family, present_family };
+}
 
 SwapChainSupportDetails query_swapchain_support(VkSurfaceKHR surface, VkPhysicalDevice device) {
 	SwapChainSupportDetails details;
@@ -110,7 +124,9 @@ bool check_device_extension_support(VkPhysicalDevice device) {
 }
 
 bool is_device_suitable(VkPhysicalDevice device, VkSurfaceKHR surface) {
-	QueueFamilyIndices indices = find_queue_families(device, surface);
+	int32_t graphics_family = find_graphics_queue_family(device);
+	int32_t present_family = find_present_queue_family(device, surface);
+	bool is_complete = graphics_family != -1 && present_family != -1;
 
 	bool extensionSupport = check_device_extension_support(device);
 
@@ -123,7 +139,7 @@ bool is_device_suitable(VkPhysicalDevice device, VkSurfaceKHR surface) {
 	VkPhysicalDeviceFeatures supportedFeatures;
 	vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
 
-	return indices.is_complete() && extensionSupport && swapChainAdequate && supportedFeatures.samplerAnisotropy;
+	return is_complete && extensionSupport && swapChainAdequate && supportedFeatures.samplerAnisotropy;
 }
 
 uint32_t rate_device_suitablity(VkPhysicalDevice device, VkSurfaceKHR surface) {
@@ -291,7 +307,7 @@ void make_logical_devices(Device& device, const VulkanDesc& desc, VkSurfaceKHR s
 
 	VkDeviceQueueCreateInfo queueCreateInfo = {};
 	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	queueCreateInfo.queueFamilyIndex = indices.graphicsFamily;
+	queueCreateInfo.queueFamilyIndex = indices.graphics_family;
 	queueCreateInfo.queueCount = 1;
 
 	float queuePriority = 1.0f;
@@ -316,15 +332,15 @@ void make_logical_devices(Device& device, const VulkanDesc& desc, VkSurfaceKHR s
 		throw "failed to make logical device!";
 	}
 
-	vkGetDeviceQueue(device, indices.graphicsFamily, 0, &device.graphics_queue);
+	vkGetDeviceQueue(device, indices.graphics_family, 0, &device.graphics_queue);
 
 	array<20, VkDeviceQueueCreateInfo> queueCreateInfos;
 
 	array<2, uint32_t> uniqueQueueFamilies(2);
-	uniqueQueueFamilies[0] = (uint32_t)indices.graphicsFamily;
-	uniqueQueueFamilies[1] = (uint32_t)indices.presentFamily;
+	uniqueQueueFamilies[0] = (uint32_t)indices.graphics_family;
+	uniqueQueueFamilies[1] = (uint32_t)indices.present_family;
 
-	if (indices.graphicsFamily == indices.presentFamily) uniqueQueueFamilies.length = 1;
+	if (indices.graphics_family == indices.present_family) uniqueQueueFamilies.length = 1;
 
 	queuePriority = 1.0f;
 	for (int i = 0; i < uniqueQueueFamilies.length; i++) {
@@ -339,7 +355,7 @@ void make_logical_devices(Device& device, const VulkanDesc& desc, VkSurfaceKHR s
 	makeInfo.queueCreateInfoCount = queueCreateInfos.length;
 	makeInfo.pQueueCreateInfos = queueCreateInfos.data;
 
-	vkGetDeviceQueue(device, indices.presentFamily, 0, &device.present_queue);
+	vkGetDeviceQueue(device, indices.present_family, 0, &device.present_queue);
 }
 
 void destroy_Instance(VkInstance instance) {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/container/array.h"
+#include "graphics/rhi/buffer.h"
 #include "volk.h"
 
 struct BufferAllocator;
@@ -38,6 +39,7 @@ void begin_staging_cmds(StagingQueue& queue);
 void end_staging_cmds(StagingQueue& queue);
 void destroy_StagingQueue(StagingQueue& staging);
 uint32_t find_memory_type(VkPhysicalDevice physical_device, uint32_t typeFilter, VkMemoryPropertyFlags properties);
+void memcpy_Buffer(VkDevice device, VkDeviceMemory memory, void* buffer_data, u64 buffer_size, u64 offset = 0);
 void make_Buffer(VkDevice device, VkPhysicalDevice physical_device, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 void copy_Buffer(StagingQueue& staging_queue, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 void make_StagedBuffer(StagingQueue& staging_queue, void* bufferData, VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkBuffer& buffer, VkDeviceMemory& bufferMemory);

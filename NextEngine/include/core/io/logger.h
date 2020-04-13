@@ -13,6 +13,7 @@ void ENGINE_API format_intern(string_buffer&, sstring str);
 void ENGINE_API format_intern(string_buffer&, int num);
 void ENGINE_API format_intern(string_buffer&, float num);
 void ENGINE_API format_intern(string_buffer&, unsigned int num);
+void ENGINE_API format_intern(string_buffer&, u64 num);
 void ENGINE_API format_intern(string_buffer&, const string_buffer&);
 
 template<typename T>

@@ -4,7 +4,7 @@
 #include <glm/gtc/quaternion.hpp>
 
 
-class BulletWrapper;
+struct BulletWrapper;
 class btCollisionShape;
 class btRigidBody;
 

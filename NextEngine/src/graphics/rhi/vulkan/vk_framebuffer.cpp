@@ -8,24 +8,15 @@
 AttachmentDesc::AttachmentDesc(texture_handle& id) 
 : tex_id(id) {}
 
-void add_attachment(TextureManager& manager, uint width, uint height, AttachmentDesc& self, GLenum gl_attach) {
-	uint tex = gl_gen_texture();
-
-	/**/
-	self.tex_id = manager.create_from_gl(tex, self);
-	/**/
+void add_attachment(Assets& assets, uint width, uint height, AttachmentDesc& self, GLenum gl_attach) {
+	
 }
 
-void add_depth_attachment(TextureManager& manager, uint width, uint height, AttachmentDesc& self, DepthBufferSettings& depth_buffer) {
-	unsigned int tex = gl_gen_texture();
-
-	/**/
-	self.tex_id = manager.create_from_gl(tex, self);
-
-	/**/
+void add_depth_attachment(Assets& assets, uint width, uint height, AttachmentDesc& self, DepthBufferSettings& depth_buffer) {
+	
 }
 
-Framebuffer::Framebuffer(TextureManager& manager, FramebufferDesc& settings) {
+Framebuffer::Framebuffer(Assets& assets, FramebufferDesc& settings) {
 	unsigned int fbo = 0;
 	unsigned int rbo = 0;
 
@@ -43,11 +34,11 @@ Framebuffer::Framebuffer(TextureManager& manager, FramebufferDesc& settings) {
 
 	for (int i = 0; i < settings.color_attachments.length; i++) {
 		auto& attach = settings.color_attachments[i];
-		add_attachment(manager, settings.width, settings.height, attach, GL_COLOR_ATTACHMENT0 + i);
+		add_attachment(assets, settings.width, settings.height, attach, GL_COLOR_ATTACHMENT0 + i);
 	}
 
 	if (settings.depth_attachment) {
-		add_depth_attachment(manager, settings.width, settings.height, *settings.depth_attachment, settings.depth_buffer);
+		add_depth_attachment(assets, settings.width, settings.height, *settings.depth_attachment, settings.depth_buffer);
 	}
 
 	/**/

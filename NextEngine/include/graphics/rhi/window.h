@@ -24,7 +24,7 @@ typedef void(*keyfun) (GLFWwindow *, int, int, int, int);
 typedef void(*charfun) (GLFWwindow *, unsigned int);
 typedef void(*mousebuttonfun) (GLFWwindow *, int, int, int);
 
-struct ENGINE_API Window {
+struct Window {
 	string_buffer title;
 	bool vSync = true;
 	bool full_screen = false;
@@ -43,17 +43,17 @@ struct ENGINE_API Window {
 	Window() {};
 	~Window();
 
-	void init();
-	bool should_close();
-	void swap_buffers();
-	void poll_inputs();
-	void override_key_callback(keyfun func);
-	void override_char_callback(charfun func);
-	void override_mouse_button_callback(mousebuttonfun func);	
-	void wait_events();
-	void get_framebuffer_size(int* width, int* height);
+	void ENGINE_API init();
+	bool ENGINE_API should_close();
+	void ENGINE_API swap_buffers();
+	void ENGINE_API poll_inputs();
+	void ENGINE_API override_key_callback(keyfun func);
+	void ENGINE_API override_char_callback(charfun func);
+	void ENGINE_API override_mouse_button_callback(mousebuttonfun func);
+	void ENGINE_API wait_events();
+	void ENGINE_API get_framebuffer_size(int* width, int* height);
 
-	void* get_win32_window();
+	ENGINE_API void* get_win32_window();
 
-	static Window* from(GLFWwindow*);
+	static ENGINE_API Window* from(GLFWwindow*);
 };

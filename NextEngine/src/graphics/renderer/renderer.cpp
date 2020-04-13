@@ -8,7 +8,7 @@
 #include "graphics/renderer/grass.h"
 #include "graphics/renderer/model_rendering.h"
 #include "graphics/renderer/transforms.h"
-#include "graphics/assets/asset_manager.h"
+#include "graphics/assets/assets.h"
 #include "components/camera.h"
 #include "graphics/rhi/draw.h"
 #include "graphics/pass/render_pass.h"
@@ -20,13 +20,13 @@
 #include "graphics/rhi/vulkan/buffer.h"
 #include "graphics/rhi/vulkan/vulkan.h"
 
-Renderer::Renderer(RHI& rhi, AssetManager& asset_manager, Window& window, World& world) : rhi(rhi) {
-	model_renderer    = PERMANENT_ALLOC(ModelRendererSystem, asset_manager);
+Renderer::Renderer(RHI& rhi, Assets& assets, Window& window, World& world) : rhi(rhi) {
+	model_renderer    = PERMANENT_ALLOC(ModelRendererSystem, rhi, assets);
 	grass_renderer    = PERMANENT_ALLOC(GrassRenderSystem, world);
-	terrain_renderer  = PERMANENT_ALLOC(TerrainRenderSystem, asset_manager, world);
-	skybox_renderer   = PERMANENT_ALLOC(SkyboxSystem, asset_manager, world);
-	main_pass         = PERMANENT_ALLOC(MainPass, *this, asset_manager, glm::vec2(window.width, window.height));
-	culling			  = PERMANENT_ALLOC(CullingSystem, asset_manager, *model_renderer, world);
+	terrain_renderer  = PERMANENT_ALLOC(TerrainRenderSystem, rhi, assets, world);
+	skybox_renderer   = PERMANENT_ALLOC(SkyboxSystem, assets, world);
+	main_pass         = PERMANENT_ALLOC(MainPass, *this, assets, glm::vec2(window.width, window.height));
+	culling			  = PERMANENT_ALLOC(CullingSystem, assets, *model_renderer, world);
 }
 
 Renderer::~Renderer() {
@@ -63,13 +63,20 @@ RenderCtx::RenderCtx(const RenderCtx& ctx, CommandBuffer& command_buffer, Pass* 
 
 }
 
+struct GlobalUBO {
+	glm::mat4 projection;
+	glm::mat4 view;
+	float window_width;
+	float window_height;
+};
+
 void RenderCtx::set_shader_scene_params(ShaderConfig& config) {
-	config.set_mat4("projection", projection);
+	/*config.set_mat4("projection", projection);
 	config.set_mat4("view", view);
 	config.set_float("window_width", width);
 	config.set_float("window_height", height);
 
-	pass->set_shader_params(config, *this);
+	pass->set_shader_params(config, *this);*/
 }
 
 void Renderer::update_settings(const RenderSettings& settings) {
@@ -98,7 +105,7 @@ RenderCtx Renderer::render(World& world, Layermask layermask, uint width, uint h
 
 	PreRenderParams pre_render(layermask);
 
-	CommandBuffer cmd_buffer(model_renderer->asset_manager);
+	CommandBuffer cmd_buffer(model_renderer->assets);
 	
 	RenderCtx ctx(cmd_buffer, main_pass);
 	ctx.layermask = layermask;

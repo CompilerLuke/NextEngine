@@ -47,11 +47,11 @@ struct ENGINE_API Renderer {
 	void render_overlay(World& world, RenderCtx&);
 	RenderCtx render(World& world, Layermask layermask, uint width, uint height, RenderExtension* ext);
 
-	Renderer(RHI& rhi, AssetManager& asset_manager, Window&, World&);
+	Renderer(RHI& rhi, Assets& assets, Window&, World&);
 	~Renderer();
 };
 
-struct ENGINE_API RenderCtx {
+struct RenderCtx {
 	RenderExtension* extension;
 
 	Layermask layermask;
@@ -69,10 +69,10 @@ struct ENGINE_API RenderCtx {
 
 	uint width = 0;
 	uint height = 0;
-	void set_shader_scene_params(ShaderConfig&);
+	ENGINE_API void set_shader_scene_params(ShaderConfig&);
 
-	RenderCtx(struct CommandBuffer&, struct Pass*);
-	RenderCtx(const RenderCtx&, struct CommandBuffer&, struct Pass*);
+	ENGINE_API RenderCtx(struct CommandBuffer&, struct Pass*);
+	ENGINE_API RenderCtx(const RenderCtx&, struct CommandBuffer&, struct Pass*);
 };
 
 struct ENGINE_API PreRenderParams {

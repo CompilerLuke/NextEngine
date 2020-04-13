@@ -3,7 +3,7 @@
 #include "graphics/renderer/ibl.h"
 #include "graphics/rhi/draw.h"
 #include "graphics/renderer/renderer.h"
-#include "graphics/assets/asset_manager.h"
+#include "graphics/assets/assets.h"
 #include "ecs/ecs.h"
 #include "graphics/rhi/frame_buffer.h"
 #include "glad/glad.h"
@@ -15,6 +15,7 @@
 #include <stb_image.h>
 #include "components/camera.h"
 #include "graphics/pass/render_pass.h"
+#include "graphics/assets/material.h"
 
 REFLECT_STRUCT_BEGIN(Skybox)
 REFLECT_STRUCT_MEMBER(filename)
@@ -32,16 +33,16 @@ void SkyboxSystem::bind_ibl_params(ShaderConfig& config, RenderCtx& ctx) {
 	Skybox* skybox = ctx.skybox;
 	auto bind_to = ctx.command_buffer.next_texture_index();
 	
-	gl_bind_cubemap(asset_manager.cubemaps, skybox->irradiance_cubemap, bind_to);
+	/*gl_bind_cubemap(assets.cubemaps, skybox->irradiance_cubemap, bind_to);
 	config.set_int("irradianceMap", bind_to);
 	
 	bind_to = ctx.command_buffer.next_texture_index();
-	gl_bind_cubemap(asset_manager.cubemaps, skybox->prefilter_cubemap, bind_to);
+	gl_bind_cubemap(assets.cubemaps, skybox->prefilter_cubemap, bind_to);
 	config.set_int("prefilterMap", bind_to);
 
 	bind_to = ctx.command_buffer.next_texture_index();
-	gl_bind_to(asset_manager.textures, skybox->brdf_LUT, bind_to);
-	config.set_int("brdfLUT", bind_to);
+	gl_bind_to(assets.textures, skybox->brdf_LUT, bind_to);
+	config.set_int("brdfLUT", bind_to);*/
 }
 
 struct CubemapCapture {
@@ -83,7 +84,7 @@ struct CubemapCapture {
 
 		Camera* camera = world.make<Camera>(id);
 		camera->far_plane = 600;
-		camera->near_plane = 0.1;
+		camera->near_plane = 0.1f;
 		camera->fov = 90.0f;
 
 		new_params.cam = camera;
@@ -107,12 +108,6 @@ struct CubemapCapture {
 };
 
 void SkyboxSystem::load(Skybox* skybox) { //todo cleanup
-	Level& level = asset_manager.level;
-	ShaderManager& shaders = asset_manager.shaders;
-	TextureManager& textures = asset_manager.textures;
-	ModelManager& models = asset_manager.models;
-	CubemapManager& cubemaps = asset_manager.cubemaps;
-
 	if (skybox->brdf_LUT.id != INVALID_HANDLE) return;
 
 #ifdef RENDER_API_OPENGL
@@ -146,7 +141,7 @@ void SkyboxSystem::load(Skybox* skybox) { //todo cleanup
 	if (!skybox->capture_scene) {
 		stbi_set_flip_vertically_on_load(true); //this seems different
 		int width, height, nrComponents;
-		float *data = stbi_loadf(asset_manager.level.asset_path(skybox->filename).c_str(), &width, &height, &nrComponents, 0);
+		float *data = stbi_loadf(assets.level.asset_path(skybox->filename).c_str(), &width, &height, &nrComponents, 0);
 		if (data)
 		{
 			glGenTextures(1, &hdrTexture);
@@ -262,14 +257,14 @@ void SkyboxSystem::load(Skybox* skybox) { //todo cleanup
 				}
 			}
 
-			string_buffer save_capture_to = asset_manager.level.asset_path(format("data/scene_capture/capture", i, ".jpg").c_str());
+			string_buffer save_capture_to = assets.level.asset_path(format("data/scene_capture/capture", i, ".jpg").c_str());
 			//int success = stbi_write_jpg(save_capture_to.c_str(), width, height, 3, pixels, 100);
 			
 		}
 		else if (skybox->capture_scene) {
 			int width, height, num_channels;
 
-			string_buffer load_capture_from = asset_manager.level.asset_path(format("data/scene_capture/capture", i, ".jpg"));
+			string_buffer load_capture_from = assets.level.asset_path(format("data/scene_capture/capture", i, ".jpg"));
 
 			stbi_set_flip_vertically_on_load(false);
 			uint8_t* data = stbi_load(load_capture_from.c_str(), &width, &height, &num_channels, 3);
@@ -470,27 +465,24 @@ Skybox* SkyboxSystem::make_default_Skybox(World& world, RenderCtx* params, strin
 	sky->capture_scene = true;
 	sky->filename = filename;
 
-	ShaderManager& shaders = asset_manager.shaders;
-	ModelManager& models = asset_manager.models;
+	auto skybox_shader = load_Shader(assets, "shaders/skybox.vert", "shaders/skybox.frag");
+	auto cube_model = load_Model(assets, "cube.fbx");
 
-	auto skybox_shader = shaders.load("shaders/skybox.vert", "shaders/skybox.frag");
-	auto cube_model = models.load("cube.fbx");
-
-	Material mat(skybox_shader);
-	mat.set_vec3(shaders, "skytop", glm::vec3(66, 188, 245) / 200.0f);
-	mat.set_vec3(shaders, "skyhorizon", glm::vec3(66, 135, 245) / 400.0f);
+	MaterialDesc mat{ skybox_shader };
+	mat_vec3(mat, "skytop", glm::vec3(66, 188, 245) / 200.0f);
+	mat_vec3(mat, "skyhorizon", glm::vec3(66, 135, 245) / 400.0f);
 
 	auto materials = world.make<Materials>(id);
 	
-	materials->materials.append(asset_manager.materials.assign_handle(std::move(mat), true));
+	materials->materials.append(make_Material(assets, mat));
 
 	auto trans = world.make<Transform>(id);
 
 	return sky;
 }
 
-SkyboxSystem::SkyboxSystem(AssetManager& assets, World& world) : asset_manager(assets) {
-	cube_model = assets.models.load("cube.fbx");
+SkyboxSystem::SkyboxSystem(Assets& assets, World& world) : assets(assets) {
+	cube_model = load_Model(assets, "cube.fbx");
 
 	world.on_make<Skybox>([this, &world](vector<ID>& created) {
 		for (ID id : created) {

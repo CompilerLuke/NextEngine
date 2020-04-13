@@ -4,13 +4,12 @@
 #include "core/container/string_view.h"
 
 struct ENGINE_API Modules {
-	struct Level* level;
 	struct Window* window;
 	struct Time* time;
 	struct World* world;
 	struct Input* input;
 	struct Renderer* renderer;
-	struct AssetManager* asset_manager;
+	struct Assets* assets;
 	struct PhysicsSystem* physics_system;
 	struct LocalTransformSystem* local_transforms_system;
 	struct RHI* rhi;

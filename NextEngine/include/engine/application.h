@@ -6,12 +6,13 @@
 
 #define APPLICATION_API extern "C" _declspec(dllexport)
 
-typedef void* (*InitFunction)(void*,  struct Modules&);
-typedef void (*UpdateFunction)(void*, struct Modules&);
-typedef void (*RenderFunction)(void*, struct Modules&);
-typedef void (*DeinitFunction)(void*, struct Modules&);
-typedef bool (*IsRunningFunction)(void*, struct Modules&);
-typedef void(*ReloadFunction)(void*, struct Modules&);
+struct Modules;
+using InitFunction      = void* (*)(void*, Modules&);
+using UpdateFunction    = void  (*)(void*, Modules&);
+using RenderFunction    = void  (*)(void*, Modules&);
+using DeinitFunction    = void  (*)(void*, Modules&);
+using ReloadFunction    = void  (*)(void*, Modules&);
+using IsRunningFunction = bool  (*)(void*, Modules&);
 
 class Application {
 	string_buffer path;

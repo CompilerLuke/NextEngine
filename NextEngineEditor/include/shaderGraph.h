@@ -104,14 +104,13 @@ struct ShaderGraph {
 
 	RotatablePreview rot_preview;
 
-	vector<string_buffer> param_names;
-	vector<Param> parameters;
-	vector<Param> dependencies;
+	vector<ParamDesc> parameters;
+	vector<ParamDesc> dependencies;
 	bool requires_time = false;
 
 	float scale = 1.0f;
 
-	void render(struct World&, struct RenderCtx&, struct Input&, struct TextureManager&);
+	void render(struct World&, struct RenderCtx&, struct Input&, struct Assets&);
 };
 
 struct ShaderEditor {
@@ -152,11 +151,11 @@ void asset_properties(struct ShaderAsset* tex, struct Editor& editor, struct Wor
 
 string_view get_param_name(ShaderGraph& graph, unsigned int i);
 
-struct AssetTab;
+struct Assets;
 struct SerializerBuffer;
 
-void load_Shader_for_graph(ShaderManager&, ShaderAsset* asset);
-void compile_shader_graph(AssetTab&, ShaderManager&, ShaderAsset* asset);
+void load_Shader_for_graph(Assets&, ShaderAsset* asset);
+void compile_shader_graph(AssetTab&, ShaderAsset* asset);
 void serialize_shader_asset(struct SerializerBuffer& buffer, ShaderAsset* asset);
 void deserialize_shader_asset(struct DeserializerBuffer& buffer, ShaderAsset* asset);
 

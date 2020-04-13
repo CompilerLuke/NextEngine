@@ -10,14 +10,14 @@
 #include <glm/vec3.hpp>
 #include <glm/vec2.hpp>
 
-struct ENGINE_API Vertex {
+struct Vertex {
 	glm::vec3 position;
 	glm::vec3 normal;
 	glm::vec2 tex_coord;
 	glm::vec3 tangent;
 	glm::vec3 bitangent;
 
-	REFLECT()
+	REFLECT(ENGINE_API)
 };
 
 struct Mesh {
@@ -27,7 +27,7 @@ struct Mesh {
 	AABB aabb;
 	uint material_id;
 
-	REFLECT()
+	REFLECT(ENGINE_API)
 };
 
 struct Model {
@@ -36,24 +36,17 @@ struct Model {
 	slice<sstring> materials;
 	AABB aabb;
 
-	REFLECT()
+	REFLECT(ENGINE_API)
 };
 
 struct ModelRenderer {
 	bool visible = true;
 	model_handle model_id;
 
-	REFLECT()
+	REFLECT(ENGINE_API)
 };
 
 struct Level;
 struct BufferAllocator;
 
- struct ENGINE_API ModelManager : HandleManager<Model, model_handle> {
-	Level& level;
-	BufferAllocator& buffer_manager;
-
-	ModelManager(BufferAllocator&, Level& level);
-	model_handle load(string_view, bool serialized = false);
-	void load_in_place(model_handle, const glm::mat4& mat = glm::mat4(1.0));
-};
+void load_assimp(Model* model, BufferAllocator& buffer_allocator, string_view real_path, const glm::mat4& apply_transform);

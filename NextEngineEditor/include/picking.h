@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/handle.h"
-#include "graphics/renderer/material_system.h"
+#include "graphics/assets/material.h"
 #include "graphics/culling/culling.h"
 #include "core/container/slice.h"
 #include <limits.h>
@@ -11,7 +11,7 @@ struct RenderCtx;
 struct ShaderConfig;
 struct Input;
 struct Camera;
-struct AssetManager;
+struct Assets;
 
 #define MAX_PICKING_NODES 100
 #define MAX_PICKING_INSTANCES 1000
@@ -43,10 +43,10 @@ struct RayHit {
 };
 
 struct PickingSystem {
-	AssetManager& asset_manager;
+	Assets& assets;
 	PickingScenePartition partition;
 
-	PickingSystem(AssetManager&);
+	PickingSystem(Assets&);
 	void rebuild_acceleration_structure(World& world);
 	bool ray_cast(const Ray&, RayHit&);
 	bool ray_cast(World& world, Input& input, RayHit& hit);
@@ -55,12 +55,12 @@ struct PickingSystem {
 };
 
 struct OutlineSelected {
-	AssetManager& asset_manager;
+	Assets& asset_manager;
 	shader_handle outline_shader;
-	Material outline_material;
+	material_handle outline_material;
 	DrawCommandState object_state;
 	DrawCommandState outline_state;
 
-	OutlineSelected(AssetManager&);
+	OutlineSelected(Assets&);
 	void render(struct World&, slice<ID> highlighted, struct RenderCtx&);
 };

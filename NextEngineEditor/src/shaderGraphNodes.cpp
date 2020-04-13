@@ -147,14 +147,14 @@ float override_width_of_node(ShaderNode* self) {
 	return 300.0f;
 }
 
-void render_pbr_node(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle, TextureManager& texture_manager) {
+void render_pbr_node(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle, Assets& assets) {
 	render_title(graph, "PBR");
 	render_output(graph, handle);
 	render_inputs(graph, handle, 4, pbr_inputs);
 	render_input(graph, handle, 4, pbr_inputs, false);
 	render_inputs(graph, handle, 2, pbr_inputs, 5);
 
-	ImGui::Image((ImTextureID)gl_id_of(texture_manager, graph.rot_preview.preview), ImVec2(380 * graph.scale, 380 * graph.scale), ImVec2(0, 1), ImVec2(1, 0));
+	ImGui::Image(assets, graph.rot_preview.preview, ImVec2(380 * graph.scale, 380 * graph.scale));
 }
 
 void render_remap_node(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle) {
@@ -262,7 +262,7 @@ void render_blend_node(ShaderGraph& graph, ShaderNode* node, shader_node_handle 
 	node_select_type(graph, node, Channel3);
 }
 
-void render_texture_node( ShaderGraph& graph, ShaderNode* self, shader_node_handle handle, TextureManager& texture_manager) {
+void render_texture_node( ShaderGraph& graph, ShaderNode* self, shader_node_handle handle, Assets& assets) {
 	texture_handle tex_handle;
 
 	if (self->tex_node.from_param) {
@@ -270,7 +270,7 @@ void render_texture_node( ShaderGraph& graph, ShaderNode* self, shader_node_hand
 		render_title(graph, title);
 		render_output(graph, handle);
 
-		tex_handle = graph.parameters[self->tex_node.param_id].image;
+		tex_handle = { graph.parameters[self->tex_node.param_id].image };
 	}
 	else {
 		render_title(graph, "Texture");
@@ -281,7 +281,7 @@ void render_texture_node( ShaderGraph& graph, ShaderNode* self, shader_node_hand
 
 	render_input(graph, handle, 0, tex_inputs, false);
 
-	ImGui::Image((ImTextureID)gl_id_of(texture_manager, tex_handle), ImVec2(380 * graph.scale, 380 * graph.scale), ImVec2(0, 1), ImVec2(1, 0));
+	ImGui::Image(assets, tex_handle, ImVec2(380 * graph.scale, 380 * graph.scale));
 
 	if (ImGui::BeginDragDropTarget()) {
 		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DRAG_AND_DROP_IMAGE")) {
@@ -309,9 +309,9 @@ void render_param_node(ShaderGraph& graph, ShaderNode* self, shader_node_handle 
 	render_output(graph, handle);
 }
 
-void render_node_inner(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle, TextureManager& texture_manager) {
-	if (self->type == ShaderNode::PBR_NODE) render_pbr_node(graph, self, handle, texture_manager);
-	if (self->type == ShaderNode::TEXTURE_NODE) render_texture_node(graph, self, handle, texture_manager);
+void render_node_inner(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle, Assets& assets) {
+	if (self->type == ShaderNode::PBR_NODE) render_pbr_node(graph, self, handle, assets);
+	if (self->type == ShaderNode::TEXTURE_NODE) render_texture_node(graph, self, handle, assets);
 	if (self->type == ShaderNode::TEX_COORDS) render_tex_coords(graph, self, handle);
 	if (self->type == ShaderNode::MATH_NODE) render_math_node(graph, self, handle);
 	if (self->type == ShaderNode::BLEND_NODE) render_blend_node(graph, self, handle);
@@ -388,10 +388,13 @@ void ShaderCompiler::find_dependencies() {
 		if (node->type == ShaderNode::TEXTURE_NODE) {
 			if (node->tex_node.from_param) continue;
 
-			Param param;
+			ParamDesc param;
 			param.type = Param_Image;
-			param.image = node->tex_node.tex_handle;
-			param.loc = { graph.nodes_manager.index_to_handle(i).id };
+			param.image = node->tex_node.tex_handle.id;
+			param.name = "dep"; 
+			
+			// todo how will we handle materials
+			// { graph.nodes_manager.index_to_handle(i).id };
 
 			graph.dependencies.append(param);
 		}

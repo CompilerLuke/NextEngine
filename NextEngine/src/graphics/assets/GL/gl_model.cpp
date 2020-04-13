@@ -5,7 +5,7 @@
 #include "core/memory/linear_allocator.h"
 #include "graphics/rhi/draw.h"
 #include "graphics/renderer/renderer.h"
-#include "graphics/renderer/material_system.h"
+#include "graphics/assets/material.h"
 #include "graphics/assets/model.h"
 
 REFLECT_STRUCT_BEGIN(Vertex)

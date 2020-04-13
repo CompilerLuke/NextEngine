@@ -5,17 +5,21 @@
 #include "components/transform.h"
 #include "core/memory/linear_allocator.h"
 #include "core/io/logger.h"
-#include "graphics/assets/asset_manager.h"
+#include "graphics/rhi/rhi.h"
+#include "graphics/assets/assets.h"
 
 REFLECT_STRUCT_BEGIN(ModelRenderer)
 REFLECT_STRUCT_MEMBER(visible)
-REFLECT_STRUCT_MEMBER_TAG(model_id)
+REFLECT_STRUCT_MEMBER(model_id)
 REFLECT_STRUCT_END()
 
-ModelRendererSystem::ModelRendererSystem(AssetManager& assets) 
-	: asset_manager(assets) {
+ModelRendererSystem::ModelRendererSystem(RHI& rhi, Assets& assets) 
+	: rhi(rhi), assets(assets) {
+	
+	BufferAllocator& buffer_allocator = get_BufferAllocator(rhi);
+	
 	for (int i = 0; i < Pass::Count; i++) {
-		instance_buffer[i] = alloc_instance_buffer(assets.buffer_allocator, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4, MAX_MESH_INSTANCES, 0);
+		instance_buffer[i] = alloc_instance_buffer(buffer_allocator, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4, MAX_MESH_INSTANCES, 0);
 	}
 }
 
@@ -99,7 +103,7 @@ void ModelRendererSystem::render(World& world, RenderCtx& ctx) {
 
 		memcpy(instance_data + instance_count, instances.model_m.data, instances.model_m.length * sizeof(glm::mat4));
 
-		Model* model = asset_manager.models.get(bucket.model_id);
+		Model* model = NULL; ///assets.models.get(bucket.model_id);
 		VertexBuffer* vertex_buffer = &model->meshes[bucket.mesh_id].buffer;
 
 		InstanceBuffer* instance_offset = TEMPORARY_ALLOC(InstanceBuffer);
@@ -107,7 +111,7 @@ void ModelRendererSystem::render(World& world, RenderCtx& ctx) {
 		instance_offset->base += instance_count;
 		instance_offset->length = count;
 
-		Material* material = asset_manager.materials.get(bucket.mat_id);
+		//Material* material = assets.materials.get(bucket.mat_id);
 
 		/*for (int j = 0; j < count; j++) {
 			instance_data[j + instance_count] = instances.model_m[j];
@@ -116,12 +120,12 @@ void ModelRendererSystem::render(World& world, RenderCtx& ctx) {
 			ctx.command_buffer->submit(cmd);
 		}*/
 
-		ctx.command_buffer.draw(count, vertex_buffer, instance_offset, material);
+		//ctx.command_buffer.draw(count, vertex_buffer, instance_offset, material);
 
 		instance_count += count;
 	}
 
-	upload_data(asset_manager.buffer_allocator, instance_buffer, instance_count, instance_data);
+	//upload_data(assets.buffer_allocator, instance_buffer, instance_count, instance_data);
 
 	//flush_logger();
 }

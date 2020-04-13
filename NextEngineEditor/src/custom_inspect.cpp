@@ -8,8 +8,8 @@
 #include "graphics/renderer/ibl.h"
 #include "graphics/renderer/renderer.h"
 #include "grass.h"
-#include "graphics/assets/asset_manager.h"
-#include "engine/engine.h"
+#include "graphics/assets/assets.h"
+#include "graphics/assets/model.h"
 #include "editor.h"
 
 bool Quat_inspect(void* data, string_view prefix, Editor& editor) {
@@ -55,18 +55,19 @@ bool Mat4_inspect(void* data, string_view prefix, Editor& editor) {
 
 //Shaders
 bool Shader_inspect(void* data, string_view prefix, Editor& editor) { //todo how do we pass state into these functions
-	ShaderManager& manager = editor.asset_manager.shaders;
+	Assets& assets = editor.asset_manager;
 	auto handle_shader = (shader_handle*)data;
-	auto shader = manager.get(*handle_shader);
+	auto shader = shader_info(assets, *handle_shader);
+	if (!shader) return true;
 
-	auto name = format(shader->v_filename, ", ", shader->f_filename);
+	auto name = tformat(shader->vfilename, ", ", shader->ffilename);
 	ImGui::LabelText(prefix.c_str(), name.c_str());
 
 	return true;
 }
 
 template<typename H, typename T>
-bool render_asset_preview(TextureManager& texture_manager, H* handle_ptr, vector<T*>& to_asset, string_view prefix, const char * drag_and_drop) {
+bool render_asset_preview(Assets& assets, H* handle_ptr, vector<T*>& to_asset, string_view prefix, const char * drag_and_drop) {
 	H asset_id = *handle_ptr;
 
 	T* asset = NULL;
@@ -77,7 +78,7 @@ bool render_asset_preview(TextureManager& texture_manager, H* handle_ptr, vector
 		ImGui::NewLine();
 	}
 	else {
-		ImGui::Image((ImTextureID)gl_id_of(texture_manager, asset->rot_preview.preview), ImVec2(128, 128), ImVec2(0, 1), ImVec2(1, 0));
+		ImGui::Image(assets, asset->rot_preview.preview, ImVec2(128, 128));
 	}
 
 	accept_drop(drag_and_drop, handle_ptr, sizeof(uint));
@@ -89,7 +90,7 @@ bool render_asset_preview(TextureManager& texture_manager, H* handle_ptr, vector
 }
 
 bool Model_inspect(void* data, string_view prefix, Editor& editor) {
-	return render_asset_preview(editor.asset_manager.textures, (model_asset_handle*)data, editor.asset_tab.model_handle_to_asset, prefix, "DRAG_AND_DROP_MODEL");
+	return render_asset_preview(editor.asset_manager, (model_asset_handle*)data, editor.asset_tab.model_handle_to_asset, prefix, "DRAG_AND_DROP_MODEL");
 }
 
 bool Layermask_inspect(void* data, string_view prefix, Editor& editor) {
@@ -133,12 +134,11 @@ bool accept_drop(const char* drop_type, void* ptr, unsigned int size) {
 
 //Materials
 bool Material_inspect(void* data, string_view prefix, Editor& editor) {
-	return render_asset_preview(editor.asset_manager.textures, (material_asset_handle*)data, editor.asset_tab.material_handle_to_asset, prefix, "DRAG_AND_DROP_MATERIAL");
+	return render_asset_preview(editor.asset_manager, (material_asset_handle*)data, editor.asset_tab.material_handle_to_asset, prefix, "DRAG_AND_DROP_MATERIAL");
 }
 
 bool Materials_inspect(void* data, string_view prefix, Editor& editor) {
 	Materials* materials = (Materials*)data;
-	auto material_type = reflect::TypeResolver<Material>::get();
 
 	if (ImGui::CollapsingHeader("Materials")) {
 		for (unsigned int i = 0; i < materials->materials.length; i++) {
@@ -166,7 +166,7 @@ bool Skybox_inspect(void* data, string_view prefix, Editor& editor) {
 
 bool Grass_inspect(void* data, string_view prefix, Editor& editor) {
 	World& world = editor.world;
-	ModelManager& model_manager = editor.asset_manager.models;
+	Grass* grass = (Grass*)data;
 
 	static glm::vec2 density_range(0, 0.1);
 	
@@ -194,9 +194,9 @@ bool Grass_inspect(void* data, string_view prefix, Editor& editor) {
 		return true;
 	}
 
-	ID id = world.id_of<Grass>((Grass*)data);
+	ID id = world.id_of<Grass>(grass);
 
-	Model* model = model_manager.get(((Grass*)data)->placement_model);
+	Model* model = get_Model(editor.asset_manager, grass->placement_model);
 	Materials* materials = world.by_id<Materials>(id);
 	if (materials) {
 		int diff = model->materials.length - materials->materials.length;
@@ -216,7 +216,7 @@ bool Grass_inspect(void* data, string_view prefix, Editor& editor) {
 	return false;
 }
 
-void register_on_inspect_callbacks(AssetManager& asset_manager) {
+void register_on_inspect_callbacks() {
 	register_on_inspect_gui("Skybox", Skybox_inspect);
 	register_on_inspect_gui("Material", Material_inspect);
 	register_on_inspect_gui("Materials", Materials_inspect);

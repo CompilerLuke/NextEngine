@@ -39,7 +39,7 @@ struct RigidBody {
 
 	bool continous = false;
 
-	struct btRigidBody* bt_rigid_body = NULL;
+	class btRigidBody* bt_rigid_body = NULL;
 	REFLECT(ENGINE_API)
 };
 

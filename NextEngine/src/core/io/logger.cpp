@@ -35,6 +35,10 @@ void format_intern(string_buffer& buffer, unsigned int num) {
 	buffer += std::to_string(num).c_str();
 }
 
+void format_intern(string_buffer& buffer, u64 num) {
+	buffer += std::to_string(num).c_str();
+}
+
 string_buffer log_buffer;
 
 void log_string(string_view s) {

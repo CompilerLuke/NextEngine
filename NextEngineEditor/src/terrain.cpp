@@ -11,10 +11,10 @@
 #include "core/io/input.h"
 #include "editor.h"
 #include "core/container/string_buffer.h"
-#include "graphics/assets/asset_manager.h"
+#include "graphics/assets/assets.h"
 
-void edit_Terrain(Editor& editor, AssetManager& asset_manager, World& world, UpdateCtx& params) {
-	if (!params.layermask & EDITOR_LAYER) return;
+void edit_Terrain(Editor& editor, Assets& assets, World& world, UpdateCtx& params) {
+	if (!(params.layermask & EDITOR_LAYER)) return;
 
 	for (ID id : world.filter<Terrain, Transform>(params.layermask | GAME_LAYER)) {
 		auto self = world.by_id<Terrain>(id);
@@ -41,7 +41,7 @@ void edit_Terrain(Editor& editor, AssetManager& asset_manager, World& world, Upd
 
 		if (!params.input.key_pressed('B')) continue;
 
-		auto texture_id = gl_id_of(asset_manager.textures, self->heightmap);
+		//auto texture_id = gl_id_of(assets.textures, self->heightmap);
 		
 		if (!self->show_control_points) continue;
 

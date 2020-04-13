@@ -8,7 +8,7 @@
 #include "core/io/logger.h"
 #include "core/io/vfs.h"
 #include "core/io/input.h"
-#include "graphics/assets/asset_manager.h"
+#include "graphics/assets/assets.h"
 #include "graphics/renderer/renderer.h"
 #include <GLFW/glfw3.h>
 
@@ -402,7 +402,7 @@ glm::vec2 calc_pos_of_node(ShaderGraph& graph, shader_node_handle handle, bool i
 	return position;
 }
 
-void render_node_inner(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle, TextureManager& texture_manager);
+void render_node_inner(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle, Assets& assets);
 
 void deselect(ShaderGraph& graph, shader_node_handle handle) {
 	for (auto& selected_handle : graph.selected) {
@@ -413,7 +413,7 @@ void deselect(ShaderGraph& graph, shader_node_handle handle) {
 	}
 }
 
-void render_node(ShaderGraph& graph, shader_node_handle handle, TextureManager& texture_manager) {
+void render_node(ShaderGraph& graph, shader_node_handle handle, Assets& assets) {
 	auto self = graph.nodes_manager.get(handle);
 
 	glm::vec2 size = calc_size(graph, self);
@@ -480,7 +480,7 @@ void render_node(ShaderGraph& graph, shader_node_handle handle, TextureManager& 
 	ImGui::BeginGroup(); // Lock horizontal position
 	//ImGui::PopID();
 
-	render_node_inner(graph, self, handle, texture_manager);
+	render_node_inner(graph, self, handle, assets);
 
 	for (int i = 0; i < self->inputs.length; i++) {
 		auto& input = self->inputs[i];
@@ -517,39 +517,32 @@ void render_node(ShaderGraph& graph, shader_node_handle handle, TextureManager& 
 
 #include "GLFW/glfw3.h"
 
-void set_params_for_shader_graph(AssetTab& asset_tab, ShaderManager& shaders, Material* mat_ptr) {
-	mat_ptr->params.clear();
+void set_params_for_shader_graph(AssetTab& asset_tab, shader_handle shader_handle) {
+	ShaderAsset* asset = asset_tab.shader_handle_to_asset[shader_handle.id];
 
-	ShaderAsset* asset = asset_tab.shader_handle_to_asset[mat_ptr->shader.id];
+	MaterialDesc desc{ asset->handle };
 
 	if (asset->graph->requires_time) {
-		Param p;
-		p.type = Param_Time;
-		p.loc = shaders.location(mat_ptr->shader, "_dep_time");
-
-		mat_ptr->params.append(p);
+		desc.flags = REQUIRES_TIME;
 	}
 
-	for (Param p : asset->graph->dependencies) {
-		p.loc = shaders.location(mat_ptr->shader, get_dependency({ p.loc.id }));
-		mat_ptr->params.append(p);
+	for (ParamDesc p : asset->graph->dependencies) {
+		desc.params.append(p);
 	}
 
 	for (unsigned int i = 0; i < asset->graph->parameters.length; i++) {
-		Param p = asset->graph->parameters[i];
-		p.loc = shaders.location(mat_ptr->shader, asset->graph->param_names[i]);
-		mat_ptr->params.append(p);
+		desc.params.append(asset->graph->parameters[i]);
 	}
 
-	mat_ptr->set_vec2(shaders, "transformUVs", glm::vec2(1.0f));
+	mat_vec2(desc, "transformUVs", glm::vec2(1.0f));
 }
 
-//todo Refactor into Preview Class
 void render_preview(ShaderAsset* asset, World& world, AssetTab& tab, RenderCtx& old_ctx) {
-	AssetManager& assets = tab.asset_manager;
+	Assets& assets = tab.asset_manager;
 	
 	ShaderGraph& graph = *asset->graph;
 	
+	/*
 	ID id = world.make_ID();
 	Entity* entity = world.make<Entity>(id);
 	Transform* trans = world.make<Transform>(id);
@@ -566,10 +559,14 @@ void render_preview(ShaderAsset* asset, World& world, AssetTab& tab, RenderCtx& 
 	material_handle mat_handle;
 	if (asset->handle.id == INVALID_HANDLE) mat_handle = tab.default_material;
 	else {
-		static material_handle preview_handle = assets.materials.assign_handle({});
-		Material* mat_ptr = assets.materials.get(preview_handle);
-		*mat_ptr = Material(asset->handle);
-		set_params_for_shader_graph(tab, assets.shaders, mat_ptr);
+		MaterialDesc desc{ asset->handle };
+		for (ParamDesc& param : asset->shader_arguments) {
+			desc.params.append(param);
+		}
+
+		static material_handle preview_handle = make_Material(assets, desc);
+
+		replace_Material(assets, preview_handle, desc);
 
 		mat_handle = preview_handle;
 	}
@@ -584,6 +581,7 @@ void render_preview(ShaderAsset* asset, World& world, AssetTab& tab, RenderCtx& 
 	render_preview_to_buffer(tab, render_ctx, cmd_buffer, graph.rot_preview.preview, world);
 
 	world.free_now_by_id(id);
+	*/
 }
 
 glm::vec2 shift_by_grid(ShaderGraph& graph, glm::vec2 pos, glm::vec2 shift) {
@@ -629,7 +627,7 @@ void set_scale(ShaderGraph* graph, Input& input, float scale) {
 	}
 }
 
-void ShaderGraph::render(World& world, RenderCtx& ctx, Input& input, TextureManager& texture_manager) {
+void ShaderGraph::render(World& world, RenderCtx& ctx, Input& input, Assets& assets) {
 	ImGui::PushClipRect(ImGui::GetCursorScreenPos(), ImVec2(ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionMax().x, ImGui::GetCursorScreenPos().y + ImGui::GetContentRegionMax().y), true);
 
 	float scroll_speed = 0.2f;
@@ -661,7 +659,7 @@ void ShaderGraph::render(World& world, RenderCtx& ctx, Input& input, TextureMana
 
 	//Draw Nodes
 	for (unsigned int i = 0; i < nodes_manager.slots.length; i++) {
-		render_node(*this, nodes_manager.index_to_handle(i), texture_manager);
+		render_node(*this, nodes_manager.index_to_handle(i), assets);
 	}
 
 	draw_list->ChannelsSetCurrent(0);
@@ -734,26 +732,26 @@ void ShaderCompiler::begin() {
 		"#include shaders/pbr_helper.glsl\n\n"
 		;
 
-	for (Param& param : graph.dependencies) {
+	for (ParamDesc& param : graph.dependencies) {
 		if (param.type == Param_Image) {
 			contents += "uniform sampler2D ";
-			contents += get_dependency({ param.loc.id });
+			contents += param.name;
 			contents += ";\n";
 		}
 	}
 
 	for (unsigned int i = 0; i < graph.parameters.length; i++) {
-		Param& param = graph.parameters[i];
+		ParamDesc& param = graph.parameters[i];
 
 		if (param.type == Param_Image) {
 			contents += "uniform sampler2D ";
-			contents += graph.param_names[i];
+			contents += graph.parameters[i].name;
 			contents += ";\n";
 		}
 
 		if (param.type == Param_Float) {
 			contents += "uniform float ";
-			contents += graph.param_names[i];
+			contents += graph.parameters[i].name;
 			contents += ";\n";
 		}
 	}
@@ -878,13 +876,16 @@ void ShaderCompiler::compile() {
 	end();
 }
 
-void load_Shader_for_graph(ShaderManager& shader_manager, ShaderAsset* asset) {
+void load_Shader_for_graph(Assets& assets, ShaderAsset* asset) {
 	string_buffer file_path = tformat("data/shader_output/", asset->name, ".frag");
 	
-	asset->handle = shader_manager.load("shaders/pbr.vert", file_path);
+	asset->handle = load_Shader(assets, "shaders/pbr.vert", file_path);
 }
 
-void compile_shader_graph(AssetTab& asset_tab, ShaderManager& shader_manager, ShaderAsset* asset) {
+//todo ShaderGraph needs serious efforts to function again
+void compile_shader_graph(AssetTab& asset_tab, ShaderAsset* asset) {
+	Assets& assets = asset_tab.asset_manager;
+	
 	static string_buffer last_output;
 	
 	ShaderCompiler compiler(*asset->graph);
@@ -894,19 +895,16 @@ void compile_shader_graph(AssetTab& asset_tab, ShaderManager& shader_manager, Sh
 
 	string_buffer file_path = format("data/shader_output/", asset->name, ".frag");
 
-	File file(shader_manager.level);
-	if (file.open(file_path, File::WriteFile)) {
+	if (!writef(asset_tab.asset_manager, file_path, compiler.contents)) {
 		log("Could not open file to write shader output");
+		return;
 	}
 
-	file.write(compiler.contents);
-	file.close();
-
-	load_Shader_for_graph(shader_manager, asset);
+	load_Shader_for_graph(asset_tab.asset_manager, asset);
 
 	insert_shader_handle_to_asset(asset_tab, asset);
 	
-	shader_manager.reload(asset->handle);
+	//reload(assets, asset->handle);
 
 	last_output = string_view(compiler.contents);
 }
@@ -917,7 +915,7 @@ void ShaderEditor::render(World& world, Editor& editor, RenderCtx& ctx, Input& i
 	if (!this->open) return;
 
 	AssetTab& tab = editor.asset_tab;
-	ShaderManager& shaders = tab.asset_manager.shaders;
+	Assets& shaders = tab.asset_manager;
 
 	if (ImGui::Begin("Shader Graph Editor", &this->open, ImGuiWindowFlags_NoScrollbar)) {
 		if (this->current_shader == -1) {
@@ -933,12 +931,12 @@ void ShaderEditor::render(World& world, Editor& editor, RenderCtx& ctx, Input& i
 
 		ImGui::SameLine();
 		if (ImGui::Button("Compile")) {
-			compile_shader_graph(tab, shaders, asset);
+			compile_shader_graph(tab, asset);
 			render_preview(asset, world, tab, ctx);
 		}
 
 		if (input.key_pressed('R', true) && input.key_down(GLFW_KEY_LEFT_CONTROL, true)) {
-			compile_shader_graph(tab, shaders, asset);
+			compile_shader_graph(tab, asset);
 			render_preview(asset, world, tab, ctx);
 		}
 
@@ -972,7 +970,7 @@ void ShaderEditor::render(World& world, Editor& editor, RenderCtx& ctx, Input& i
 		
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f * asset->graph->scale, 2.0f * asset->graph->scale));
 
-		asset->graph->render(world, ctx, input, tab.asset_manager.textures);
+		asset->graph->render(world, ctx, input, tab.asset_manager);
 
 		glm::vec2 mouse_drag_begin(ImGui::GetMousePos().x, ImGui::GetMousePos().y);
 		mouse_drag_begin.x -= ImGui::GetMouseDragDelta().x;
@@ -1070,8 +1068,7 @@ ShaderAsset* create_new_shader(World& world, AssetTab& self, Editor& editor, Ren
 ShaderNode make_pbr_node();
 
 void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTab& self, RenderCtx& ctx) {
-	TextureManager& textures = self.asset_manager.textures;
-	ShaderManager& shaders = self.asset_manager.shaders;
+	Assets& assets = self.asset_manager;
 	
 	render_name(shader->name, self.default_font);
 	
@@ -1088,14 +1085,14 @@ void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTa
 		shader->graph->nodes_manager.assign_handle(make_pbr_node(), true);
 	}
 
-	compile_shader_graph(self, shaders, shader); //todo use undo redo system to detect change
+	compile_shader_graph(self, shader); //todo use undo redo system to detect change
 
 	ImGui::SetNextTreeNodeOpen(true);
 	ImGui::CollapsingHeader("Properties");
 
 	for (unsigned int i = 0; i < shader->graph->parameters.length; i++) {
-		Param& param = shader->graph->parameters[i];
-		string_view name = shader->graph->param_names[i];
+		ParamDesc& param = shader->graph->parameters[i];
+		string_view name = param.name;
 
 		if (param.type == Param_Float) {
 			ImGui::InputFloat(name.c_str(), &param.real);
@@ -1108,7 +1105,7 @@ void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTa
 		}
 
 		if (param.type == Param_Image) {
-			ImGui::Image((ImTextureID)gl_id_of(textures, param.image), ImVec2(200, 200), ImVec2(0, 1), ImVec2(1, 0));
+			ImGui::Image(self.asset_manager, { param.image }, ImVec2(200, 200));
 			
 			accept_drop("DRAG_AND_DROP_IMAGE", &param.image, sizeof(texture_handle));
 			
@@ -1117,7 +1114,7 @@ void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTa
 			ImGui::Button(name.c_str()); //todo implement rename
 
 			if (ImGui::BeginDragDropSource()) {
-				ImGui::Image((ImTextureID)gl_id_of(textures, param.image), ImVec2(200, 200), ImVec2(0, 1), ImVec2(1, 0));
+				ImGui::Image(self.asset_manager, { param.image }, ImVec2(200, 200));
 				ImGui::SetDragDropPayload("DRAG_AND_DROP_IMAGE_PARAM", &i, sizeof(string_view));
 				ImGui::EndDragDropSource();
 			}
@@ -1128,6 +1125,8 @@ void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTa
 
 	ImGui::NewLine();
 	
+
+
 	static string_buffer buffer_name;
 	
 	if (ImGui::Button("New Property")) {
@@ -1139,7 +1138,8 @@ void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTa
 		
 		ImGui::InputText("Name", buffer_name);
 
-		Param p;
+		ParamDesc p;
+		p.name = buffer_name.view();
 
 		bool create_property = true;
 
@@ -1149,7 +1149,7 @@ void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTa
 		}
 		else if (ImGui::Button("Image")) {
 			p.type = Param_Image;
-			p.image.id = 0;
+			p.image = 0;
 		}
 		else create_property = false;
 
@@ -1157,13 +1157,12 @@ void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTa
 
 		if (create_property) {
 			shader->graph->parameters.append(p);
-			shader->graph->param_names.append(buffer_name);
 		}
 
 		ImGui::EndPopup();
 	}
 
-	rot_preview(textures, shader->graph->rot_preview);
+	rot_preview(assets, shader->graph->rot_preview);
 	render_preview(shader, world, self, ctx);
 }
 
@@ -1198,7 +1197,7 @@ REFLECT_STRUCT_MEMBER(position)
 REFLECT_STRUCT_END()
 
 string_view get_param_name(ShaderGraph& graph, unsigned int i) {
-	return graph.param_names[i];
+	return graph.parameters[i].name;
 }
 
 void deserialize_shader_asset(DeserializerBuffer& buffer, ShaderAsset* asset) {
@@ -1235,15 +1234,22 @@ void deserialize_shader_asset(DeserializerBuffer& buffer, ShaderAsset* asset) {
 		graph->nodes_manager.assign_handle(handle, std::move(node));
 	}
 
-	buffer.read_array((reflect::TypeDescriptor_Vector*) reflect::TypeResolver<decltype(graph->parameters)>::get(), &graph->parameters);
-	
-	unsigned num_names = buffer.read_int();
-	graph->param_names.reserve(num_names);
+	buffer.read_int();
 
+	vector<Param> params;
+	buffer.read_array((reflect::TypeDescriptor_Vector*) reflect::TypeResolver<vector<Param>>::get(), &params);
+	for (Param& param : params) {
+		ParamDesc desc;
+		convert_to_desc(param, desc);
+		graph->parameters.append(desc);
+	}
+
+	unsigned num_names = buffer.read_int();
+	
+	vector<string_buffer> param_names;
+	
 	for (int i = 0; i < num_names; i++) {
-		string_buffer param_name;
-		buffer.read_string(param_name);
-		graph->param_names.append(std::move(param_name));
+		buffer.read_string(graph->parameters[i].name);
 	}
 
 }
@@ -1277,5 +1283,4 @@ void serialize_shader_asset(SerializerBuffer& buffer,  ShaderAsset* asset) {
 	}
 
 	buffer.write_array((reflect::TypeDescriptor_Vector*) reflect::TypeResolver<decltype(graph->parameters)>::get(), &graph->parameters);
-	buffer.write_array((reflect::TypeDescriptor_Vector*) reflect::TypeResolver<decltype(graph->param_names)>::get(), &graph->param_names);
 }

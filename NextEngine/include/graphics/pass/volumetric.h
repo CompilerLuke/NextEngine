@@ -3,13 +3,13 @@
 #include "graphics/rhi/frame_buffer.h"
 #include "graphics/assets/shader.h"
 
-struct AssetManager;
+struct Assets;
 
 struct FogMap {
 	Framebuffer fbo;
 	texture_handle map;
 
-	FogMap(TextureManager&, unsigned int, unsigned int);
+	FogMap(Assets&, unsigned int, unsigned int);
 };
 
 struct ShadowParams {
@@ -23,7 +23,7 @@ struct ShadowParams {
 };
 
 struct VolumetricPass {
-	AssetManager& asset_manager;
+	Assets& assets;
 
 	texture_handle depth_prepass;
 	FogMap calc_fog;
@@ -31,7 +31,7 @@ struct VolumetricPass {
 	shader_handle volume_shader;
 	shader_handle upsample_shader;
 
-	VolumetricPass(AssetManager& asset_manager, glm::vec2, texture_handle);
+	VolumetricPass(Assets& assets, glm::vec2, texture_handle);
 	void clear();
 
 	void render_with_cascade(struct World&, struct RenderCtx&, ShadowParams& shadow_params);

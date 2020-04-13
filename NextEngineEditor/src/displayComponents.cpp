@@ -57,6 +57,16 @@ bool render_fields_primitive(bool* ptr, string_view prefix) {
 
 #include <imgui/imgui_internal.h>
 
+namespace ImGui {
+	bool ImageButton(Assets& assets, texture_handle handle, glm::vec2 size) {
+		return ImageButton((ImTextureID)underlying_texture(assets, handle), size, ImVec2(0,1), ImVec2(1,0));
+	}
+
+	void Image(Assets& assets, texture_handle handle, glm::vec2 size) {
+		Image((ImTextureID)underlying_texture(assets, handle), size, ImVec2(0, 1), ImVec2(1, 0));
+	}
+}
+
 const char* destroy_component_popup_name(reflect::TypeDescriptor_Struct* type) {
 	return tformat("DestroyComponent", type->name).c_str();
 }

@@ -29,8 +29,10 @@ struct FrameData {
 };
 
 //todo abstract VulkanDesc
-RHI* make_RHI(const VulkanDesc&, Level&, Window&);
-void init_RHI(RHI* rhi, ModelManager&);
+struct Assets;
+
+RHI* make_RHI(const VulkanDesc&, Window&);
+void init_RHI(RHI* rhi, Assets&);
 
 void vk_draw_frame(RHI& rhi, FrameData& data);
 void destroy_RHI(RHI* rhi);
@@ -39,7 +41,7 @@ void destroy_RHI(RHI* rhi);
 { \
 	VkResult result = x; \
 	if (result != VK_SUCCESS) { \
-		printf("Vulkan Error %d at %s:%d", result, __FILE__, __LINE__); \
+		fprintf(stderr, "Vulkan Error %d at %s:%d", result, __FILE__, __LINE__); \
 		abort(); \
 	} \
 }

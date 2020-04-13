@@ -4,9 +4,9 @@
 #include <GLFW/glfw3.h>
 #include <chrono>
 
-struct ENGINE_API Time {
+struct Time {
 	std::chrono::steady_clock::time_point last_frame;
 	float delta_time;
 
-	void tick();
+	void ENGINE_API tick();
 };

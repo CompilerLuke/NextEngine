@@ -167,9 +167,9 @@ namespace reflect {
         }; \
     }
 
-#define REFLECT_UNION() \
+#define REFLECT_UNION(linking) \
     friend struct reflect::DefaultResolver; \
-    static reflect::TypeDescriptor_Union Reflection; \
+    static linking reflect::TypeDescriptor_Union Reflection; \
     static void initReflection(reflect::TypeDescriptor_Union*);
 
 #define REFLECT_UNION_BEGIN(Type) \
@@ -261,6 +261,9 @@ TypeDescriptor* getPrimitiveDescriptor<glm::vec3>();
 
 template<> ENGINE_API
 TypeDescriptor* getPrimitiveDescriptor<glm::vec4>();
+
+template<> ENGINE_API
+TypeDescriptor* getPrimitiveDescriptor<glm::mat4>();
 
 template<> ENGINE_API
 TypeDescriptor* getPrimitiveDescriptor<string_buffer>();

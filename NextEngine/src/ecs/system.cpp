@@ -13,7 +13,7 @@
 #include "physics/physics.h"
 #include "components/terrain.h"
 #include "components/grass.h"
-#include "graphics/renderer/material_system.h"
+#include "graphics/assets/material.h"
 
 DEFINE_COMPONENT_ID(Entity, 0)
 DEFINE_COMPONENT_ID(Transform, 1)

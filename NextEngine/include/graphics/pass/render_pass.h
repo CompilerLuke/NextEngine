@@ -5,12 +5,12 @@
 #include "graphics/pass/pass.h"
 #include <functional>
 
-struct AssetManager;
+struct Assets;
 struct RenderCtx;
 struct World;
 struct ShaderConfig;
 
-struct ENGINE_API MainPass : Pass {
+struct MainPass : Pass {
 	Renderer& renderer;
 	Framebuffer output;
 	
@@ -21,12 +21,12 @@ struct ENGINE_API MainPass : Pass {
 	texture_handle frame_map;
 	Framebuffer current_frame;
 	
-	void render_to_buffer(World&, RenderCtx&, std::function<void()>);
-	void render(World&, RenderCtx&) override;
-	void set_shader_params(ShaderConfig&, RenderCtx&) override;
+	void ENGINE_API render_to_buffer(World&, RenderCtx&, std::function<void()>);
+	void ENGINE_API render(World&, RenderCtx&) override;
+	void ENGINE_API set_shader_params(ShaderConfig&, RenderCtx&) override;
 
 	vector<Pass*> post_process;
 
-	MainPass(Renderer& renderer,AssetManager& asset_manager, glm::vec2);
-	void resize(glm::vec2);
+	ENGINE_API MainPass(Renderer& renderer,Assets& assets, glm::vec2);
+	void ENGINE_API resize(glm::vec2);
 };

@@ -3,7 +3,7 @@
 #include "ecs/ecs.h"
 #include "components/transform.h"
 #include "components/grass.h"
-#include "graphics/renderer/material_system.h"
+#include "graphics/assets/material.h"
 #include "graphics/renderer/renderer.h"
 #include "graphics/assets/model.h"
 

@@ -5,14 +5,14 @@
 #include <glm/mat4x4.hpp>
 #include <limits>
 
-struct ENGINE_API AABB {
+struct AABB {
 	glm::vec3 min = glm::vec3(FLT_MAX);
 	glm::vec3 max = glm::vec3(-FLT_MAX);
 
-	void update(const glm::vec3&);
+	void ENGINE_API update(const glm::vec3&);
 
-	AABB apply(const glm::mat4&);
-	void update_aabb(AABB&);
+	AABB ENGINE_API apply(const glm::mat4&);
+	void ENGINE_API update_aabb(AABB&);
 
 	inline glm::vec3 operator[](int i) const { return (&min)[i]; };
 	inline glm::vec3 centroid() { return (min + max) / 2.0f; };

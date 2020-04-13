@@ -231,6 +231,8 @@
     <ClCompile Include="src\graphics\rhi\vulkan\vk_swapchain.cpp" />
     <ClCompile Include="src\graphics\rhi\vulkan\vk_pipeline.cpp" />
     <ClCompile Include="src\graphics\rhi\vulkan\rhi.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_cmd_buffer.cpp" />
+    <ClCompile Include="src\graphics\assets\VULKAN\vk_material.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="vendor\imgui\imconfig.h">
@@ -423,9 +425,6 @@
     <ClInclude Include="include\core\reflection.h">
       <Filter>include\reflection</Filter>
     </ClInclude>
-    <ClInclude Include="include\graphics\renderer\material_system.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
     <ClInclude Include="include\core\container\sort.h">
       <Filter>include\core</Filter>
     </ClInclude>
@@ -439,7 +438,6 @@
       <Filter>include\logger</Filter>
     </ClInclude>
     <ClInclude Include="include\core\container\bitset.h" />
-    <ClInclude Include="include\graphics\assets\asset_manager.h" />
     <ClInclude Include="include\graphics\pass\render_graph.h" />
     <ClInclude Include="include\graphics\assets\material_manager.h" />
     <ClInclude Include="include\core\container\tvector.h" />
@@ -453,5 +451,11 @@
     <ClInclude Include="include\graphics\rhi\vulkan\shader.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\rhi.h" />
     <ClInclude Include="include\graphics\rhi\rhi.h" />
+    <ClInclude Include="include\graphics\assets\assets.h" />
+    <ClInclude Include="include\graphics\assets\material.h">
+      <Filter>include\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\vulkan\material.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\texture.h" />
   </ItemGroup>
 </Project>

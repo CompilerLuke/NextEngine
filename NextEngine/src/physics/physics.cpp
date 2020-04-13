@@ -70,7 +70,7 @@ btCollisionShape* make_Heightfield(int 	heightStickWidth,
 btCollisionShape* make_ConvexHull(glm::vec3* data, int num_verts) {
 	btConvexHullShape convexHullShape((btScalar*)data, num_verts, sizeof(glm::vec3));
 	//create a hull approximation
-	convexHullShape.setMargin(0.1);  // this is to compensate for a bug in bullet
+	convexHullShape.setMargin(0.1f);  // this is to compensate for a bug in bullet
 	btShapeHull* hull = new btShapeHull(&convexHullShape);
 	hull->buildHull(0);    // note: parameter is ignored by buildHull
 	
@@ -240,7 +240,7 @@ REFLECT_STRUCT_MEMBER(normal)
 REFLECT_STRUCT_END()
 
 REFLECT_STRUCT_BEGIN(CharacterController)
-REFLECT_STRUCT_MEMBER(on_ground, reflect::HideInInspectorTag)
+REFLECT_STRUCT_MEMBER_TAG(on_ground, reflect::HideInInspectorTag)
 REFLECT_STRUCT_MEMBER_TAG(velocity, reflect::HideInInspectorTag)
 REFLECT_STRUCT_MEMBER(feet_height)
 REFLECT_STRUCT_END()

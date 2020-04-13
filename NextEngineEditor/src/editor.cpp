@@ -22,14 +22,14 @@
 #include "custom_inspect.h"
 #include "picking.h"
 #include "core/io/vfs.h"
-#include "graphics/renderer/material_system.h"
+#include "graphics/assets/material.h"
 #include "core/serializer.h"
 #include "terrain.h"
 #include <ImGuizmo/ImGuizmo.h>
 #include "core/profiler.h"
 #include "graphics/renderer/renderer.h"
 #include "engine/engine.h"
-#include "graphics/assets/asset_manager.h"
+#include "graphics/assets/assets.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
@@ -165,21 +165,20 @@ string_buffer save_component_to(ComponentStore* store) {
 }
 
 void on_load_world(Editor& editor) {
-	Level& level = editor.level;
 	World& world = get_World(editor);
+	Assets& assets = editor.asset_manager;
 
 	unsigned int save_files_available = 0;
 
 	for (int i = 0; i < world.components_hash_size; i++) {
 		auto store = world.components[i].get();
 		if (store != NULL) {
-			File file(level);
-			if (!file.open(save_component_to(store).view(), File::ReadFileB)) continue;
+			string_buffer component_path = save_component_to(store);
+			
+			string_buffer data_buffer;
+			if (!readfb(assets, component_path, &data_buffer)) continue;
 
-			char* data_buffer = NULL;
-			unsigned int data_length = file.read_binary(&data_buffer);
-
-			DeserializerBuffer buffer(data_buffer, data_length);
+			DeserializerBuffer buffer(data_buffer.data, data_buffer.length);
 			reflect::TypeDescriptor* component_type = store->get_component_type();
 
 			unsigned num_components = buffer.read_int();
@@ -206,11 +205,16 @@ void on_load_world(Editor& editor) {
 		}
 	}
 
-	//if (save_files_available == 0) default_scene(editor, params);
+	//if (save_files_available == 0) default_scene(editor);
 }
+
+void default_scene(Editor& editor, RenderCtx& ctx);
 
 void on_load(Editor& editor, RenderCtx& ctx) {
 	World& world = get_World(editor);
+
+	default_scene(editor, ctx);
+	return;
 
 	on_load_world(editor);
 
@@ -224,7 +228,7 @@ void on_load(Editor& editor, RenderCtx& ctx) {
 
 void on_save_world(Editor& editor) {
 	World& world = get_World(editor);
-	Level& level = editor.asset_manager.level;
+	Assets& assets = editor.asset_manager;
 
 	for (int i = 0; i < world.components_hash_size; i++) {
 		auto store = world.components[i].get();
@@ -246,10 +250,10 @@ void on_save_world(Editor& editor) {
 				buffer.write(comp.type, comp.data);
 			}
 
-			File file(level);
-
-			if (!file.open(save_component_to(store).view(), File::WriteFileB)) throw "Could not save data";
-			file.write({ buffer.data, buffer.index });
+			string_buffer component_save_path = save_component_to(store);
+			if (!writef(assets, component_save_path, { buffer.data, buffer.index })) {
+				throw "Could not save data";
+			}
 		}
 	}
 }
@@ -265,7 +269,7 @@ void register_callbacks(Editor& editor, Modules& engine) {
 	
 	editor.selected.listeners.clear();
 
-	register_on_inspect_callbacks(*engine.asset_manager);
+	register_on_inspect_callbacks();
 
 	editor.asset_tab.register_callbacks(window, editor);
 
@@ -282,12 +286,11 @@ void register_callbacks(Editor& editor, Modules& engine) {
 }
 
 Editor::Editor(Modules& modules, const char* game_code) : 
-	asset_manager(*modules.asset_manager),
+	asset_manager(*modules.assets),
 	renderer(*modules.renderer),
 	world(*modules.world),
 	window(*modules.window),
 	input(*modules.input),
-	level(*modules.level),
 	time(*modules.time),
 
 	picking(asset_manager),
@@ -312,22 +315,18 @@ Editor::Editor(Modules& modules, const char* game_code) :
 	settings.height = window.height;
 	settings.color_attachments.append(color_attachment);
 
-	scene_view_fbo = Framebuffer(modules.asset_manager->textures, settings);
-
-	Time time;
-
-	TextureManager& texture_manager = modules.asset_manager->textures;
+	scene_view_fbo = Framebuffer(asset_manager, settings);
 
 	icons = {
-		{ "play",   texture_manager.load("editor/play_button3.png") },
-		{ "folder", texture_manager.load("editor/folder_icon.png") },
-		{ "shader", texture_manager.load("editor/shader-works-icon.png") }
+		{ "play",   load_Texture(asset_manager, "editor/play_button3.png") },
+		{ "folder", load_Texture(asset_manager, "editor/folder_icon.png") },
+		{ "shader", load_Texture(asset_manager, "editor/shader-works-icon.png") }
 	};
 
-	MainPass* main_pass = modules.renderer->main_pass;
+	MainPass* main_pass = renderer.main_pass;
 	//main_pass->post_process.append(&picking_pass);
 
-	CommandBuffer cmd_buffer(*modules.asset_manager);
+	CommandBuffer cmd_buffer(asset_manager);
 	RenderCtx render_ctx(cmd_buffer, main_pass);
 	render_ctx.layermask = GAME_LAYER | EDITOR_LAYER;
 	render_ctx.width = window.width;
@@ -364,7 +363,7 @@ void Editor::init_imgui() {
 
 	ImFontConfig icons_config; icons_config.MergeMode = false; icons_config.PixelSnapH = true; icons_config.FontDataOwnedByAtlas = true; icons_config.FontDataSize = 32.0f;
 
-	auto font_path = level.asset_path("fonts/segoeui.ttf");
+	auto font_path = tasset_path(asset_manager, "fonts/segoeui.ttf");
 	ImFont* font = io.Fonts->AddFontFromFileTTF(font_path.c_str(), 32.0f, &icons_config, io.Fonts->GetGlyphRangesDefault());
 
 	io.FontAllowUserScaling = true;
@@ -385,10 +384,10 @@ void Editor::init_imgui() {
 
 }
 
-uint64_t Editor::get_icon(string_view name) {
+texture_handle Editor::get_icon(string_view name) {
 	for (auto& icon : icons) {
 		if (icon.name == name) {
-			return gl_id_of(asset_manager.textures, icon.texture_id);
+			return icon.texture_id;
 		}
 	}
 	
@@ -404,7 +403,7 @@ void ImGui::InputText(const char* str, string_buffer& buffer) {
 
 void default_scene(Editor& editor, RenderCtx& ctx) {
 	World& world = get_World(editor);
-	AssetManager& assets = editor.asset_manager;
+	Assets& assets = editor.asset_manager;
 
 	editor.asset_tab.default_material = create_new_material(world, editor.asset_tab, editor, ctx)->handle;
 
@@ -423,7 +422,7 @@ void default_scene(Editor& editor, RenderCtx& ctx) {
 	}
 
 	auto model_render = world.make<ModelRenderer>(model_renderer_id);
-	model_render->model_id = assets.models.load("HOVERTANK.fbx");
+	model_render->model_id = load_Model(assets, "HOVERTANK.fbx");
 
 	auto materials = world.make<Materials>(model_renderer_id);
 	materials->materials.append(editor.asset_tab.default_material);
@@ -439,7 +438,7 @@ void default_scene(Editor& editor, RenderCtx& ctx) {
 		trans->position = glm::vec3(-5, 0, 0);
 		trans->scale = glm::vec3(5);
 		auto mr = world.make<ModelRenderer>(id);
-		mr->model_id = assets.models.load("subdivided_plane8.fbx");
+		mr->model_id = load_Model(assets, "subdivided_plane8.fbx");
 
 		auto materials = world.make<Materials>(id);
 		materials->materials.append(editor.asset_tab.default_material);
@@ -455,8 +454,28 @@ void default_scene(Editor& editor, RenderCtx& ctx) {
 		entity_editor->name = "Sun Light";
 	}
 
+	editor.renderer.skybox_renderer->make_default_Skybox(world, &ctx, "Tropical_Beach_3k.hdr");
+
+	{
+		auto id = world.make_ID();
+		auto e = world.make<Entity>(id);
+		e->layermask |= EDITOR_LAYER;
+		auto trans = world.make<Transform>(id);
+		auto fly = world.make<Flyover>(id);
+		auto cam = world.make<Camera>(id);
+		auto entity_editor = world.make<EntityEditor>(id);
+		entity_editor->name = "Camera";
+	}
+
 	/*
 	{
+		auto id = world.make_ID();
+		auto e = world.make<Entity>(id);
+		auto trans = world.make<Transform>(id);
+		auto sky = world.make<Skybox>(id);
+		auto entity_editor = world.make<EntityEditor>(id);
+		entity_editor->name = "Skybox";
+
 		ID id = editor.asset_tab.assets.make_ID();
 		MaterialAsset* asset = editor.asset_tab.assets.make<MaterialAsset>(id);
 		asset->name = "Skybox Material";
@@ -464,7 +483,20 @@ void default_scene(Editor& editor, RenderCtx& ctx) {
 
 		register_new_material(world, asset_tab, *this, render_ctx, id);
 	}
-	*/
+
+	{
+
+	}
+
+	{
+		ID id = editor.asset_tab.assets.make_ID();
+		MaterialAsset* asset = editor.asset_tab.assets.make<MaterialAsset>(id);
+		asset->name = "Skybox Material";
+		asset->handle = world.by_id<Materials>(world.id_of(skybox))->materials[0];
+
+		register_new_material(world, asset_tab, *this, render_ctx, id);
+	}*/
+	
 }
 
 struct EditorRendererExtension : RenderExtension {
@@ -630,7 +662,7 @@ void Editor::end_imgui() {
 
 void render_Editor(Editor& editor, RenderCtx& ctx) {
 	Input& input = editor.input;
-	TextureManager& textures = editor.asset_manager.textures;
+	Assets& assets = editor.asset_manager;
 	
 	editor.begin_imgui(input);
 	
@@ -698,9 +730,9 @@ void render_Editor(Editor& editor, RenderCtx& ctx) {
 
 	if (ImGui::Begin("Scene", NULL, ImGuiWindowFlags_NoScrollbar)) {
 		
-		if (ImGui::ImageButton((ImTextureID)editor.get_icon("play"), ImVec2(40, 40))) {
-			on_set_play_mode(editor, true);
-		}
+		//if (ImGui::ImageButton(assets, editor.get_icon("play"), ImVec2(40, 40))) {
+		//	on_set_play_mode(editor, true);
+		//}
 		ImGui::SameLine();
 		ImGui::Checkbox("Game Fullscreen", &editor.game_fullscreen);
 
@@ -711,7 +743,7 @@ void render_Editor(Editor& editor, RenderCtx& ctx) {
 		input.region_min.y = ImGui::GetWindowPos().y + ImGui::GetCursorPos().y;
 		input.region_max =  input.region_min + glm::vec2(width, height);
 
-		ImGui::Image((ImTextureID)gl_id_of(textures, editor.scene_view), ImVec2(width, height), ImVec2(0, 1), ImVec2(1, 0));
+		ImGui::Image(assets, editor.scene_view, ImVec2(width, height));
 
 		if (ImGui::BeginDragDropTarget()) {
 			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("DRAG_AND_DROP_MODEL")) {

@@ -7,11 +7,11 @@
 
 struct World;
 struct RenderCtx;
-struct AssetManager;
+struct Assets;
 struct ModelRenderer;
 struct ShaderConfig;
 
-struct ENGINE_API Skybox { 
+struct Skybox { 
 	sstring filename;
 	bool capture_scene = true;
 
@@ -20,15 +20,15 @@ struct ENGINE_API Skybox {
 	cubemap_handle prefilter_cubemap;
 	texture_handle brdf_LUT = { INVALID_HANDLE };
 
-	REFLECT(NO_ARG)
+	REFLECT(ENGINE_API)
 };
 
 
 struct ENGINE_API SkyboxSystem : RenderFeature {
-	AssetManager& asset_manager;
+	Assets& assets;
 	model_handle cube_model;
 
-	SkyboxSystem(AssetManager&, World&);
+	SkyboxSystem(Assets&, World&);
 	
 	Skybox* make_default_Skybox(World&, RenderCtx*, string_view);
 	void bind_ibl_params(ShaderConfig&, RenderCtx&); //todo strange function signature

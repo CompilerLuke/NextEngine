@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/core.h"
+#include "slice.h"
 #include <initializer_list>
 
 template<int N, typename T>
@@ -51,11 +52,11 @@ struct array {
 		}
 	}
 
-	/*static_vector<N, T>& operator=(const static_vector<N, T>& other) {
-	length = other.length;
-	for (int i = 0; i < length; i++) new (data + i) T(other[i]);
-	return *this;
-	}*/
+	array<N, T>& operator=(const array<N, T>& other) {
+		length = other.length;
+		for (int i = 0; i < length; i++) new (data + i) T(other[i]);
+		return *this;
+	}
 
 	array<N, T>& operator=(array<N, T>&& other) {
 		length = other.length;

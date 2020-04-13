@@ -31,13 +31,14 @@ struct CulledMeshBucket {
 constexpr int MAX_MESH_BUCKETS = 103;
 
 struct ENGINE_API ModelRendererSystem : RenderFeature {
-	struct AssetManager& asset_manager;
+	struct RHI& rhi;
+	struct Assets& assets;
 	
 	InstanceBuffer instance_buffer[Pass::Count];
 	hash_set<MeshBucket, MAX_MESH_BUCKETS> mesh_buckets;
 	CulledMeshBucket pass_culled_bucket[Pass::Count][MAX_MESH_BUCKETS];
 
-	ModelRendererSystem(struct AssetManager&);
+	ModelRendererSystem(struct RHI&, struct Assets&);
 	void pre_render();
 	void render(World&, RenderCtx&) override;
 };

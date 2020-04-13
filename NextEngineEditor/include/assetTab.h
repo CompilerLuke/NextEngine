@@ -7,10 +7,10 @@
 #include <glm/gtc/quaternion.hpp>
 #include "components/transform.h"
 #include "core/container/string_buffer.h"
-#include "graphics/renderer/material_system.h"
+#include "graphics/assets/material.h"
 
 struct ShaderGraph;
-struct AssetManager;
+struct Assets;
 struct ImFont;
 struct RenderCtx;
 struct Camera;
@@ -71,7 +71,7 @@ struct ShaderAsset {
 	shader_handle handle = { INVALID_HANDLE };
 	string_buffer name;
 
-	vector<Param> shader_arguments;
+	vector<ParamDesc> shader_arguments;
 
 	ShaderGraph* graph = NULL; //todo this leaks now
 
@@ -98,7 +98,7 @@ struct AssetFolder {
 
 struct AssetTab {
 	Renderer& renderer;
-	AssetManager& asset_manager;
+	Assets& asset_manager;
 	Window& window;
 
 	Framebuffer preview_fbo;
@@ -121,7 +121,7 @@ struct AssetTab {
 	
 	string_buffer filter;
 
-	AssetTab(Renderer&, AssetManager&, Window& window);
+	AssetTab(Renderer&, Assets&, Window& window);
 
 	void register_callbacks(struct Window&, struct Editor&);
 	void render(struct World&, struct Editor&, struct RenderCtx&);
@@ -129,6 +129,57 @@ struct AssetTab {
 	void on_save();
 	void on_load(struct World& world, struct RenderCtx& params);
 };
+
+
+struct Param {
+	struct Channel3 {
+		texture_handle image;
+		uniform_handle scalar_loc;
+		glm::vec3 color;
+
+		REFLECT()
+	};
+
+	struct Channel2 {
+		texture_handle image;
+		uniform_handle scalar_loc;
+		glm::vec2 value;
+
+		REFLECT()
+	};
+
+	struct Channel1 {
+		texture_handle image;
+		uniform_handle scalar_loc;
+		float value;
+
+		REFLECT()
+	};
+
+	uniform_handle loc;
+	Param_Type type;
+	union {
+		glm::vec3 vec3;
+		glm::vec2 vec2;
+		glm::mat4 matrix;
+		texture_handle image;
+		cubemap_handle cubemap;
+		int integer;
+		float real;
+
+		Channel3 channel3;
+		Channel2 channel2;
+		Channel1 channel1;
+
+		int time; //pointless makes it easy to serialize
+	};
+
+	Param() {}
+
+	REFLECT_UNION()
+};
+
+void convert_to_desc(Param& param, ParamDesc&);
 
 MaterialAsset* register_new_material(World& world, AssetTab& self, Editor& editor, RenderCtx& params, ID mat_asset_handle);
 MaterialAsset* create_new_material(struct World& world, struct AssetTab& self, struct Editor& editor, struct RenderCtx& params);
@@ -141,7 +192,7 @@ void edit_color(glm::vec4& color, string_view name, glm::vec2 size = glm::vec2(2
 
 RenderCtx create_preview_command_buffer(CommandBuffer& cmd_buffer, RenderCtx& old_params, AssetTab& self, Camera* cam, World& world);
 void render_preview_to_buffer(AssetTab& self, RenderCtx& params, CommandBuffer& cmd_buffer, texture_handle& preview, World& world);
-void rot_preview(TextureManager& texture_manager, RotatablePreview& self);
+void rot_preview(Assets& assets, RotatablePreview& self);
 
 bool accept_drop(const char* drop_type, void* ptr, unsigned int size);
 

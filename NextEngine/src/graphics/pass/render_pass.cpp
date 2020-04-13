@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "graphics/pass/render_pass.h"
 #include "ecs/ecs.h"
-#include "graphics/assets/asset_manager.h"
+#include "graphics/assets/assets.h"
 #include "graphics/renderer/renderer.h"
 #include "graphics/rhi/draw.h"
 #include "graphics/rhi/frame_buffer.h"
@@ -10,11 +10,11 @@
 #include "components/transform.h"
 #include "components/camera.h"
 
-MainPass::MainPass(Renderer& renderer, AssetManager& asset_manager, glm::vec2 size)
+MainPass::MainPass(Renderer& renderer, Assets& assets, glm::vec2 size)
 	:
 	renderer(renderer),
-	depth_prepass(asset_manager, size.x, size.y, true),
-	shadow_pass(asset_manager, renderer, size * 0.25f, depth_prepass.depth_map)
+	depth_prepass(assets, size.x, size.y, true),
+	shadow_pass(assets, renderer, size * 0.25f, depth_prepass.depth_map)
 {
 	AttachmentDesc attachment(frame_map);
 	FramebufferDesc settings;
@@ -29,12 +29,18 @@ MainPass::MainPass(Renderer& renderer, AssetManager& asset_manager, glm::vec2 si
 	//device.multisampling = 4;
 	//device.clear_colour = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 
-	current_frame = Framebuffer(asset_manager.textures, settings);
+	current_frame = Framebuffer(assets, settings);
 }
+
+ struct LightingUBO {
+	alignas(16) glm::vec3 view_pos;
+	alignas(16) glm::vec3 dir_light_direction;
+	alignas(16) glm::vec3 dir_light_color;
+};
 
 //todo this should be a uniform buffer, this current solution is terrible!!
 void MainPass::set_shader_params(ShaderConfig& config, RenderCtx& ctx) {
-	if (ctx.cam) {
+	/*if (ctx.cam) {
 		config.set_vec3("viewPos", ctx.view_pos);
 	}
 
@@ -44,7 +50,7 @@ void MainPass::set_shader_params(ShaderConfig& config, RenderCtx& ctx) {
 	if (ctx.dir_light) {
 		config.set_vec3("dirLight.direction", ctx.dir_light->direction);
 		config.set_vec3("dirLight.color", ctx.dir_light->color);
-	}
+	}*/
 }
 
 #include "graphics/rhi/primitives.h"

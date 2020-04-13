@@ -4,10 +4,10 @@
 #include <glm/glm.hpp>
 #include "graphics/renderer/renderer.h"
 #include "components/transform.h"
-#include "graphics/assets/asset_manager.h"
+#include "graphics/assets/assets.h"
 #include "graphics/renderer/model_rendering.h"
 #include "graphics/renderer/renderer.h"
-#include "graphics/renderer/material_system.h"
+#include "graphics/assets/material.h"
 #include "components/grass.h"
 #include "core/io/logger.h"
 #include "core/container/tvector.h"
@@ -216,7 +216,7 @@ Node* subdivide_BVH(ScenePartition& scene_partition, AABB& node_aabb, int depth,
 	}
 }
 
-void build_acceleration_structure(ScenePartition& scene_partition, hash_set<MeshBucket, MAX_MESH_BUCKETS> & mesh_buckets, ModelManager& model_manager, World& world) { //todo UGH THE CURRENT SYSTEM LIMITS HOW DATA ORIENTED THIS CAN BE
+void build_acceleration_structure(ScenePartition& scene_partition, hash_set<MeshBucket, MAX_MESH_BUCKETS> & mesh_buckets, Assets& assets, World& world) { //todo UGH THE CURRENT SYSTEM LIMITS HOW DATA ORIENTED THIS CAN BE
 	AABB world_bounds;	
 	
 	int occupied = temporary_allocator.occupied;
@@ -234,7 +234,7 @@ void build_acceleration_structure(ScenePartition& scene_partition, hash_set<Mesh
 		auto model_renderer = world.by_id<ModelRenderer>(id);
 		auto materials = world.by_id<Materials>(id);
 
-		Model* model = model_manager.get(model_renderer->model_id);
+		Model* model = get_Model(assets, model_renderer->model_id);
 		glm::mat4 model_m = trans->compute_model_matrix();
 
 		if (model == NULL) continue;
@@ -264,7 +264,7 @@ void build_acceleration_structure(ScenePartition& scene_partition, hash_set<Mesh
 		auto grass = world.by_id<Grass>(id);
 		auto materials = world.by_id<Materials>(id);
 
-		Model* model = model_manager.get(grass->placement_model);
+		Model* model = get_Model(assets, grass->placement_model);
 		
 		if (model == NULL) continue;
 
@@ -308,8 +308,8 @@ void build_acceleration_structure(ScenePartition& scene_partition, hash_set<Mesh
 	temporary_allocator.occupied = occupied;
 }
 
-CullingSystem::CullingSystem(AssetManager& asset_manager, ModelRendererSystem& model_renderer, World& world) 
-	: model_renderer(model_renderer), asset_manager(asset_manager) {
+CullingSystem::CullingSystem(Assets& assets, ModelRendererSystem& model_renderer, World& world) 
+	: model_renderer(model_renderer), assets(assets) {
 	/*world.on_make<Transform, ModelRenderer>([&world](vector<ID>& ids) {
 		for (ID id : ids) {
 			auto trans = world.by_id<Transform>(id);
@@ -357,7 +357,7 @@ void CullingSystem::cull(World& world, RenderCtx& ctx) {
 }
 
 void CullingSystem::build_acceleration(World& world) {
-	build_acceleration_structure(scene_partition, model_renderer.mesh_buckets, asset_manager.models, world);
+	build_acceleration_structure(scene_partition, model_renderer.mesh_buckets, assets, world);
 }
 
 void render_node(RenderCtx& ctx, Material* mat, Model* cube, Node& node) {
@@ -375,24 +375,21 @@ void render_node(RenderCtx& ctx, Material* mat, Model* cube, Node& node) {
 	}
 }
 
-#include "graphics/renderer/material_system.h"
+#include "graphics/assets/material.h"
 
 DrawCommandState draw_wireframe_state = default_draw_state;
 
 void CullingSystem::render_debug_bvh(World& world, RenderCtx& ctx) {
 	return; //todo make toggle in editor
 
-	ModelManager& models = asset_manager.models;
-	ShaderManager& shaders = asset_manager.shaders;
-
-	model_handle cube = models.load("cube.fbx");
+	model_handle cube = load_Model(assets, "cube.fbx");
 
 	draw_wireframe_state.mode = DrawWireframe;
 
-	Material* mat = TEMPORARY_ALLOC(Material);
-	mat->shader = shaders.load("shaders/pbr.vert", "shaders/gizmo.frag");
-	mat->set_vec3(shaders, "color", glm::vec3(1.0f, 0.0f, 0.0f));
-	mat->state = &draw_wireframe_state;
+	//Material* mat = TEMPORARY_ALLOC(Material);
+	//mat->shader = load(shaders, "shaders/pbr.vert", "shaders/gizmo.frag");
+	//mat->set_vec3(shaders, "color", glm::vec3(1.0f, 0.0f, 0.0f));
+	//mat->state = &draw_wireframe_state;
 
-	render_node(ctx, mat, models.get(cube), scene_partition.nodes[0]);
+	//render_node(ctx, mat, models.get(cube), scene_partition.nodes[0]);
 }

@@ -5,17 +5,17 @@
 #include "graphics/renderer/render_feature.h"
 
 struct ModelRendererSystem;
-struct AssetManager;
+struct Assets;
 struct World;
 
 struct ObjectGizmoSystem : RenderFeature {
-	AssetManager& asset_manager;
+	Assets& asset_manager;
 	
 	vector<material_handle> gizmo_materials;
 	model_handle dir_light_model;
 	model_handle grass_model;
 	model_handle camera_model;
 
-	ObjectGizmoSystem(AssetManager& asset_manager);
+	ObjectGizmoSystem(Assets& asset_manager);
 	void render(World&, RenderCtx&) override;
 };

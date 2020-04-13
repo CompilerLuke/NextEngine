@@ -58,9 +58,10 @@ struct string_buffer {
 
 	inline string_buffer(const string_buffer& other) {
 		if (other.length == 0) return;
-		this->reserve(other.length);
+
 		this->allocator = other.allocator;
-		this->length = other.length;
+		this->reserve(other.length);		
+		this->length = other.length;	
 
 		memcpy(this->data, other.data, other.length);
 		data[length] = '\0';

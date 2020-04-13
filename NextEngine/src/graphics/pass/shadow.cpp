@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "graphics/pass/shadow.h"
-#include "graphics/assets/asset_manager.h"
+#include "graphics/assets/assets.h"
 #include "graphics/pass/render_pass.h"
 #include "components/lights.h"
 #include "components/transform.h"
@@ -13,8 +13,8 @@
 #include <glm/glm.hpp>
 #include <glad/glad.h>
 
-DepthMap::DepthMap(AssetManager& assets, unsigned int width, unsigned int height, bool stencil) 
-: asset_manager(assets) {
+DepthMap::DepthMap(Assets& assets, unsigned int width, unsigned int height, bool stencil) 
+: assets(assets) {
 	type = Pass::Depth_Only;
 
 	AttachmentDesc attachment(this->depth_map);
@@ -27,24 +27,24 @@ DepthMap::DepthMap(AssetManager& assets, unsigned int width, unsigned int height
 
 	//if (stencil) settings.stencil_buffer = StencilComponent8;
 	
-	depth_map_FBO = Framebuffer(assets.textures, settings);
-	depth_shader = assets.shaders.load("shaders/gizmo.vert", "shaders/depth.frag");
+	depth_map_FBO = Framebuffer(assets, settings);
+	depth_shader = load_Shader(assets, "shaders/gizmo.vert", "shaders/depth.frag");
 }
 
-ShadowPass::ShadowPass(AssetManager& asset_manager, Renderer& renderer, glm::vec2 size, texture_handle depth_prepass) :
+ShadowPass::ShadowPass(Assets& assets, Renderer& renderer, glm::vec2 size, texture_handle depth_prepass) :
 	renderer(renderer),
-	asset_manager(asset_manager),
-	deffered_map_cascade(asset_manager, 4096, 4096),
-	ping_pong_shadow_mask(asset_manager, size),
-	shadow_mask(asset_manager, size),
+	assets(assets),
+	deffered_map_cascade(assets, 4096, 4096),
+	ping_pong_shadow_mask(assets, size),
+	shadow_mask(assets, size),
 	depth_prepass(depth_prepass),
-	volumetric(asset_manager, size * 2.0f, depth_prepass),
-	screenspace_blur_shader(asset_manager.shaders.load("shaders/screenspace.vert", "shaders/blur.frag")),
-	shadow_mask_shader(asset_manager.shaders.load("shaders/screenspace.vert", "shaders/shadowMask.frag"))
+	volumetric(assets, size * 2.0f, depth_prepass),
+	screenspace_blur_shader(load_Shader(assets, "shaders/screenspace.vert", "shaders/blur.frag")),
+	shadow_mask_shader(load_Shader(assets, "shaders/screenspace.vert", "shaders/shadowMask.frag"))
 {}
 
-ShadowMask::ShadowMask(AssetManager& asset_manager, glm::vec2 size) 
-: asset_manager(asset_manager) {
+ShadowMask::ShadowMask(Assets& assets, glm::vec2 size) 
+: assets(assets) {
 	AttachmentDesc color_attachment(this->shadow_mask_map);
 	color_attachment.mag_filter = Filter::Linear;
 	color_attachment.min_filter = Filter::Linear;
@@ -57,14 +57,14 @@ ShadowMask::ShadowMask(AssetManager& asset_manager, glm::vec2 size)
 	settings.color_attachments.append(color_attachment);
 	settings.depth_buffer = DepthComponent24;
 
-	this->shadow_mask_map_fbo = Framebuffer(asset_manager.textures, settings);
+	this->shadow_mask_map_fbo = Framebuffer(assets, settings);
 }
 
 void ShadowMask::set_shadow_params(ShaderConfig& config, RenderCtx& ctx) {
 	auto bind_to = ctx.command_buffer.next_texture_index();
 
-	gl_bind_to(asset_manager.textures, shadow_mask_map, bind_to);
-	config.set_int("shadowMaskMap", bind_to);
+	//gl_bind_to(assets.textures, shadow_mask_map, bind_to);
+	//config.set_int("shadowMaskMap", bind_to);
 }
 
 void ShadowPass::set_shadow_params(ShaderConfig& config, RenderCtx& params) {
@@ -209,7 +209,7 @@ void calc_ortho_proj(RenderCtx& params, glm::mat4& light_m, float width, float h
 }
 
 void DepthMap::render_maps(Renderer& renderer, World& world, RenderCtx& ctx, glm::mat4 projection_m, glm::mat4 view_m, bool is_shadow_pass) {
-	CommandBuffer cmd_buffer(asset_manager);
+	CommandBuffer cmd_buffer(assets);
 	
 	RenderCtx new_ctx(ctx, is_shadow_pass ? cmd_buffer : ctx.command_buffer, this);
 	new_ctx.view = view_m;
@@ -228,6 +228,13 @@ void DepthMap::render_maps(Renderer& renderer, World& world, RenderCtx& ctx, glm
 	depth_map_FBO.unbind();
 }
 
+struct ShaderUBO {
+	glm::mat4 to_world;
+	glm::mat4 to_light;
+	float end_clip_space[2];
+};
+
+
 void ShadowPass::render(World& world, RenderCtx& params) {
 	auto dir_light = get_dir_light(world, params.layermask);
 	if (!dir_light) return;
@@ -242,7 +249,7 @@ void ShadowPass::render(World& world, RenderCtx& params) {
 	auto height = this->deffered_map_cascade.depth_map_FBO.height;
 
 	OrthoProjInfo info[num_cascades];
-	calc_ortho_proj(params, view_matrix, width, height, info);
+	calc_ortho_proj(params, view_matrix, (float)width, (float)height, info);
 
 	shadow_mask.shadow_mask_map_fbo.bind();
 	shadow_mask.shadow_mask_map_fbo.clear_color(glm::vec4(0, 0, 0, 1));
@@ -261,14 +268,14 @@ void ShadowPass::render(World& world, RenderCtx& params) {
 
 		//glDisable(GL_DEPTH_TEST);
 
-		Shader* shadow_mask_shader = asset_manager.shaders.get(this->shadow_mask_shader);
+		/*Shader* shadow_mask_shader = assets.shaders.get(this->shadow_mask_shader);
 
 		shadow_mask_shader->bind();
 
-		gl_bind_to(asset_manager.textures, depth_prepass, 0);
+		gl_bind_to(assets.textures, depth_prepass, 0);
 		shadow_mask_shader->set_int("depthPrepass", 0);
 
-		gl_bind_to(asset_manager.textures, deffered_map_cascade.depth_map, 1);
+		gl_bind_to(assets.textures, deffered_map_cascade.depth_map, 1);
 		shadow_mask_shader->set_int("depthMap", 1);
 
 		shadow_mask_shader->set_float("gCascadeEndClipSpace[0]", last_clip_space);
@@ -280,7 +287,7 @@ void ShadowPass::render(World& world, RenderCtx& params) {
 		glm::mat4 ident_matrix(1.0);
 		shadow_mask_shader->set_mat4("model", ident_matrix);
 
-		shadow_mask_shader->set_int("cascadeLevel", i);
+		shadow_mask_shader->set_int("cascadeLevel", i);*/
 
 		glm::vec2 in_range(last_clip_space, proj_info.endClipSpace);
 
@@ -316,14 +323,14 @@ void ShadowPass::render(World& world, RenderCtx& params) {
 		if (!horizontal) shadow_mask.shadow_mask_map_fbo.bind();
 		else ping_pong_shadow_mask.shadow_mask_map_fbo.bind();
 
-		Shader* screenspace_blur_shader = asset_manager.shaders.get(this->screenspace_blur_shader);
+		/*Shader* screenspace_blur_shader = assets.shaders.get(this->screenspace_blur_shader);
 
 		screenspace_blur_shader->bind();
 		
 		if (first_iteration)
-			gl_bind_to(asset_manager.textures, shadow_mask.shadow_mask_map, 0);
+			gl_bind_to(assets.textures, shadow_mask.shadow_mask_map, 0);
 		else
-			gl_bind_to(asset_manager.textures, ping_pong_shadow_mask.shadow_mask_map, 0);
+			gl_bind_to(assets.textures, ping_pong_shadow_mask.shadow_mask_map, 0);
 
 		screenspace_blur_shader->set_int("image", 0);
 		screenspace_blur_shader->set_int("horizontal", horizontal);
@@ -335,6 +342,7 @@ void ShadowPass::render(World& world, RenderCtx& params) {
 
 		horizontal = !horizontal;
 		first_iteration = false;
+		*/
 	}
 
 	shadow_mask.shadow_mask_map_fbo.unbind();

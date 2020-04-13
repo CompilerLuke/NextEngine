@@ -5,7 +5,7 @@
 #include "graphics/rhi/buffer.h"
 #include <glm/mat4x4.hpp>
 
-struct AssetManager;
+struct Assets;
 struct World;
 struct RenderCtx;
 
@@ -15,8 +15,8 @@ struct ChunkInfo {
 };
 
 struct TerrainRenderSystem : RenderFeature {
-	AssetManager& asset_manager;
-	BufferAllocator& buffer_manager;
+	RHI& rhi;
+	Assets& assets;
 	
 	shader_handle terrain_shader;
 	shader_handle flat_shader;
@@ -27,7 +27,7 @@ struct TerrainRenderSystem : RenderFeature {
 
 	InstanceBuffer chunk_instance_buffer[3];
 
-	TerrainRenderSystem(AssetManager& asset_manager, World&);
+	TerrainRenderSystem(RHI& rhi, Assets& assets, World&);
 
 	void render(struct World&, struct RenderCtx&) override;
 };

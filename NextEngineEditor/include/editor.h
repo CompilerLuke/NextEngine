@@ -23,7 +23,7 @@
 struct World;
 struct Time;
 struct Input;
-struct AssetManager;
+struct Assets;
 
 struct DroppableField {
 	void* ptr;
@@ -55,13 +55,12 @@ struct Icon {
 
 //todo split up into multiple classes
 struct Editor {
-	Level& level;
 	Window& window;
 	Renderer& renderer;
 	World& world;
 	Input& input;
 	Time& time;
-	AssetManager& asset_manager;
+	Assets& asset_manager;
 
 	struct World& copy_of_world;
 
@@ -88,7 +87,7 @@ struct Editor {
 
 	void submit_action(EditorAction*);
 
-	uint64_t get_icon(string_view name);
+	texture_handle get_icon(string_view name);
 	
 	FlyOverSystem fly_over_system;
 	VisualizeProfiler profiler;

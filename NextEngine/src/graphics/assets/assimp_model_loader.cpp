@@ -108,24 +108,7 @@ void process_Node(ModelLoadingScratch* scratch, aiNode* node) {
 	}
 }
 
-model_handle ModelManager::load(string_view path, bool serialized) {
-	for (int i = 0; i < slots.length; i++) { //todo use hashmap for optimization
-		auto& slot = slots[i];
-		if (slot.path == path) {
-			return index_to_handle(i);
-		}
-	}
-
-	model_handle handle = assign_handle({ path }, serialized);
-	load_in_place(handle, glm::mat4(1.0));
-	return handle;
-}
-
-void ModelManager::load_in_place(model_handle handle, const glm::mat4& apply_transform) { //TODO WHEN REIMPORTED, can reuse same memory
-	Model* model = get(handle);
-
-	auto real_path = level.asset_path(model->path);
-
+void load_assimp(Model* model, BufferAllocator& buffer_allocator, string_view real_path, const glm::mat4& apply_transform) { //TODO WHEN REIMPORTED, can reuse same memory
 	Assimp::Importer importer;
 	auto scene = importer.ReadFile(real_path.c_str(), aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
 	if (!scene) throw string_buffer("Could not load model ") + model->path + " " + real_path;
@@ -143,7 +126,7 @@ void ModelManager::load_in_place(model_handle handle, const glm::mat4& apply_tra
 	scratch.indices_base = PERMANENT_ARRAY(uint,   scratch.indices_count);
 
 
-	printf("\nLoading model %s\n", model->path);
+	printf("\nLoading model %s\n", model->path.data);
 	printf("\tMeshes: %i\n", scratch.mesh_count);
 	printf("\tVertices: %i\n", scratch.vertices_count);
 	printf("\tIndices: %i\n", scratch.indices_count);
@@ -164,7 +147,7 @@ void ModelManager::load_in_place(model_handle handle, const glm::mat4& apply_tra
 		Mesh* mesh = scratch.meshes_base + i;
 
 		model->aabb.update_aabb(mesh->aabb);
-		mesh->buffer = alloc_vertex_buffer(buffer_manager, VERTEX_LAYOUT_DEFAULT, mesh->vertices, mesh->indices);
+		mesh->buffer = alloc_vertex_buffer(buffer_allocator, VERTEX_LAYOUT_DEFAULT, mesh->vertices, mesh->indices);
 	}
 
 	model->materials.length = scene->mNumMaterials;

@@ -80,9 +80,9 @@ Swapchain make_SwapChain(VkDevice device, VkPhysicalDevice physical_device, Wind
 	makeInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
 	QueueFamilyIndices indices = find_queue_families(physical_device, surface);
-	uint32_t queueFamilyIndices[] = { (uint32_t)indices.graphicsFamily, (uint32_t)indices.presentFamily };
+	uint32_t queueFamilyIndices[] = { (uint32_t)indices.graphics_family, (uint32_t)indices.present_family };
 
-	if (indices.graphicsFamily != indices.presentFamily) {
+	if (indices.graphics_family != indices.present_family) {
 		makeInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 		makeInfo.queueFamilyIndexCount = 2;
 		makeInfo.pQueueFamilyIndices = queueFamilyIndices;

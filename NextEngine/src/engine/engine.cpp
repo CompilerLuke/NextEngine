@@ -8,7 +8,7 @@
 #include "graphics/rhi/buffer.h"
 #include "core/memory/linear_allocator.h"
 #include "ecs/ecs.h"
-#include "graphics/assets/asset_manager.h"
+#include "graphics/assets/assets.h"
 #include "core/time.h"
 
 #include "physics/physics.h"
@@ -17,7 +17,6 @@
 #include "graphics/rhi/vulkan/vulkan.h"
 
 Modules::Modules(const char* app_name, const char* level_path) {
-	level = new Level(level_path);
 	window = new Window();
 	input = new Input();
 	time = new Time();
@@ -51,22 +50,21 @@ Modules::Modules(const char* app_name, const char* level_path) {
 	vk_desc.device_features.samplerAnisotropy = VK_TRUE;
 	vk_desc.device_features.multiDrawIndirect = VK_TRUE;
 
-	rhi = make_RHI(vk_desc, *level, *window);
+	rhi = make_RHI(vk_desc, *window);
 	
-	asset_manager = new AssetManager(get_BufferAllocator(*rhi), *level);
-	renderer = new Renderer(*rhi, *asset_manager, *window, *world);
+	assets = make_Assets(*rhi, level_path);
+	renderer = new Renderer(*rhi, *assets, *window, *world);
 	
-	init_RHI(rhi, asset_manager->models);
+	init_RHI(rhi, *assets);
 }
 
 Modules::~Modules() {
-	delete level;
 	delete window;
 	delete input;
 	delete time;
 	delete world;
-	delete rhi;
-	delete asset_manager;
+	destroy_RHI(rhi);
+	destroy_Assets(assets);
 	delete physics_system;
 	delete local_transforms_system;
 }

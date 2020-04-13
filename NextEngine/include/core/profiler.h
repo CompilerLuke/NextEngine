@@ -31,14 +31,14 @@ struct Frame {
 	vector<ProfileData> profiles;
 };
 
-struct ENGINE_API Profiler {
-	static bool paused;
-	static vector<Frame> frames;
-	static int profile_depth;
+struct Profiler {
+	static bool ENGINE_API paused;
+	static vector<Frame> ENGINE_API frames;
+	static int ENGINE_API profile_depth;
 
-	static void begin_frame();
-	static void end_frame();
+	static void ENGINE_API begin_frame();
+	static void ENGINE_API end_frame();
 
-	static void begin_profile();
-	static void record_profile(const Profile&);
+	static void ENGINE_API begin_profile();
+	static void ENGINE_API record_profile(const Profile&);
 };

@@ -11,7 +11,8 @@
 #include "graphics/assets/shader.h"
 #include "core/memory/linear_allocator.h"
 #include "core/io/logger.h"
-#include "graphics/assets/asset_manager.h"
+#include "graphics/assets/assets.h"
+#include "graphics/assets/model.h"
 #include "engine/engine.h"
 #include "components/camera.h"
 #include "graphics/renderer/renderer.h"
@@ -60,7 +61,7 @@ Node* subdivide_BVH(PickingScenePartition& scene_partition, AABB& node_aabb, int
 	}
 }
 
-void build_acceleration_structure(PickingScenePartition& scene_partition, ModelManager& model_manager, World& world) { 
+void build_acceleration_structure(PickingScenePartition& scene_partition, Assets& assets, World& world) { 
 	AABB world_bounds;
 
 	int occupied = temporary_allocator.occupied;
@@ -75,7 +76,7 @@ void build_acceleration_structure(PickingScenePartition& scene_partition, ModelM
 		auto model_m = world.by_id<Transform>(id)->compute_model_matrix();
 		auto model_renderer = world.by_id<ModelRenderer>(id);
 
-		Model* model = model_manager.get(model_renderer->model_id);		
+		Model* model = get_Model(assets, model_renderer->model_id);		
 		if (model == NULL) continue;
 
 		AABB aabb = model->aabb.apply(model_m);
@@ -172,10 +173,10 @@ void ray_cast_node(PickingScenePartition& partition, Node* node, const Ray& ray,
 	}
 }
 
-PickingSystem::PickingSystem(AssetManager& asset_manager) : asset_manager(asset_manager) {}
+PickingSystem::PickingSystem(Assets& asset_manager) : assets(asset_manager) {}
 
 void PickingSystem::rebuild_acceleration_structure(World& world) {
-	build_acceleration_structure(partition, asset_manager.models, world);
+	build_acceleration_structure(partition, assets, world);
 }
 
 bool PickingSystem::ray_cast(const Ray& ray, RayHit& hit) {
@@ -206,6 +207,8 @@ void render_cube(RenderCtx& ctx, Material* mat, Model* model,  glm::vec3 center,
 	ctx.command_buffer.draw(model_m, &model->meshes[0].buffer, mat);
 }
 
+struct Material;
+
 void render_node(RenderCtx& ctx, Material* mat, PickingScenePartition& partition, Model* cube, Node& node, Ray& ray) {
 	//render_cube(ctx, mat, cube, (node.aabb.max + node.aabb.min) * 0.5f, node.aabb.max - node.aabb.min);
 
@@ -222,7 +225,7 @@ void render_node(RenderCtx& ctx, Material* mat, PickingScenePartition& partition
 }
 
 
-#include "graphics/renderer/material_system.h"
+#include "graphics/assets/material.h"
 
 DrawCommandState draw_wireframe_state = default_draw_state;
 
@@ -231,29 +234,25 @@ void PickingSystem::visualize(World& world, Input& input, RenderCtx& ctx) {
 
 	Ray ray = ray_from_mouse(world, get_camera(world, EDITOR_LAYER), input);
 
-	ModelManager& models = asset_manager.models;
-	ShaderManager& shaders = asset_manager.shaders;
-
-	model_handle cube = models.load("cube.fbx");
+	model_handle cube = load_Model(assets, "cube.fbx");
 
 	draw_wireframe_state.mode = DrawWireframe;
 
-	Material* mat = TEMPORARY_ALLOC(Material);
-	mat->shader = shaders.load("shaders/pbr.vert", "shaders/gizmo.frag");
-	mat->set_vec3(shaders, "color", glm::vec3(1.0f, 0.0f, 0.0f));
-	mat->state = &draw_wireframe_state;
+	MaterialDesc mat{ load_Shader(assets, "shaders/pbr.vert", "shaders/gizmo.frag") };
+	mat_vec3(mat, "color", glm::vec3(1.0f, 0.0f, 0.0f));
+	//mat->state = &draw_wireframe_state;
 
-	render_node(ctx, mat, partition, models.get(cube), partition.nodes[0], ray);
+	//render_node(ctx, mat, partition, models.get(cube), partition.nodes[0], ray);
 
 	//ray.dir = glm::vec3(0, 0, -1) * world.by_id<Transform>(get_camera(world, EDITOR_LAYER))->rotation;
 
-	render_cube(ctx, mat, models.get(cube), ray.orig + ray.dir * 5.0f, glm::vec3(0.1f));
-	render_cube(ctx, mat, models.get(cube), ray.orig + ray.dir * 10.0f, glm::vec3(0.1f));
-	render_cube(ctx, mat, models.get(cube), ray.orig + ray.dir * 20.0f, glm::vec3(0.1f));
+	//render_cube(ctx, mat, models.get(cube), ray.orig + ray.dir * 5.0f, glm::vec3(0.1f));
+	//render_cube(ctx, mat, models.get(cube), ray.orig + ray.dir * 10.0f, glm::vec3(0.1f));
+	//render_cube(ctx, mat, models.get(cube), ray.orig + ray.dir * 20.0f, glm::vec3(0.1f));
 }
 
-OutlineSelected::OutlineSelected(AssetManager& assets) : asset_manager(assets) {
-	outline_shader = assets.shaders.load("shaders/outline.vert", "shaders/outline.frag");
+OutlineSelected::OutlineSelected(Assets& assets) : asset_manager(assets) {
+	outline_shader = load_Shader(assets, "shaders/outline.vert", "shaders/outline.frag");
 	
 	outline_state.order = (DrawOrder)6;
 	outline_state.mode = DrawWireframe;
@@ -273,8 +272,10 @@ OutlineSelected::OutlineSelected(AssetManager& assets) : asset_manager(assets) {
 	object_state.color_mask = Color_None;
 	object_state.depth_func = DepthFunc_None;
 
-	this->outline_material = Material(outline_shader);
-	this->outline_material.state = &outline_state;
+	MaterialDesc outline_material{ outline_shader };
+
+	//this->outline_material = Material(outline_shader);
+	//this->outline_material.state = &outline_state;
 }
 
 void OutlineSelected::render(World& world, slice<ID> ids, RenderCtx& ctx) {
@@ -288,10 +289,10 @@ void OutlineSelected::render(World& world, slice<ID> ids, RenderCtx& ctx) {
 
 		if (trans && model_renderer && materials) {
 			glm::mat4 model_m = trans->compute_model_matrix();
-			Model* model = asset_manager.models.get(model_renderer->model_id);
+			Model* model = get_Model(asset_manager, model_renderer->model_id);
 
 			for (Mesh& mesh : model->meshes) {
-				material_handle should_be_handle = materials->materials[mesh.material_id];
+				/*material_handle should_be_handle = materials->materials[mesh.material_id];
 				Material* should_be = asset_manager.materials.get(should_be_handle);
 
 				Material* mat = TEMPORARY_ALLOC(Material);
@@ -302,6 +303,7 @@ void OutlineSelected::render(World& world, slice<ID> ids, RenderCtx& ctx) {
 					
 				ctx.command_buffer.draw(model_m, &mesh.buffer, mat);
 				ctx.command_buffer.draw(model_m, &mesh.buffer, TEMPORARY_ALLOC(Material, outline_material)); //this might be leaking memory!
+				*/
 			}
 		}
 	}

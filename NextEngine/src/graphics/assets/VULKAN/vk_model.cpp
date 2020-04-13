@@ -5,7 +5,7 @@
 #include "core/memory/linear_allocator.h"
 #include "graphics/rhi/draw.h"
 #include "graphics/renderer/renderer.h"
-#include "graphics/renderer/material_system.h"
+#include "graphics/assets/material.h"
 #include "graphics/assets/model.h"
 
 REFLECT_STRUCT_BEGIN(Vertex)
@@ -26,8 +26,5 @@ REFLECT_STRUCT_MEMBER(indices_length)
 REFLECT_STRUCT_MEMBER(indices_offset)
 REFLECT_STRUCT_END()*/
 
-ModelManager::ModelManager(BufferAllocator& buffer_manager, Level& level) 
-	: level(level), buffer_manager(buffer_manager) {
 
-}
 #endif

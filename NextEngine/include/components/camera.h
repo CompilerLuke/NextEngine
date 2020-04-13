@@ -3,12 +3,12 @@
 #include "ecs/ecs.h"
 #include "core/reflection.h"
 
-struct ENGINE_API Camera {
+struct Camera {
 	float near_plane = 0.1f;
 	float far_plane = 600;
 	float fov = 60;
 
-	REFLECT()
+	REFLECT(ENGINE_API)
 };
 
 ENGINE_API glm::mat4 get_view_matrix(World& world, ID id);
