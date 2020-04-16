@@ -99,7 +99,7 @@ void TerrainRenderSystem::render(World& world, RenderCtx& render_ctx) {
 
 		MaterialDesc mat{terrain_shader};
 		if (!(render_ctx.layermask & SHADOW_LAYER)) {
-			mat.params = material_desc(assets, materials->materials[0])->params.copy();
+			mat.params = material_desc(assets, materials->materials[0])->params;
 		}			
 		mat_image(mat, "displacement", self->heightmap);
 		mat_float(mat, "max_height", self->max_height);

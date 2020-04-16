@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "graphics/rhi/vulkan/device.h"
+#include "graphics/rhi/vulkan/rhi.h"
 #include <GLFW/glfw3.h>
 #include <glad/glad.h>
 

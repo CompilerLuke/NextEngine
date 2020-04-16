@@ -64,5 +64,5 @@ void* MallocAllocator::allocate(std::size_t size) {
 }
 
 void MallocAllocator::deallocate(void* ptr) {
-	delete ptr;
+	delete[] ptr;
 }

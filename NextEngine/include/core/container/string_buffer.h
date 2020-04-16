@@ -1,7 +1,6 @@
 #pragma once
 
 #include "core/memory/allocator.h"
-#include <memory.h>
 #include <string.h>
 #include "core/container/string_view.h"
 #include "glm/glm.hpp"

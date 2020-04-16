@@ -32,13 +32,6 @@ struct TextureDesc {
 	Wrap wrap_t = Wrap::ClampToBorder;
 };
 
-struct Texture {
-	string_buffer filename;
-	TextureID texture_id = 0;
-
-	REFLECT(ENGINE_API)
-};
-
 struct Cubemap {
 	string_buffer filename;
 	TextureID texture_id = 0;
@@ -49,6 +42,7 @@ struct Cubemap {
 
 struct Assets;
 
-ENGINE_API Image load_Image(Assets&, string_view, Allocator*);
+ENGINE_API Image load_Image(Assets&, string_view);
+ENGINE_API void free_Image(Image&);
 ENGINE_API void upload_Texture(Assets&, const Image& image, const TextureDesc& desc = {});
 ENGINE_API u64 underlying_texture(Assets&, texture_handle handle);

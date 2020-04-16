@@ -469,8 +469,8 @@ Skybox* SkyboxSystem::make_default_Skybox(World& world, RenderCtx* params, strin
 	auto cube_model = load_Model(assets, "cube.fbx");
 
 	MaterialDesc mat{ skybox_shader };
-	mat_vec3(mat, "skytop", glm::vec3(66, 188, 245) / 200.0f);
 	mat_vec3(mat, "skyhorizon", glm::vec3(66, 135, 245) / 400.0f);
+	mat_vec3(mat, "skytop", glm::vec3(66, 188, 245) / 200.0f);
 
 	auto materials = world.make<Materials>(id);
 	

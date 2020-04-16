@@ -14,6 +14,8 @@ struct StagingQueue {
 	VkCommandBuffer cmd_buffer;
 	VkQueue queue;
 
+	bool recording;
+
 	//static_vector<10, CmdCopyBuffer> cmdsCopyBuffer;
 	//static_vector<10, CmdCopyBufferToImage> cmdsCopyBufferToImage;
 	//static_vector<10, CmdPipelineBarrier> cmdsPipelineBarrier;

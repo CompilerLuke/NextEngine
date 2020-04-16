@@ -96,6 +96,8 @@
       <ExceptionHandling>false</ExceptionHandling>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <AdditionalOptions>/EHsc- %(AdditionalOptions)</AdditionalOptions>
+      <TreatSpecificWarningsAsErrors>4716;4715</TreatSpecificWarningsAsErrors>
+      <TreatWarningAsError>false</TreatWarningAsError>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -117,6 +119,8 @@
       <ExceptionHandling>false</ExceptionHandling>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <AdditionalOptions>/EHsc- %(AdditionalOptions)</AdditionalOptions>
+      <TreatSpecificWarningsAsErrors>4716;4715</TreatSpecificWarningsAsErrors>
+      <TreatWarningAsError>false</TreatWarningAsError>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -136,6 +140,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\VulkanSDK\1.2.131.2\Include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <TreatSpecificWarningsAsErrors>4716;4715</TreatSpecificWarningsAsErrors>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -158,6 +163,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\VulkanSDK\1.2.131.2\Include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <TreatSpecificWarningsAsErrors>4716;4715</TreatSpecificWarningsAsErrors>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -237,6 +243,7 @@
     <ClInclude Include="include\graphics\rhi\vulkan\pipeline.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\rhi.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\shader.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\shader_access.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\swapchain.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\texture.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\volk.h" />
@@ -257,13 +264,14 @@
     <ClInclude Include="vendor\imgui\imstb_rectpack.h" />
     <ClInclude Include="vendor\imgui\imstb_textedit.h" />
     <ClInclude Include="vendor\imgui\imstb_truetype.h" />
+    <ClInclude Include="vendor\spirv-reflect\spirv_reflect.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="src\graphics\assets\assimp_model_loader.cpp" />
     <ClCompile Include="src\core\container\string_view.cpp" />
     <ClCompile Include="NextEngine.cpp" />
-    <ClCompile Include="src\graphics\assets\asset_manager.cpp" />
+    <ClCompile Include="src\graphics\assets\assets.cpp" />
     <ClCompile Include="src\graphics\assets\GL\gl_model.cpp" />
     <ClCompile Include="src\benchmark\benchmark.cpp" />
     <ClCompile Include="src\components\camera.cpp" />
@@ -311,6 +319,7 @@
     <ClCompile Include="src\graphics\renderer\transforms.cpp" />
     <ClCompile Include="src\graphics\pass\volumetric.cpp" />
     <ClCompile Include="src\graphics\rhi\vulkan\rhi.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\shader_access.cpp" />
     <ClCompile Include="src\graphics\rhi\vulkan\vk_cmd_buffer.cpp" />
     <ClCompile Include="src\graphics\assets\VULKAN\vk_material.cpp" />
     <ClCompile Include="src\graphics\rhi\vulkan\vk_pipeline.cpp" />
@@ -366,6 +375,12 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="vendor\spirv-reflect\spirv_reflect.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

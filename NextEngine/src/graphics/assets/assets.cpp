@@ -49,7 +49,17 @@ void destroy_Assets(Assets* assets) {
 }
 
 string_buffer tasset_path(Assets& assets, string_view filename) {
-	return tformat(assets.asset_path, filename);
+	string_buffer buffer;
+	buffer.allocator = &temporary_allocator;
+	buffer.capacity = assets.asset_path.length + filename.length;
+	buffer.length = buffer.capacity;
+	buffer.data = TEMPORARY_ARRAY(char, buffer.capacity);
+
+	memcpy(buffer.data, assets.asset_path.data, assets.asset_path.length);
+	memcpy(buffer.data + assets.asset_path.length, filename.data, filename.length);
+	buffer.data[assets.asset_path.length + filename.length] = '\0';
+	
+	return buffer;
 }
 
 string_view current_asset_path_folder(Assets& assets) {
@@ -102,8 +112,6 @@ void load_Shader(Assets& assets, Shader& shader, slice<shader_flags> permutation
 	string_buffer err;
 
 	for (shader_flags flags : permutations) {
-		shader.config_flags.append(flags);
-
 		//todo use just the end of the filename
 		string_buffer vert_cache_file = tformat("shaders/cache/", flags, vfilename.sub(strlen("shaders/"), vfilename.length), ".spirv");
 		string_buffer frag_cache_file = tformat("shaders/cache/", flags, ffilename.sub(strlen("shaders/"), ffilename.length), ".spirv");
@@ -118,7 +126,7 @@ void load_Shader(Assets& assets, Shader& shader, slice<shader_flags> permutation
 		}
 		else {
 			spirv_vert = compile_glsl_to_spirv(assets, compiler, VERTEX_STAGE, vert_source, vfilename, flags, &err);
-			writef(assets, vert_cache_file, spirv_vert);
+			if (spirv_vert.length > 0) writef(assets, vert_cache_file, spirv_vert);
 		}
 
 		if (frag_time_cached != -1 && frag_time_cached > shader.info.f_time_modified) {
@@ -126,7 +134,7 @@ void load_Shader(Assets& assets, Shader& shader, slice<shader_flags> permutation
 		}
 		else {
 			spirv_frag = compile_glsl_to_spirv(assets, compiler, FRAGMENT_STAGE, frag_source, ffilename, flags, &err);
-			writef(assets, frag_cache_file, spirv_frag);
+			if (spirv_frag.length > 0) writef(assets, frag_cache_file, spirv_frag);
 		}
 
 		if (err.length > 0) {
@@ -134,9 +142,11 @@ void load_Shader(Assets& assets, Shader& shader, slice<shader_flags> permutation
 			throw "Could not compile shader to spirv!";
 		}
 
-		ShaderModules modules;
+		ShaderModules modules = {};
 		modules.vert = make_ShaderModule(device, spirv_vert);
 		modules.frag = make_ShaderModule(device, spirv_frag);
+
+		reflect_module(modules.info, spirv_vert, spirv_frag);
 
 		shader.configs.append(modules);
 		shader.config_flags.append(flags);
@@ -201,6 +211,7 @@ model_handle load_Model(Assets& assets, string_view path, bool serialized, const
 
 	Model model{ path };
 	model_handle model_handle = assets.models.assign_handle(std::move(model), serialized);
+	assets.path_to_handle.set(path, model_handle.id);
 	load_Model(assets, model_handle, trans);
 	return model_handle;
 }
@@ -215,12 +226,19 @@ texture_handle load_Texture(Assets& assets, string_view path, bool serialized) {
 	Image image = load_Image(assets, path);
 	TextureAllocator& texture_allocator = get_TextureAllocator(assets.rhi);
 	
-	make_TextureImage(texture_allocator, image);
-	
-	return { 0 };
+	TextureDesc desc;
+	Texture tex = make_TextureImage(texture_allocator, desc, image);
+
+	free_Image(image);
+
+	texture_handle handle = assets.textures.assign_handle(std::move(tex), serialized);
+	assets.path_to_handle.set(path, handle.id);
+
+	return handle;
 }
 
 void load_TextureBatch(Assets& assets, slice<TextureLoadJob> batch) {
+	/*
 	string_buffer buffer;
 	buffer.allocator = &temporary_allocator;
 	DeserializerBuffer serializer;
@@ -292,7 +310,7 @@ void load_TextureBatch(Assets& assets, slice<TextureLoadJob> batch) {
 
 	for (int i = 0; i < num_threads; i++) {
 		threads[i].join();
-	}
+	}*/
 }
 
 void load() {
@@ -300,22 +318,20 @@ void load() {
 }
 
 u64 underlying_texture(Assets& assets, texture_handle handle) {
-	return assets.textures.get(handle)->texture_id;
+	return (u64)assets.textures.get(handle)->image;
 }
 
 Texture* get_Texture(Assets& assets, texture_handle handle) {
 	return assets.textures.get(handle);
 }
 
-
-
 material_handle make_Material(Assets& assets, MaterialDesc& desc) {
-	Material material;
-	material.desc = desc;
-
-
-
+	Material material = make_material_descriptors(assets.rhi, assets, desc);
 	return assets.materials.assign_handle(std::move(material));
+}
+
+Material* get_Material(Assets& assets, material_handle handle) {
+	return assets.materials.get(handle);
 }
 
 void replace_Material(Assets& assets, material_handle handle, MaterialDesc& desc) {

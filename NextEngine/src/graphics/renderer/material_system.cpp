@@ -85,6 +85,27 @@ void mat_cubemap(MaterialDesc& desc, string_view name, cubemap_handle value) {
 	desc.params.append(param);
 }
 
+void mat_channel1(MaterialDesc& desc, string_view name, float value, texture_handle tex) {
+	ParamDesc param;
+	param.name = name;
+	param.type = Param_Channel1;
+	param.real = value;
+	param.image = tex.id;
+
+	desc.params.append(param);
+}
+
+
+void mat_channel2(MaterialDesc& desc, string_view name, glm::vec2 value, texture_handle tex) {
+	ParamDesc param;
+	param.name = name;
+	param.type = Param_Channel2;
+	param.vec2 = value;
+	param.image = tex.id;
+
+	desc.params.append(param);
+}
+
 void mat_channel3(MaterialDesc& desc, string_view name, glm::vec3 value, texture_handle tex) {
 	ParamDesc param;
 	param.name = name;

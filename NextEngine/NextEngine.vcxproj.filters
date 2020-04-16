@@ -178,7 +178,6 @@
       <Filter>src\core</Filter>
     </ClCompile>
     <ClCompile Include="src\core\container\string_view.cpp" />
-    <ClCompile Include="src\graphics\assets\asset_manager.cpp" />
     <ClCompile Include="src\graphics\pass\shadow.cpp">
       <Filter>src\graphics</Filter>
     </ClCompile>
@@ -233,6 +232,9 @@
     <ClCompile Include="src\graphics\rhi\vulkan\rhi.cpp" />
     <ClCompile Include="src\graphics\rhi\vulkan\vk_cmd_buffer.cpp" />
     <ClCompile Include="src\graphics\assets\VULKAN\vk_material.cpp" />
+    <ClCompile Include="vendor\spirv-reflect\spirv_reflect.cpp" />
+    <ClCompile Include="src\graphics\assets\assets.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\shader_access.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="vendor\imgui\imconfig.h">
@@ -457,5 +459,7 @@
     </ClInclude>
     <ClInclude Include="include\graphics\rhi\vulkan\material.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\texture.h" />
+    <ClInclude Include="vendor\spirv-reflect\spirv_reflect.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\shader_access.h" />
   </ItemGroup>
 </Project>

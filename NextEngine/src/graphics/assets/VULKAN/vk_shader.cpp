@@ -12,6 +12,7 @@
 #include "core/container/tvector.h"
 #include <glm/gtc/type_ptr.hpp>
 #include <shaderc/shaderc.h>
+#include <spirv-reflect/spirv_reflect.h>
 
 REFLECT_STRUCT_BEGIN(ShaderInfo)
 REFLECT_STRUCT_MEMBER(vfilename)
@@ -92,14 +93,14 @@ string_buffer preprocess_gen(Assets& assets, slice<string_view> tokens, shader_f
 		if (tokens[i] == "#include") {
 			while (tokens[++i] == " ");
 
-			auto name = tokens[i++];
+			auto name = tokens[i];
 
 			if (!already_included.contains(name)) {
 				string_buffer src;
 				src.allocator = &temporary_allocator;
 
 				if (!readf(assets, name, &src)) {
-					fprintf(stderr, "Could not #include source file");
+					fprintf(stderr, "Could not #include source file %s\n", name);
 					return "";
 				}
 
@@ -221,10 +222,11 @@ string_buffer preprocess_source(Assets& assets, string_view source, shader_flags
 	return preprocess_gen(assets, tokens, flags);
 }
 
+
 string_buffer compile_glsl_to_spirv(Assets& assets, shaderc_compiler_t compiler, Stage stage, string_view source, string_view input_file_name, shader_flags flags, string_buffer* err) {
 	string_buffer source_assembly = preprocess_source(assets, source, flags);
 
-	//printf("Source: %s", source_assembly.data);
+	printf("Source: %s", source_assembly.data);
 
 	shaderc_shader_kind glsl_shader_kind = stage == VERTEX_STAGE ? shaderc_glsl_vertex_shader : shaderc_glsl_fragment_shader;
 
@@ -235,6 +237,7 @@ string_buffer compile_glsl_to_spirv(Assets& assets, shaderc_compiler_t compiler,
 		shaderc_result_release(result);
 		return "";
 	}
+
 
 	uint length = shaderc_result_get_length(result);
 	const char* bytes = shaderc_result_get_bytes(result);
@@ -250,6 +253,181 @@ string_buffer compile_glsl_to_spirv(Assets& assets, shaderc_compiler_t compiler,
 
 	return buffer;
 }
+
+struct ShaderReflection {
+	array<10, SpvReflectDescriptorSet*> descriptor_sets;
+	array<10, SpvReflectBlockVariable*> push_constant_blocks;
+};
+
+
+
+void reflect_extract(SpvReflectShaderModule& compiler, ShaderReflection& ref, string_view spirv) {
+	SpvReflectResult result = spvReflectCreateShaderModule(spirv.length, spirv.data, &compiler);
+	if (!result == SPV_REFLECT_RESULT_SUCCESS) {
+		printf("Reflection parser, could not parse SPIRV!");
+		abort();
+	}
+
+	spvReflectEnumerateDescriptorSets(&compiler, &ref.descriptor_sets.length, NULL);
+	spvReflectEnumeratePushConstantBlocks(&compiler, &ref.push_constant_blocks.length, NULL);
+
+	assert(ref.descriptor_sets.length <= 10);
+	assert(ref.push_constant_blocks.length <= 10);
+
+	spvReflectEnumerateDescriptorSets(&compiler, &ref.descriptor_sets.length, ref.descriptor_sets.data);
+	spvReflectEnumeratePushConstantBlocks(&compiler, &ref.push_constant_blocks.length, ref.push_constant_blocks.data);
+}
+
+void write_joint_ref(ShaderModuleInfo* info, VkShaderStageFlagBits stage, ShaderReflection& ref) {
+	for (auto descriptor : ref.descriptor_sets) {
+		uint set = descriptor->set;
+
+		if (set >= info->sets.length) {
+			info->sets.resize(set + 1);
+			//Leaves a gap in the array for descriptor sets the shader doesn't write too
+		}
+
+		DescriptorSetInfo& set_info = info->sets[set];
+
+		if (descriptor->binding_count >= set_info.bindings.length) {
+			set_info.bindings.resize(descriptor->binding_count);
+		}
+
+		for (uint i = 0; i < descriptor->binding_count; i++) {
+			auto binding = descriptor->bindings[i];
+			DescriptorBindingInfo& out = set_info.bindings[i];
+
+			assert(binding->binding < MAX_BINDING);
+
+			if (out.stage == 0) {
+				out.binding = binding->binding;
+				out.count = 1; 
+				out.name = binding->name;
+				out.type = (VkDescriptorType)binding->descriptor_type;
+
+				for (uint32_t i_dim = 0; i_dim < binding->array.dims_count; ++i_dim) {
+					out.count *= binding->array.dims[i_dim];
+				}
+				
+				if (out.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
+					UBOInfo ubo_info = {};
+					ubo_info.id = binding->binding;
+
+					auto& block = binding->block;
+
+					ubo_info.type_name = binding->type_description->type_name;
+					ubo_info.size = block.size;
+
+					for (uint i = 0; i < block.member_count; i++) {
+						UBOFieldInfo field = {};
+						field.name = block.members[i].name;
+						field.offset = block.members[i].offset;
+						field.size = block.members[i].size;
+
+						ubo_info.fields.append(field);
+					}
+
+					set_info.ubos.append(ubo_info);
+				}
+
+				if (out.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
+					SamplerInfo sampler_info = {};
+					sampler_info.id = binding->binding;
+		
+					set_info.samplers.append(sampler_info);
+				}
+				
+			}
+			else {
+				//todo check if two bindings are compatible
+			}
+
+			out.stage = (VkShaderStageFlagBits)(out.stage | stage);
+		}
+
+	}
+}
+
+void print_module(ShaderModuleInfo& info) {
+	int set_index = 0;
+	for (int set_i = 0; set_i < info.sets.length; set_i++) {
+		DescriptorSetInfo& descriptor = info.sets[set_i];
+
+		printf("SET %i\n", set_i);
+
+		uint uniform_index = 0;
+
+		for (int binding_i = 0; binding_i < descriptor.bindings.length; binding_i++) {
+			DescriptorBindingInfo& binding = descriptor.bindings[binding_i];
+
+			if (binding.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
+				printf("\tBINDING %i sampler2D %s %\n", binding.binding, binding.name);
+			}
+				
+			if (binding.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
+				UBOInfo& ubo = descriptor.ubos[uniform_index++];
+				
+				printf("\tBINDING %i uniform %s{\n", binding.binding, ubo.type_name);
+
+				for (UBOFieldInfo& field : ubo.fields) {
+					printf("\t\tFIELD %s;\n", field.name);
+				}
+
+				printf("\t}\n");
+			}
+		}
+
+		printf("\n");
+	}
+}
+
+//EXPECTS INFO TO BE ZERO INITIALIZED
+void reflect_module(ShaderModuleInfo& info, string_view vert_spirv, string_view frag_spirv) {
+	SpvReflectShaderModule vert_module;
+	SpvReflectShaderModule frag_module;
+
+	ShaderReflection vert;
+	ShaderReflection frag;
+
+	reflect_extract(vert_module, vert, vert_spirv);
+	reflect_extract(frag_module, frag, frag_spirv);
+
+	write_joint_ref(&info, VK_SHADER_STAGE_VERTEX_BIT, vert);
+	write_joint_ref(&info, VK_SHADER_STAGE_FRAGMENT_BIT, frag);
+
+	printf("===========\n");
+	
+	print_module(info);
+
+	spvReflectDestroyShaderModule(&vert_module);
+	spvReflectDestroyShaderModule(&frag_module);
+}
+
+void gen_descriptors(ShaderModuleInfo& info) {
+	int set_index = 0;
+	for (int set_i = 0; set_i < info.sets.length; set_i++) {
+		DescriptorSetInfo& descriptor = info.sets[set_i];
+			 
+		VkDescriptorSetLayoutCreateInfo layout_info = {};
+		layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		layout_info.bindingCount = descriptor.bindings.length;
+
+		array<20, VkDescriptorSetLayoutBinding> layout_bindings(descriptor.bindings.length); 
+
+		for (int binding_i = 0; binding_i < descriptor.bindings.length; binding_i++) {
+			DescriptorBindingInfo& binding = descriptor.bindings[binding_i];
+
+			VkDescriptorSetLayoutBinding& layout_binding = layout_bindings[binding_i];
+			layout_binding.binding = binding.binding;
+			layout_binding.descriptorCount = binding.count;
+			layout_binding.descriptorType = binding.type; 
+
+			layout_binding.stageFlags = binding.stage;
+		}
+		
+	}
+}
+
 
 //void ShaderConfig::bind() {
 //	/**/

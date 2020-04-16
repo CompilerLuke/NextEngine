@@ -1,19 +1,21 @@
 #include "stdafx.h"
 #ifdef RENDER_API_VULKAN
 
+#define STB_IMAGE_IMPLEMENTATION
+
 #include "graphics/rhi/vulkan/rhi.h"
 #include "graphics/rhi/vulkan/vulkan.h"
 #include "graphics/rhi/vulkan/device.h"
 #include "graphics/rhi/vulkan/buffer.h"
 #include <stb_image.h>
 #include "graphics/assets/assets.h"
-#include "graphics/assets/texture.h"
+#include "graphics/rhi/vulkan/texture.h"
 #include "core/memory/linear_allocator.h"
 #include "core/io/vfs.h"
 
-REFLECT_STRUCT_BEGIN(Texture)
-REFLECT_STRUCT_MEMBER(filename)
-REFLECT_STRUCT_END()
+//REFLECT_STRUCT_BEGIN(Texture)
+//REFLECT_STRUCT_MEMBER(filename)
+//REFLECT_STRUCT_END()
 
 REFLECT_STRUCT_BEGIN(Cubemap)
 REFLECT_STRUCT_MEMBER(filename)
@@ -29,24 +31,15 @@ Image load_Image(Assets& assets, string_view filename) {
 
 	Image image;
 
-	image.data = stbi_load(real_filename.c_str(), &image.width, &image.height, &image.num_channels, 4); //todo might waste space
+	image.data = stbi_load(real_filename.c_str(), &image.width, &image.height, &image.num_channels, STBI_rgb_alpha); //todo might waste space
+	image.num_channels = 4;
 	if (!image.data) throw "Could not load texture";
 
 	return image;
 }
 
-Image::Image() {}
-
-Image::Image(Image&& other) {
-	this->data = other.data;
-	this->width = other.width;
-	this->height = other.height;
-	this->num_channels = other.num_channels;
-	other.data = NULL;
-}
-
-Image::~Image() {
-	if (data) stbi_image_free(data);
+void free_Image(Image& image) {
+	stbi_image_free(image.data);
 }
 
 //void ENGINE_API gl_bind_cubemap(CubemapManager&, cubemap_handle, uint);
@@ -110,7 +103,42 @@ bool has_StencilComponent(VkFormat format) {
 	return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 }
 
-void transition_ImageLayout(VkCommandBuffer cmd_buffer, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
+VkCommandBuffer beginSingleTimeCommands(StagingQueue& queue) {
+	VkCommandBufferAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.commandPool = queue.command_pool;
+	allocInfo.commandBufferCount = 1;
+
+	VkCommandBuffer commandBuffer;
+	vkAllocateCommandBuffers(queue.device, &allocInfo, &commandBuffer);
+
+	VkCommandBufferBeginInfo beginInfo = {};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+	return commandBuffer;
+}
+
+void endSingleTimeCommands(StagingQueue& queue, VkCommandBuffer commandBuffer) {
+	vkEndCommandBuffer(commandBuffer);
+
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &commandBuffer;
+
+	vkQueueSubmit(queue.queue, 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(queue.queue);
+
+	vkFreeCommandBuffers(queue.device, queue.command_pool, 1, &commandBuffer);
+}
+
+void transition_ImageLayout(StagingQueue& queue, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
+	VkCommandBuffer cmd_buffer = queue.cmd_buffer; // beginSingleTimeCommands(queue);
+	
 	VkImageMemoryBarrier barrier = {};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 	barrier.oldLayout = oldLayout;
@@ -173,11 +201,14 @@ void transition_ImageLayout(VkCommandBuffer cmd_buffer, VkImage image, VkFormat 
 		1, &barrier
 	);
 
+	//endSingleTimeCommands(queue, cmd_buffer);
 }
 
-void copy_buffer_to_image(VkCommandBuffer cmd_buffer, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
+void copy_buffer_to_image(StagingQueue& queue, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t offset = 0) {
+	VkCommandBuffer cmd_buffer = queue.cmd_buffer;
+
 	VkBufferImageCopy region = {};
-	region.bufferOffset = 0;
+	region.bufferOffset = offset;
 	region.bufferRowLength = 0;
 	region.bufferImageHeight = 0;
 
@@ -192,6 +223,29 @@ void copy_buffer_to_image(VkCommandBuffer cmd_buffer, VkBuffer buffer, VkImage i
 	};
 
 	vkCmdCopyBufferToImage(cmd_buffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+	//endSingleTimeCommands(queue, cmd_buffer);
+}
+
+VkImageView make_ImageView(VkDevice device, VkImage image, VkFormat imageFormat, VkImageAspectFlags aspectFlags) {
+	VkImageViewCreateInfo makeInfo = {}; //todo abstract image view creation
+	makeInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	makeInfo.image = image;
+	makeInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	makeInfo.format = imageFormat;
+
+	makeInfo.subresourceRange.aspectMask = aspectFlags;
+	makeInfo.subresourceRange.baseMipLevel = 0;
+	makeInfo.subresourceRange.levelCount = 1;
+	makeInfo.subresourceRange.baseArrayLayer = 0;
+	makeInfo.subresourceRange.layerCount = 1;
+
+	VkImageView image_view;
+	if (vkCreateImageView(device, &makeInfo, nullptr, &image_view) != VK_SUCCESS) {
+		throw "Failed to make image views!";
+	}
+
+	return image_view;
 }
 
 //reminder: image memory must be bound afterwards!
@@ -218,7 +272,7 @@ void make_Image(VkDevice device, VkPhysicalDevice physical_device, uint32_t widt
 }
 
 void make_alloc_Image(VkDevice device, VkPhysicalDevice physical_device, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage* image, VkDeviceMemory* imageMemory) {
-	make_Image(device, physical_device, width, height, format, tiling, properties, usage, image);
+	make_Image(device, physical_device, width, height, format, tiling, usage, properties, image);
 
 	VkMemoryRequirements memRequirements;
 	vkGetImageMemoryRequirements(device, *image, &memRequirements);
@@ -255,11 +309,11 @@ void make_TextureImage(VkImage* result, VkDeviceMemory* result_memory,  StagingQ
 	memcpy(data, pixels, imageSize);
 	vkUnmapMemory(device, stagingBufferMemory);
 
-	make_Image(device, physical_device, image.width, image.height, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, *result, *result_memory);
+	make_alloc_Image(device, physical_device, image.width, image.height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, result, result_memory);
 
-	transition_ImageLayout(staging_queue.cmd_buffer, *result, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	copy_buffer_to_image(staging_queue.cmd_buffer, stagingBuffer, *result, image.width, image.height);
-	transition_ImageLayout(staging_queue.cmd_buffer, *result, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	transition_ImageLayout(staging_queue, *result, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	copy_buffer_to_image(staging_queue, stagingBuffer, *result, image.width, image.height);
+	transition_ImageLayout(staging_queue, *result, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	staging_queue.destroyBuffers.append(stagingBuffer);
 	staging_queue.destroyDeviceMemory.append(stagingBufferMemory);
@@ -307,10 +361,10 @@ struct TextureAllocInfo {
 };
 
 
-#define MAX_IMAGE_UPLOAD mb(64)
-#define MAX_IMAGE_DATA mb(64)
+#define MAX_IMAGE_UPLOAD mb(256)
+#define MAX_IMAGE_DATA gb(1)
 #define MAX_TEXTURES 200
-#define MAX_MIP 5
+#define MAX_MIP 14 //MAX TEXTURE SIZE is 8k
 
 struct TextureAllocator {	
 	StagingQueue& staging;
@@ -322,12 +376,12 @@ struct TextureAllocator {
 	VkBuffer staging_buffer;
 	VkImage image;
 
-	u64 staging_buffer_offset;
-	u64 image_memory_offset;
+	u64 staging_buffer_offset = 0;
+	u64 image_memory_offset = 0;
 
-	TextureAllocInfo memory_alloc_info[MAX_TEXTURES];
+	TextureAllocInfo memory_alloc_info[MAX_TEXTURES] = {};
 	uint texture_allocated_count = 0;
-	TextureAllocInfo* aligned_free_list[MAX_MIP]; //power of two
+	TextureAllocInfo* aligned_free_list[MAX_MIP] = {}; //power of two
 };
 
 //Texture Allocator, will upload all textures into one massive texture
@@ -353,32 +407,54 @@ TextureAllocator* make_TextureAllocator(RHI& rhi) {
 	printf("TOTAL AVAILABLE IMAGE TEXTURE: %ix%i\n", image_size, image_size);
 
 	make_Buffer(device, physical_device, MAX_IMAGE_UPLOAD, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, allocator->staging_buffer, allocator->staging_buffer_memory);
-	//make_Image(device, physical_device, image_size, image_size, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, allocator->image, allocator->image_memory);
+	
+	VkImage image;
+	make_Image(device, physical_device, 256, 256, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &image);
+
+	VkMemoryRequirements memRequirements;
+	vkGetImageMemoryRequirements(device, image, &memRequirements);
+
+	VkMemoryAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = MAX_IMAGE_DATA;
+	allocInfo.memoryTypeIndex = find_memory_type(physical_device, memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	//MEMORY TYPE BITS 130
+
+	printf("MEMORY TYPE BITS %i\n", memRequirements.memoryTypeBits);
+
+	if (vkAllocateMemory(device, &allocInfo, nullptr, &allocator->image_memory) != VK_SUCCESS) {
+		throw "Could not allocate memory for image!";
+	}
+	
+	//make_Image(device, physical_device, image_size, image_size, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, allocator->image, allocator->image_memory);
+	return allocator;
 }
 
 int select_mip(int width, int height) {
-	return (int)glm::max(glm::log2(width), glm::log2(height));
+	return (int)glm::ceil(glm::log2((double)glm::max(width, height)));
 }
 
-TextureAllocInfo make_TextureImage(TextureAllocator& allocator, Image image) {
+Texture make_TextureImage(TextureAllocator& allocator, TextureDesc& desc, Image image) {
 	VkDevice device = allocator.device;
 	VkPhysicalDevice physical_device = allocator.physical_device;
 	StagingQueue& staging_queue = allocator.staging;
 
-	VkFormat formats_by_channel_count[] = {VK_FORMAT_R8_UNORM, VK_FORMAT_R8G8_UNORM, VK_FORMAT_R8G8B8_UNORM, VK_FORMAT_R8G8B8A8_UNORM};
-	VkFormat image_format = formats_by_channel_count[image.num_channels];
+	VkFormat formats_by_channel_count[] = {VK_FORMAT_R8_SRGB, VK_FORMAT_R8G8_SRGB, VK_FORMAT_R8G8B8_SRGB, VK_FORMAT_R8G8B8A8_SRGB};
+	VkFormat image_format = formats_by_channel_count[image.num_channels - 1];
 
 	void* pixels = image.data;
 
-	VkDeviceSize image_size = image.width * image.height * 4;
+	VkDeviceSize image_size = image.width * image.height * image.num_channels;
 
 	if (!pixels) throw "Failed to load texture image!";
 
-	memcpy_Buffer(device, allocator.staging_buffer_memory, pixels, image_size, allocator.staging_buffer_offset);
+	int32_t offset = allocator.staging_buffer_offset;
+	memcpy_Buffer(device, allocator.staging_buffer_memory, pixels, image_size, offset);
 	allocator.staging_buffer_offset += image_size;
 
 	int mip = select_mip(image.width, image.height);
-	assert(mip <= MAX_MIP);
+	assert(mip < MAX_MIP);
 	TextureAllocInfo* info = allocator.aligned_free_list[(int)mip];
 
 	while (info != NULL) {
@@ -392,7 +468,7 @@ TextureAllocInfo make_TextureImage(TextureAllocator& allocator, Image image) {
 
 	if (info == NULL) {
 		make_Image(device, physical_device, image.width, image.height, image_format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vk_image);
-		
+
 		VkMemoryRequirements memRequirements;
 		vkGetImageMemoryRequirements(device, vk_image, &memRequirements);
 
@@ -411,14 +487,22 @@ TextureAllocInfo make_TextureImage(TextureAllocator& allocator, Image image) {
 		vk_image = info->image;
 	}
 
-	transition_ImageLayout(staging_queue.cmd_buffer, vk_image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	copy_buffer_to_image(staging_queue.cmd_buffer, allocator.staging_buffer, vk_image, image.width, image.height);
-	transition_ImageLayout(staging_queue.cmd_buffer, vk_image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	transition_ImageLayout(staging_queue, vk_image, image_format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	copy_buffer_to_image(staging_queue, allocator.staging_buffer, vk_image, image.width, image.height, offset);
+	transition_ImageLayout(staging_queue, vk_image, image_format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-	return *info;
+	Texture result;
+	result.desc = desc;
+	result.alloc_info = info;
+	result.image = vk_image;
+	result.view = make_ImageView(device, vk_image, image_format, VK_IMAGE_ASPECT_COLOR_BIT);
+
+	return result;
 }
 
-void destroy_TextureImage(TextureAllocator& allocator, TextureAllocInfo* info) {
+void destroy_TextureImage(TextureAllocator& allocator, Texture& texture) {
+	TextureAllocInfo* info = texture.alloc_info;
+
 	int mip = select_mip(info->width, info->height);
 	
 	TextureAllocInfo* next = allocator.aligned_free_list[mip];
@@ -427,6 +511,17 @@ void destroy_TextureImage(TextureAllocator& allocator, TextureAllocInfo* info) {
 }
 
 void destroy_TextureAllocator(TextureAllocator* allocator) {
+	VkDevice device = allocator->device;
+	VkPhysicalDevice physical_device = allocator->physical_device;
+	
+	for (int i = 0; i < MAX_TEXTURES; i++) {
+		TextureAllocInfo info = allocator->memory_alloc_info[i];
+		if (info.format == 0) continue;
+	
+		vkDestroyImage(device, info.image, nullptr);
+	}
+	vkFreeMemory(device, allocator->image_memory, nullptr);
+
 	vkDestroyBuffer(allocator->device, allocator->staging_buffer, NULL);
 	vkFreeMemory(allocator->device, allocator->staging_buffer_memory, NULL);
 }

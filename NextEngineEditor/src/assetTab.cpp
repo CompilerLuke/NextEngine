@@ -361,17 +361,17 @@ RenderCtx create_preview_command_buffer(CommandBuffer& cmd_buffer, RenderCtx& ol
 
 MaterialDesc base_shader_desc(Assets& assets, shader_handle shader) {
 	MaterialDesc desc{ shader };
-	mat_image(desc, "material.diffuse", load_Texture(assets, "solid_white.png"));
-	mat_image(desc, "material.roughness", load_Texture(assets, "solid_white.png"));
-	mat_image(desc, "material.metallic", load_Texture(assets, "black.png"));
-	mat_image(desc, "material.normal", load_Texture(assets, "normal.jpg"));
+	mat_channel3(desc, "diffuse", glm::vec3(1.0f));
+	mat_channel1(desc, "metallic", 0.0f);
+	mat_channel1(desc, "roughness", 1.0f);
+	mat_channel1(desc, "normal", 1.0f, load_Texture(assets, "normal.jpg"));
+	mat_vec2(desc, "tiling", glm::vec2(1, 1));
 
 	return desc;
 }
 
 material_handle create_default_material(Assets& assets) { //todo move to materialSystem
 	MaterialDesc desc = base_shader_desc(assets, load_Shader(assets, "shaders/pbr.vert", "shaders/pbr.frag"));
-	mat_vec2(desc, "transformsUVs", glm::vec2(1, 1));
 
 	return make_Material(assets, desc);
 }
@@ -1247,12 +1247,13 @@ void AssetTab::on_save() {
 		serializer.write(reflect::TypeResolver<AssetFolder>::get(), asset);
 	END_SAVE("data/AssetFolder.ne")
 	
-	BEGIN_SAVE(TextureAsset)
+	//todo worry about serialization afterward
+	/*BEGIN_SAVE(TextureAsset)
 		Texture* tex = get_Texture(asset_manager, asset->handle);
 		serializer.write_string(tex->filename);
 		serializer.write(reflect::TypeResolver<TextureAsset>::get(), asset);
 	END_SAVE("data/TextureAsset.ne")
-	
+	*/
 	
 	BEGIN_SAVE(MaterialAsset)
 		MaterialDesc* mat = material_desc(asset_manager, asset->handle);

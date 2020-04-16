@@ -3,6 +3,8 @@
 #include "vulkan.h"
 #include "core/container/array.h"
 
+struct VulkanDesc;
+
 struct Device {
 	VkInstance instance;
 	VkDebugUtilsMessengerEXT debug_messenger;

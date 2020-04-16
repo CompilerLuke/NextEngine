@@ -22,7 +22,7 @@ StagingQueue make_StagingQueue(VkDevice device, VkPhysicalDevice physical_device
 	allocInfo.commandBufferCount = 1;
 
 	//TODO make CommandBuffer Pool
-	StagingQueue result;
+	StagingQueue result = {};
 	result.queue = queue;
 	result.device = device;
 	result.physical_device = physical_device;
@@ -36,10 +36,13 @@ void begin_staging_cmds(StagingQueue& queue) {
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
+	assert(!queue.recording);
+	queue.recording = true;
 	vkBeginCommandBuffer(queue.cmd_buffer, &beginInfo);
 }
 
 void clear_StagingQueue(StagingQueue& queue) {
+	queue.recording = false;
 	queue.destroyBuffers.clear();
 	queue.destroyDeviceMemory.clear();
 }
@@ -118,7 +121,7 @@ void copy_Buffer(StagingQueue& staging_queue, VkBuffer srcBuffer, VkBuffer dstBu
 	//transferQueue.cmdsCopyBuffer.append({srcBuffer, dstBuffer, copyRegion});
 }
 
-void memcpy_Buffer(VkDevice device, VkDeviceMemory memory, void* buffer_data, u64 buffer_size, u64 offset = 0) {
+void memcpy_Buffer(VkDevice device, VkDeviceMemory memory, void* buffer_data, u64 buffer_size, u64 offset) {
 	void* data;
 	vkMapMemory(device, memory, 0, buffer_size, 0, &data);
 	memcpy((char*)data + offset, buffer_data, (size_t)buffer_size);
@@ -244,7 +247,7 @@ void input_attributes(ArrayVertexInputs& vertex_inputs, slice<VertexAttrib> attr
 }
 
 ArrayVertexInputs input_attributes(BufferAllocator& self, VertexLayout layout) {
-	return self.vertex_buffers[layout].input_desc.copy();
+	return self.vertex_buffers[layout].input_desc;
 }
 
 VkVertexInputBindingDescription input_bindings(BufferAllocator& self, VertexLayout layout) {
@@ -252,7 +255,7 @@ VkVertexInputBindingDescription input_bindings(BufferAllocator& self, VertexLayo
 }
 
 ArrayVertexInputs input_attributes(BufferAllocator& self, VertexLayout layout, InstanceLayout instance_layout) {
-	return self.instance_buffers[instance_layout].input_desc.copy();
+	return self.instance_buffers[instance_layout].input_desc;
 }
 
 ArrayVertexBindings input_bindings(BufferAllocator& self, VertexLayout layout, InstanceLayout instance_layout) {
@@ -293,7 +296,7 @@ void alloc_layout_allocator(BufferAllocator& m, VertexLayoutDesc& vert_desc, Ins
 	allocator.vertex_layout = vert_desc.layout;
 	allocator.layout = instance_desc.layout;
 	allocator.binding_desc = instance_binding_description;
-	allocator.input_desc = m.vertex_buffers[vert_desc.layout].input_desc.copy();
+	allocator.input_desc = m.vertex_buffers[vert_desc.layout].input_desc;
 	input_attributes(allocator.input_desc, instance_desc.attribs, 1);
 
 	allocator.elem_size = instance_desc.elem_size;

@@ -5,6 +5,8 @@
 #include <initializer_list>
 #include <new>
 
+#define BOUNDS_CHECKING
+
 template<typename T>
 struct vector {
 	Allocator* allocator = &default_allocator;
@@ -12,7 +14,7 @@ struct vector {
 	uint capacity = 0;
 	T* data = NULL;
 
-	inline void reserve(unsigned int count) {
+	inline void reserve(uint count) {
 		if (count > capacity) {
 			T* data = (T*)allocator->allocate(sizeof(T) * count);
 
@@ -23,6 +25,22 @@ struct vector {
 			this->data = data;
 			this->capacity = count;
 		}
+	}
+
+	inline void resize(uint count) {
+		if (count > capacity) {
+			if (capacity == 0) reserve(count);
+			else if (capacity * 2 < count) reserve(count);
+			else reserve(capacity * 2);
+		}
+
+		int diff = count - length;
+		for (int i = 0; i < diff; i++) {
+			new (data + length + i) T();
+		}
+		//todo free elements
+
+		length = count;
 	}
 
 	inline void append(T&& element) {
@@ -81,7 +99,7 @@ struct vector {
 	inline T& operator[](unsigned int index) {
 
 #ifdef BOUNDS_CHECKING
-		if (index < 0 && index >= length) abort();
+		if (index >= length) abort();
 #endif
 
 		return data[index];
@@ -89,12 +107,13 @@ struct vector {
 
 	inline const T& operator[](unsigned int index) const {
 #ifdef BOUNDS_CHECKING
-		if (index < 0 && index >= length) abort();
+		if (index >= length) abort();
 #endif
 
 		return data[index];
 	}
 	
+
 	inline vector(vector<T>&& other) {
 		this->data = other.data;
 		this->length = other.length;

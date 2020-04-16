@@ -21,6 +21,7 @@ struct sstring {
 			assert(i < N);
 			data[i++] = *str++;
 		}
+		data[i] = '\0';
 
 		length(i);
 	}

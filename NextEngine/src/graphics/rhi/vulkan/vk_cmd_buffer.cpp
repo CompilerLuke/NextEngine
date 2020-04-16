@@ -48,6 +48,7 @@ VkCommandBuffer begin_recording(CommandPool& pool) {
 	VkCommandBuffer cmd_buffer = pool.free.pop();
 
 	vkBeginCommandBuffer(cmd_buffer, &beginInfo);
+	return cmd_buffer;
 }
 
 void end_recording(CommandPool& pool, VkCommandBuffer cmd_buffer) {
