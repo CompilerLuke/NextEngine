@@ -829,7 +829,6 @@ void respond_to_shortcut(Editor& editor) {
 
 //Application
 APPLICATION_API Editor* init(const char* args, Modules& modules) {
-	begin_gpu_upload(*modules.rhi);
 	Editor* editor = new Editor(modules, args);
 	end_gpu_upload(*modules.rhi);
 	return editor;

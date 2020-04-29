@@ -1,6 +1,6 @@
 #include "stdafx.h"
+#include "graphics/rhi/vulkan/vulkan.h"
 #include "graphics/rhi/vulkan/material.h"
-#include "graphics/rhi/vulkan/rhi.h"
 #include "graphics/rhi/vulkan/shader.h"
 #include "graphics/rhi/vulkan/texture.h"
 #include "graphics/rhi/vulkan/buffer.h"
@@ -24,7 +24,6 @@ Material make_material_descriptors(RHI& rhi, Assets& assets, MaterialDesc& desc)
 	VkDevice device = get_Device(rhi);
 	VkPhysicalDevice physical_device = get_PhysicalDevice(rhi);
 	VkDescriptorPool descriptor_pool = get_DescriptorPool(rhi);
-	StagingQueue& queue = get_StagingQueue(get_BufferAllocator(rhi));
 
 	shader_flags permutations[] = { SHADER_INSTANCED };
 
@@ -175,6 +174,17 @@ Material make_material_descriptors(RHI& rhi, Assets& assets, MaterialDesc& desc)
 					*(glm::vec3*)field_ptr = param.vec3;
 				}
 			}
+		}
+
+
+		if (material_bindings.samplers.length != sampler_index) {
+			fprintf(stderr, "Mismatch in the number of image parameters!\n");
+			abort();
+		}
+
+		if (ubo_info.fields.length != uniform_index) {
+			fprintf(stderr, "Mismatch in the number of ubo fields!\n");
+			abort();
 		}
 
 		memcpy_Buffer(device, material.memory, ubo_memory, ubo_info.size);

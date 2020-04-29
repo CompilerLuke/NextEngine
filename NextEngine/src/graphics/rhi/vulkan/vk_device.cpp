@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "graphics/rhi/vulkan/device.h"
-#include "graphics/rhi/vulkan/rhi.h"
+#include "graphics/rhi/vulkan/vulkan.h"
+#include <string.h>
+#include <stdio.h>
 #include <GLFW/glfw3.h>
 #include <glad/glad.h>
 
@@ -38,49 +40,70 @@ const char* device_extensions[] = {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 };
 
-array<20, VkQueueFamilyProperties> queue_family_properties(VkPhysicalDevice device) {
+QueueFamilyIndices find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface) {
+	QueueFamilyIndices indices;
+
+	//GET QUEUE FAMILY PROPERTIES
 	uint32_t queue_family_count = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, nullptr);
 
 	array<20, VkQueueFamilyProperties> queue_families(queue_family_count);
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, queue_families.data);
 
-	return queue_families;
-}
+	printf("\nQUEUE FAMILY SELECTION\n");
 
-int32_t find_graphics_queue_family(VkPhysicalDevice device) {
-	auto queue_families = queue_family_properties(device);
+	uint best_transfer_ranking = 0;
+	uint best_compute_ranking = 0;
 
+	//FILTER QUEUES
 	for (int i = 0; i < queue_families.length; i++) {
 		VkQueueFamilyProperties& queue_family = queue_families[i];
-		if (queue_family.queueCount > 0 && queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-			return i;
-		}
-	}
 
-	return -1;
-}
+		if (queue_family.queueCount == 0) continue;
 
-int32_t find_present_queue_family(VkPhysicalDevice device, VkSurfaceKHR surface) {
-	auto queue_families = queue_family_properties(device);
+		bool graphics_support = queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT;
+		bool transfer_support = queue_family.queueFlags & VK_QUEUE_TRANSFER_BIT;
+		bool compute_support  = queue_family.queueFlags & VK_QUEUE_COMPUTE_BIT;
 
-	for (int i = 0; i < queue_families.length; i++) {
-		VkQueueFamilyProperties& queue_family = queue_families[i];
+		uint transfer_ranking = graphics_support ? 1 : compute_support ? 2 : 3;
+		uint compute_ranking = graphics_support ? 1 : 2;
 		
 		VkBool32 present_support = false;
 		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &present_support);
 
-		if (present_support) return i;
+		if (indices.graphics_family == -1 && graphics_support) {
+			indices.graphics_family = i;
+		}
+
+		if (transfer_support && transfer_ranking > best_transfer_ranking) {
+			indices.async_transfer_family = i;
+			best_transfer_ranking = transfer_ranking;
+		}
+
+		if (compute_support && compute_ranking > best_compute_ranking) {
+			indices.async_compute_family = i;
+			best_compute_ranking = compute_ranking;
+		}
+
+		if (indices.present_family == -1 && present_support) {
+			indices.present_family = i;
+		}
+
+		printf("\tQUEUE INDEX %i (%2.i) graphics %d transfer %d compute %d present %d\n", i, queue_family.queueCount, graphics_support, transfer_support, compute_support, present_support);
+
 	}
 
-	return -1;
-}
+	printf("\tSELECTED graphics %i", indices.graphics_family);
+	printf("\tSELECTED transfer %i", indices.async_transfer_family);
+	printf("\tSELECTED compute  %i", indices.async_compute_family);
+	printf("\tSELECTED present  %i", indices.present_family);
 
-QueueFamilyIndices find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface) {
-	int32_t graphics_family = find_graphics_queue_family(device);
-	int32_t present_family = find_present_queue_family(device, surface);
+	//todo Assumes that a graphics capable family can perform all other operations as well
+	//in theory this should cover most graphics cards, but there may be an exception which 
+	//will then crash without warning
 
-	return { graphics_family, present_family };
+	
+	return indices;
 }
 
 SwapChainSupportDetails query_swapchain_support(VkSurfaceKHR surface, VkPhysicalDevice device) {
@@ -99,11 +122,14 @@ SwapChainSupportDetails query_swapchain_support(VkSurfaceKHR surface, VkPhysical
 	return details;
 };
 
+#include "core/container/vector.h"
+
 bool check_device_extension_support(VkPhysicalDevice device) {
 	uint32_t extensionCount;
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
 
-	array<100, VkExtensionProperties> availableExtensions(extensionCount);
+	vector<VkExtensionProperties> availableExtensions;
+	availableExtensions.resize(extensionCount);
 
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data);
 
@@ -125,9 +151,9 @@ bool check_device_extension_support(VkPhysicalDevice device) {
 }
 
 bool is_device_suitable(VkPhysicalDevice device, VkSurfaceKHR surface) {
-	int32_t graphics_family = find_graphics_queue_family(device);
-	int32_t present_family = find_present_queue_family(device, surface);
-	bool is_complete = graphics_family != -1 && present_family != -1;
+	QueueFamilyIndices indices = find_queue_families(device, surface);
+
+	bool is_complete = indices.is_complete();
 
 	bool extensionSupport = check_device_extension_support(device);
 
@@ -306,57 +332,83 @@ void make_logical_devices(Device& device, const VulkanDesc& desc, VkSurfaceKHR s
 
 	QueueFamilyIndices indices = find_queue_families(physical_device, surface);
 
-	VkDeviceQueueCreateInfo queueCreateInfo = {};
-	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	queueCreateInfo.queueFamilyIndex = indices.graphics_family;
-	queueCreateInfo.queueCount = 1;
+	//VkPhysicalDeviceTimelineSemaphoreFeatures semaphore_features = {};
+	//semaphore_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES;
+	//semaphore_features.timelineSemaphore = true;
 
-	float queuePriority = 1.0f;
-	queueCreateInfo.pQueuePriorities = &queuePriority;
+	//VkPhysicalDeviceFeatures2 physical_device_features_2 = {};
+	//physical_device_features_2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+	//physical_device_features_2.features = desc.device_features;
+	//physical_device_features_2.pNext = &physical_device_features_12;
+
+	VkPhysicalDeviceVulkan12Features physical_device_features_12 = {};
+	physical_device_features_12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+	physical_device_features_12.timelineSemaphore = true;
+
 
 	VkDeviceCreateInfo makeInfo = {};
 	makeInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-	makeInfo.pQueueCreateInfos = &queueCreateInfo;
-	makeInfo.queueCreateInfoCount = 1;
-
-	makeInfo.pEnabledFeatures = &desc.device_features;
-
 	makeInfo.enabledExtensionCount = sizeof(device_extensions) / sizeof(const char*);
 	makeInfo.ppEnabledExtensionNames = device_extensions;
+	makeInfo.pEnabledFeatures = &desc.device_features;
+	makeInfo.pNext = &physical_device_features_12;
+
 
 	makeInfo.enabledLayerCount = desc.num_validation_layers;
 	if (desc.num_validation_layers > 0) {
 		makeInfo.ppEnabledLayerNames = desc.validation_layers;
 	}
 
-	if (vkCreateDevice(physical_device, &makeInfo, nullptr, &device.device) != VK_SUCCESS) {
-		throw "failed to make logical device!";
-	}
+	//DEFINE ALL QUEUES TO BE CREATED
+	array<4, uint32_t> uniqueQueueFamilies;
 
-	vkGetDeviceQueue(device, indices.graphics_family, 0, &device.graphics_queue);
+	if (!uniqueQueueFamilies.contains(indices.graphics_family)) uniqueQueueFamilies.append(indices.graphics_family);
+	if (!uniqueQueueFamilies.contains(indices.async_compute_family)) uniqueQueueFamilies.append(indices.async_compute_family);
+	if (!uniqueQueueFamilies.contains(indices.async_transfer_family)) uniqueQueueFamilies.append(indices.async_transfer_family);
+	if (!uniqueQueueFamilies.contains(indices.present_family)) uniqueQueueFamilies.append(indices.present_family);
 
-	array<20, VkDeviceQueueCreateInfo> queueCreateInfos;
+	array<4, VkDeviceQueueCreateInfo> queueCreateInfos(uniqueQueueFamilies.length);
 
-	array<2, uint32_t> uniqueQueueFamilies(2);
-	uniqueQueueFamilies[0] = (uint32_t)indices.graphics_family;
-	uniqueQueueFamilies[1] = (uint32_t)indices.present_family;
+	float queuePriority = 1.0f;
+	for (uint i = 0; i < uniqueQueueFamilies.length; i++) {
+		VkDeviceQueueCreateInfo& queueCreateInfo = queueCreateInfos[i];
+		queueCreateInfo = {};
 
-	if (indices.graphics_family == indices.present_family) uniqueQueueFamilies.length = 1;
-
-	queuePriority = 1.0f;
-	for (int i = 0; i < uniqueQueueFamilies.length; i++) {
-		VkDeviceQueueCreateInfo queueCreateInfo;
-		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 		queueCreateInfo.queueFamilyIndex = uniqueQueueFamilies[i];
 		queueCreateInfo.queueCount = 1;
 		queueCreateInfo.pQueuePriorities = &queuePriority;
-		queueCreateInfos.append(queueCreateInfo);
 	}
 
 	makeInfo.queueCreateInfoCount = queueCreateInfos.length;
 	makeInfo.pQueueCreateInfos = queueCreateInfos.data;
+	
+	if (vkCreateDevice(physical_device, &makeInfo, nullptr, &device.device) != VK_SUCCESS) {
+		throw "failed to make logical device!";
+	}
 
+	VkPhysicalDeviceTimelineSemaphoreProperties semaphore_properties = {};
+	semaphore_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES;
+
+	VkPhysicalDeviceVulkan12Properties properties_12 = {};
+	properties_12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES;
+	properties_12.pNext = &semaphore_properties;
+
+	VkPhysicalDeviceProperties2 properties = {};
+	properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+	properties.pNext = &properties_12;
+
+	vkGetPhysicalDeviceProperties2(physical_device, &properties);
+
+	printf("\n\nSEMAPHORE MAX VALUE DIFFERENCE %i\n", properties_12.maxTimelineSemaphoreValueDifference);
+	printf("\n\nSEMAPHORE MAX VALUE DIFFERENCE %i\n", semaphore_properties.maxTimelineSemaphoreValueDifference);
+
+	vkGetDeviceQueue(device, indices.graphics_family, 0, &device.graphics_queue);
 	vkGetDeviceQueue(device, indices.present_family, 0, &device.present_queue);
+	vkGetDeviceQueue(device, indices.async_compute_family, 0, &device.compute_queue);
+	vkGetDeviceQueue(device, indices.async_transfer_family, 0, &device.transfer_queue);
+
+	device.queue_families = indices;
 }
 
 void destroy_Instance(VkInstance instance) {
@@ -369,5 +421,100 @@ void destroy_validation_layers(VkInstance instance, VkDebugUtilsMessengerEXT deb
 	}
 }
 
+void make_Device(Device& device, const VulkanDesc& desc) {
+
+}
+
+void destroy_Device(Device& device) {
+	destroy_Instance(device.instance);
+}
+
+void queue_wait_semaphore(QueueSubmitInfo& info, VkPipelineStageFlags stage, VkSemaphore semaphore) {
+	info.wait_dst_stages.append(stage);
+	info.wait_semaphores.append(semaphore);
+	info.wait_semaphores_values.append(0);
+}
+
+void queue_wait_timeline_semaphore(QueueSubmitInfo& info, VkPipelineStageFlags stage, VkSemaphore semaphore, u64 value) {
+	info.wait_dst_stages.append(stage);
+	info.wait_semaphores.append(semaphore);
+	info.wait_semaphores_values.append(value);
+}
+
+void queue_signal_timeline_semaphore(QueueSubmitInfo& info, VkSemaphore semaphore, u64 value) {
+	info.signal_semaphores.append(semaphore);
+	info.signal_semaphores_values.append(value);
+}
+
+void queue_signal_semaphore(QueueSubmitInfo& info, VkSemaphore semaphore) {
+	info.signal_semaphores.append(semaphore);
+	info.signal_semaphores_values.append(0);
+}
+
+void queue_submit(Device& device, QueueType type, const QueueSubmitInfo& info) {
+	queue_submit(device, device[type], info);
+}
+
+void queue_submit(VkDevice device, VkQueue queue, const QueueSubmitInfo& info) { 
+	VkTimelineSemaphoreSubmitInfo semaphore_timeline_info = {};
+	semaphore_timeline_info.sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
+	semaphore_timeline_info.waitSemaphoreValueCount = info.wait_semaphores.length;
+	semaphore_timeline_info.pWaitSemaphoreValues = info.wait_semaphores_values.data;
+	semaphore_timeline_info.pSignalSemaphoreValues = info.signal_semaphores_values.data;
+	semaphore_timeline_info.signalSemaphoreValueCount = info.signal_semaphores_values.length;
+	
+	
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	
+	submitInfo.waitSemaphoreCount = info.wait_semaphores.length;
+	submitInfo.pWaitSemaphores = info.wait_semaphores.data;
+	submitInfo.pWaitDstStageMask = info.wait_dst_stages.data;
+	submitInfo.commandBufferCount = info.cmd_buffers.length;
+	submitInfo.pCommandBuffers = info.cmd_buffers.data;
+	submitInfo.signalSemaphoreCount = info.signal_semaphores.length;
+	submitInfo.pSignalSemaphores = info.signal_semaphores.data;
+	submitInfo.pNext = &semaphore_timeline_info;
+
+	if (vkQueueSubmit(queue, 1, &submitInfo, info.completion_fence) != VK_SUCCESS) {
+		throw "Failed to submit draw command buffers!";
+	}
+}
+
+VkSemaphore make_Semaphore(VkDevice device) {
+	VkSemaphoreCreateInfo info = {};
+	info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	info.flags = 0;
+
+	VkSemaphore semaphore;
+	VK_CHECK(vkCreateSemaphore(device, &info, nullptr, &semaphore));
+	return semaphore;
+}
+
+VkSemaphore make_timeline_Semaphore(VkDevice device) {
+	VkSemaphoreTypeCreateInfoKHR ext = {};
+	ext.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO_KHR;
+	ext.initialValue = 0;
+	ext.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+
+	VkSemaphoreCreateInfo info = {};
+	info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	info.flags = 0;
+	info.pNext = &ext;
+	
+	VkSemaphore semaphore;
+	VK_CHECK(vkCreateSemaphore(device, &info, nullptr, &semaphore));
+	return semaphore;
+}
+
+VkFence make_Fence(VkDevice device) {
+	VkFenceCreateInfo info = {};
+	info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+	VkFence fence;
+	VK_CHECK(vkCreateFence(device, &info, nullptr, &fence));
+	return fence;
+}
 
 #endif

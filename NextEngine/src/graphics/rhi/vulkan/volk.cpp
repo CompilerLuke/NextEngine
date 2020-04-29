@@ -132,6 +132,7 @@ extern "C" {
 		volkGenLoadDeviceTable(table, device, vkGetDeviceProcAddrStub);
 	}
 
+
 	static void volkGenLoadLoader(void* context, PFN_vkVoidFunction(*load)(void*, const char*))
 	{
 		/* VOLK_GENERATE_LOAD_LOADER */

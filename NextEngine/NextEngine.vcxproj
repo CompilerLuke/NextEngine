@@ -238,10 +238,11 @@
     <ClInclude Include="include\graphics\pass\volumetric.h" />
     <ClInclude Include="include\graphics\rhi\rhi.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\buffer.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\command_buffer.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\device.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\material.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\pipeline.h" />
-    <ClInclude Include="include\graphics\rhi\vulkan\rhi.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\core.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\shader.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\shader_access.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\swapchain.h" />

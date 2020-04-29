@@ -4,7 +4,7 @@
 #include "core/container/array.h"
 #include "graphics/assets/shader.h"
 #include "core/container/vector.h"
-#include "vulkan.h"
+#include "volk.h"
 
 typedef struct shaderc_compiler* shaderc_compiler_t;
 typedef struct shaderc_compiler_result* shaderc_compiler_result_t;

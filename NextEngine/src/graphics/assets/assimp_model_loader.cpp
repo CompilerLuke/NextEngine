@@ -110,7 +110,10 @@ void process_Node(ModelLoadingScratch* scratch, aiNode* node) {
 
 void load_assimp(Model* model, BufferAllocator& buffer_allocator, string_view real_path, const glm::mat4& apply_transform) { //TODO WHEN REIMPORTED, can reuse same memory
 	Assimp::Importer importer;
-	auto scene = importer.ReadFile(real_path.c_str(), aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
+
+	string_view path = model->path;
+
+	auto scene = importer.ReadFile(real_path.c_str(), aiProcess_Triangulate | aiProcess_CalcTangentSpace);
 	if (!scene) throw string_buffer("Could not load model ") + model->path + " " + real_path;
 
 	log("Loading model ", model->path, "\n");

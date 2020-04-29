@@ -73,7 +73,7 @@ enum MaterialInputType {
 	Vec4
 };
 
-string_buffer preprocess_gen(Assets& assets, slice<string_view> tokens, shader_flags flags) {
+string_buffer preprocess_gen(Assets& assets, slice<string_view> tokens, Stage stage, shader_flags flags) {
 	vector<string_view> already_included;
 	vector<string_view> channels;
 
@@ -81,6 +81,17 @@ string_buffer preprocess_gen(Assets& assets, slice<string_view> tokens, shader_f
 	string_buffer in_struct_prefix;
 	output.allocator = &temporary_allocator;
 	output = "#version 450\n#extension GL_ARB_separate_shader_objects : enable\n";
+
+	/*
+	#ifdef VERTEX_SHADER
+#define INTER(i) layout (location = i) out
+#else
+#define INTER(i) layout (location = i) in
+#endif
+	*/
+
+	if (stage == VERTEX_STAGE) output += "#define VERTEX_SHADER\n#define INTER(i) layout (location = i) out\n";
+	if (stage == FRAGMENT_STAGE) output += "#define FRAGMENT_SHADER\n#define INTER(i) layout (location = i) in\n";
 
 	if (flags & SHADER_INSTANCED) output += "#define IS_INSTANCED\n";
 	if (flags & SHADER_DEPTH_ONLY) output += "#define IS_DEPTH_ONLY\n";
@@ -94,6 +105,8 @@ string_buffer preprocess_gen(Assets& assets, slice<string_view> tokens, shader_f
 			while (tokens[++i] == " ");
 
 			auto name = tokens[i];
+
+			output += "#line 0\n";
 
 			if (!already_included.contains(name)) {
 				string_buffer src;
@@ -217,14 +230,14 @@ string_buffer preprocess_gen(Assets& assets, slice<string_view> tokens, shader_f
 }
 
 
-string_buffer preprocess_source(Assets& assets, string_view source, shader_flags flags) { //todo refactor into struct
+string_buffer preprocess_source(Assets& assets, string_view source, Stage stage, shader_flags flags) { //todo refactor into struct
 	tvector<string_view> tokens = preprocess_lex(source);
-	return preprocess_gen(assets, tokens, flags);
+	return preprocess_gen(assets, tokens, stage, flags);
 }
 
 
 string_buffer compile_glsl_to_spirv(Assets& assets, shaderc_compiler_t compiler, Stage stage, string_view source, string_view input_file_name, shader_flags flags, string_buffer* err) {
-	string_buffer source_assembly = preprocess_source(assets, source, flags);
+	string_buffer source_assembly = preprocess_source(assets, source, stage, flags);
 
 	printf("Source: %s", source_assembly.data);
 

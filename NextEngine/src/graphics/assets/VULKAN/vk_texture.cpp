@@ -3,10 +3,10 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 
-#include "graphics/rhi/vulkan/rhi.h"
 #include "graphics/rhi/vulkan/vulkan.h"
 #include "graphics/rhi/vulkan/device.h"
 #include "graphics/rhi/vulkan/buffer.h"
+#include "graphics/rhi/vulkan/command_buffer.h"
 #include <stb_image.h>
 #include "graphics/assets/assets.h"
 #include "graphics/rhi/vulkan/texture.h"
@@ -26,8 +26,8 @@ struct Assets;
 Image load_Image(Assets& assets, string_view filename) {
 	string_buffer real_filename = tasset_path(assets, filename); //level.asset_path(filename);
 
-	if (filename.starts_with("Aset") || filename.starts_with("tgh") || filename.starts_with("ta") || filename.starts_with("smen")) stbi_set_flip_vertically_on_load(false);
-	else stbi_set_flip_vertically_on_load(true);
+	if (filename.starts_with("Aset") || filename.starts_with("tgh") || filename.starts_with("ta") || filename.starts_with("smen")) stbi_set_flip_vertically_on_load(true);
+	else stbi_set_flip_vertically_on_load(false);
 
 	Image image;
 
@@ -103,48 +103,23 @@ bool has_StencilComponent(VkFormat format) {
 	return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 }
 
-VkCommandBuffer beginSingleTimeCommands(StagingQueue& queue) {
-	VkCommandBufferAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.commandPool = queue.command_pool;
-	allocInfo.commandBufferCount = 1;
+struct Transition {
+	VkImage image;
+	VkFormat format;
+	VkImageLayout old_layout;
+	VkImageLayout new_layout;
+};
 
-	VkCommandBuffer commandBuffer;
-	vkAllocateCommandBuffers(queue.device, &allocInfo, &commandBuffer);
+void transition_ImageLayout(VkCommandBuffer cmd_buffer, StagingQueue& queue, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, bool transfer = false) {
+	int src_queue = transfer ? queue.queue_family : VK_QUEUE_FAMILY_IGNORED;
+	int dst_queue = transfer ? queue.dst_queue_family : VK_QUEUE_FAMILY_IGNORED;
 
-	VkCommandBufferBeginInfo beginInfo = {};
-	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-	return commandBuffer;
-}
-
-void endSingleTimeCommands(StagingQueue& queue, VkCommandBuffer commandBuffer) {
-	vkEndCommandBuffer(commandBuffer);
-
-	VkSubmitInfo submitInfo = {};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &commandBuffer;
-
-	vkQueueSubmit(queue.queue, 1, &submitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(queue.queue);
-
-	vkFreeCommandBuffers(queue.device, queue.command_pool, 1, &commandBuffer);
-}
-
-void transition_ImageLayout(StagingQueue& queue, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
-	VkCommandBuffer cmd_buffer = queue.cmd_buffer; // beginSingleTimeCommands(queue);
-	
 	VkImageMemoryBarrier barrier = {};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 	barrier.oldLayout = oldLayout;
 	barrier.newLayout = newLayout;
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.srcQueueFamilyIndex = src_queue;
+	barrier.dstQueueFamilyIndex = dst_queue;
 	barrier.image = image;
 	barrier.subresourceRange.baseMipLevel = 0;
 	barrier.subresourceRange.levelCount = 1;
@@ -180,6 +155,7 @@ void transition_ImageLayout(StagingQueue& queue, VkImage image, VkFormat format,
 
 		sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
 		destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		//this could cause a bug, if the vertex shader reads images as well, eg. terrain rendering
 	}
 	else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
 		barrier.srcAccessMask = 0;
@@ -187,6 +163,17 @@ void transition_ImageLayout(StagingQueue& queue, VkImage image, VkFormat format,
 
 		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 		destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+		sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		
+		if (src_queue == dst_queue) {
+			fprintf(stderr, "If layout is the same transition expects to release ownership, however src and dst queue families were the same");
+		}
 	}
 	else {
 		throw "Unsupported layout transition";
@@ -204,9 +191,7 @@ void transition_ImageLayout(StagingQueue& queue, VkImage image, VkFormat format,
 	//endSingleTimeCommands(queue, cmd_buffer);
 }
 
-void copy_buffer_to_image(StagingQueue& queue, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t offset = 0) {
-	VkCommandBuffer cmd_buffer = queue.cmd_buffer;
-
+void copy_buffer_to_image(VkCommandBuffer cmd_buffer, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height, uint32_t offset = 0) {
 	VkBufferImageCopy region = {};
 	region.bufferOffset = offset;
 	region.bufferRowLength = 0;
@@ -223,8 +208,6 @@ void copy_buffer_to_image(StagingQueue& queue, VkBuffer buffer, VkImage image, u
 	};
 
 	vkCmdCopyBufferToImage(cmd_buffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
-	//endSingleTimeCommands(queue, cmd_buffer);
 }
 
 VkImageView make_ImageView(VkDevice device, VkImage image, VkFormat imageFormat, VkImageAspectFlags aspectFlags) {
@@ -289,7 +272,8 @@ void make_alloc_Image(VkDevice device, VkPhysicalDevice physical_device, uint32_
 	vkBindImageMemory(device, *image, *imageMemory, 0);
 }
 
-void make_TextureImage(VkImage* result, VkDeviceMemory* result_memory,  StagingQueue& staging_queue, Image& image) {
+//todo this function is never used, delete it
+/*void make_TextureImage(VkImage* result, VkDeviceMemory* result_memory,  StagingQueue& staging_queue, Image& image, int32_t transfer_dst) {
 	VkDevice device = staging_queue.device;
 	VkPhysicalDevice physical_device = staging_queue.physical_device;
 
@@ -313,11 +297,11 @@ void make_TextureImage(VkImage* result, VkDeviceMemory* result_memory,  StagingQ
 
 	transition_ImageLayout(staging_queue, *result, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	copy_buffer_to_image(staging_queue, stagingBuffer, *result, image.width, image.height);
-	transition_ImageLayout(staging_queue, *result, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	transition_ImageLayout(staging_queue, *result, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, transfer_dst);
 
 	staging_queue.destroyBuffers.append(stagingBuffer);
 	staging_queue.destroyDeviceMemory.append(stagingBufferMemory);
-}
+}*/
 
 
 VkSampler make_TextureSampler(VkDevice device) {
@@ -354,12 +338,9 @@ VkSampler make_TextureSampler(VkDevice device) {
 struct TextureAllocInfo {
 	uint width, height;
 	VkFormat format;
-	union {
-		VkImage image;
-		TextureAllocInfo* next;
-	};
+	VkImage image;
+	TextureAllocInfo* next;
 };
-
 
 #define MAX_IMAGE_UPLOAD mb(256)
 #define MAX_IMAGE_DATA gb(1)
@@ -367,7 +348,7 @@ struct TextureAllocInfo {
 #define MAX_MIP 14 //MAX TEXTURE SIZE is 8k
 
 struct TextureAllocator {	
-	StagingQueue& staging;
+	StagingQueue& staging_queue;
 	VkDevice device;
 	VkPhysicalDevice physical_device;
 
@@ -382,6 +363,8 @@ struct TextureAllocator {
 	TextureAllocInfo memory_alloc_info[MAX_TEXTURES] = {};
 	uint texture_allocated_count = 0;
 	TextureAllocInfo* aligned_free_list[MAX_MIP] = {}; //power of two
+
+	TextureAllocInfo* uploaded_this_frame = NULL;
 };
 
 //Texture Allocator, will upload all textures into one massive texture
@@ -391,9 +374,8 @@ struct TextureAllocator {
 //However, this requires some form of texture packing eg. albedo in rgb, roughness in a, normal in rgb, roughness in a
 //Overall this seems like a plausible strategy, as it may allow for multi draw indirect and virtual texturing
 
-TextureAllocator* make_TextureAllocator(RHI& rhi) {
+TextureAllocator* make_TextureAllocator(RHI& rhi, StagingQueue& queue) {
 	//todo there must be a better way of getting this resource
-	StagingQueue& queue = get_StagingQueue(get_BufferAllocator(rhi));
 	TextureAllocator* allocator = PERMANENT_ALLOC(TextureAllocator, {queue});
 
 	VkDevice device = get_Device(rhi);
@@ -438,7 +420,7 @@ int select_mip(int width, int height) {
 Texture make_TextureImage(TextureAllocator& allocator, TextureDesc& desc, Image image) {
 	VkDevice device = allocator.device;
 	VkPhysicalDevice physical_device = allocator.physical_device;
-	StagingQueue& staging_queue = allocator.staging;
+	StagingQueue& staging_queue = allocator.staging_queue;
 
 	VkFormat formats_by_channel_count[] = {VK_FORMAT_R8_SRGB, VK_FORMAT_R8G8_SRGB, VK_FORMAT_R8G8B8_SRGB, VK_FORMAT_R8G8B8A8_SRGB};
 	VkFormat image_format = formats_by_channel_count[image.num_channels - 1];
@@ -485,11 +467,19 @@ Texture make_TextureImage(TextureAllocator& allocator, TextureDesc& desc, Image 
 	}
 	else {
 		vk_image = info->image;
+		assert(false);
 	}
 
-	transition_ImageLayout(staging_queue, vk_image, image_format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	copy_buffer_to_image(staging_queue, allocator.staging_buffer, vk_image, image.width, image.height, offset);
-	transition_ImageLayout(staging_queue, vk_image, image_format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	//THIS WAY WE CAN EXECUTE ALL THE RESOURCE TRANSFERS IN THE GRAPHICS QUEUE
+	TextureAllocInfo* next_info = allocator.uploaded_this_frame;
+	allocator.uploaded_this_frame = info;
+	info->next = next_info;
+
+	VkCommandBuffer cmd_buffer = staging_queue.cmd_buffers[staging_queue.frame_index]; // beginSingleTimeCommands(queue);
+
+	transition_ImageLayout(cmd_buffer, staging_queue, vk_image, image_format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	copy_buffer_to_image(cmd_buffer, allocator.staging_buffer, vk_image, image.width, image.height, offset);
+	transition_ImageLayout(cmd_buffer, staging_queue, vk_image, image_format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, true);
 
 	Texture result;
 	result.desc = desc;
@@ -497,7 +487,24 @@ Texture make_TextureImage(TextureAllocator& allocator, TextureDesc& desc, Image 
 	result.image = vk_image;
 	result.view = make_ImageView(device, vk_image, image_format, VK_IMAGE_ASPECT_COLOR_BIT);
 
+	assert(info->image != NULL);
+
 	return result;
+}
+
+void transfer_image_ownership(TextureAllocator& allocator, VkCommandBuffer cmd_buffer) {
+	TextureAllocInfo* transfer_ownership = allocator.uploaded_this_frame;
+
+	while (transfer_ownership) {
+		transition_ImageLayout(cmd_buffer, allocator.staging_queue, transfer_ownership->image, transfer_ownership->format, 
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, true);
+		//transition_ImageLayout(cmd_buffer, allocator.staging_queue, transfer_ownership->image, transfer_ownership->format,
+		//	VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		transfer_ownership = transfer_ownership->next;
+	}
+
+
+	allocator.uploaded_this_frame = NULL;
 }
 
 void destroy_TextureImage(TextureAllocator& allocator, Texture& texture) {

@@ -41,7 +41,7 @@ void upload_data(BufferAllocator& self, InstanceBuffer& buffer, int length, void
 void bind_vertex_buffer(BufferAllocator&, VertexLayout v_layout, InstanceLayout layout = INSTANCE_LAYOUT_MAT4X4);
 void render_vertex_buffer(BufferAllocator&, VertexBuffer& vertex_buffer);
 
-BufferAllocator* make_BufferAllocator(RHI& rhi);
+BufferAllocator* make_BufferAllocator(RHI& rhi, struct StagingQueue&);
 void destroy_BufferAllocator(BufferAllocator*);
 
 template<typename T>

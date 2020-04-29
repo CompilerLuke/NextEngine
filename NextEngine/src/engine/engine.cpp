@@ -13,7 +13,6 @@
 
 #include "physics/physics.h"
 #include "components/transform.h"
-#include "graphics/rhi/vulkan/rhi.h"
 #include "graphics/rhi/vulkan/vulkan.h"
 
 Modules::Modules(const char* app_name, const char* level_path) {
@@ -29,7 +28,7 @@ Modules::Modules(const char* app_name, const char* level_path) {
 
 	window->title = app_name;
 	window->full_screen = false;
-	window->vSync = false;
+	window->vSync = true;
 
 	window->init();
 	input->init(*window);
@@ -39,7 +38,7 @@ Modules::Modules(const char* app_name, const char* level_path) {
 	};
 
 	VulkanDesc vk_desc = {};
-	vk_desc.api_version = VK_MAKE_VERSION(1, 0, 0);
+	vk_desc.api_version = VK_MAKE_VERSION(1, 2, 0);
 	vk_desc.app_name = app_name;
 	vk_desc.app_version = VK_MAKE_VERSION(0, 0, 0);
 	vk_desc.engine_name = "NextEngine";

@@ -1,11 +1,11 @@
 #pragma once
 
-#include "vulkan.h"
+#include "core.h"
 #include "core/container/array.h"
 
 struct Window;
+struct Device;
 
-const int MAX_FRAMES_IN_FLIGHT = 3;
 const int MAX_SWAPCHAIN_IMAGES = 4;
 
 struct Swapchain {
@@ -31,7 +31,7 @@ struct Swapchain {
 	}
 };
 
-Swapchain make_SwapChain(VkDevice device, VkPhysicalDevice physical_device, Window& window, VkSurfaceKHR surface);
+Swapchain make_SwapChain(Device& device, Window& window, VkSurfaceKHR surface);
 VkSurfaceKHR make_Surface(VkInstance instance, Window& window);
 void destroy_Surface(VkInstance instance, VkSurfaceKHR surface);
 void destroy_sync_objects(VkDevice device, Swapchain& swapchain);

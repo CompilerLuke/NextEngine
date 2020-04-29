@@ -29,6 +29,7 @@ struct tvector {
 		new (&data[length++]) T(element);
 	}
 
+	const T& operator[](uint index) const { return data[index]; }
 	T& operator[](uint index) { return data[index]; }
 	T pop() { return data[--length]; }
 

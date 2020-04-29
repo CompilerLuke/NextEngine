@@ -17,7 +17,7 @@
 #include "graphics/assets/texture.h"
 
 #ifdef RENDER_API_VULKAN
-#include "graphics/rhi/vulkan/rhi.h"
+#include "graphics/rhi/vulkan/vulkan.h"
 #include "graphics/rhi/vulkan/shader.h"
 #include "graphics/rhi/vulkan/material.h"
 #include "graphics/rhi/vulkan/texture.h"

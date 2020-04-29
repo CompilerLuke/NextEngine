@@ -451,7 +451,6 @@
     <ClInclude Include="include\graphics\rhi\vulkan\buffer.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\pipeline.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\shader.h" />
-    <ClInclude Include="include\graphics\rhi\vulkan\rhi.h" />
     <ClInclude Include="include\graphics\rhi\rhi.h" />
     <ClInclude Include="include\graphics\assets\assets.h" />
     <ClInclude Include="include\graphics\assets\material.h">
@@ -461,5 +460,7 @@
     <ClInclude Include="include\graphics\rhi\vulkan\texture.h" />
     <ClInclude Include="vendor\spirv-reflect\spirv_reflect.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\shader_access.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\core.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\command_buffer.h" />
   </ItemGroup>
 </Project>

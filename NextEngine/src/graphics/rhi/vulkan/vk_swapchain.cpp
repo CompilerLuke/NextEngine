@@ -14,7 +14,9 @@ VkSurfaceFormatKHR choose_swap_surface_format(slice<VkSurfaceFormatKHR> availabl
 	return availableFormats[0];
 }
 
-VkPresentModeKHR choose_swap_present_mode(slice<VkPresentModeKHR> availablePresentModes) {
+VkPresentModeKHR choose_swap_present_mode(slice<VkPresentModeKHR> availablePresentModes, bool vsync) {
+	if (vsync) return VK_PRESENT_MODE_FIFO_KHR;
+	
 	for (int i = 0; i < availablePresentModes.length; i++) {
 		if (availablePresentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
 			return availablePresentModes[i];
@@ -51,14 +53,14 @@ void destroy_Surface(VkInstance instance, VkSurfaceKHR surface) {
 	vkDestroySurfaceKHR(instance, surface, nullptr);
 }
 
-Swapchain make_SwapChain(VkDevice device, VkPhysicalDevice physical_device, Window& window, VkSurfaceKHR surface) {
+Swapchain make_SwapChain(Device& device, Window& window, VkSurfaceKHR surface) {
 	Swapchain swap_chain = {};
 	swap_chain.surface = surface;
 
-	SwapChainSupportDetails swapChainSupport = query_swapchain_support(surface, physical_device);
+	SwapChainSupportDetails swapChainSupport = query_swapchain_support(surface, device.physical_device);
 
 	VkSurfaceFormatKHR surfaceFormat = choose_swap_surface_format(swapChainSupport.formats);
-	VkPresentModeKHR presentMode = choose_swap_present_mode(swapChainSupport.present_modes);
+	VkPresentModeKHR presentMode = choose_swap_present_mode(swapChainSupport.present_modes, window.vSync);
 
 	VkExtent2D extent = choose_swap_extent(swapChainSupport.capabilities, window);
 
@@ -79,7 +81,7 @@ Swapchain make_SwapChain(VkDevice device, VkPhysicalDevice physical_device, Wind
 	makeInfo.imageArrayLayers = 1;
 	makeInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-	QueueFamilyIndices indices = find_queue_families(physical_device, surface);
+	const QueueFamilyIndices& indices = device.queue_families;
 	uint32_t queueFamilyIndices[] = { (uint32_t)indices.graphics_family, (uint32_t)indices.present_family };
 
 	if (indices.graphics_family != indices.present_family) {

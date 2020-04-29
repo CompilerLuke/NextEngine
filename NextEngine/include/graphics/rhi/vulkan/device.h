@@ -1,9 +1,25 @@
 #pragma once
 
-#include "vulkan.h"
+#include "core.h"
 #include "core/container/array.h"
+#include "core/container/tvector.h"
 
 struct VulkanDesc;
+
+struct QueueFamilyIndices {
+	int32_t graphics_family = -1;
+	int32_t async_compute_family = -1;
+	int32_t async_transfer_family = -1;
+	int32_t present_family = -1;
+
+	inline bool is_complete() {
+		return graphics_family != -1 && present_family != -1 && async_transfer_family != -1 && async_compute_family != -1;
+	}
+
+	inline int32_t operator[](QueueType type) {
+		return (&graphics_family)[(int)type];
+	}
+};
 
 struct Device {
 	VkInstance instance;
@@ -14,11 +30,19 @@ struct Device {
 
 	VkPhysicalDeviceFeatures device_features;
 
-	VkQueue present_queue;
+	QueueFamilyIndices queue_families;
+
 	VkQueue graphics_queue;
+	VkQueue compute_queue;
+	VkQueue transfer_queue;
+	VkQueue present_queue;
 
 	operator VkDevice() {
 		return device;
+	}
+
+	inline VkQueue operator[](QueueType type) {
+		return (&graphics_queue)[type];
 	}
 };
 
@@ -28,22 +52,33 @@ struct SwapChainSupportDetails {
 	array<20, VkPresentModeKHR> present_modes;
 };
 
-struct QueueFamilyIndices {
-	int32_t graphics_family;
-	int32_t present_family;
-
-	bool is_complete() {
-		return graphics_family != -1 && present_family != -1;
-	}
+struct QueueSubmitInfo {
+	VkFence completion_fence;
+	tvector<VkCommandBuffer> cmd_buffers;
+	
+	tvector<VkPipelineStageFlags> wait_dst_stages;
+	tvector<VkSemaphore> wait_semaphores;
+	tvector<VkSemaphore> signal_semaphores;
+	
+	tvector<u64> wait_semaphores_values;
+	tvector<u64> signal_semaphores_values;
 };
+
+void queue_wait_semaphore(QueueSubmitInfo& info, VkPipelineStageFlags, VkSemaphore);
+void queue_wait_timeline_semaphore(QueueSubmitInfo& info, VkPipelineStageFlags, VkSemaphore, u64);
+void queue_signal_timeline_semaphore(QueueSubmitInfo& info, VkSemaphore, u64);
+void queue_signal_semaphore(QueueSubmitInfo& info, VkSemaphore);
+void queue_submit(Device& device, QueueType type, const QueueSubmitInfo&);
+void queue_submit(VkDevice device, VkQueue queue, const QueueSubmitInfo&);
+
+VkFence make_Fence(VkDevice);
+VkSemaphore make_timeline_Semaphore(VkDevice);
+VkSemaphore make_Semaphore(VkDevice);
 
 void setup_debug_messenger(VkInstance instance, const VulkanDesc& desc, VkDebugUtilsMessengerEXT* result);
 void make_logical_devices(Device& device, const VulkanDesc& desc, VkSurfaceKHR surface);
 VkPhysicalDevice pick_physical_devices(VkInstance instance, VkSurfaceKHR surface);
 VkInstance make_Instance(const VulkanDesc& desc);
 SwapChainSupportDetails query_swapchain_support(VkSurfaceKHR surface, VkPhysicalDevice device);
-int32_t find_graphics_queue_family(VkPhysicalDevice device);
-int32_t find_present_queue_family(VkPhysicalDevice device, VkSurfaceKHR surface);
-QueueFamilyIndices find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface);
 void destroy_Instance(VkInstance instance);
 void destroy_validation_layers(VkInstance instance, VkDebugUtilsMessengerEXT debug_messenger);

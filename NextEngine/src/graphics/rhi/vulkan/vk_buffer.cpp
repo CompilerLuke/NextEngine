@@ -2,7 +2,8 @@
 #include <glad/glad.h>
 #include "graphics/rhi/buffer.h"
 #include "graphics/rhi/vulkan/buffer.h"
-#include "graphics/rhi/vulkan/rhi.h"
+#include "graphics/rhi/vulkan/device.h"
+#include "graphics/rhi/vulkan/command_buffer.h"
 #include "graphics/rhi/vulkan/vulkan.h"
 #include <stdio.h>
 #include "core/container/tvector.h"
@@ -14,64 +15,94 @@
 
 #ifdef RENDER_API_VULKAN
 
-StagingQueue make_StagingQueue(VkDevice device, VkPhysicalDevice physical_device, VkCommandPool pool, VkQueue queue) {
-	VkCommandBufferAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.commandPool = pool;
-	allocInfo.commandBufferCount = 1;
+//TRANSFER FRAME CAN BE LOOSELY TIED TO THE RENDER THREAD
+//AND CAN SUBMIT TRANSFERS AT A COMPLETELY RATE
+//AS IT IS USING A SEPERATE TRANSFER QUEUE
+//HOWEVER THIS MUST BE SYCHRONIZED WITH THE GRAPHICS QUEUE
 
-	//TODO make CommandBuffer Pool
+StagingQueue make_StagingQueue(VkDevice device, VkPhysicalDevice physical_device, VkCommandPool pool, VkQueue queue, int queue_family, int dst_queue_family) {
 	StagingQueue result = {};
 	result.queue = queue;
+	result.queue_family = queue_family;
+	result.dst_queue_family = dst_queue_family;
 	result.device = device;
 	result.physical_device = physical_device;
 	result.command_pool = pool;
-	vkAllocateCommandBuffers(device, &allocInfo, &result.cmd_buffer);
+
+	
+
+	result.wait_on_transfer = make_timeline_Semaphore(device);
+	result.wait_on_resource_in_use = make_timeline_Semaphore(device);
+	
+	for (uint i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		result.completed_transfer[i] = make_Fence(device);
+	}
+
+	alloc_CommandBuffers(device, pool, MAX_FRAMES_IN_FLIGHT, result.cmd_buffers);	
 	return result;
 }
 
-void begin_staging_cmds(StagingQueue& queue) {
+
+uint begin_staging_cmds(StagingQueue& queue) {
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	beginInfo.flags = 0; 
+
+	vkWaitForFences(queue.device, 1, &queue.completed_transfer[queue.frame_index], true, INT_MAX);
 
 	assert(!queue.recording);
 	queue.recording = true;
-	vkBeginCommandBuffer(queue.cmd_buffer, &beginInfo);
-}
+	vkBeginCommandBuffer(queue.cmd_buffers[queue.frame_index], &beginInfo);
 
-void clear_StagingQueue(StagingQueue& queue) {
-	queue.recording = false;
-	queue.destroyBuffers.clear();
-	queue.destroyDeviceMemory.clear();
+	return ++queue.value_wait_on_transfer;
 }
 
 void end_staging_cmds(StagingQueue& queue) {
 	VkDevice device = queue.device;
-	
-	vkEndCommandBuffer(queue.cmd_buffer);
+	VkCommandBuffer cmd_buffer = queue.cmd_buffers[queue.frame_index];
+	VkFence completed = queue.completed_transfer[queue.frame_index];
 
-	VkSubmitInfo submitInfo = {};
+	vkEndCommandBuffer(cmd_buffer);
+
+	vkWaitForFences(queue.device, 1, &completed, true, INT_MAX);
+
+	int signal_value = queue.value_wait_on_transfer;
+
+	QueueSubmitInfo info = {};
+	info.completion_fence = completed;
+	info.cmd_buffers.append(queue.cmd_buffers[queue.frame_index]);
+
+	//uint64_t value;
+	//vkGetSemaphoreCounterValue(device, queue.wait_on_transfer, &value);
+
+	//printf("SEMAPHORE CURRENT VALUE %i\n", value);
+
+	queue_signal_timeline_semaphore(info, queue.wait_on_transfer, signal_value);
+	
+	/*VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &queue.cmd_buffer;
+	submitInfo.pCommandBuffers = &cmd_buffer;
+	submitInfo.signalSemaphoreCount = MAX_FRAMES_IN_FLIGHT;
+	submitInfo.pSignalSemaphores = queue.wait_on_transfer;*/
+	
+	vkResetFences(device, 1, &completed);
 
-	VK_CHECK(vkQueueSubmit(queue.queue, 1, &submitInfo, VK_NULL_HANDLE));
-	vkQueueWaitIdle(queue.queue);
+	queue_submit(device, queue.queue, info);
 
-	for (VkBuffer buffer : queue.destroyBuffers) {
-		vkDestroyBuffer(device, buffer, nullptr);
-	}
-	for (VkDeviceMemory memory : queue.destroyDeviceMemory) {
-		vkFreeMemory(device, memory, nullptr);
-	}
+	queue.recording = false;
 
-	clear_StagingQueue(queue);
+	queue.frame_index = (queue.frame_index + 1) % MAX_FRAMES_IN_FLIGHT;
+}
+
+//queue.frame_index is the transfer frame, which can be independent of the frame count
+//however this has to be sychronized properly
+void transfer_queue_dependencies(StagingQueue& queue, QueueSubmitInfo& info, uint transfer_frame_index, uint frame_index) {
+	queue_wait_timeline_semaphore(info, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, queue.wait_on_transfer, transfer_frame_index);
 }
 
 void destroy_StagingQueue(StagingQueue& staging) {
-	vkFreeCommandBuffers(staging.device, staging.command_pool, 1, &staging.cmd_buffer);
+	vkFreeCommandBuffers(staging.device, staging.command_pool, MAX_FRAMES_IN_FLIGHT, staging.cmd_buffers);
 }
 
 uint32_t find_memory_type(VkPhysicalDevice physical_device, uint32_t typeFilter, VkMemoryPropertyFlags properties) {
@@ -117,7 +148,7 @@ void copy_Buffer(StagingQueue& staging_queue, VkBuffer srcBuffer, VkBuffer dstBu
 	copyRegion.dstOffset = 0;
 	copyRegion.size = size;
 
-	vkCmdCopyBuffer(staging_queue.cmd_buffer, srcBuffer, dstBuffer, 1, &copyRegion);
+	vkCmdCopyBuffer(staging_queue.cmd_buffers[staging_queue.frame_index], srcBuffer, dstBuffer, 1, &copyRegion);
 	//transferQueue.cmdsCopyBuffer.append({srcBuffer, dstBuffer, copyRegion});
 }
 
@@ -128,6 +159,7 @@ void memcpy_Buffer(VkDevice device, VkDeviceMemory memory, void* buffer_data, u6
 	vkUnmapMemory(device, memory);
 }
 
+/*
 void make_StagedBuffer(StagingQueue& staging_queue, void* bufferData, VkDeviceSize bufferSize, VkBufferUsageFlags usage, VkBuffer& buffer, VkDeviceMemory& bufferMemory) {
 	VkDevice device = staging_queue.device;
 	VkPhysicalDevice physical_device = staging_queue.physical_device;
@@ -149,6 +181,7 @@ void make_StagedBuffer(StagingQueue& staging_queue, void* bufferData, VkDeviceSi
 	//vkDestroyBuffer(device, stagingBuffer, nullptr);
 	//vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
+*/
 
 struct VertexBufferAllocator {
 	VertexLayout layout;
@@ -163,6 +196,8 @@ struct VertexBufferAllocator {
 	int index_capacity;
 	int vertex_offset;
 	int index_offset;
+	int vertex_offset_start_of_frame;
+	int index_offset_start_of_frame;
 	int elem_size;
 };
 
@@ -195,7 +230,7 @@ struct InstanceLayoutDesc {
 
 //BUFFER MANAGER STATE
 struct StagingBufferAllocator {
-	StagingQueue queue;
+	StagingQueue& queue;
 	VkBuffer buffer;
 	VkDeviceMemory buffer_memory;
 	int capacity;
@@ -203,9 +238,9 @@ struct StagingBufferAllocator {
 };
 
 struct BufferAllocator {
+	StagingBufferAllocator staging;
 	VkDevice device;
 	VkPhysicalDevice physical_device;
-	StagingBufferAllocator staging = {};
 	VertexBufferAllocator vertex_buffers[VERTEX_LAYOUT_COUNT] = {};
 	InstanceBufferAllocator instance_buffers[INSTANCE_LAYOUT_COUNT] = {};
 };
@@ -218,7 +253,7 @@ void staged_copy(VkDevice device, StagingBufferAllocator& staging, VkBuffer dst,
 	copyRegion.dstOffset = offset;
 	copyRegion.size = size;
 
-	vkCmdCopyBuffer(staging.queue.cmd_buffer, staging.buffer, dst, 1, &copyRegion);
+	vkCmdCopyBuffer(staging.queue.cmd_buffers[staging.queue.frame_index], staging.buffer, dst, 1, &copyRegion);
 
 	staging.offset += size;
 	assert(staging.offset <= staging.capacity);
@@ -302,7 +337,7 @@ void alloc_layout_allocator(BufferAllocator& m, VertexLayoutDesc& vert_desc, Ins
 	allocator.elem_size = instance_desc.elem_size;
 	allocator.capacity = instance_desc.size;
 
-	make_Buffer(m.device, m.physical_device, instance_desc.size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, allocator.buffer, allocator.buffer_memory);
+	make_Buffer(m.device, m.physical_device, instance_desc.size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, allocator.buffer, allocator.buffer_memory);
 }
 
 VertexBuffer alloc_vertex_buffer(BufferAllocator& self, VertexLayout layout, int vertices_length, void* vertices, int indices_length, uint* indices) {		
@@ -343,12 +378,65 @@ VertexBuffer alloc_vertex_buffer(BufferAllocator& self, VertexLayout layout, int
 }
 
 void begin_buffer_upload(BufferAllocator& self) {
-	begin_staging_cmds(self.staging.queue);
+
+}
+
+void transfer_vertex_ownership(BufferAllocator& self, VkCommandBuffer cmd_buffer) {
+	StagingQueue& staging = self.staging.queue;
+
+	VkBufferMemoryBarrier buffer_barriers[2] = {};
+
+	VertexBufferAllocator& vertex_buffer = self.vertex_buffers[0];
+
+	VkBufferMemoryBarrier& vertex_barrier = buffer_barriers[0];
+	vertex_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+	vertex_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	vertex_barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+	vertex_barrier.srcQueueFamilyIndex = staging.queue_family;
+	vertex_barrier.dstQueueFamilyIndex = staging.dst_queue_family;
+	vertex_barrier.buffer = vertex_buffer.vbo;
+	vertex_barrier.size = vertex_buffer.vertex_offset - self.vertex_buffers->vertex_offset_start_of_frame;
+	vertex_barrier.offset = vertex_buffer.vertex_offset;
+
+	VkBufferMemoryBarrier& index_barrier = buffer_barriers[1];
+	index_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+	index_barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	index_barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+	index_barrier.srcQueueFamilyIndex = staging.queue_family;
+	index_barrier.dstQueueFamilyIndex = staging.dst_queue_family;
+	index_barrier.buffer = vertex_buffer.vbo;
+	index_barrier.size = vertex_buffer.index_offset - vertex_buffer.index_offset_start_of_frame;
+	index_barrier.offset = vertex_buffer.index_offset;
+
+	if (vertex_barrier.size == 0 && index_barrier.size == 0) {
+		return;
+	}
+
+	//todo implement ownership transfer back
+
+	vkCmdPipelineBarrier(cmd_buffer,
+		VK_PIPELINE_STAGE_TRANSFER_BIT,
+		VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+		0,
+		0, nullptr,
+		2, buffer_barriers,
+		0, nullptr
+	);
+
+	printf("PIPELINE BARRIER\n");
 }
 
 void end_buffer_upload(BufferAllocator& self) {
-	end_staging_cmds(self.staging.queue);
+	//todo perf: in terms of parrelelism this is not great.
+	//none of the next frame can render before waiting on the transfer commands
+	//an intelligent solution would be to split command buffers up depending on whether they
+	//depend on certain new transfers, and differentiate between texture and buffer transfers
+
+	transfer_vertex_ownership(self, self.staging.queue.cmd_buffers[self.staging.queue.frame_index]);
+
 	self.staging.offset = 0;
+	self.vertex_buffers->index_offset_start_of_frame = self.vertex_buffers->index_offset;
+	self.vertex_buffers->vertex_offset_start_of_frame = self.vertex_buffers->vertex_offset;
 }
 
 void upload_data(BufferAllocator& self, InstanceBuffer& buffer, int length, void* data) {
@@ -359,7 +447,8 @@ void upload_data(BufferAllocator& self, InstanceBuffer& buffer, int length, void
 	assert(length <= buffer.capacity);		
 	buffer.length = length;
 
-	staged_copy(self.device, self.staging, allocator.buffer, offset, data, size);
+	memcpy_Buffer(self.device, allocator.buffer_memory, data, size, offset);
+	//staged_copy(self.device, self.staging, allocator.buffer, offset, data, size);
 }
 
 InstanceBuffer alloc_instance_buffer(BufferAllocator& self, VertexLayout v_layout, InstanceLayout layout, int length, void* data) {
@@ -399,15 +488,13 @@ void render_vertex_buffer(BufferAllocator& self, VertexBuffer& buffer) {
 	/**/
 }
 
-BufferAllocator* make_BufferAllocator(RHI& rhi) {
-	BufferAllocator* self = PERMANENT_ALLOC(BufferAllocator);
+BufferAllocator* make_BufferAllocator(RHI& rhi, StagingQueue& queue) {
+	BufferAllocator* self = PERMANENT_ALLOC(BufferAllocator, {{queue}});
 
 	self->device = get_Device(rhi);
 	self->physical_device = get_PhysicalDevice(rhi);
-	VkCommandPool cmd_pool = get_CommandPool(rhi);
-	VkQueue graphics_queue = get_GraphicsQueue(rhi);
 
-	self->staging.queue = make_StagingQueue(self->device, self->physical_device, cmd_pool, graphics_queue);
+	self->staging.queue = queue;
 	self->staging.capacity = mb(50);
 	make_Buffer(self->device, self->physical_device, self->staging.capacity, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
@@ -456,11 +543,6 @@ BufferAllocator* make_BufferAllocator(RHI& rhi) {
 	alloc_layout_allocator(*self, vertex_layout_desc, layout_desc_terrain_chunk);
 
 	return self;
-}
-
-//todo probably better to pass a staging queue in the constructor
-StagingQueue& get_StagingQueue(BufferAllocator& self) {
-	return self.staging.queue;
 }
 
 void destroy_BufferAllocator(BufferAllocator* self) {

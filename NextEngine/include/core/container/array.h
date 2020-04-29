@@ -51,6 +51,14 @@ struct array {
 		}
 	}
 
+	inline bool contains(const T& element) {
+		for (unsigned int i = 0; i < length; i++) {
+			if (this->data[i] == element) return true;
+		}
+
+		return false;
+	}
+
 	/*array<N, T>& operator=(const array<N, T>& other) {
 		length = other.length;
 		for (int i = 0; i < length; i++) new (data + i) T(other[i]);

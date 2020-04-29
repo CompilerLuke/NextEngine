@@ -19,7 +19,6 @@
 #include "graphics/rhi/window.h"
 #include "graphics/rhi/vulkan/buffer.h"
 #include "graphics/rhi/vulkan/vulkan.h"
-#include "graphics/rhi/vulkan/rhi.h"
 
 Renderer::Renderer(RHI& rhi, Assets& assets, Window& window, World& world) : rhi(rhi) {
 	model_renderer    = PERMANENT_ALLOC(ModelRendererSystem, rhi, assets);
