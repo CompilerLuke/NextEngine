@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "core/time.h"
 #include "ecs/system.h"
 

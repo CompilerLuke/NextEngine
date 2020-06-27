@@ -1,7 +1,8 @@
-#include "stdafx.h"
-#include "graphics/rhi/vulkan/vulkan.h"
 #include <stdio.h>
+#include <glm/gtc/matrix_transform.hpp>
+
 #include "core/container/vector.h"
+#include "core/container/tvector.h"
 #include "core/io/vfs.h"
 #include "core/memory/linear_allocator.h"
 
@@ -16,6 +17,7 @@
 #include "graphics/rhi/primitives.h"
 #include "graphics/rhi/window.h"
 
+#include "graphics/rhi/vulkan/vulkan.h"
 #include "graphics/rhi/vulkan/buffer.h"
 #include "graphics/rhi/vulkan/pipeline.h"
 #include "graphics/rhi/vulkan/shader.h"
@@ -24,20 +26,38 @@
 #include "graphics/rhi/vulkan/texture.h"
 #include "graphics/rhi/vulkan/material.h"
 #include "graphics/rhi/vulkan/command_buffer.h"
+#include "graphics/rhi/vulkan/draw.h"
+#include "graphics/rhi/vulkan/shader_access.h"
+#include "graphics/rhi/vulkan/frame_buffer.h"
 
+#include <shaderc/shaderc.h>
+
+/*
 struct RHI {
 	Window& window;
 	VulkanDesc desc;
 	Device device;
 	Swapchain swapchain;
 	BufferAllocator* buffer_allocator;
-	TextureAllocator* texture_allocator;
+	TextureStreaming* texture_allocator;
+	PipelineCache* pipeline_cache;
 	CommandPool graphics_cmd_pool;
 	StagingQueue staging_queue;
 	VkCommandPool transfer_cmd_pool;
 	VkDescriptorPool descriptor_pool;
 	uint waiting_on_transfer_frame;
 };
+*/
+
+RHI::RHI() 
+	: texture_allocator{ staging_queue }, 
+	  vertex_streaming{ staging_queue }, 
+	  material_allocator(device, device, descriptor_pool) {
+
+}
+
+thread_local RenderThreadResources render_thread;
+RHI rhi;
 
 VkDescriptorSetLayout descriptorSetLayout;
 
@@ -53,20 +73,6 @@ array<MAX_SWAPCHAIN_IMAGES, VkCommandBuffer> commandBuffers;
 VkDescriptorSet material_descriptor_set;
 VkDescriptorSetLayout material_descriptor_layout;
 
-/*
-struct BufferAllocator {
-VkDeviceMemory block;
-
-};
-
-struct Buffer {
-VkBuffer buffer;
-};
-
-
-BufferAllocator buffer_manager;
-*/
-
 //Resources
 VertexBuffer vertex_buffer;
 InstanceBuffer instance_buffer;
@@ -78,47 +84,11 @@ VkImage depth_image;
 VkDeviceMemory depth_image_memory;
 VkImageView depth_image_view;
 
-void make_ImageViews(VkDevice device, Swapchain& swapchain) {
-	swapchain.image_views.resize(swapchain.images.length);
-
-	for (int i = 0; i < swapchain.images.length; i++) {
-		swapchain.image_views[i] = make_ImageView(device, swapchain.images[i], swapchain.imageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
-	}
-}
-
-struct PassUBO {
-	glm::vec4 resolution;
-	glm::mat4 proj;
-	glm::mat4 view;
-};
-
-struct CmdCopyBuffer {
-	VkBuffer srcBuffer;
-	VkBuffer dstBuffer;
-	VkBufferCopy copyRegion;
-};
-
-struct CmdCopyBufferToImage {
-	VkBuffer buffer;
-	VkImage image;
-	VkImageLayout imageLayout;
-	VkBufferImageCopy copyRegion;
-};
-
-struct CmdPipelineBarrier {
-	VkPipelineStageFlags sourceStage;
-	VkPipelineStageFlags dstStage;
-	VkImageMemoryBarrier imageBarrier;
-};
-
-#include <glm/gtc/matrix_transform.hpp>
-#include "core/container/tvector.h"
-
 tvector<glm::mat4> instances;
 
-void upload_MeshData(Assets& assets, BufferAllocator& buffer_manager) {
-	model_handle handle = load_Model(assets, "house.fbx");
-	Model* model = get_Model(assets, handle);
+void upload_MeshData() {
+	model_handle handle = load_Model("house.fbx");
+	Model* model = get_Model(handle);
 	
 	instances.reserve(10 * 10);
 	for (int x = 0; x < 10; x++) {
@@ -133,7 +103,7 @@ void upload_MeshData(Assets& assets, BufferAllocator& buffer_manager) {
 	}
 
 	vertex_buffer = model->meshes[0].buffer;
-	instance_buffer = alloc_instance_buffer<glm::mat4>(buffer_manager, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4, instances);
+	instance_buffer = frame_alloc_instance_buffer<glm::mat4>(INSTANCE_LAYOUT_MAT4X4, instances);
 
 }
 
@@ -148,6 +118,7 @@ void make_UniformBuffers(VkDevice device, VkPhysicalDevice physical_device, int 
 	}
 }
 
+/*
 VkDescriptorPool make_DescriptorPool(VkDevice device, int frames_in_flight) {
 	VkDescriptorPoolSize poolSizes[2] = {};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -170,34 +141,35 @@ VkDescriptorPool make_DescriptorPool(VkDevice device, int frames_in_flight) {
 
 	return result;
 }
+*/
 
-string_buffer read_file_or_fail(Assets& assets, string_view src) {
+string_buffer read_file_or_fail(string_view src) {
 	string_buffer output;
-	if (!readf(assets, src, &output)) throw "Failed to load vertex shaders!";
+	if (!io_readf(src, &output)) throw "Failed to load vertex shaders!";
 	return output;
 }
 
-ArrayVertexInputs Vertex_attribute_descriptions(BufferAllocator& buffer_manager) {
-	return input_attributes(buffer_manager, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4);
+ArrayVertexInputs Vertex_attribute_descriptions() {
+	return input_attributes(rhi.vertex_layouts, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4);	
 }
 
-ArrayVertexBindings Vertex_binding_descriptors(BufferAllocator& buffer_manager) {
-	return input_bindings(buffer_manager, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4);
+ArrayVertexBindings Vertex_binding_descriptors() {
+	return input_bindings(rhi.vertex_layouts, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4);
 }
 
-void make_GraphicsPipeline(VkDevice device, VkRenderPass render_pass, VkExtent2D extent, BufferAllocator& buffer_manager, VkShaderModule vert_shader, VkShaderModule frag_shader) {
+void make_GraphicsPipeline(VkDevice device, VkRenderPass render_pass, VkExtent2D extent, VkShaderModule vert_shader, VkShaderModule frag_shader) {
 	size_t before = temporary_allocator.occupied;
 
 	//NEEDS REFERENCE
-	auto binding_descriptors = Vertex_binding_descriptors(buffer_manager);
+	auto binding_descriptors = Vertex_binding_descriptors();
 
 	VkDescriptorSetLayout layouts[] = { descriptorSetLayout, material_descriptor_layout };
 
-	PipelineDesc pipeline_desc;
+	VkPipelineDesc pipeline_desc;
 	pipeline_desc.vert_shader = vert_shader;
 	pipeline_desc.frag_shader = frag_shader;
 	pipeline_desc.extent = extent;
-	pipeline_desc.attribute_descriptions = Vertex_attribute_descriptions(buffer_manager);
+	pipeline_desc.attribute_descriptions = Vertex_attribute_descriptions();
 	pipeline_desc.binding_descriptions = binding_descriptors;
 	pipeline_desc.descriptor_layouts = { layouts, 2 };
 	pipeline_desc.render_pass = renderPass;
@@ -212,6 +184,7 @@ void make_GraphicsPipeline(VkDevice device, VkRenderPass render_pass, VkExtent2D
 
 
 VkFormat find_depth_format(VkPhysicalDevice);
+
 
 void make_RenderPass(VkDevice device, VkPhysicalDevice physical_device, VkFormat image_format) {
 	VkAttachmentDescription colorAttachment = {};
@@ -306,9 +279,8 @@ uint get_frames_in_flight(RHI& rhi) {
 	return rhi.swapchain.images.length;
 }
 
-void record_CommandBuffers(VkDevice device, CommandPool& cmd_pool, TextureAllocator& texture_allocator, BufferAllocator& buffer_allocator, Swapchain& swapchain, int32_t image_index) {
-	VkCommandBuffer cmd_buffer = begin_recording(cmd_pool);
-	uint frame_index = cmd_pool.frame_index;
+void record_CommandBuffers(VkCommandBuffer cmd_buffer, Swapchain& swapchain, int32_t image_index) {
+	uint frame_index = rhi.frame_index;
 
 	VkRenderPassBeginInfo render_pass_info = {};
 
@@ -325,12 +297,9 @@ void record_CommandBuffers(VkDevice device, CommandPool& cmd_pool, TextureAlloca
 	render_pass_info.clearValueCount = 2;
 	render_pass_info.pClearValues = clear_colors;
 
-	transfer_image_ownership(texture_allocator, cmd_buffer);
-	transfer_vertex_ownership(buffer_allocator, cmd_buffer);
-
+	//todo move into TransferSystem
 	vkCmdBeginRenderPass(cmd_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 	vkCmdBindPipeline(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-
 
 	/*
 	vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertex_buffers, offsets);
@@ -341,33 +310,13 @@ void record_CommandBuffers(VkDevice device, CommandPool& cmd_pool, TextureAlloca
 	
 	VkDescriptorSet descriptor_sets[] = { descriptorSets[frame_index], material_descriptor_set };
 
-	bind_vertex_buffer(buffer_allocator, cmd_buffer, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4);
+	bind_vertex_buffer(rhi.vertex_streaming, cmd_buffer, VERTEX_LAYOUT_DEFAULT);
+	bind_instance_buffer(render_thread.instance_allocator, cmd_buffer, INSTANCE_LAYOUT_MAT4X4);
 	vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 2, descriptor_sets, 0, nullptr);
 
 	vkCmdDrawIndexed(cmd_buffer, vertex_buffer.length, instance_buffer.length, vertex_buffer.index_base, vertex_buffer.vertex_base, instance_buffer.base);
 
 	vkCmdEndRenderPass(cmd_buffer);
-
-	end_recording(cmd_pool, cmd_buffer);
-}
-
-void make_SyncObjects(VkDevice device, Swapchain& swapchain) {
-	for (int i = 0; i < swapchain.images.length; i++) swapchain.images_in_flight.append((VkFence)VK_NULL_HANDLE);
-
-	VkFenceCreateInfo fenceInfo = {};
-	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-	VkSemaphoreCreateInfo semaphoreInfo = {};
-	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-	for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &swapchain.image_available_semaphore[i]) != VK_SUCCESS 
-		|| vkCreateSemaphore(device, &semaphoreInfo, nullptr, &swapchain.render_finished_semaphore[i]) != VK_SUCCESS 
-		|| vkCreateFence(device, &fenceInfo, nullptr, &swapchain.in_flight_fences[i]) != VK_SUCCESS) {
-			throw "failed to make semaphore!";
-		}
-	}
 }
 
 void make_DescriptorSetLayout(VkDevice device) {
@@ -426,26 +375,6 @@ void make_DescriptorSets(VkDevice device, VkDescriptorPool pool, int frames_in_f
 	}
 }
 
-VkFormat find_supported_format(VkPhysicalDevice physical_device, slice<VkFormat> candidates, VkImageTiling tiling, VkFormatFeatureFlags features) {
-	for (VkFormat format : candidates) {
-		VkFormatProperties props;
-		vkGetPhysicalDeviceFormatProperties(physical_device, format, &props);
-
-		if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) {
-			return format;
-		}
-		else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) {
-			return format;
-		}
-	}
-
-	throw "Failed to find supported format!";
-}
-
-VkFormat find_depth_format(VkPhysicalDevice physical_device) {
-	array<3, VkFormat> candidates = { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT };
-	return find_supported_format(physical_device, candidates, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
-}
 
 void make_DepthResources(VkDevice device, VkPhysicalDevice physical_device, VkExtent2D extent) {
 	VkFormat depthFormat = find_depth_format(physical_device);
@@ -464,36 +393,25 @@ VkPhysicalDevice get_PhysicalDevice(RHI& rhi) {
 	return rhi.device.physical_device;
 }
 
-VkDescriptorPool get_DescriptorPool(RHI& rhi) {
-	return rhi.descriptor_pool;
-}
+//VkDescriptorPool get_DescriptorPool(RHI& rhi) {
+//	return rhi.descriptor_pool;
+//}
 
-VkInstance get_Instance(RHI& rhi) {
-	return rhi.device.instance;
-}
+//VkInstance get_Instance(RHI& rhi) {
+//	return rhi.device.instance;
+//}
 
-BufferAllocator& get_BufferAllocator(RHI& rhi) {
-	return *rhi.buffer_allocator;
-}
+//BufferAllocator& get_BufferAllocator(RHI& rhi) {
+//	return *rhi.buffer_allocator;
+//}
 
-TextureAllocator& get_TextureAllocator(RHI& rhi) {
-	return *rhi.texture_allocator;
-}
+//TextureStreaming& get_TextureAllocator(RHI& rhi) {
+//	return *rhi.texture_allocator;
+//}
 
-VkQueue get_Queue(RHI& rhi, QueueType type) {
-	return rhi.device[type];
-}
-
-void begin_gpu_upload(RHI& rhi) {
-	rhi.waiting_on_transfer_frame = begin_staging_cmds(rhi.staging_queue);
-	begin_buffer_upload(*rhi.buffer_allocator);
-}
-
-//todo add sychronization
-void end_gpu_upload(RHI& rhi) {
-	end_buffer_upload(*rhi.buffer_allocator);
-	end_staging_cmds(rhi.staging_queue);
-}
+//VkQueue get_Queue(RHI& rhi, QueueType type) {
+//	return rhi.device[type];
+//}
 
 uint get_active_frame(RHI& rhi) {
 	return rhi.swapchain.current_frame;
@@ -502,79 +420,103 @@ uint get_active_frame(RHI& rhi) {
 string_buffer vert_shader_code;
 string_buffer frag_shader_code;
 
-RHI* make_RHI(const VulkanDesc& desc, Window& window) {
-	RHI* rhi = PERMANENT_ALLOC(RHI, { window, desc });
+void make_RHI(const VulkanDesc& desc, Window& window) {
+	VK_CHECK(volkInitialize());
 
 	VK_CHECK(volkInitialize());
 
-	Device& device = rhi->device;
+	Device& device = rhi.device;
+	Swapchain& swapchain = rhi.swapchain;
 
-	device.instance = make_Instance(desc);
-	volkLoadInstance(device.instance);
-	setup_debug_messenger(device.instance, desc, &device.debug_messenger);
+	VkSurfaceKHR surface = make_Device(device, desc, window);
 
-	VkSurfaceKHR surface = make_Surface(device.instance, window);
+	rhi.window = &window;
+	rhi.shader_compiler = shaderc_compiler_initialize();
 
-	device.physical_device = pick_physical_devices(device.instance, surface);
-	make_logical_devices(device, desc, surface);
+	make_Swapchain(rhi.swapchain, device, window, surface);
+	make_SyncObjects(swapchain);
 
-	volkLoadDevice(device);
+	make_vk_CommandPool(rhi.transfer_cmd_pool, device, Queue_AsyncTransfer);
 
-	rhi->swapchain = make_SwapChain(device, rhi->window, surface);
-	make_ImageViews(device, rhi->swapchain);
-
-	make_CommandPool(rhi->graphics_cmd_pool, device, Queue_Graphics, 5);
-	make_vk_CommandPool(rhi->transfer_cmd_pool, device, Queue_AsyncTransfer);
+	u64 vertex_max_memory[VERTEX_LAYOUT_COUNT] = { mb(50) };
+	u64 index_max_memory[VERTEX_LAYOUT_COUNT] = { mb(50) };
+	u64 instance_max_memory[INSTANCE_LAYOUT_COUNT] = { mb(0), mb(5), mb(5) };
+	u64 ubo_max_memory[UBO_UPDATE_MODE_COUNT] = { mb(5), mb(5), mb(5) };
 
 	//todo clean up function arguments
-	rhi->staging_queue = make_StagingQueue(device, device.physical_device, rhi->transfer_cmd_pool, device[Queue_AsyncTransfer], device.queue_families[Queue_AsyncTransfer], device.queue_families[Queue_Graphics]);
-	rhi->buffer_allocator = make_BufferAllocator(*rhi, rhi->staging_queue);
-	rhi->texture_allocator = make_TextureAllocator(*rhi, rhi->staging_queue);
-	rhi->descriptor_pool = make_DescriptorPool(device, get_frames_in_flight(*rhi));
+	rhi.staging_queue = make_StagingQueue(device, device.physical_device, rhi.transfer_cmd_pool, device[Queue_AsyncTransfer], device.queue_families[Queue_AsyncTransfer], device.queue_families[Queue_Graphics]);
+	make_Layouts(rhi.vertex_layouts);
+	make_VertexStreaming(rhi.vertex_streaming, device, device, rhi.staging_queue, rhi.vertex_layouts.vertex_layouts, vertex_max_memory,  index_max_memory);
+	make_TextureAllocator(rhi.texture_allocator);
+	make_UBOAllocator(rhi.ubo_allocator, device, ubo_max_memory);
+	rhi.material_allocator.init();
 
-	begin_gpu_upload(*rhi);
+	make_InstanceAllocator(render_thread.instance_allocator, device, device, &rhi.vertex_layouts.instance_layouts, instance_max_memory);
+	make_CommandPool(render_thread.command_pool, device, Queue_Graphics, 10);
+	make_CommandPool(rhi.background_graphics, device, Queue_Graphics, 3);
 
-	return rhi;
+	DescriptorCount max_descriptor = {};
+	max_descriptor.max_samplers = 40;
+	max_descriptor.max_ubos = 40;
+	max_descriptor.max_sets = 20;
+
+	make_DescriptorPool(rhi.descriptor_pool, device, device, max_descriptor);
+
+	make_RenderPass(device, device, rhi.swapchain.imageFormat);
+	make_DescriptorSetLayout(device);
+	//make_GraphicsPipeline(device, renderPass, rhi.swapchain.extent, shader_modules->vert, shader_modules->frag);
+
+	make_DepthResources(device, device, rhi.swapchain.extent);
+	make_Framebuffers(device, rhi.swapchain);
+
+	int frames_in_flight = get_frames_in_flight(rhi);
+
+	make_UniformBuffers(device, device, frames_in_flight);
+	make_DescriptorSets(device, rhi.descriptor_pool, frames_in_flight);
+
+	register_wsi_pass(renderPass, swapchain.extent.width, swapchain.extent.height);
+
+	begin_gpu_upload();
 }
 
 //todo all of init RHI and the adhoc initialization has to be removed
 //this is only needed for the bootstrapping phase before the other systems come 
 //back online again
 
-void init_RHI(RHI* rhi, Assets& assets) {
-	VkDevice device = get_Device(*rhi);
-	VkPhysicalDevice physical_device = get_PhysicalDevice(*rhi);
+void init_RHI() {	
+	VkDevice device = get_Device(rhi);
+	VkPhysicalDevice physical_device = get_PhysicalDevice(rhi);
 
-	shader_handle shader = load_Shader(assets, "shaders/shader.vert", "shaders/shader.frag");
-	ShaderModules* shader_modules = get_shader_config(assets, shader, SHADER_INSTANCED);
+	/*shader_handle shader = load_Shader("shaders/shader.vert", "shaders/shader.frag");
+	ShaderModules* shader_modules = get_shader_config(shader, SHADER_INSTANCED);
 
 	MaterialDesc mat_desc{ shader };
-	mat_channel3(mat_desc, "diffuse", glm::vec3(1.5), load_Texture(assets, "wood_2/Stylized_Wood_basecolor.jpg")); //"Aset_wood_log_L_rdeu3_4K_Albedo.jpg"));
-	mat_channel1(mat_desc, "normal", 1.0f, load_Texture(assets, "wood_2/Stylized_Wood_normal.jpg")); //"Aset_wood_log_L_rdeu3_4K_Normal_LOD0.jpg"));
+	mat_channel3(mat_desc, "diffuse", glm::vec3(1.5), load_Texture("wood_2/Stylized_Wood_basecolor.jpg")); //"Aset_wood_log_L_rdeu3_4K_Albedo.jpg"));
+	mat_channel1(mat_desc, "metallic", 0.0f);
+	mat_channel1(mat_desc, "roughness", 0.0f);
+	mat_channel1(mat_desc, "normal", 1.0f, load_Texture("wood_2/Stylized_Wood_normal.jpg")); //"Aset_wood_log_L_rdeu3_4K_Normal_LOD0.jpg"));
 
-	material_handle mat_handle = make_Material(assets, mat_desc);
+	material_handle mat_handle = make_Material(mat_desc);
+	descriptor_set_handle mat_set = get_Material(mat_handle)->set;
 
-	material_descriptor_set = get_Material(assets, mat_handle)->set;
-	material_descriptor_layout = get_Material(assets, mat_handle)->layout;
+	material_descriptor_set = get_descriptor_set(mat_set);
+	material_descriptor_layout = get_descriptor_set_layout(mat_set);
 
-	make_RenderPass(device, physical_device, rhi->swapchain.imageFormat);
-	make_DescriptorSetLayout(device);
-	make_GraphicsPipeline(device, renderPass, rhi->swapchain.extent, *rhi->buffer_allocator, shader_modules->vert, shader_modules->frag);
 
-	make_DepthResources(device, physical_device, rhi->swapchain.extent);
-	make_Framebuffers(device, rhi->swapchain);
+	upload_MeshData();*/
 
-	int frames_in_flight = get_frames_in_flight(*rhi);
 
-	make_UniformBuffers(device, physical_device, frames_in_flight);
-	
-	make_DescriptorSets(device, rhi->descriptor_pool, frames_in_flight);
-	
-	upload_MeshData(assets, *rhi->buffer_allocator);
-	
-	make_SyncObjects(device, rhi->swapchain);
 
-	rhi->desc.validation_layers = nullptr;
+	//material_descriptor_set = get_Material(mat_handle)->set;
+	//material_descriptor_layout = get_Material(mat_handle)->layout;
+
+
+	//make_RenderPass(device, physical_device, rhi.swapchain.imageFormat);
+	//make_DescriptorSetLayout(device);
+	//make_UniformBuffers(device, physical_device, frames_in_flight);
+	//make_DescriptorSets(device, rhi.descriptor_pool, frames_in_flight);
+		
+	//make_GraphicsPipeline(device, renderPass, rhi.swapchain.extent, shader_modules->vert, shader_modules->frag);
 }
 
 void destroy(VkDevice device, Swapchain& swapchain) {
@@ -602,59 +544,60 @@ void destroy(VkDevice device, Swapchain& swapchain) {
 void remakeSwapChain(RHI& rhi) {
 	VkDevice device = rhi.device;
 	VkPhysicalDevice physical_device = rhi.device.physical_device;
-	Window& window = rhi.window;
 	Swapchain& swapchain = rhi.swapchain;
-	BufferAllocator& buffer_manager = *rhi.buffer_allocator;
 
 	int width = 0, height = 0;
 
-	window.get_framebuffer_size(&width, &height);
+	rhi.window->get_framebuffer_size(&width, &height);
 
 	while (width == 0 || height == 0) {
-		window.get_framebuffer_size(&width, &height);
-		window.wait_events();
+		rhi.window->get_framebuffer_size(&width, &height);
+		rhi.window->wait_events();
 	}
 
 	vkDeviceWaitIdle(device);
-	swapchain = make_SwapChain(rhi.device, window, swapchain.surface);
-	make_ImageViews(device, swapchain);
 
-	make_RenderPass(device, physical_device, swapchain.imageFormat);
-	make_GraphicsPipeline(device, renderPass, swapchain.extent, buffer_manager, make_ShaderModule(device, vert_shader_code), make_ShaderModule(device, frag_shader_code));
+	//todo MASSIVE RESOURCE LEAK!
+	//todo if swapchain image format changes, the graphics pipelines also need to be recompiled
+
+	make_Swapchain(swapchain, rhi.device, *rhi.window, swapchain.surface);
+
+
+	//make_RenderPass(device, physical_device, swapchain.imageFormat);
+	//make_GraphicsPipeline(device, renderPass, swapchain.extent, make_ShaderModule(vert_shader_code), make_ShaderModule(frag_shader_code));
 	make_DepthResources(device, physical_device, swapchain.extent);
 	make_Framebuffers(device, swapchain);
-	rhi.descriptor_pool = make_DescriptorPool(device, frames_in_flight(swapchain));
 }
 
-void vk_destroy(RHI& rhi) {
+void vk_destroy() {
 	Device& device = rhi.device;
 	Swapchain& swapchain = rhi.swapchain;
-	BufferAllocator* buffer_manager = rhi.buffer_allocator;
 
 	vkDeviceWaitIdle(device);
 
+	shaderc_compiler_release(rhi.shader_compiler);
 
-	destroy_sync_objects(device, swapchain);
 	vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
-	vkDestroyDescriptorPool(device, get_DescriptorPool(rhi), nullptr);
+	vkDestroyDescriptorPool(device, rhi.descriptor_pool, nullptr);
 
-	destroy_BufferAllocator(buffer_manager);
+	destroy_VertexStreaming(rhi.vertex_streaming);
 
-	destroy_CommandPool(rhi.graphics_cmd_pool);
+	destroy_CommandPool(render_thread.command_pool);
 	vkDestroyCommandPool(device, rhi.transfer_cmd_pool, nullptr);
+
+	destroy_Swapchain(rhi.swapchain);
 
 	vkDestroyDevice(device, nullptr);
 
-	destroy_validation_layers(device.instance, device.debug_messenger);
-
-	destroy_Surface(device.instance, swapchain.surface);
-	destroy_Instance(device.instance);
+	destroy_Device(device);
 }
 
-void update_UniformBuffer(VkDevice device, uint32_t currentImage, FrameData& frameData) {
+#include "graphics/pass/render_pass.h"
+
+void update_UniformBuffer(VkDevice device, uint32_t currentImage, Viewport& viewport) {
 	PassUBO ubo = {};
-	ubo.view = frameData.view_matrix;
-	ubo.proj = frameData.proj_matrix;
+	ubo.view = viewport.view;
+	ubo.proj = viewport.proj;
 	ubo.proj[1][1] *= -1;
 
 	void* data;
@@ -664,20 +607,21 @@ void update_UniformBuffer(VkDevice device, uint32_t currentImage, FrameData& fra
 
 }
 
-void vk_draw_frame(RHI& rhi, FrameData& frameData) {
-	VkDevice device = rhi.device;
-	VkPhysicalDevice physical_device = rhi.device.physical_device;
-	Swapchain& swapchain = rhi.swapchain;
-	Window& window = rhi.window;
-	BufferAllocator& buffer_allocator = *rhi.buffer_allocator;
-	TextureAllocator& texture_allocator = *rhi.texture_allocator;
+void vk_begin_frame() {
+	uint current_frame = rhi.swapchain.current_frame;
 
-	uint current_frame = swapchain.current_frame;
-	uint image_index;
+	vkWaitForFences(rhi.device, 1, &rhi.swapchain.in_flight_fences[current_frame], VK_TRUE, UINT64_MAX);
 
-	vkWaitForFences(device, 1, &swapchain.in_flight_fences[current_frame], VK_TRUE, UINT64_MAX);
+	begin_frame(render_thread.command_pool, current_frame);
+}
 
-	VkResult result = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, swapchain.image_available_semaphore[current_frame], VK_NULL_HANDLE, &image_index);
+//todo move to vk_swapchain
+void acquire_swapchain_image(Swapchain& swapchain) {
+	VkDevice device = swapchain.device;
+
+	vkWaitForFences(device, 1, &swapchain.in_flight_fences[swapchain.current_frame], VK_TRUE, UINT64_MAX);
+
+	VkResult result = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, swapchain.image_available_semaphore[swapchain.current_frame], VK_NULL_HANDLE, &swapchain.image_index);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 		remakeSwapChain(rhi);
@@ -687,64 +631,179 @@ void vk_draw_frame(RHI& rhi, FrameData& frameData) {
 		throw "Failed to acquire swapchain image!";
 	}
 
-	if (swapchain.images_in_flight[image_index] != VK_NULL_HANDLE) {
-		vkWaitForFences(device, 1, &swapchain.images_in_flight[image_index], VK_TRUE, UINT64_MAX);
+	if (swapchain.images_in_flight[swapchain.image_index] != VK_NULL_HANDLE) {
+		vkWaitForFences(device, 1, &swapchain.images_in_flight[swapchain.image_index], VK_TRUE, UINT64_MAX);
 	}
 	swapchain.images_in_flight[swapchain.image_index] = swapchain.in_flight_fences[swapchain.current_frame];
+}
 
-	CommandPool& graphics_cmd_pool = rhi.graphics_cmd_pool;
-	StagingQueue& staging_queue = rhi.staging_queue;
+void present_swapchain_image(Swapchain& swapchain) {
+	VkPresentInfoKHR presentInfo = {};
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pWaitSemaphores = &swapchain.render_finished_semaphore[swapchain.current_frame];
 
-	begin_frame(graphics_cmd_pool, swapchain.current_frame);
+	VkSwapchainKHR swapChains[] = { swapchain };
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = swapChains;
+	presentInfo.pImageIndices = &swapchain.image_index;
+	presentInfo.pResults = nullptr;
 
-	update_UniformBuffer(device, swapchain.current_frame, frameData);
-	record_CommandBuffers(device, graphics_cmd_pool, texture_allocator, buffer_allocator, swapchain, image_index);
+	VkResult result = vkQueuePresentKHR(rhi.device.present_queue, &presentInfo);
 
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+		//framebufferResized = false;
+		remakeSwapChain(rhi);
+	}
+	else if (result != VK_SUCCESS) {
+		throw "failed to present swap chain image!";
+	}
+}
 
-	//static int waited_on[MAX_FRAMES_IN_FLIGHT] = {};
-	//waited_on[current_frame] = true;
+/*
+void vk_end_frame() {
+	VkDevice device = rhi.device;
+	VkPhysicalDevice physical_device = rhi.device.physical_device;
+	Swapchain& swapchain = rhi.swapchain;
+	//BufferAllocator& buffer_allocator = *rhi.buffer_allocator;
+	//TextureStreaming& texture_allocator = *rhi.texture_allocator;
+
+	acquire_swapchain_image(rhi.swapchain);
 
 	{
+		CommandPool& graphics_cmd_pool = render_thread.command_pool;
+		//StagingQueue& staging_queue = rhi.trastaging_queue;
+
+		begin_frame(graphics_cmd_pool, rhi.frame_index);
+
+		VkCommandBuffer cmd_buffer = begin_recording(graphics_cmd_pool);
+
+		//update_UniformBuffer(device, swapchain.current_frame, frameData);
+		record_CommandBuffers(cmd_buffer, swapchain, swapchain.image_index);
+
+		end_recording(graphics_cmd_pool, cmd_buffer);
+	
 		QueueSubmitInfo submit_info = {};
-		submit_info.completion_fence = swapchain.in_flight_fences[current_frame];
+		submit_info.completion_fence = swapchain.in_flight_fences[swapchain.current_frame];
 
-		transfer_queue_dependencies(staging_queue, submit_info, rhi.waiting_on_transfer_frame, current_frame);
-		submit_cmd_buffers(graphics_cmd_pool, submit_info);
+		wait_on_transfer(rhi.waiting_on_transfer_frame, cmd_buffer, submit_info);
+		
+		submit_all_cmds(graphics_cmd_pool, submit_info);
 
-		queue_wait_semaphore(submit_info, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, swapchain.image_available_semaphore[current_frame]);
-		queue_signal_semaphore(submit_info, swapchain.render_finished_semaphore[current_frame]);
+		queue_wait_semaphore(submit_info, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, swapchain.image_available_semaphore[swapchain.current_frame]);
+		queue_signal_semaphore(submit_info, swapchain.render_finished_semaphore[swapchain.current_frame]);
 
-		vkResetFences(device, 1, &swapchain.in_flight_fences[current_frame]);
+		vkResetFences(device, 1, &swapchain.in_flight_fences[swapchain.current_frame]);
 
 		queue_submit(rhi.device, Queue_Graphics, submit_info);
 	}
 
-	{
-		VkPresentInfoKHR presentInfo = {};
-		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-		presentInfo.waitSemaphoreCount = 1;
-		presentInfo.pWaitSemaphores = &swapchain.render_finished_semaphore[current_frame];
+	swapchain.current_frame = (swapchain.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
+}*/
 
-		VkSwapchainKHR swapChains[] = { swapchain };
-		presentInfo.swapchainCount = 1;
-		presentInfo.pSwapchains = swapChains;
-		presentInfo.pImageIndices = &image_index;
-		presentInfo.pResults = nullptr;
+void begin_gpu_upload() {
+	rhi.waiting_on_transfer_frame = begin_staging_cmds(rhi.staging_queue);
+	begin_vertex_buffer_upload(rhi.vertex_streaming);
 
-		result = vkQueuePresentKHR(rhi.device.present_queue, &presentInfo);
-
-		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-			//framebufferResized = false;
-			remakeSwapChain(rhi);
-		}
-		else if (result != VK_SUCCESS) {
-			throw "failed to present swap chain image!";
-		}
-	}
-
-	swapchain.current_frame = (current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
+	begin_frame(rhi.background_graphics, rhi.staging_queue.frame_index);
 }
 
-void destroy_RHI(RHI* rhi) {
-	vk_destroy(*rhi);
+//todo add sychronization
+void end_gpu_upload() {
+	end_vertex_buffer_upload(rhi.vertex_streaming);
+	end_staging_cmds(rhi.staging_queue);
+
+
+	QueueSubmitInfo info = {};
+
+	queue_wait_timeline_semaphore(info, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, rhi.staging_queue.wait_on_transfer, rhi.waiting_on_transfer_frame);
+	queue_signal_timeline_semaphore(info, rhi.staging_queue.wait_on_transfer, ++rhi.waiting_on_transfer_frame);
+
+	{
+		VkCommandBuffer cmd_buffer = begin_recording(rhi.background_graphics);
+		transfer_image_ownership(rhi.texture_allocator, cmd_buffer);
+		transfer_vertex_ownership(rhi.vertex_streaming, cmd_buffer);
+		
+		end_recording(rhi.background_graphics, cmd_buffer);
+	
+		auto& cmds = rhi.background_graphics.submited[rhi.background_graphics.frame_index];
+		
+		for (int i = cmds.length - 1; i > 0; i--) {
+			cmds[i] = cmds[i - 1];
+		}
+
+		cmds[0] = cmd_buffer;		
+	}
+
+	submit_all_cmds(rhi.background_graphics, info);
+
+	queue_submit(rhi.device, rhi.device.graphics_queue, info);
+}
+
+RenderPass begin_render_frame() {
+	Swapchain& swapchain = rhi.swapchain;
+	rhi.frame_index = rhi.swapchain.current_frame;
+
+	acquire_swapchain_image(swapchain);
+
+	begin_frame(render_thread.command_pool, rhi.frame_index);
+	begin_frame(render_thread.instance_allocator, rhi.frame_index);
+
+	/*{
+		CommandBuffer& cmd_buffer = begin_draw_cmds();
+		transfer_image_ownership(rhi.texture_allocator, cmd_buffer);
+		transfer_vertex_ownership(rhi.vertex_streaming, cmd_buffer);
+		end_draw_cmds(cmd_buffer);
+	}*/
+
+	CommandBuffer& cmd_buffer = begin_draw_cmds();
+
+
+
+	uint frame_index = rhi.frame_index;
+
+	VkRenderPassBeginInfo render_pass_info = {};
+
+	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	render_pass_info.renderPass = renderPass;
+	render_pass_info.framebuffer = swapchain.framebuffers[swapchain.image_index];
+	render_pass_info.renderArea.offset = { 0,0 };
+	render_pass_info.renderArea.extent = swapchain.extent;
+
+	VkClearValue clear_colors[2] = {};
+	clear_colors[0].color = { 0.4f, 0.4f, 0.9f, 1.0f };
+	clear_colors[1].depthStencil = { 1, 0 };
+
+	render_pass_info.clearValueCount = 2;
+	render_pass_info.pClearValues = clear_colors;
+
+	//todo move into TransferSystem
+	vkCmdBeginRenderPass(cmd_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+
+	Viewport viewport = {};
+	viewport.width = swapchain.extent.width;
+	viewport.height = swapchain.extent.height;
+
+	VkViewport vk_viewport = {};
+	vk_viewport.x = viewport.x;
+	vk_viewport.y = viewport.y;
+	vk_viewport.width = viewport.width;
+	vk_viewport.height = viewport.height;
+
+	VkRect2D scissor = {};
+	scissor.offset.x = 0;
+	scissor.offset.y = 0;
+	scissor.extent.width = vk_viewport.width;
+	scissor.extent.height = vk_viewport.height;
+
+	vkCmdSetViewport(cmd_buffer, 0, 1, &vk_viewport);
+	vkCmdSetScissor(cmd_buffer, 0, 1, &scissor);
+
+	return { RenderPass::Screen, RenderPass::Color, 0, viewport, cmd_buffer };
+}
+
+
+
+void destroy_RHI() {
+	vk_destroy();
 }

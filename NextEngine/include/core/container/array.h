@@ -3,6 +3,7 @@
 #include "core/core.h"
 #include "slice.h"
 #include <initializer_list>
+#include <utility>
 
 template<int N, typename T>
 struct array {
@@ -20,6 +21,16 @@ struct array {
 
 	array(int length) {
 		resize(length);
+	}
+
+	void shift(uint by) {
+		assert(by <= length);
+		length -= by;
+		for (uint i = 0; i < length; i++) {
+			data[i] = data[i + by];
+		}
+
+		//todo call destructors
 	}
 
 	/*array(array<N, T>&& other) {
@@ -41,6 +52,15 @@ struct array {
 	inline array(std::initializer_list<T> list) {
 		for (const auto& i : list) {
 			append(i);
+		}
+	}
+
+	inline array(slice<T> list) {
+		assert(list.length < N);
+		length = list.length;
+		
+		for (int i = 0; i < length; i++) {
+			data[i] = list[i];
 		}
 	}
 
@@ -104,13 +124,17 @@ struct array {
 		length = 0;
 	}
 
-	T pop() { return std::move(data[--length]); }
+
+
+	T pop() { assert(length > 0); return std::move(data[--length]); }
 
 	inline T* begin() { return this->data; }
 	inline T* end() { return this->data + length; }
 
 	inline const T* begin() const { return this->data; }
 	inline const T* end() const { return this->data + length; }
+
+	inline T& last() { return data[length - 1]; }
 
 	operator slice<T>() { return { data, length }; }
 };

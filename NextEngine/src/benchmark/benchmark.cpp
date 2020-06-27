@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "core/memory/allocator.h"
 #include <iostream>
 #include <chrono>

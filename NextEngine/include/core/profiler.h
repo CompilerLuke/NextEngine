@@ -35,10 +35,12 @@ struct Profiler {
 	static bool ENGINE_API paused;
 	static vector<Frame> ENGINE_API frames;
 	static int ENGINE_API profile_depth;
+	static uint ENGINE_API frame_sample_count;
 
 	static void ENGINE_API begin_frame();
 	static void ENGINE_API end_frame();
 
+	static void ENGINE_API set_frame_sample_count(uint);
 	static void ENGINE_API begin_profile();
 	static void ENGINE_API record_profile(const Profile&);
 };

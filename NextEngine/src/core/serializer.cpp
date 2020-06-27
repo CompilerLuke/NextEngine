@@ -1,9 +1,8 @@
-#include "stdafx.h"
 #include "core/serializer.h"
 #include "core/io/vfs.h"
 #include "ecs/ecs.h"
-#include <WinSock2.h>
 
+#include <WinSock2.h>
 #pragma comment(lib, "Ws2_32.lib")
 
 #define u32_to_network htonl

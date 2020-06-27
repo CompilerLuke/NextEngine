@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/container/vector.h"
+#include "core/container/tvector.h"
 #include "core/handle.h"
 #include "graphics/rhi/frame_buffer.h"
 #include "ecs/ecs.h"
@@ -12,7 +13,7 @@
 struct ShaderGraph;
 struct Assets;
 struct ImFont;
-struct RenderCtx;
+struct RenderPass;
 struct Camera;
 struct World;
 struct CommandBuffer;
@@ -20,6 +21,7 @@ struct Material;
 struct Renderer;
 struct Window;
 
+/*
 struct asset_folder_handle {
 	uint id = INVALID_HANDLE;
 };
@@ -39,16 +41,22 @@ struct shader_asset_handle {
 struct material_asset_handle {
 	uint id = INVALID_HANDLE;
 };
+*/
+
+struct NamedAsset {
+	uint handle;
+	sstring name;
+};
 
 struct TextureAsset {
 	texture_handle handle;
-	string_buffer name;
+	sstring name;
 
 	REFLECT(NO_ARG)
 };
 
 struct RotatablePreview {
-	texture_handle preview = { INVALID_HANDLE };
+	glm::vec2 preview_tex_coord;
 	glm::vec2 current;
 	glm::vec2 previous;
 	glm::vec2 rot_deg;
@@ -57,19 +65,19 @@ struct RotatablePreview {
 
 struct ModelAsset {
 	model_handle handle = { INVALID_HANDLE };
+	sstring name;
+	RotatablePreview rot_preview;
+	
 	vector<material_handle> materials;
-	string_buffer name;
 	
 	Transform trans;
-
-	RotatablePreview rot_preview;
 
 	REFLECT(NO_ARG)
 };
 
 struct ShaderAsset {
 	shader_handle handle = { INVALID_HANDLE };
-	string_buffer name;
+	sstring name;
 
 	vector<ParamDesc> shader_arguments;
 
@@ -80,121 +88,140 @@ struct ShaderAsset {
 
 struct MaterialAsset {
 	material_handle handle = { INVALID_HANDLE };
+	sstring name;
 	RotatablePreview rot_preview;
-	string_buffer name;
 
 	REFLECT()
 };
 
-struct AssetFolder {
-	asset_folder_handle handle = { INVALID_HANDLE }; //contains id to itself, used to select folder to move
-	
-	string_buffer name;
-	vector<uint> contents;
-	int owner = -1;
+struct asset_handle {
+	uint id;
 
 	REFLECT(NO_ARG)
 };
 
-struct AssetTab {
-	Renderer& renderer;
-	Assets& asset_manager;
-	Window& window;
+struct AssetFolder {
+	//asset_folder_handle handle = { INVALID_HANDLE }; //contains id to itself, used to select folder to move
+	
+	sstring name;
+	vector<struct AssetNode> contents;
+	asset_handle owner;
 
+	REFLECT(NO_ARG)
+};
+
+struct AssetNode {
+	enum Type { Texture, Material, Shader, Model, Folder, Count } type;
+	asset_handle handle;
+
+	union {
+		NamedAsset asset;
+		TextureAsset texture;
+		MaterialAsset material;
+		ShaderAsset shader;
+		ModelAsset model;
+		AssetFolder folder;
+	};
+
+	AssetNode();
+	~AssetNode();
+	AssetNode(AssetNode::Type type);
+	void operator=(AssetNode&&);
+
+	REFLECT(NO_ARG)
+};
+
+//todo HandleManager is a relatively slow
+//and fragmented data structure, could get much better
+//cache locality by copying and adjusting pointers
+
+const uint MAX_ASSETS = 1000;
+const uint MAX_PER_ASSET_TYPE = 200;
+
+struct AssetPreviewResources {
+	pipeline_layout_handle pipeline_layout;
+	descriptor_set_handle pass_descriptor;
+	descriptor_set_handle pbr_descriptor;
+	UBOBuffer pass_ubo;
 	Framebuffer preview_fbo;
 	Framebuffer preview_tonemapped_fbo;
 	texture_handle preview_map;
 	texture_handle preview_tonemapped_map;
+	texture_handle preview_atlas;
+	bool atlas_layout_undefined = true;
+	array<MAX_ASSETS, glm::vec2> free_atlas_slot;
+};
+
+struct AssetInfo {
+	uint id_counter = 0;
+	AssetNode* asset_handle_to_node[MAX_ASSETS];
+	AssetNode* asset_type_handle_to_node[AssetNode::Count][MAX_ASSETS];
+	AssetNode toplevel;
+};
+
+struct AssetExplorer {
+	AssetInfo& info;
+	AssetPreviewResources& preview_resources;
+
+	sstring filter;
+
+	asset_handle current_folder;
+	asset_handle selected = { INVALID_HANDLE };
+
 	struct ImFont* filename_font = NULL;
 	struct ImFont* default_font = NULL;
+};
 
-	vector<MaterialAsset*> material_handle_to_asset; 
-	vector<ModelAsset*> model_handle_to_asset;
-	vector<ShaderAsset*> shader_handle_to_asset;
+struct AssetTab {
+	Renderer& renderer;
+	Window& window;
 
-	World assets;
-	ID toplevel;
-	ID current_folder;
-	int selected = -1;
+	AssetInfo& info;
+	AssetExplorer explorer;
 
+	AssetPreviewResources preview_resources;
+
+	vector<asset_handle> render_preview_for;
 	material_handle default_material;
-	
-	string_buffer filter;
 
-	AssetTab(Renderer&, Assets&, Window& window);
+	AssetTab(Renderer&, AssetInfo&, Window& window);
 
-	void register_callbacks(struct Window&, struct Editor&);
-	void render(struct World&, struct Editor&, struct RenderCtx&);
+	//void register_callbacks(struct Window&, struct Editor&);
+	void render(struct World&, struct Editor&, struct RenderPass&);
 
 	void on_save();
-	void on_load(struct World& world, struct RenderCtx& params);
+	void on_load(struct World& world);
 };
 
-
-struct Param {
-	struct Channel3 {
-		texture_handle image;
-		uniform_handle scalar_loc;
-		glm::vec3 color;
-
-		REFLECT()
-	};
-
-	struct Channel2 {
-		texture_handle image;
-		uniform_handle scalar_loc;
-		glm::vec2 value;
-
-		REFLECT()
-	};
-
-	struct Channel1 {
-		texture_handle image;
-		uniform_handle scalar_loc;
-		float value;
-
-		REFLECT()
-	};
-
-	uniform_handle loc;
-	Param_Type type;
-	union {
-		glm::vec3 vec3;
-		glm::vec2 vec2;
-		glm::mat4 matrix;
-		texture_handle image;
-		cubemap_handle cubemap;
-		int integer;
-		float real;
-
-		Channel3 channel3;
-		Channel2 channel2;
-		Channel1 channel1;
-
-		int time; //pointless makes it easy to serialize
-	};
-
-	Param() {}
-
-	REFLECT_UNION()
+const char* drop_types[AssetNode::Count] = {
+	"DRAG_AND_DROP_TEXTURE",
+	"DRAG_AND_DROP_MATERIAL",
+	"DRAG_AND_DROP_SHADER",
+	"DRAG_AND_DROP_MODEL",
+	"DRAG_AND_DROP_FOLDER",
 };
 
-void convert_to_desc(Param& param, ParamDesc&);
+const RenderPass::ID PreviewPass = (RenderPass::ID)(RenderPass::PassCount + 0);
+const RenderPass::ID PreviewPassTonemap = (RenderPass::ID)(RenderPass::PassCount + 1);
 
-MaterialAsset* register_new_material(World& world, AssetTab& self, Editor& editor, RenderCtx& params, ID mat_asset_handle);
-MaterialAsset* create_new_material(struct World& world, struct AssetTab& self, struct Editor& editor, struct RenderCtx& params);
+material_handle create_new_material(struct AssetTab& self, struct Editor& editor);
+model_handle import_model(AssetTab& self, string_view filename);
 
-void add_asset(AssetTab& self, ID id);
-void render_name(string_buffer& name, struct ImFont* font);
+AssetNode* get_asset(AssetInfo& self, asset_handle handle);
+asset_handle add_asset_to_current_folder(AssetTab& self, AssetNode&& node);
+
+void render_name(sstring& name, struct ImFont* font = nullptr);
 
 void edit_color(glm::vec3& color, string_view name, glm::vec2 size = glm::vec2(200, 200));
 void edit_color(glm::vec4& color, string_view name, glm::vec2 size = glm::vec2(200, 200));
 
-RenderCtx create_preview_command_buffer(CommandBuffer& cmd_buffer, RenderCtx& old_params, AssetTab& self, Camera* cam, World& world);
-void render_preview_to_buffer(AssetTab& self, RenderCtx& params, CommandBuffer& cmd_buffer, texture_handle& preview, World& world);
-void rot_preview(Assets& assets, RotatablePreview& self);
+RenderPass create_preview_command_buffer(CommandBuffer& cmd_buffer, AssetTab& self, Camera* cam, World& world);
+void render_preview_to_buffer(AssetTab& self, RenderPass& params, CommandBuffer& cmd_buffer, texture_handle& preview, World& world);
+void rot_preview(AssetPreviewResources& resources, RotatablePreview& self);
+void preview_from_atlas(AssetPreviewResources& resources, RotatablePreview& preview, texture_handle* handle, glm::vec2* uv0, glm::vec2* uv1);
+void preview_image(AssetPreviewResources& resources, RotatablePreview& preview, glm::vec2 size);
 
 bool accept_drop(const char* drop_type, void* ptr, unsigned int size);
 
-void insert_shader_handle_to_asset(AssetTab& asset_tab, ShaderAsset* asset);
+//void insert_shader_handle_to_asset(AssetTab& asset_tab, ShaderAsset* asset);
 void inspect_material_params(Editor& editor, Material* material);

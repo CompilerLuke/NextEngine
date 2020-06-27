@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "engine/engine.h"
 #include "graphics/renderer/renderer.h"
 #include "core/io/input.h"
@@ -14,6 +13,8 @@
 #include "physics/physics.h"
 #include "components/transform.h"
 #include "graphics/rhi/vulkan/vulkan.h"
+
+#include "graphics/rhi/window.h"
 
 Modules::Modules(const char* app_name, const char* level_path) {
 	window = new Window();
@@ -45,16 +46,30 @@ Modules::Modules(const char* app_name, const char* level_path) {
 	vk_desc.engine_version = VK_MAKE_VERSION(0, 0, 0);
 	vk_desc.min_log_severity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
 	vk_desc.validation_layers = validation_layers;
+	
+#ifdef _DEBUG
 	vk_desc.num_validation_layers = 1;
+#else
+	vk_desc.num_validation_layers = 0;
+#endif
+
+	vk_desc.num_validation_layers = 1;
+
 	vk_desc.device_features.samplerAnisotropy = VK_TRUE;
 	vk_desc.device_features.multiDrawIndirect = VK_TRUE;
 
-	rhi = make_RHI(vk_desc, *window);
+	make_RHI(vk_desc, *window);
+	make_AssetManager(level_path);
+
+	RenderSettings settings = {};
+	settings.display_resolution_width = window->width;
+	settings.display_resolution_height = window->height;
+	settings.shadow_resolution = 2048;
+
+	renderer = make_Renderer(settings, *world); //  new Renderer(settings, *world);
 	
-	assets = make_Assets(*rhi, level_path);
-	renderer = new Renderer(*rhi, *assets, *window, *world);
-	
-	init_RHI(rhi, *assets);
+
+	init_RHI();
 }
 
 Modules::~Modules() {
@@ -62,11 +77,23 @@ Modules::~Modules() {
 	delete input;
 	delete time;
 	delete world;
-	destroy_RHI(rhi);
-	destroy_Assets(assets);
+	destroy_Renderer(renderer);
+	destroy_RHI();
+	destroy_AssetManager();
 	delete physics_system;
 	delete local_transforms_system;
 }
+
+/*
+	world.add(new TransformSystem());
+	world.add(new SkyboxSystem(world));
+	world.add(new PhysicsSystem(world));
+	world.add(new FlyOverSystem()); //todo move into editor
+	world.add(new ModelRendererSystem());
+	world.add(new GrassSystem());
+	world.add(new LocalTransformSystem());
+	*/
+
 
 void Modules::begin_frame() {
 	Profiler::begin_frame();
@@ -78,16 +105,6 @@ void Modules::begin_frame() {
 	window->poll_inputs();
 	time->tick();
 	temporary_allocator.clear();
-
-	/*
-	world.add(new TransformSystem());
-	world.add(new SkyboxSystem(world));
-	world.add(new PhysicsSystem(world));
-	world.add(new FlyOverSystem()); //todo move into editor
-	world.add(new ModelRendererSystem());
-	world.add(new GrassSystem());
-	world.add(new LocalTransformSystem());
-	*/
 }
 
 void Modules::end_frame() {

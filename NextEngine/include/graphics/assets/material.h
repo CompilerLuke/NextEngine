@@ -4,7 +4,7 @@
 #include <glm/vec2.hpp>
 #include <glm/mat4x4.hpp>
 #include "core/reflection.h"
-#include "graphics/rhi/draw.h"
+#include "graphics/rhi/pipeline.h"
 #include "core/container/array.h"
 #include "core/container/vector.h"
 #include "core/container/string_buffer.h"
@@ -45,25 +45,29 @@ struct ParamDesc {
 	REFLECT_UNION(ENGINE_API)
 };
 
-struct MaterialDesc {	
+
+struct ENGINE_API MaterialDesc {	
 	shader_handle shader = { INVALID_HANDLE };
+	enum Mode { Static, Update } mode;
+	DrawCommandState draw_state;
 	array<10, ParamDesc> params;
 	uint flags;
 };
 
-void ENGINE_API mat_flag(MaterialDesc& desc, string_view, bool);
-void ENGINE_API mat_int(MaterialDesc& desc, string_view, int);
-void ENGINE_API mat_float(MaterialDesc& desc, string_view, float);
-void ENGINE_API mat_vec2(MaterialDesc& desc, string_view, glm::vec2);
-void ENGINE_API mat_vec3(MaterialDesc& desc, string_view, glm::vec3);
-void ENGINE_API mat_image(MaterialDesc& desc, string_view, texture_handle);
-void ENGINE_API mat_channel3(MaterialDesc& desc, string_view, glm::vec3, texture_handle img = { INVALID_HANDLE });
-void ENGINE_API mat_channel2(MaterialDesc& desc, string_view, glm::vec2, texture_handle img = { INVALID_HANDLE });
-void ENGINE_API mat_channel1(MaterialDesc& desc, string_view, float, texture_handle img = { INVALID_HANDLE });
+ENGINE_API void mat_flag(MaterialDesc&, string_view, bool);
+ENGINE_API void mat_int(MaterialDesc&, string_view, int);
+ENGINE_API void mat_float(MaterialDesc&, string_view, float);
+ENGINE_API void mat_vec2(MaterialDesc&, string_view, glm::vec2);
+ENGINE_API void mat_vec3(MaterialDesc&, string_view, glm::vec3);
+ENGINE_API void mat_image(MaterialDesc&, string_view, texture_handle);
+ENGINE_API void mat_cubemap(MaterialDesc&, string_view, cubemap_handle);
+ENGINE_API void mat_channel3(MaterialDesc&, string_view, glm::vec3, texture_handle img = { INVALID_HANDLE });
+ENGINE_API void mat_channel2(MaterialDesc&, string_view, glm::vec2, texture_handle img = { INVALID_HANDLE });
+ENGINE_API void mat_channel1(MaterialDesc&, string_view, float, texture_handle img = { INVALID_HANDLE });
 
-ENGINE_API material_handle make_Material(Assets&, MaterialDesc&);
-ENGINE_API MaterialDesc* material_desc(Assets&, material_handle);
-ENGINE_API void replace_Material(Assets&, material_handle, MaterialDesc&);
+ENGINE_API material_handle make_Material(MaterialDesc&);
+ENGINE_API MaterialDesc* material_desc(material_handle);
+ENGINE_API void replace_Material(material_handle, MaterialDesc&);
 
 struct Materials {
 	vector<material_handle> materials;

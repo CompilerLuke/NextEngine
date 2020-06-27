@@ -41,6 +41,17 @@ struct sstring {
 		return data[i];
 	}
 
+	inline void operator+=(string_view other) {
+		uint curr_len = length();
+		uint new_len = curr_len + other.length;
+		assert(new_len < N);
+
+		memcpy(data + curr_len, other.data, other.length);
+		data[new_len] = '\0';
+
+		length(new_len);
+	}
+
 	inline bool operator==(string_view other) const {
 		uint len = length();
 		return len == other.length && strncmp(data, other.data, len) == 0;
@@ -55,10 +66,10 @@ struct sstring {
 	}
 };
 
-inline uint hash_func(sstring& sstring) {
+inline u64 hash_func(sstring& sstring) {
 	const char* str = sstring.data;
 	unsigned long hash = 5381;
-	uint c;
+	u64 c;
 
 	while (c = *str++)
 		hash = ((hash << 5) + hash) + c; /* hash * 33 + c */

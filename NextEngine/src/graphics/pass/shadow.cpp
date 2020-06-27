@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "graphics/pass/shadow.h"
 #include "graphics/assets/assets.h"
 #include "graphics/pass/render_pass.h"
@@ -11,63 +10,44 @@
 #include "core/io/logger.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/glm.hpp>
-#include <glad/glad.h>
 
-DepthMap::DepthMap(Assets& assets, unsigned int width, unsigned int height, bool stencil) 
-: assets(assets) {
-	type = Pass::Depth_Only;
-
-	AttachmentDesc attachment(this->depth_map);
-
-	FramebufferDesc settings;
-	settings.width = width;
-	settings.height = height;
-	settings.depth_attachment = &attachment;
-	settings.depth_buffer = DepthComponent24;
-
+DepthMap::DepthMap(unsigned int width, unsigned int height, bool stencil) {
+	FramebufferDesc desc{ width, height };	
+	add_depth_attachment(desc, &depth_map);
+	
 	//if (stencil) settings.stencil_buffer = StencilComponent8;
 	
-	depth_map_FBO = Framebuffer(assets, settings);
-	depth_shader = load_Shader(assets, "shaders/gizmo.vert", "shaders/depth.frag");
+	make_Framebuffer(RenderPass::Scene, desc);
+	depth_shader = load_Shader("shaders/gizmo.vert", "shaders/depth.frag");
 }
 
-ShadowPass::ShadowPass(Assets& assets, Renderer& renderer, glm::vec2 size, texture_handle depth_prepass) :
+ShadowPass::ShadowPass(Renderer& renderer, glm::vec2 size, texture_handle depth_prepass) :
 	renderer(renderer),
-	assets(assets),
-	deffered_map_cascade(assets, 4096, 4096),
-	ping_pong_shadow_mask(assets, size),
-	shadow_mask(assets, size),
+	deffered_map_cascade(4096, 4096),
+	ping_pong_shadow_mask(size),
+	shadow_mask(size),
 	depth_prepass(depth_prepass),
-	volumetric(assets, size * 2.0f, depth_prepass),
-	screenspace_blur_shader(load_Shader(assets, "shaders/screenspace.vert", "shaders/blur.frag")),
-	shadow_mask_shader(load_Shader(assets, "shaders/screenspace.vert", "shaders/shadowMask.frag"))
+	volumetric(size * 2.0f, depth_prepass),
+	screenspace_blur_shader(load_Shader("shaders/screenspace.vert", "shaders/blur.frag")),
+	shadow_mask_shader(load_Shader("shaders/screenspace.vert", "shaders/shadowMask.frag"))
 {}
 
-ShadowMask::ShadowMask(Assets& assets, glm::vec2 size) 
-: assets(assets) {
-	AttachmentDesc color_attachment(this->shadow_mask_map);
-	color_attachment.mag_filter = Filter::Linear;
-	color_attachment.min_filter = Filter::Linear;
-	color_attachment.wrap_s = Wrap::Repeat;
-	color_attachment.wrap_t = Wrap::Repeat;
+ShadowMask::ShadowMask(glm::vec2 size) {
+	FramebufferDesc desc{ size.x, size.y };
 
-	FramebufferDesc settings;
-	settings.width = size.x;
-	settings.height = size.y;
-	settings.color_attachments.append(color_attachment);
-	settings.depth_buffer = DepthComponent24;
+	AttachmentDesc& color_attachment = add_color_attachment(desc, &shadow_mask_map);
 
-	this->shadow_mask_map_fbo = Framebuffer(assets, settings);
+	make_Framebuffer(RenderPass::Shadow0, desc);
 }
 
-void ShadowMask::set_shadow_params(ShaderConfig& config, RenderCtx& ctx) {
-	auto bind_to = ctx.command_buffer.next_texture_index();
+void ShadowMask::set_shadow_params(ShaderConfig& config, RenderPass& ctx) {
+	//auto bind_to = ctx.command_buffer.next_texture_index();
 
 	//gl_bind_to(assets.textures, shadow_mask_map, bind_to);
 	//config.set_int("shadowMaskMap", bind_to);
 }
 
-void ShadowPass::set_shadow_params(ShaderConfig& config, RenderCtx& params) {
+void ShadowPass::set_shadow_params(ShaderConfig& config, RenderPass& params) {
 	this->shadow_mask.set_shadow_params(config, params);
 }
 
@@ -81,27 +61,23 @@ struct OrthoProjInfo {
 
 constexpr int num_cascades = 4;
 
-void calc_ortho_proj(RenderCtx& params, glm::mat4& light_m, float width, float height, OrthoProjInfo shadowOrthoProjInfo[num_cascades]) {
-	auto& cam_m = params.view;
+void calc_ortho_proj(Viewport& viewport, const Camera& camera, glm::mat4& light_m, float width, float height, OrthoProjInfo shadowOrthoProjInfo[num_cascades]) {
+	auto& cam_m = viewport.view;
 	auto cam_inv_m = glm::inverse(cam_m);
-	auto& proj_m = params.projection;
-
-	if (!params.cam) throw "Can not calculate cascades without camera";
+	auto& proj_m = viewport.proj;
 
 	float cascadeEnd[] = {
-		params.cam->near_plane,
+		camera.near_plane,
 		5.0f,
 		30.0f,
 		90.0f,
-		params.cam->far_plane,
+		camera.far_plane,
 	};
-
-
 
 	for (int i = 0; i < num_cascades; i++) {
 		auto proj = glm::perspective(
-			glm::radians(params.cam->fov),
-			(float)params.width / (float)params.height,
+			glm::radians(camera.fov),
+			(float)viewport.width / (float)viewport.height,
 			cascadeEnd[i],
 			cascadeEnd[i + 1]
 		);
@@ -208,25 +184,31 @@ void calc_ortho_proj(RenderCtx& params, glm::mat4& light_m, float width, float h
 	}
 }
 
-void DepthMap::render_maps(Renderer& renderer, World& world, RenderCtx& ctx, glm::mat4 projection_m, glm::mat4 view_m, bool is_shadow_pass) {
-	CommandBuffer cmd_buffer(assets);
+/*
+void render_scene_to_depth(Renderer& renderer, Framebuffer& depth_map, World& world, RenderPass& ctx, glm::mat4 projection_m, glm::mat4 view_m, RenderPass::PassID pass_id) {
+	Viewport viewport = {};
+	viewport.width = depth_map_FBO.width;
+	viewport.height = depth_map_FBO.height;
+	viewport.proj = projection_m;
+	viewport.view = view_m;
+
+	//todo render pass, needs to be associated with depth_map_fbo
+	RenderPass new_ctx = begin_render_pass(pass_id, RenderPass::Depth_Only, viewport); //ctx, is_shadow_pass ? cmd_buffer : ctx.command_buffer, this);
 	
-	RenderCtx new_ctx(ctx, is_shadow_pass ? cmd_buffer : ctx.command_buffer, this);
-	new_ctx.view = view_m;
-	new_ctx.projection = projection_m;
-	
-	if (is_shadow_pass) {
-		new_ctx.layermask |= SHADOW_LAYER;
-		renderer.render_view(world, new_ctx);
+	if (pass_id != RenderPass::Scene) {
+		//RENDER VIEW
+		//renderer.render_view(world, new_ctx);
 	}
 
 	depth_map_FBO.bind();
 	depth_map_FBO.clear_depth(glm::vec4(0, 0, 0, 1));
 
-	CommandBuffer::submit_to_gpu(new_ctx);
 
 	depth_map_FBO.unbind();
+
+	end_render_pass(new_ctx);
 }
+*/
 
 struct ShaderUBO {
 	glm::mat4 to_world;
@@ -235,8 +217,8 @@ struct ShaderUBO {
 };
 
 
-void ShadowPass::render(World& world, RenderCtx& params) {
-	auto dir_light = get_dir_light(world, params.layermask);
+void ShadowPass::render(World& world, RenderPass& params) {
+	auto dir_light = (DirLight*)NULL; //get_dir_light(world, params.layermask);
 	if (!dir_light) return;
 	auto dir_light_id = world.id_of(dir_light);
 
@@ -249,10 +231,16 @@ void ShadowPass::render(World& world, RenderCtx& params) {
 	auto height = this->deffered_map_cascade.depth_map_FBO.height;
 
 	OrthoProjInfo info[num_cascades];
-	calc_ortho_proj(params, view_matrix, (float)width, (float)height, info);
+	//calc_ortho_proj(params, view_matrix, (float)width, (float)height, info);
 
-	shadow_mask.shadow_mask_map_fbo.bind();
-	shadow_mask.shadow_mask_map_fbo.clear_color(glm::vec4(0, 0, 0, 1));
+	//shadow_mask.shadow_mask_map_fbo.bind();
+	//shadow_mask.shadow_mask_map_fbo.clear_color(glm::vec4(0, 0, 0, 1));
+
+	SamplerDesc sampler_desc;
+	sampler_desc.mag_filter = Filter::Linear;
+	sampler_desc.min_filter = Filter::Linear;
+	sampler_desc.wrap_u = Wrap::Repeat;
+	sampler_desc.wrap_v = Wrap::Repeat;
 
 	float last_clip_space = -1.0f;
 
@@ -261,10 +249,10 @@ void ShadowPass::render(World& world, RenderCtx& params) {
 	for (int i = 0; i < 4; i++) {
 		auto& proj_info = info[i];
 
-		deffered_map_cascade.id = (Pass::PassID)(Pass::Shadow0 + i);
-		deffered_map_cascade.render_maps(renderer, world, params, proj_info.toLight, glm::mat4(1.0f), true);
+		//deffered_map_cascade.id = (RenderPass::PassID)(RenderPass::Shadow0 + i);
+		//deffered_map_cascade.render_maps(renderer, world, params, proj_info.toLight, glm::mat4(1.0f), true);
 
-		shadow_mask.shadow_mask_map_fbo.bind();
+		//shadow_mask.shadow_mask_map_fbo.bind();
 
 		//glDisable(GL_DEPTH_TEST);
 
@@ -297,7 +285,7 @@ void ShadowPass::render(World& world, RenderCtx& params) {
 
 		//glEnable(GL_DEPTH_TEST);
 
-		shadow_mask.shadow_mask_map_fbo.unbind();
+		//shadow_mask.shadow_mask_map_fbo.unbind();
 
 		//compute volumetric scattering for cascade
 		ShadowParams shadow_params;
@@ -307,7 +295,7 @@ void ShadowPass::render(World& world, RenderCtx& params) {
 		shadow_params.cascade = i;
 		shadow_params.depth_map = deffered_map_cascade.depth_map;
 
-		volumetric.render_with_cascade(world, params, shadow_params);
+		//volumetric.render_with_cascade(world, params, shadow_params);
 	}
 
 	//render blur
@@ -320,8 +308,8 @@ void ShadowPass::render(World& world, RenderCtx& params) {
 
 	
 	for (int i = 0; i < amount; i++) {
-		if (!horizontal) shadow_mask.shadow_mask_map_fbo.bind();
-		else ping_pong_shadow_mask.shadow_mask_map_fbo.bind();
+		//if (!horizontal) shadow_mask.shadow_mask_map_fbo.bind();
+		//else ping_pong_shadow_mask.shadow_mask_map_fbo.bind();
 
 		/*Shader* screenspace_blur_shader = assets.shaders.get(this->screenspace_blur_shader);
 
@@ -345,6 +333,6 @@ void ShadowPass::render(World& world, RenderCtx& params) {
 		*/
 	}
 
-	shadow_mask.shadow_mask_map_fbo.unbind();
+	//shadow_mask.shadow_mask_map_fbo.unbind();
 	//glEnable(GL_DEPTH_TEST);
 }

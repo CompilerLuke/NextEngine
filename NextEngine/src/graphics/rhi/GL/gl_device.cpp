@@ -1,8 +1,7 @@
-#include "stdafx.h"
+#ifdef RENDER_API_OPENGL
+
 #include "graphics/rhi/device.h"
 #include <glad/glad.h>
-
-#ifdef RENDER_API_OPENGL
 
 void Device::bind() {
 	glEnable(GL_DEPTH_TEST);

@@ -1,24 +1,21 @@
 #pragma once
 
 #include "scene_partition.h"
+#include "graphics/renderer/model_rendering.h"
 #include "aabb.h"
 #include "graphics/pass/pass.h"
 
 enum CullResult { INTERSECT, INSIDE, OUTSIDE };
 
-void ENGINE_API extract_planes(struct RenderCtx&, glm::vec4 planes[6]);
+void ENGINE_API extract_planes(const Viewport&, glm::vec4 planes[6]);
 CullResult ENGINE_API frustum_test(glm::vec4 planes[6], const AABB& aabb);
 
-struct Assets;
+struct World;
 struct ModelRendererSystem;
 
-struct CullingSystem {
-	Assets& assets;
-	ModelRendererSystem& model_renderer;
-	ScenePartition scene_partition;
+ENGINE_API void build_acceleration_structure(ScenePartition& scene_partition, hash_set<MeshBucket, MAX_MESH_BUCKETS>& mesh_buckets, World& world);
+ENGINE_API void update_acceleration_structure(ScenePartition& scene_partition, hash_set<MeshBucket, MAX_MESH_BUCKETS>& mesh_buckets, World& world);
 
-	CullingSystem(Assets& model_manager, ModelRendererSystem&, World& world);
-	void cull(World& world, struct RenderCtx&);
-	void build_acceleration(World& world);
-	void render_debug_bvh(World& world, struct RenderCtx&);
-};
+void render_debug_bvh(ScenePartition& scene_partition, RenderPass&);
+
+void cull_meshes(const ScenePartition& scene_partition, CulledMeshBucket* culled_mesh_bucket, const Viewport&);

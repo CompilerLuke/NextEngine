@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "graphics/renderer/grass.h"
 #include "ecs/ecs.h"
 #include "components/transform.h"
@@ -18,8 +17,9 @@ glm::mat4* compute_model_matrices(vector<Transform>& transforms) {
 }
 
 
+/*
 GrassRenderSystem::GrassRenderSystem(World& world) {
-	/*	world.on_make<Grass>([&world, this](vector<ID>& created) {
+	world.on_make<Grass>([&world, this](vector<ID>& created) {
 	for (ID id : created) {
 	Grass* grass = world.by_id<Grass>(id);
 
@@ -42,11 +42,12 @@ GrassRenderSystem::GrassRenderSystem(World& world) {
 	Grass* grass = world.by_id<Grass>(id);
 	render_objects.free(grass->render_object);
 	}
-	});*/
+	});
 }
+*/
 
+/*
 void GrassRenderSystem::update_buffers(World& world, ID id) {
-	/*
 	GrassRenderSystem* system = gb::renderer.grass_renderer;
 
 	Grass* grass = world.by_id<Grass>(id);
@@ -60,10 +61,11 @@ void GrassRenderSystem::update_buffers(World& world, ID id) {
 	else {
 	RHI::upload_data(render_object->instance_buffer, grass->transforms.length, transforms);
 	}
-	*/
 }
+*/
 
-void GrassRenderSystem::render(World& world, RenderCtx& ctx) {
+/*
+void GrassRenderSystem::render(World& world, RenderPass& ctx) {
 	/*
 	glm::vec4 planes[6];
 	extract_planes(ctx, planes);
@@ -91,5 +93,5 @@ void GrassRenderSystem::render(World& world, RenderCtx& ctx) {
 	ctx.command_buffer->submit(cmd);
 	}
 	}
-	*/
 }
+*/

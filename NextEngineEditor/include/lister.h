@@ -17,7 +17,7 @@ struct EntityEditor { //Editor meta data for this entity
 struct Lister {
 	string_buffer filter;
 
-	void render(struct World& world, struct Editor& editor, struct RenderCtx& params);
+	void render(struct World& world, struct Editor& editor, struct RenderPass& params);
 };
 
 string_buffer name_with_id(struct World&, ID id);

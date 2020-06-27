@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "lister.h"
 #include "ecs/ecs.h"
 #include "components/transform.h"
@@ -21,7 +20,7 @@ string_buffer name_with_id(World& world, ID id) {
 	else return tformat("#", id);
 }
 
-void render_hierarchies(vector<struct NameHierarchy*> & top, World& world, Editor& editor, RenderCtx& params, string_view filter, int indent = 0);
+void render_hierarchies(vector<struct NameHierarchy*> & top, World& world, Editor& editor, RenderPass& params, string_view filter, int indent = 0);
 
 struct NameHierarchy {
 	string_view name;
@@ -30,7 +29,7 @@ struct NameHierarchy {
 
 	NameHierarchy(string_view name) : name(name) {};
 
-	void render_hierarchy(World& world, Editor& editor, RenderCtx& params, string_view filter, int indent = 0) {
+	void render_hierarchy(World& world, Editor& editor, RenderPass& params, string_view filter, int indent = 0) {
 		bool selected = editor.selected_id == id;
 		
 		ImGuiStyle* style = &ImGui::GetStyle();
@@ -55,7 +54,7 @@ struct NameHierarchy {
 	}
 };
 
-void render_hierarchies(vector<NameHierarchy*>& top, World& world, Editor& editor, RenderCtx& params, string_view filter, int indent) {
+void render_hierarchies(vector<NameHierarchy*>& top, World& world, Editor& editor, RenderPass& params, string_view filter, int indent) {
 	for (auto child : top) {
 		child->render_hierarchy(world, editor, params, filter, indent);
 	}
@@ -85,7 +84,7 @@ void get_hierarchy(vector<EntityEditor*>& active_named, World& world, vector<Nam
 	}
 }
 
-void Lister::render(World& world, Editor& editor, RenderCtx& params) {
+void Lister::render(World& world, Editor& editor, RenderPass& params) {
 	vector<NameHierarchy*> top;
 	top.allocator = &temporary_allocator;
 

@@ -36,7 +36,7 @@ struct hash_set {
 	}
 
 	int add(K key) {
-		const uint hash = hash_func(key);
+		const u64 hash = hash_func(key);
 		uint probe_hash = hash % N;
 
 		while (is_full(probe_hash)) {
@@ -53,7 +53,7 @@ struct hash_set {
 	}
 
 	int index(K key) {
-		const uint hash = hash_func(key);
+		const u64 hash = hash_func(key);
 		uint probe_hash = hash % N;
 
 		while (is_full(probe_hash) && !matches(hash, key, probe_hash)) {
@@ -111,9 +111,10 @@ struct hash_map {
 	hash_set<K, N> keys = {};
 	V values[N] = {};
 
-	void set(K key, const V& value) {
+	uint set(K key, const V& value) {
 		int index = keys.add(key);
 		values[index] = value;
+		return index;
 	}
 
 	V& operator[](K key) {
@@ -136,5 +137,11 @@ struct hash_map {
 
 	hash_map_it<K, V> end() {
 		return { keys.meta, keys.keys, values, N, N };
+	}
+
+	V* get(K key) {
+		int index = keys.index(key);
+		if (index != -1) return &values[index];
+		else return NULL;
 	}
 };

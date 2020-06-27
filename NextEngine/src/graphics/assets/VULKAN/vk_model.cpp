@@ -1,5 +1,3 @@
-#include "stdafx.h"
-
 #ifdef RENDER_API_VULKAN
 
 #include "core/memory/linear_allocator.h"

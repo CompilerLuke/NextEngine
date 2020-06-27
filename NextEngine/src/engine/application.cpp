@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "engine/application.h"
 #include "engine/engine.h"
 #include "core/profiler.h"
@@ -20,7 +19,7 @@ void* load_DLL(string_view path) {
 	bool result = CopyFileA(path.c_str(), dest, false);
 	if (!result) throw "Could not copy DLL!";
 
-	HINSTANCE dll = LoadLibraryA(path.c_str());
+	HINSTANCE dll = LoadLibraryA(dest);
 	if (!dll) throw "Could not load DLL!";
 	return (void*)dll;
 }

@@ -29,7 +29,17 @@ struct ShaderInfo {
 	REFLECT(ENGINE_API)
 };
 
-ENGINE_API uniform_handle uniform_id(Assets&, shader_handle shader, string_view name);
-ENGINE_API UniformInfo*   uniform_info(Assets&, uniform_handle);
-ENGINE_API ShaderInfo*    shader_info(Assets&, shader_handle shader);
-ENGINE_API ShaderModules* get_shader_config(Assets& assets, shader_handle handle, shader_flags flags);
+struct GlobalShaders {
+	shader_handle pbr;
+	shader_handle skybox;
+	shader_handle gizmo;
+	shader_handle shadow_mask;
+	shader_handle volumetric_upsample;
+};
+
+static GlobalShaders global_shaders;
+
+ENGINE_API uniform_handle uniform_id(shader_handle shader, string_view name);
+ENGINE_API UniformInfo*   uniform_info(uniform_handle);
+ENGINE_API ShaderInfo*    shader_info(shader_handle shader);
+ENGINE_API ShaderModules* get_shader_config(shader_handle handle, shader_flags flags);

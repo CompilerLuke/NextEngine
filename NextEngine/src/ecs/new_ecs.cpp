@@ -1,4 +1,3 @@
-#include "stdafx.h"
 
 #if 0
 #include "new_ecs.h"

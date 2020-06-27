@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/core.h"
+#include "core/container/slice.h"
 
 enum VertexLayout {
 	VERTEX_LAYOUT_DEFAULT,
@@ -9,6 +10,7 @@ enum VertexLayout {
 };
 
 enum InstanceLayout {
+	INSTANCE_LAYOUT_NONE,
 	INSTANCE_LAYOUT_MAT4X4,
 	INSTANCE_LAYOUT_TERRAIN_CHUNK,
 	INSTANCE_LAYOUT_COUNT
@@ -25,37 +27,51 @@ struct ENGINE_API VertexBuffer {
 };
 
 struct ENGINE_API InstanceBuffer {
-	VertexLayout vertex_layout;
 	InstanceLayout layout;
 	int base = 0;
 	int length = 0;
 	int capacity = 0;
 };
 
-struct BufferAllocator;
+enum UBOUpdateFlags {
+	UBO_PERMANENT_MAP,
+	UBO_MAPPED_INIT,
+	UBO_MAP_UNMAP,
+	UBO_UPDATE_MODE_COUNT
+};
+
+struct ENGINE_API UBOBuffer {
+	UBOUpdateFlags flags;
+	int offset;
+	int size;
+};
+
+struct VertexStreaming;
 struct RHI;
 
-VertexBuffer alloc_vertex_buffer(BufferAllocator& self, VertexLayout layout, int vertices_length, void* vertices, int indices_length, uint* indices);
-InstanceBuffer alloc_instance_buffer(BufferAllocator& self, VertexLayout v_layout, InstanceLayout layout, int length, void* data);
-void upload_data(BufferAllocator& self, InstanceBuffer& buffer, int length, void* data);
-void bind_vertex_buffer(BufferAllocator&, VertexLayout v_layout, InstanceLayout layout = INSTANCE_LAYOUT_MAT4X4);
-void render_vertex_buffer(BufferAllocator&, VertexBuffer& vertex_buffer);
 
-BufferAllocator* make_BufferAllocator(RHI& rhi, struct StagingQueue&);
-void destroy_BufferAllocator(BufferAllocator*);
+ENGINE_API VertexBuffer alloc_vertex_buffer(VertexLayout layout, int vertices_length, void* vertices, int indices_length, uint* indices);
+ENGINE_API InstanceBuffer frame_alloc_instance_buffer(InstanceLayout layout, uint length, void** data);
+//UBOBuffer frame_alloc_ubo_buffer(int size);
+ENGINE_API UBOBuffer alloc_ubo_buffer(uint size, UBOUpdateFlags);
+
+ENGINE_API void memcpy_ubo_buffer(UBOBuffer&, uint size, void* ptr);
 
 template<typename T>
-VertexBuffer alloc_vertex_buffer(BufferAllocator& self, VertexLayout layout, slice<T> vertices, slice<uint> indices) {
-	return alloc_vertex_buffer(self, layout, vertices.length, vertices.data, indices.length, indices.data);
+void memcpy_ubo_buffer(UBOBuffer& buffer, T* ptr) { memcpy_ubo_buffer(buffer, sizeof(T), (void*)ptr); }
+
+template<typename T>
+VertexBuffer alloc_vertex_buffer(VertexLayout layout, slice<T> vertices, slice<uint> indices) {
+	return alloc_vertex_buffer(layout, vertices.length, vertices.data, indices.length, indices.data);
 }
 
-template<typename T>
-InstanceBuffer alloc_instance_buffer(BufferAllocator& self, VertexLayout v_layout, InstanceLayout layout, slice<T> data) {
-	return alloc_instance_buffer(self, v_layout, layout, data.length, data.data);
-}
+
 
 template<typename T>
-void upload_data(BufferAllocator& self, InstanceBuffer& buffer, vector<T>& data) {
-	upload_data(self, buffer, data.length, data.data);
+InstanceBuffer frame_alloc_instance_buffer(InstanceLayout layout, slice<T> data) {
+	void* mapped;
+	InstanceBuffer buffer = frame_alloc_instance_buffer(layout, data.length, &mapped);
+	memcpy(mapped, data.data, sizeof(T) * data.length);
+	return buffer;
 }
 

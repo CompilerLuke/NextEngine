@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "ecs/ecs.h"
 #include "ecs/system.h"
 #include "components/transform.h"
@@ -34,7 +33,8 @@ DEFINE_COMPONENT_ID(Terrain, 16)
 DEFINE_COMPONENT_ID(TerrainControlPoint, 17)
 DEFINE_COMPONENT_ID(Grass, 18)
 DEFINE_COMPONENT_ID(CharacterController, 19)
-
+DEFINE_COMPONENT_ID(PointLight, 20)
+DEFINE_COMPONENT_ID(SkyLight, 21)
 
 void register_default_systems_and_components(World& world) {
 	world.add(new Store<Entity>(100));
@@ -57,6 +57,9 @@ void register_default_systems_and_components(World& world) {
 	world.add(new Store<RigidBody>(10));
 	world.add(new Store<Grass>(10));
 	world.add(new Store<CharacterController>(10));
+
+	world.add(new Store<PointLight>(10));
+	world.add(new Store<SkyLight>(2));
 }
 
 /*

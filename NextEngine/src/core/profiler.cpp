@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "core/profiler.h"
 #include "core/io/logger.h"
 #include <GLFW/glfw3.h>
@@ -9,6 +8,7 @@
 vector<Frame> Profiler::frames;
 int Profiler::profile_depth;
 bool Profiler::paused = false;
+uint Profiler::frame_sample_count = 500;
 
 Frame& get_current_frame() {
 	return Profiler::frames.last();
@@ -38,6 +38,14 @@ void Profiler::record_profile(const Profile& profile) {
 	frame.profiles.append(data);
 }
 
+void Profiler::set_frame_sample_count(uint count) {
+	if (count < frames.length) {
+		frames.shift(frames.length - count);
+	}
+
+	frame_sample_count = count;
+}
+
 void Profiler::begin_frame() {
 	if (paused) return;
 	auto current_time = glfwGetTime();
@@ -52,7 +60,7 @@ void Profiler::begin_frame() {
 	Frame frame;
 	frame.start_of_frame = current_time;
 
-	if (frames.length >= 60)
+	if (frames.length >= frame_sample_count)
 		frames.shift(1);
 
 

@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "gizmo.h"
 #include "ecs/ecs.h"
 #include "editor.h"
@@ -11,33 +10,30 @@
 #include "components/transform.h"
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
-#include <iostream>
 
 void Gizmo::register_callbacks(Editor& editor) {
 	editor.selected.listen([this](ID id) {
-		delete diff_util;
-		diff_util = NULL;
-		ImGuizmo::Enable(false);
+		this->diff_util.copy_ptr = NULL;
 	});
 }
 
 void Gizmo::update(World& world, Editor& editor, UpdateCtx& params) {
 	if (editor.selected_id == -1) {
-		this->mode = GizmoMode::DisabledGizmo;
+		this->mode = GizmoMode::Disabled;
 		return;
 	}
 	
 	if (params.input.key_down(GLFW_KEY_T)) {
-		this->mode = GizmoMode::TranslateGizmo;
+		this->mode = GizmoMode::Translate;
 	}
 	else if (params.input.key_down(GLFW_KEY_E)) {
-		this->mode = GizmoMode::ScaleGizmo;
+		this->mode = GizmoMode::Scale;
 	}
 	else if (params.input.key_down(GLFW_KEY_R)) {
-		this->mode = GizmoMode::RotateGizmo;
+		this->mode = GizmoMode::Rotate;
 	}
 	else if (params.input.key_down(GLFW_KEY_ESCAPE)) {
-		this->mode = GizmoMode::DisabledGizmo;
+		this->mode = GizmoMode::Disabled;
 	}
 	else if (params.input.key_down(GLFW_KEY_LEFT_CONTROL, true)) {
 		this->snap = true;
@@ -47,25 +43,23 @@ void Gizmo::update(World& world, Editor& editor, UpdateCtx& params) {
 	}
 }
 
-Gizmo::~Gizmo() {
-	delete this->diff_util;
-}
+Gizmo::~Gizmo() {}
 
-void Gizmo::render(World& world, Editor& editor, RenderCtx& params, Input& input) {
+void Gizmo::render(World& world, Editor& editor, Viewport& viewport, Input& input) {
 	if (editor.selected_id == -1) return;
 
 	Transform* trans = world.by_id<Transform>(editor.selected_id);
+	if (trans == nullptr) return;
 
 	ImGuizmo::OPERATION guizmo_operation;
 	ImGuizmo::MODE guizmo_mode = ImGuizmo::WORLD;
 
-	if (mode == TranslateGizmo) guizmo_operation = ImGuizmo::TRANSLATE;
-	else if (mode == RotateGizmo) guizmo_operation = ImGuizmo::ROTATE;
-	else if (mode == ScaleGizmo) guizmo_operation = ImGuizmo::SCALE;
+	if (mode == GizmoMode::Translate) guizmo_operation = ImGuizmo::TRANSLATE;
+	else if (mode == GizmoMode::Rotate) guizmo_operation = ImGuizmo::ROTATE;
+	else if (mode == GizmoMode::Scale) guizmo_operation = ImGuizmo::SCALE;
 	else return;
 
 	ImGuiIO& io = ImGui::GetIO();
-	ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
 
 	glm::mat4 model_matrix = trans->compute_model_matrix();
 
@@ -76,22 +70,14 @@ void Gizmo::render(World& world, Editor& editor, RenderCtx& params, Input& input
 
 	bool was_using = ImGuizmo::IsUsing();
 
-	if (diff_util == NULL) {
-		diff_util = new DiffUtil(trans, &default_allocator);
-	}
 
 	//ImGuizmo rendering behind other screen
 
 	ImGuizmo::SetRect(input.region_min.x, input.region_min.y, input.region_max.x - input.region_min.x, input.region_max.y - input.region_min.y);
 
-	ImGuizmo::Manipulate(glm::value_ptr(params.view), glm::value_ptr(params.projection), guizmo_operation, guizmo_mode, glm::value_ptr(model_matrix), NULL, snap ? glm::value_ptr(snap_vec) : NULL);
+	ImGuizmo::Manipulate(glm::value_ptr(viewport.view), glm::value_ptr(viewport.proj), guizmo_operation, guizmo_mode, glm::value_ptr(model_matrix), NULL, snap ? glm::value_ptr(snap_vec) : NULL);
 
-	if (was_using && !ImGuizmo::IsUsing()) {
-		if (diff_util->submit(editor, "Transformed")) {
-			delete diff_util;
-			diff_util = new DiffUtil(trans, &default_allocator);
-		}
-	}
+
 
 	glm::mat4 transformation = model_matrix; // your transformation matrix.
 	glm::vec3 scale;
@@ -101,7 +87,21 @@ void Gizmo::render(World& world, Editor& editor, RenderCtx& params, Input& input
 	glm::vec4 perspective;
 	glm::decompose(transformation, scale, rotation, translation, skew, perspective);
 
-	if (mode == TranslateGizmo) trans->position = translation;
-	if (mode == RotateGizmo) trans->rotation = glm::conjugate(rotation);
-	if (mode == ScaleGizmo) trans->scale = scale;
+	bool is_using = ImGuizmo::IsUsing();
+
+	if (!was_using && is_using) begin_diff(diff_util, trans, &copy_transform);
+
+	if (mode == GizmoMode::Translate) trans->position = translation;
+	if (mode == GizmoMode::Rotate) trans->rotation = glm::conjugate(rotation);
+	if (mode == GizmoMode::Scale) trans->scale = scale;
+
+	if (was_using && !is_using) {
+		char desc[50];
+		sprintf_s(desc, "Moved %i", editor.selected_id);
+
+		end_diff(editor.actions, diff_util, desc);
+	}
+	else if (was_using) {
+		commit_diff(editor.actions, diff_util);
+	}
 }

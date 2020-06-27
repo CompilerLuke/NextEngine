@@ -1,6 +1,4 @@
-#include "stdafx.h"
 #include "picking.h"
-#include <glad/glad.h>
 #include "editor.h"
 #include "core/io/input.h"
 #include "graphics/rhi/draw.h"
@@ -61,7 +59,7 @@ Node* subdivide_BVH(PickingScenePartition& scene_partition, AABB& node_aabb, int
 	}
 }
 
-void build_acceleration_structure(PickingScenePartition& scene_partition, Assets& assets, World& world) { 
+void build_acceleration_structure(PickingScenePartition& scene_partition, World& world) { 
 	AABB world_bounds;
 
 	int occupied = temporary_allocator.occupied;
@@ -76,7 +74,7 @@ void build_acceleration_structure(PickingScenePartition& scene_partition, Assets
 		auto model_m = world.by_id<Transform>(id)->compute_model_matrix();
 		auto model_renderer = world.by_id<ModelRenderer>(id);
 
-		Model* model = get_Model(assets, model_renderer->model_id);		
+		Model* model = get_Model(model_renderer->model_id);		
 		if (model == NULL) continue;
 
 		AABB aabb = model->aabb.apply(model_m);
@@ -93,9 +91,13 @@ void build_acceleration_structure(PickingScenePartition& scene_partition, Assets
 Ray ray_from_mouse(World& world, ID camera_id, Input& input) {
 	glm::vec2 viewport_size = input.region_max - input.region_min;
 
-	glm::mat4 view = get_view_matrix(world, camera_id);
-	glm::mat4 proj = get_proj_matrix(world, camera_id, viewport_size.x / viewport_size.y);
-	glm::mat4 inv_proj_view = glm::inverse(proj * view);
+	Viewport viewport;
+	viewport.x = viewport_size.x;
+	viewport.y = viewport_size.y;
+
+	update_camera_matrices(world, camera_id, viewport);
+
+	glm::mat4 inv_proj_view = glm::inverse(viewport.proj * viewport.view);
 
 	glm::vec2 mouse_position = input.mouse_position; 
 	glm::vec2 mouse_position_clip = mouse_position / viewport_size;
@@ -173,13 +175,16 @@ void ray_cast_node(PickingScenePartition& partition, Node* node, const Ray& ray,
 	}
 }
 
-PickingSystem::PickingSystem(Assets& asset_manager) : assets(asset_manager) {}
+PickingSystem::PickingSystem() {
+
+}
 
 void PickingSystem::rebuild_acceleration_structure(World& world) {
-	build_acceleration_structure(partition, assets, world);
+	build_acceleration_structure(partition, world);
 }
 
 bool PickingSystem::ray_cast(const Ray& ray, RayHit& hit) {
+	if (partition.count == 0) return false;
 	ray_cast_node(partition, &partition.nodes[0], ray, hit);
 	return hit.t < FLT_MAX;
 }
@@ -197,19 +202,17 @@ int PickingSystem::pick(World& world, Input& input) {
 	else return -1;
 }
 
-void render_cube(RenderCtx& ctx, Material* mat, Model* model,  glm::vec3 center, glm::vec3 scale) {
+void render_cube(RenderPass& ctx, model_handle model_handle, material_handle mat_handle, glm::vec3 center, glm::vec3 scale) {
 	Transform trans;
 	trans.position = center;
 	trans.scale = scale * 0.5f;
 
-	glm::mat4 model_m = trans.compute_model_matrix();
-
-	ctx.command_buffer.draw(model_m, &model->meshes[0].buffer, mat);
+	draw_mesh(ctx.cmd_buffer, model_handle, mat_handle, trans);
 }
 
 struct Material;
 
-void render_node(RenderCtx& ctx, Material* mat, PickingScenePartition& partition, Model* cube, Node& node, Ray& ray) {
+void render_node(RenderPass& ctx, material_handle mat, PickingScenePartition& partition, model_handle cube, Node& node, Ray& ray) {
 	//render_cube(ctx, mat, cube, (node.aabb.max + node.aabb.min) * 0.5f, node.aabb.max - node.aabb.min);
 
 	for (int i = 0; i < 2; i++) {
@@ -220,27 +223,21 @@ void render_node(RenderCtx& ctx, Material* mat, PickingScenePartition& partition
 
 	for (int i = node.offset; i < node.offset + node.count; i++) {
 		AABB& aabb = partition.aabbs[i];
-		if (intersect(aabb, ray)) render_cube(ctx, mat, cube, (aabb.max + aabb.min) * 0.5f, aabb.max - aabb.min);
+		if (intersect(aabb, ray)) render_cube(ctx, cube, mat, (aabb.max + aabb.min) * 0.5f, aabb.max - aabb.min);
 	}
 }
 
 
 #include "graphics/assets/material.h"
 
-DrawCommandState draw_wireframe_state = default_draw_state;
-
-void PickingSystem::visualize(World& world, Input& input, RenderCtx& ctx) {
-	if (ctx.layermask & SHADOW_LAYER) return;
-
+void PickingSystem::visualize(World& world, Input& input, RenderPass& ctx) {
 	Ray ray = ray_from_mouse(world, get_camera(world, EDITOR_LAYER), input);
 
-	model_handle cube = load_Model(assets, "cube.fbx");
+	model_handle cube = load_Model("cube.fbx");
 
-	draw_wireframe_state.mode = DrawWireframe;
-
-	MaterialDesc mat{ load_Shader(assets, "shaders/pbr.vert", "shaders/gizmo.frag") };
+	MaterialDesc mat{ load_Shader("shaders/pbr.vert", "shaders/gizmo.frag") };
 	mat_vec3(mat, "color", glm::vec3(1.0f, 0.0f, 0.0f));
-	//mat->state = &draw_wireframe_state;
+	mat.draw_state = PolyMode_Wireframe | (5 << WireframeLineWidth_Offset);
 
 	//render_node(ctx, mat, partition, models.get(cube), partition.nodes[0], ray);
 
@@ -251,59 +248,48 @@ void PickingSystem::visualize(World& world, Input& input, RenderCtx& ctx) {
 	//render_cube(ctx, mat, models.get(cube), ray.orig + ray.dir * 20.0f, glm::vec3(0.1f));
 }
 
-OutlineSelected::OutlineSelected(Assets& assets) : asset_manager(assets) {
-	outline_shader = load_Shader(assets, "shaders/outline.vert", "shaders/outline.frag");
-	
-	outline_state.order = (DrawOrder)6;
-	outline_state.mode = DrawWireframe;
-	outline_state.stencil_func = StencilFunc_NotEqual;
-	outline_state.stencil_op = Stencil_Keep_Replace;
-	outline_state.stencil_mask = 0x00;
-	outline_state.clear_depth_buffer = true;
-	outline_state.clear_stencil_buffer = false;
-	outline_state.depth_func = DepthFunc_None;
+void make_render_outline_state(OutlineRenderState& self) {
+	self.outline_shader = load_Shader("shaders/outline.vert", "shaders/outline.frag");
 
-	object_state.order = (DrawOrder)5;
-	object_state.stencil_func = StencilFunc_Always;
-	object_state.stencil_mask = 0xFF;
-	object_state.stencil_op = Stencil_Keep_Replace;
-	object_state.clear_stencil_buffer = true;
-	object_state.clear_depth_buffer = true;
-	object_state.color_mask = Color_None;
-	object_state.depth_func = DepthFunc_None;
+	DrawCommandState object_state = StencilFunc_Always | (0xFF << StencilMask_Offset) | ColorMask_None | DepthFunc_None;
 
-	MaterialDesc outline_material{ outline_shader };
+	int outline_width = 3;
+
+	MaterialDesc outline_material{ self.outline_shader };
+	outline_material.draw_state = StencilFunc_NotEqual | (0x00 << StencilMask_Offset) | DepthFunc_None | PolyMode_Wireframe | (outline_width << WireframeLineWidth_Offset);
 
 	//this->outline_material = Material(outline_shader);
 	//this->outline_material.state = &outline_state;
 }
 
-void OutlineSelected::render(World& world, slice<ID> ids, RenderCtx& ctx) {
-	if (!(ctx.layermask & EDITOR_LAYER)) return;
-	if (ctx.layermask & SHADOW_LAYER) return;
-
-	for (ID id : ids) {
+void render_object_selected_outline(OutlineRenderState& outline, World& world, slice<ID> highlighted, RenderPass& ctx) {
+	for (ID id : highlighted) {
 		Transform* trans = world.by_id<Transform>(id);
 		ModelRenderer* model_renderer = world.by_id<ModelRenderer>(id);
 		Materials* materials = world.by_id<Materials>(id);
 
 		if (trans && model_renderer && materials) {
 			glm::mat4 model_m = trans->compute_model_matrix();
-			Model* model = get_Model(asset_manager, model_renderer->model_id);
+
+			draw_mesh(ctx.cmd_buffer, model_renderer->model_id, outline.object_material, model_m);
+			draw_mesh(ctx.cmd_buffer, model_renderer->model_id, outline.outline_material, model_m);
+
+			Model* model = get_Model(model_renderer->model_id);
 
 			for (Mesh& mesh : model->meshes) {
-				/*material_handle should_be_handle = materials->materials[mesh.material_id];
-				Material* should_be = asset_manager.materials.get(should_be_handle);
+				material_handle should_be_handle = materials->materials[mesh.material_id];
+				//MaterialDesc* should_be = material_desc(should_be_handle);
 
-				Material* mat = TEMPORARY_ALLOC(Material);
-				mat->params.allocator = &temporary_allocator;
-				*mat = *should_be;
 
-				mat->state = &object_state;
+				//Material* mat = TEMPORARY_ALLOC(Material);
+				//mat->params.allocator = &temporary_allocator;
+				//*mat = *should_be;
+
+				//mat->state = &object_state;
 					
-				ctx.command_buffer.draw(model_m, &mesh.buffer, mat);
-				ctx.command_buffer.draw(model_m, &mesh.buffer, TEMPORARY_ALLOC(Material, outline_material)); //this might be leaking memory!
-				*/
+				//ctx.command_buffer.draw(model_m, &mesh.buffer, mat);
+				//ctx.command_buffer.draw(model_m, &mesh.buffer, TEMPORARY_ALLOC(Material, outline_material)); //this might be leaking memory!
+				//*/
 			}
 		}
 	}

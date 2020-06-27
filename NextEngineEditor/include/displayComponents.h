@@ -12,13 +12,13 @@
 struct World;
 struct Editor;
 struct UpdateCtx;
-struct RenderCtx;
+struct RenderPass;
 
 struct DisplayComponents {
 	string_buffer filter;
 
 	void update(World& world, UpdateCtx& params);
-	void render(World& world, RenderCtx& params, struct Editor& editor);
+	void render(World& world, RenderPass& params, struct Editor& editor);
 };
 
 bool render_fields_primitive(int*, string_view);

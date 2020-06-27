@@ -4,6 +4,9 @@
 #include "core/container/slice.h"
 #include <initializer_list>
 #include <new>
+#include <stdio.h>
+#include <string.h>
+
 
 #define BOUNDS_CHECKING
 
@@ -48,7 +51,9 @@ struct vector {
 			if (capacity == 0) reserve(2);
 			else reserve(capacity * 2);
 		}
-		new (&data[length++]) T(std::move(element));
+		
+		T* ptr = new (&data[length++]) T();
+		*ptr = std::move(element);
 	}
 
 	inline void append(const T& element) {

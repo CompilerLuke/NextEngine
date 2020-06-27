@@ -3,7 +3,6 @@
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 #include "core/container/hash_map.h"
-#include "graphics/rhi/window.h"
 
 using Key = int;
 
@@ -43,5 +42,5 @@ struct Input {
 	void ENGINE_API clear();
 
 	ENGINE_API Input();
-	void ENGINE_API init(Window&);
+	void ENGINE_API init(struct Window&);
 };

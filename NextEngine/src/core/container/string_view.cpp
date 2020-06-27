@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "core/container/string_view.h"
 #include "core/container/string_buffer.h"
 #include "core/container/sstring.h"
@@ -54,18 +53,20 @@ bool string_to_int(string_view str, int* number) {
 	return success;
 }
 
+/* hash * 33 + c */
 
+/*
 namespace std {
-	template <> struct hash<string_view>
+	template <> struct hash<::string_view>
 	{
-		size_t operator()(const string_view & buffer) const
+		size_t operator()(const ::string_view & buffer) const
 		{
 			const char* str = buffer.data;
 			unsigned long hash = 5381;
 			int c;
 
 			while (c = *str++)
-				hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+				hash = ((hash << 5) + hash) + c; 
 
 			return hash;
 		}
@@ -75,7 +76,8 @@ namespace std {
 	{
 		size_t operator()(const string_buffer & buffer) const
 		{
-			return std::hash<string_view>{}({ buffer.data, buffer.length });
+			return std::hash<::string_view>{}({ buffer.data, buffer.length });
 		}
 	};
 }
+*/

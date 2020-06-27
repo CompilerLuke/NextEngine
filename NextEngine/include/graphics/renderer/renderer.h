@@ -6,52 +6,78 @@
 #include "core/container/handle_manager.h"
 #include "graphics/renderer/render_feature.h"
 #include "graphics/pass/render_pass.h"
+#include "graphics/renderer/terrain.h"
+#include "graphics/renderer/model_rendering.h"
+#include "graphics/renderer/lighting_system.h"
+#include "graphics/renderer/ibl.h"
+#include "graphics/culling/scene_partition.h"
 #include <glm/mat4x4.hpp>
+#include <glm/glm.hpp>
 
 struct Modules;
 struct Window;
 struct World;
-struct RenderCtx;
+struct RenderPass;
 struct ShaderConfig;
-struct BufferAllocator;
+struct VertexStreaming;
 struct RHI;
 
 struct RenderSettings {
 	enum GraphicsQuality { Ultra, High, Medium, Low } quality = Ultra;
+
+	uint display_resolution_width, display_resolution_height;
+	uint shadow_resolution;
 };
 
-struct ENGINE_API RenderExtension {
-	virtual void render_view(struct World&, struct RenderCtx&) {};
-	virtual void render(struct World&, struct RenderCtx&) {};
-	virtual ~RenderExtension() {};
+struct Renderer;
+
+struct FrameData {
+	PassUBO pass_ubo;
+	LightUBO light_ubo;
+	SkyboxRenderData skybox_data;
+	struct CulledMeshBucket* culled_mesh_bucket[RenderPass::ScenePassCount];
 };
+
+struct GPUSubmission {
+	RenderPass render_passes[RenderPass::ScenePassCount];
+	RenderPass screen_render_pass;
+};
+
+const uint SHADOW_CASCADES = 4;
 
 struct ENGINE_API Renderer {
+	Viewport viewport;
 	RenderSettings settings;
 
-	struct RHI& rhi;
-	struct BufferAllocator* buffer_manager;
-	struct SkyboxSystem* skybox_renderer;
-	struct ModelRendererSystem* model_renderer;
-	struct GrassRenderSystem* grass_renderer;
-	struct TerrainRenderSystem* terrain_renderer;
-	struct CullingSystem* culling;
+	ScenePartition scene_partition;
+	MeshBucketCache mesh_buckets;
 
-	struct MainPass* main_pass;
-	glm::mat4* model_m;
+	LightingSystem lighting_system;
+	TerrainRenderResources terrain_render_resources;
 
-	//void set_render_pass(Pass* pass);
-	void update_settings(const RenderSettings&);
-	
-	void render_view(World& world, RenderCtx&);
-	void render_overlay(World& world, RenderCtx&);
-	RenderCtx render(World& world, Layermask layermask, uint width, uint height, RenderExtension* ext);
+	UBOBuffer scene_pass_ubo;
+	descriptor_set_handle scene_pass_descriptor;
 
-	Renderer(RHI& rhi, Assets& assets, Window&, World&);
-	~Renderer();
+	//texture_handle shadow_fbo[4];
+	pipeline_layout_handle pipeline_layout;
+
+	texture_handle scene_map;
+	texture_handle shadow_mask_map[SHADOW_CASCADES];
 };
 
-struct RenderCtx {
+Renderer* make_Renderer(const RenderSettings&, World&);
+void destroy_Renderer(Renderer*);
+
+ENGINE_API void build_framegraph(Renderer& renderer, slice<Dependency>);
+ENGINE_API void render_overlay(Renderer& renderer, RenderPass& render_pass);
+ENGINE_API void extract_render_data(Renderer& renderer, Viewport& viewport, FrameData& frame, World& world, Layermask layermask);
+ENGINE_API GPUSubmission build_command_buffers(Renderer& renderer, const FrameData& frame);
+ENGINE_API void submit_frame(Renderer& renderer, GPUSubmission& submission);
+
+
+//void build_gpu_buffers(Renderer& renderer, FrameData& frame, Viewport viewport);
+/*
+struct RenderPass {
 	RenderExtension* extension;
 
 	Layermask layermask;
@@ -71,8 +97,8 @@ struct RenderCtx {
 	uint height = 0;
 	ENGINE_API void set_shader_scene_params(ShaderConfig&);
 
-	ENGINE_API RenderCtx(struct CommandBuffer&, struct Pass*);
-	ENGINE_API RenderCtx(const RenderCtx&, struct CommandBuffer&, struct Pass*);
+	ENGINE_API RenderPass(struct CommandBuffer&, struct Pass*);
+	ENGINE_API RenderPass(const RenderPass&, struct CommandBuffer&, struct Pass*);
 };
 
 struct ENGINE_API PreRenderParams {
@@ -80,3 +106,4 @@ struct ENGINE_API PreRenderParams {
 
 	PreRenderParams(Layermask layermask);
 };
+*/

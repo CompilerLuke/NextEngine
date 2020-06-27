@@ -1,6 +1,6 @@
-#include "stdafx.h"
 #include "core/io/input.h"
 #include "core/io/logger.h"
+#include "graphics/rhi/window.h"
 #include <GLFW/glfw3.h>
 
 void on_cursor_pos(Input* self, glm::vec2 mouse_position) {

@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "core/io/vfs.h"
 #include "graphics/assets/assets.h"
 #include <time.h>
@@ -11,12 +10,12 @@ FILE* open(string_view full_filepath, const char* mode) {
 	return errors ? NULL : f;
 }
 
-FILE* open(Assets& assets, string_view filepath, const char* mode) {
-	return open(tasset_path(assets, filepath).c_str(), mode);
+FILE* open_rel(string_view filepath, const char* mode) {
+	return open(tasset_path(filepath).c_str(), mode);
 }
 
-bool read_file(Assets& assets, string_view filepath, string_buffer* buffer, int null_terminated) {
-	string_buffer full_filepath = tasset_path(assets, filepath);
+bool read_file(string_view filepath, string_buffer* buffer, int null_terminated) {
+	string_buffer full_filepath = tasset_path(filepath);
 	FILE* f = open(full_filepath, "rb");
 	if (!f) return false;
 
@@ -35,16 +34,16 @@ bool read_file(Assets& assets, string_view filepath, string_buffer* buffer, int 
 	return true;
 }
 
-bool readf(Assets& assets, string_view filepath, string_buffer* buffer) {
-	return read_file(assets, filepath, buffer, 1);
+bool io_readf(string_view filepath, string_buffer* buffer) {
+	return read_file(filepath, buffer, 1);
 }
 
-bool readfb(Assets& assets, string_view filepath, string_buffer* buffer) {
-	return read_file(assets, filepath, buffer, 0);
+bool io_readfb(string_view filepath, string_buffer* buffer) {
+	return read_file(filepath, buffer, 0);
 }
 
-bool writef(Assets& assets, string_view filename, string_view content) {
-	FILE* f = open(assets, filename, "wb");
+bool io_writef(string_view filename, string_view content) {
+	FILE* f = open_rel(filename, "wb");
 	if (!f) return false;
 	
 	fwrite(content.data, sizeof(char), sizeof(char) * content.size(), f);
@@ -53,13 +52,12 @@ bool writef(Assets& assets, string_view filename, string_view content) {
 	return true;
 }
 
-i64 time_modified(Assets& assets, string_view filename) {
-	auto f = tasset_path(assets, filename);
+i64 io_time_modified(string_view filename) {
+	auto f = tasset_path(filename);
 	
 	struct _stat buffer;
 	if (_stat(f.c_str(), &buffer) != 0) { return -1; };
-	//throw string_buffer("Could not read file ") + f;
-	//}
+
 	return buffer.st_mtime;
 }
 

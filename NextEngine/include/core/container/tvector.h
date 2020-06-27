@@ -2,6 +2,8 @@
 
 #include "core/memory/linear_allocator.h"
 #include "core/container/slice.h"
+#include <string.h>
+#include <new>
 
 // REMINDER - NO RAII and no Polymorphic Allocator - HIGH PERFOMANCE
 template<typename T>
@@ -29,9 +31,17 @@ struct tvector {
 		new (&data[length++]) T(element);
 	}
 
+	inline void clear() {
+		length = 0;
+		capacity = 0;
+		data = 0;
+	}
+
 	const T& operator[](uint index) const { return data[index]; }
 	T& operator[](uint index) { return data[index]; }
 	T pop() { return data[--length]; }
+
+	inline T& last() { return data[length - 1]; }
 
 	inline const T* begin() const { return this->data; }
 	inline const T* end() const { return this->data + length; }

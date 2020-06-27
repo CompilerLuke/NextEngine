@@ -2,32 +2,89 @@
 
 #include "ecs/id.h"
 #include "core/reflection.h"
-#include "core/container/vector.h"
+#include "core/container/array.h"
 #include "ecs/ecs.h"
+#include "core/reflection.h"
 
-struct EditorAction {
-	virtual void undo() {};
-	virtual void redo() {};
-	virtual ~EditorAction() {};
+struct EditorActionHeader {
+	enum Type { Diff, Create_Entity, Destroy_Entity, Create_Component, Destroy_Component, Create_Asset, Destroy_Asset } type;
+	char* ptr;
+	u64 size;
+	sstring name;
+};
+
+const uint MAX_SAVED_UNDOS = 40;
+
+struct ActionStack {
+	char* block;
+	u64 capacity;
+	u64 head;
+	u64 tail;
+
+	array<MAX_SAVED_UNDOS, EditorActionHeader> stack;
+};
+
+struct EditorActions {
+	World& world;
+	ActionStack frame_diffs;
+	ActionStack undo;
+	ActionStack redo;
 };
 
 struct DiffUtil {
-	void* real_ptr;
-	void* copy_ptr;
-	const char* name;
-	Allocator* allocator;
-
-	reflect::TypeDescriptor* type;
-
-	bool submit(struct Editor&, const char*);
-
-	DiffUtil(void*, reflect::TypeDescriptor* type, Allocator* allocator);
-
-	template<typename T>
-	DiffUtil(T* ptr, Allocator* allocator) : DiffUtil(ptr, reflect::TypeResolver<T>::get(), allocator) {}
-	//todo add templatized version which automatically gets type
+	void* real_ptr = NULL;
+	void* copy_ptr = NULL;
+	reflect::TypeDescriptor* type = NULL;
 };
 
+struct Diff {
+	void* real_ptr;
+	void* copy_ptr;
+	reflect::TypeDescriptor* type;
+	slice<uint> fields_modified;
+};
+
+struct EntityCopy {
+	struct Component {
+		void* ptr;
+		uint size;
+		ComponentStore* store;
+	};
+
+	ID id;
+	slice<Component> components;
+};
+
+struct AssetCopy {
+	ID id;
+	AssetNode asset_node;
+};
+
+void clear_stack(ActionStack&);
+void init_actions(EditorActions&);
+
+void begin_diff(DiffUtil&, void* ptr, void* copy, reflect::TypeDescriptor* type);
+void begin_tdiff(DiffUtil&, void* ptr, reflect::TypeDescriptor* type);
+bool end_diff(EditorActions&, DiffUtil&, string_view);
+void commit_diff(EditorActions&, DiffUtil&);
+
+void entity_create_action(EditorActions& actions, ID id);
+void entity_destroy_action(EditorActions& actions, ID id);
+
+template<typename T>
+void begin_diff(DiffUtil& util, T* ptr, T* copy) {
+	begin_diff(util, ptr, copy, reflect::TypeResolver<T>::get());
+}
+
+template<typename T>
+void begin_tdiff(DiffUtil& util, T* ptr) {
+	begin_tdiff(util, ptr, reflect::TypeResolver<T>::get());
+}
+
+void undo_action(EditorActions&);
+void redo_action(EditorActions&);
+
+/*
 struct Diff : EditorAction {
 	void* target;
 	void* undo_buffer;
@@ -78,3 +135,14 @@ struct DestroyComponentAction : EditorAction {
 	void undo() override;
 	void redo() override;
 };
+
+struct UndoRedoScope : EditorAction {
+	vector<EditorAction*> children;
+};
+*/
+
+//void submit_action(std::unique_ptr<EditorAction>* action);
+//void push_undo(std::unique_ptr<EditorAction>);
+//void push_redo(std::unique_ptr<EditorAction>);
+//void on_undo();
+//void on_redo();

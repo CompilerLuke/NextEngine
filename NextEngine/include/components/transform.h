@@ -5,6 +5,13 @@
 #include "ecs/ecs.h"
 #include "core/reflection.h"
 
+REFL 
+struct Trans {
+	glm::vec3 position;
+	glm::quat rotation;
+	glm::vec3 scale = glm::vec3(1.0f);
+};
+
 struct Transform {
 	glm::vec3 position;
 	glm::quat rotation;

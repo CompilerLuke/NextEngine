@@ -14,9 +14,9 @@
 
 
 #if 1
-template<typename A, typename B>
+template<typename T, typename B>
 struct Pair {
-	A first;
+	T first;
 	B second;
 };
 
@@ -57,7 +57,7 @@ struct ComponentStore {
 	virtual vector<Component> filter_untyped() = 0;
 	virtual reflect::TypeDescriptor* get_component_type() = 0;
 	virtual ComponentStore* clone() = 0;
-	virtual void copy_from(ComponentStore*) = 0;
+	virtual void copy_from(const ComponentStore*) = 0;
 	virtual void fire_callbacks() = 0;
 	virtual void clear() = 0;
 	virtual ~ComponentStore() {};
@@ -75,7 +75,7 @@ constexpr typeid_t type_id() noexcept
 */
 
 template<typename T>
-constexpr typeid_t type_id();
+constexpr typeid_t type_id(); 
 
 template<typename T>
 struct Store : ComponentStore {
@@ -134,8 +134,17 @@ struct Store : ComponentStore {
 		return id_to_obj[id];
 	}
 
+	const T* by_id(ID id) const {
+		if (id >= max_entities) return NULL;
+		return id_to_obj[id];
+	}
+
 	Component get_by_id(ID id) final {
-		return { id, this, reflect::TypeResolver<T>::get(), by_id(id) };
+		return { id, this, reflect::TypeResolver<T>::get(), (T*)by_id(id) };
+	}
+
+	uint component_id(T* ptr) {
+		return (Slot<T>*)ptr - components;
 	}
 
 	void free_by_id(ID id) final { //delay freeing till end of frame
@@ -174,7 +183,7 @@ struct Store : ComponentStore {
 	}
 
 	void* make_by_id(ID id) final {
-		return make(id);
+		return (void*)make(id);
 	}
 
 	void register_component(ID id, T* obj) {
@@ -209,6 +218,20 @@ struct Store : ComponentStore {
 		return arr;
 	}
 
+	vector<const T*> filter() const {
+		vector<const T*> arr;
+		arr.allocator = &temporary_allocator;
+
+		for (unsigned int i = 0; i < this->N; i++) {
+			auto slot = &this->components[i];
+
+			if (!slot->is_enabled) continue;
+			arr.append(&slot->object.first);
+		}
+
+		return arr;
+	}
+
 	reflect::TypeDescriptor* get_component_type() override final {
 		return reflect::TypeResolver<T>::get();
 	}
@@ -221,7 +244,7 @@ struct Store : ComponentStore {
 			auto slot = &this->components[i];
 
 			if (!slot->is_enabled) continue;
-			arr.append({slot->object.second, this, reflect::TypeResolver<T>::get(), &slot->object.first });
+			//arr.append({slot->object.second, this, reflect::TypeResolver<T>::get(), &slot->object.first });
 		}
 
 		return arr;
@@ -256,16 +279,22 @@ struct Store : ComponentStore {
 		return new Store(N);
 	}
 
-	void copy_from(ComponentStore* component_store) final {
+	void virtual copy_from(const ComponentStore* component_store) const final {
+
+	}
+
+	void virtual copy_from(const ComponentStore* component_store) final {
 		Store* store = (Store*)component_store;
 		clear();
-		
+
 		for (uint i = 0; i < store->N; i++) {
 			Slot<T>* slot = &store->components[i];
 			if (!slot->is_enabled) continue;
 
 			T* ptr = make(slot->object.second);
-			*ptr = *store->by_id(slot->object.second);
+			
+			
+			//*ptr = *store->by_id(slot->object.second);
 		}
 
 		fire_callbacks();
@@ -295,6 +324,13 @@ struct World {
 	template<typename T>
 	constexpr Store<T>* get() {
 		auto ret = (Store<T>*)(components[(size_t)type_id<T>()].get());
+		assert(ret != NULL);
+		return ret;
+	}
+
+	template<typename T>
+	constexpr const Store<T>* get() const {
+		auto ret = (const Store<T>*)(components[(size_t)type_id<T>()].get());
 		assert(ret != NULL);
 		return ret;
 	}
@@ -336,6 +372,16 @@ struct World {
 		this->delay_free_entity.append(id);
 	}
 
+	template<typename T>
+	uint component_id(ID id) {
+		return get<T>()->component_id(by_id<T>(id));
+	}
+
+	template<typename T>
+	uint component_id(T* t) {
+		return get<T>()->component_id(t);
+	}
+
 	void free_now_by_id(ID id) {
 		for (unsigned int i = 0; i < components_hash_size; i++) {
 			if (components[i] != NULL) {
@@ -347,7 +393,7 @@ struct World {
 	}
 
 	template<typename T>
-	ID id_of(T* ptr) {
+	ID id_of(T* ptr) const {
 		assert(get<T>() != NULL);
 		return ((Slot<T>*)ptr)->object.second;
 	}
@@ -358,8 +404,19 @@ struct World {
 	}
 
 	template<typename T>
+	const T* by_id(ID id) const {
+		return get<T>()->by_id(id);
+	}
+
+	template<typename T>
 	vector<T*> filter() {
 		Store<T>* store = get<T>();
+		return store->filter();
+	}
+
+	template<typename T>
+	vector<const T*> filter() const {
+		const Store<T>* store = get<T>();
 		return store->filter();
 	}
 
@@ -369,6 +426,29 @@ struct World {
 		Store<Entity>* entity_store = get<Entity>();
 
 		vector<T*> arr;
+		arr.allocator = &temporary_allocator;
+
+		for (unsigned int i = 0; i < store->N; i++) {
+			auto slot = &store->components[i];
+
+			if (!slot->is_enabled) continue;
+
+			auto entity = entity_store->by_id(slot->object.second);
+
+			if (entity && entity->enabled && (entity->layermask & layermask)) {
+				arr.append(&slot->object.first);
+			}
+		}
+
+		return arr;
+	}
+
+	template<typename T>
+	vector<const T*> filter(Layermask layermask) const {
+		const Store<T>* store = get<T>();
+		const Store<Entity>* entity_store = get<Entity>();
+
+		vector<const T*> arr;
 		arr.allocator = &temporary_allocator;
 
 		for (unsigned int i = 0; i < store->N; i++) {
@@ -397,12 +477,12 @@ struct World {
 		return by_id<T>(id) != NULL && has_component<Args...>(id);
 	}
 
-	template<typename A, typename... Args>
+	template<typename T, typename... Args>
 	typename std::enable_if<(sizeof...(Args) > 0), vector <ID> >::type
 		filter(Layermask layermask) {
 		vector<ID> ids;
 		ids.allocator = &temporary_allocator;
-		vector<A*> filter_by = filter<A>(layermask);
+		vector<T*> filter_by = filter<T>(layermask);
 
 		for (int i = 0; i < filter_by.length; i++) {
 			int id = id_of(filter_by[i]);
@@ -458,5 +538,5 @@ private:
 };
 
 #else 
-#include "new_ecs.h"
+#include "ecs20.h"
 #endif 

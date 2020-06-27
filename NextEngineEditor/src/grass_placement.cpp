@@ -1,8 +1,8 @@
-#include "stdafx.h"
 #include "ecs/ecs.h"
 #include "grass.h"
 #include "components/terrain.h"
 #include "graphics/renderer/grass.h"
+#include "core/event.h"
 
 void place_Grass(Grass* grass, World& world) {
 	auto terrains = world.filter<Terrain>(); //todo move this code into ecs.h
@@ -35,5 +35,11 @@ void place_Grass(Grass* grass, World& world) {
 		}
 	}
 
-	GrassRenderSystem::update_buffers(world, world.id_of(grass));
+
+	ComponentEdit edit{ EDIT_GRASS_PLACEMENT };
+	edit.id = world.id_of(grass);
+
+
+
+	//GrassRenderSystem::update_buffers(world, world.id_of(grass));
 }

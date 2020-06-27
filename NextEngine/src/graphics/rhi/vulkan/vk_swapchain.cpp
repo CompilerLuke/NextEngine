@@ -1,8 +1,8 @@
-#include "stdafx.h"
-#include "graphics/rhi/vulkan/swapchain.h"
-#include "graphics/rhi/vulkan/device.h"
+#ifdef RENDER_API_VULKAN
+
+#include "graphics/rhi/vulkan/vulkan.h"
 #include "graphics/rhi/window.h"
-#include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
 
 VkSurfaceFormatKHR choose_swap_surface_format(slice<VkSurfaceFormatKHR> availableFormats) {
 	for (int i = 0; i < availableFormats.length; i++) {
@@ -49,13 +49,33 @@ VkSurfaceKHR make_Surface(VkInstance instance, Window& window) {
 	return surface;
 }
 
-void destroy_Surface(VkInstance instance, VkSurfaceKHR surface) {
-	vkDestroySurfaceKHR(instance, surface, nullptr);
+void make_SyncObjects(Swapchain& swapchain) {
+	VkDevice device = swapchain.device;
+	
+	for (int i = 0; i < swapchain.images.length; i++) swapchain.images_in_flight.append((VkFence)VK_NULL_HANDLE);
+
+	VkFenceCreateInfo fenceInfo = {};
+	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+	VkSemaphoreCreateInfo semaphoreInfo = {};
+	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+
+	for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &swapchain.image_available_semaphore[i]) != VK_SUCCESS
+			|| vkCreateSemaphore(device, &semaphoreInfo, nullptr, &swapchain.render_finished_semaphore[i]) != VK_SUCCESS
+			|| vkCreateFence(device, &fenceInfo, nullptr, &swapchain.in_flight_fences[i]) != VK_SUCCESS) {
+			throw "failed to make semaphore!";
+		}
+	}
 }
 
-Swapchain make_SwapChain(Device& device, Window& window, VkSurfaceKHR surface) {
-	Swapchain swap_chain = {};
-	swap_chain.surface = surface;
+void make_Swapchain(Swapchain& swapchain, Device& device, Window& window, VkSurfaceKHR surface) {
+	swapchain.window = &window;
+	swapchain.instance = device.instance;
+	swapchain.device = device;
+	swapchain.surface = surface;
 
 	SwapChainSupportDetails swapChainSupport = query_swapchain_support(surface, device.physical_device);
 
@@ -101,26 +121,37 @@ Swapchain make_SwapChain(Device& device, Window& window, VkSurfaceKHR surface) {
 	makeInfo.presentMode = presentMode;
 	makeInfo.clipped = VK_TRUE;
 
-	makeInfo.oldSwapchain = VK_NULL_HANDLE;
+	makeInfo.oldSwapchain =  swapchain.swapchain;
 
-	if (vkCreateSwapchainKHR(device, &makeInfo, nullptr, &swap_chain.swapchain) != VK_SUCCESS) {
+	if (vkCreateSwapchainKHR(device, &makeInfo, nullptr, &swapchain.swapchain) != VK_SUCCESS) {
 		throw "failed to make swap chain!";
 	}
 
-	vkGetSwapchainImagesKHR(device, swap_chain, &swap_chain.images.length, nullptr);
-	swap_chain.images.resize(swap_chain.images.length);
-	vkGetSwapchainImagesKHR(device, swap_chain, &swap_chain.images.length, swap_chain.images.data);
+	//MAKE IMAGES
+	vkGetSwapchainImagesKHR(device, swapchain, &swapchain.images.length, nullptr);
+	swapchain.images.resize(swapchain.images.length);
+	vkGetSwapchainImagesKHR(device, swapchain, &swapchain.images.length, swapchain.images.data);
 
-	swap_chain.imageFormat = surfaceFormat.format;
-	swap_chain.extent = extent;
+	swapchain.imageFormat = surfaceFormat.format;
+	swapchain.extent = extent;
 
-	return swap_chain;
-}
+	//MAKE IMAGE VIEWS
+	swapchain.image_views.resize(swapchain.images.length);
 
-void destroy_sync_objects(VkDevice device, Swapchain& swapchain) {
-	for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		vkDestroySemaphore(device, swapchain.image_available_semaphore[i], nullptr);
-		vkDestroySemaphore(device, swapchain.render_finished_semaphore[i], nullptr);
-		vkDestroyFence(device, swapchain.in_flight_fences[i], nullptr);
+	for (int i = 0; i < swapchain.images.length; i++) {
+		swapchain.image_views[i] = make_ImageView(device, swapchain.images[i], swapchain.imageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
 	}
 }
+
+void destroy_Swapchain(Swapchain& swapchain) {
+	for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		vkDestroySemaphore(swapchain.device, swapchain.image_available_semaphore[i], nullptr);
+		vkDestroySemaphore(swapchain.device, swapchain.render_finished_semaphore[i], nullptr);
+		vkDestroyFence(swapchain.device, swapchain.in_flight_fences[i], nullptr);
+	}
+
+	vkDestroySurfaceKHR(swapchain.instance, swapchain.surface, nullptr);
+	vkDestroySwapchainKHR(swapchain.device, swapchain.swapchain, nullptr);
+}
+
+#endif

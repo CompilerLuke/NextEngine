@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "graphics/renderer/transforms.h"
 #include "ecs/layermask.h"
 #include "components/transform.h"
@@ -16,3 +15,4 @@ void compute_model_matrices(glm::mat4* model_m, World& world, Layermask mask) {
 		model_m[world.id_of(trans)] = scale * rotation;
 	}
 }
+

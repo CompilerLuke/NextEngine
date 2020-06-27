@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "graphics/rhi/rhi.h"
 #include "graphics/rhi/vulkan/vulkan.h"
 

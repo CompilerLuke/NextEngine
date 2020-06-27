@@ -1,5 +1,7 @@
 #pragma once
 
 struct VisualizeProfiler {
-	void render(struct World& world, struct Editor& editor, struct RenderCtx& params);
+	hash_set<sstring, 103> name_to_color_idx;
+
+	void render(struct World& world, struct Editor& editor, struct RenderPass& params);
 };

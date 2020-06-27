@@ -3,7 +3,6 @@
 #include "core/memory/allocator.h"
 #include <string.h>
 #include "core/container/string_view.h"
-#include "glm/glm.hpp"
 
 struct string_buffer {
 	Allocator* allocator = &default_allocator;
@@ -108,7 +107,7 @@ struct string_buffer {
 	inline string_buffer& operator+=(const string_view other) {
 		if (other.length == 0) return *this;
 		if (length + other.length > capacity) {
-			this->reserve(glm::max(this->length + other.length, this->capacity * 2));
+			this->reserve(max(this->length + other.length, this->capacity * 2));
 		}
 
 		memcpy(this->data + this->length, other.data, other.length);

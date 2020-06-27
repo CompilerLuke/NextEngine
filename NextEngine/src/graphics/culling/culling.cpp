@@ -1,8 +1,8 @@
-#include "stdafx.h"
 #include "graphics/culling/culling.h"
 #include <glm/vec4.hpp>
 #include <glm/glm.hpp>
 #include "graphics/renderer/renderer.h"
+#include "graphics/rhi/pipeline.h"
 #include "components/transform.h"
 #include "graphics/assets/assets.h"
 #include "graphics/renderer/model_rendering.h"
@@ -11,6 +11,7 @@
 #include "components/grass.h"
 #include "core/io/logger.h"
 #include "core/container/tvector.h"
+#include "core/profiler.h"
 
 void aabb_to_verts(AABB* self, glm::vec4* verts) {
 	verts[0] = glm::vec4(self->max.x, self->max.y, self->max.z, 1);
@@ -48,8 +49,9 @@ void AABB::update(const glm::vec3& v) {
 	this->min = glm::min(this->min, v);
 }
 
-void extract_planes(RenderCtx& params, glm::vec4 planes[6]) {
-	glm::mat4 mat = params.projection * params.view;
+//could cache this result in viewport
+void extract_planes(const Viewport& viewport, glm::vec4 planes[6]) {
+	glm::mat4 mat = viewport.proj * viewport.view;
 	
 	for (int i = 0; i < 4; i++) planes[0][i] = mat[i][3] + mat[i][0];
 	for (int i = 0; i < 4; i++) planes[1][i] = mat[i][3] - mat[i][0];
@@ -58,6 +60,7 @@ void extract_planes(RenderCtx& params, glm::vec4 planes[6]) {
 	for (int i = 0; i < 4; i++) planes[4][i] = mat[i][3] + mat[i][2];
 	for (int i = 0; i < 4; i++) planes[5][i] = mat[i][3] - mat[i][2];
 }
+
 CullResult frustum_test(glm::vec4 planes[6], const AABB& aabb) {
 	CullResult result = INSIDE;
 
@@ -103,6 +106,7 @@ CullResult frustum_test(glm::vec4 planes[6], const AABB& aabb) {
 		//}
 	}
 
+	//return INSIDE;
 	return result;
 }
 
@@ -216,7 +220,9 @@ Node* subdivide_BVH(ScenePartition& scene_partition, AABB& node_aabb, int depth,
 	}
 }
 
-void build_acceleration_structure(ScenePartition& scene_partition, hash_set<MeshBucket, MAX_MESH_BUCKETS> & mesh_buckets, Assets& assets, World& world) { //todo UGH THE CURRENT SYSTEM LIMITS HOW DATA ORIENTED THIS CAN BE
+void build_acceleration_structure(ScenePartition& scene_partition, hash_set<MeshBucket, MAX_MESH_BUCKETS> & mesh_buckets, World& world) { //todo UGH THE CURRENT SYSTEM LIMITS HOW DATA ORIENTED THIS CAN BE
+	Profile profile("Build Acceleration");
+	
 	AABB world_bounds;	
 	
 	int occupied = temporary_allocator.occupied;
@@ -234,7 +240,7 @@ void build_acceleration_structure(ScenePartition& scene_partition, hash_set<Mesh
 		auto model_renderer = world.by_id<ModelRenderer>(id);
 		auto materials = world.by_id<Materials>(id);
 
-		Model* model = get_Model(assets, model_renderer->model_id);
+		Model* model = get_Model(model_renderer->model_id);
 		glm::mat4 model_m = trans->compute_model_matrix();
 
 		if (model == NULL) continue;
@@ -246,12 +252,26 @@ void build_acceleration_structure(ScenePartition& scene_partition, hash_set<Mesh
 		for (int mesh_index = 0; mesh_index < model->meshes.length; mesh_index++) {
 			Mesh& mesh = model->meshes[mesh_index];
 			material_handle mat_handle = materials->materials[mesh.material_id];
+			MaterialDesc* mat_desc = material_desc(mat_handle);
 
 			MeshBucket bucket;
 			bucket.model_id = model_renderer->model_id;
 			bucket.mesh_id = mesh_index;
 			bucket.mat_id = mat_handle;
 			bucket.flags = CAST_SHADOWS;
+
+			//todo support shadow passes RenderPass::ScenePassCount
+
+			for (uint pass = 0; pass < 1; pass++) {
+				PipelineDesc pipeline_desc;
+				pipeline_desc.shader = mat_desc->shader;
+				pipeline_desc.state = mat_desc->draw_state;
+				pipeline_desc.vertex_layout = VERTEX_LAYOUT_DEFAULT;
+				pipeline_desc.instance_layout = INSTANCE_LAYOUT_MAT4X4;
+				pipeline_desc.render_pass = render_pass_by_id((RenderPass::ID)pass);
+
+				bucket.pipeline_id[pass] = query_Pipeline(pipeline_desc);
+			}
 
 			aabbs.append(mesh.aabb.apply(model_m));
 			meshes.append(mesh_buckets.add(bucket));
@@ -264,7 +284,7 @@ void build_acceleration_structure(ScenePartition& scene_partition, hash_set<Mesh
 		auto grass = world.by_id<Grass>(id);
 		auto materials = world.by_id<Materials>(id);
 
-		Model* model = get_Model(assets, grass->placement_model);
+		Model* model = get_Model(grass->placement_model);
 		
 		if (model == NULL) continue;
 
@@ -301,28 +321,15 @@ void build_acceleration_structure(ScenePartition& scene_partition, hash_set<Mesh
 		}
 	}
 
-	log("==================");
-
 	subdivide_BVH(scene_partition, world_bounds, 0, aabbs.length, aabbs.data, meshes.data, models_m.data);
 
 	temporary_allocator.occupied = occupied;
 }
 
-CullingSystem::CullingSystem(Assets& assets, ModelRendererSystem& model_renderer, World& world) 
-	: model_renderer(model_renderer), assets(assets) {
-	/*world.on_make<Transform, ModelRenderer>([&world](vector<ID>& ids) {
-		for (ID id : ids) {
-			auto trans = world.by_id<Transform>(id);
-			auto model_renderer = world.by_id<ModelRenderer>(id);
-		}
-	});
-	*/
-}
 
 #define MAX_DEPTH_CHECK_EACH 5
 
-
-void cull_node(CulledMeshBucket* culled, ScenePartition& partition, Node& node, int depth, glm::vec4 planes[6]) {
+void cull_node(CulledMeshBucket* culled, const ScenePartition& partition, const Node& node, int depth, glm::vec4 planes[6]) {
 	CullResult cull_result = frustum_test(planes, node.aabb);
 	if (cull_result == OUTSIDE) return;
 	
@@ -339,15 +346,15 @@ void cull_node(CulledMeshBucket* culled, ScenePartition& partition, Node& node, 
 	}
 }
 
-void CullingSystem::cull(World& world, RenderCtx& ctx) {
+void update_acceleration_structure(ScenePartition& scene_partition, hash_set<MeshBucket, MAX_MESH_BUCKETS> & mesh_buckets, World& world) {
 	if (scene_partition.node_count == 0) {
-		build_acceleration(world);
+		build_acceleration_structure(scene_partition, mesh_buckets, world);
 	}
+}
 
+void cull_meshes(const ScenePartition& scene_partition, CulledMeshBucket* culled_mesh_bucket, const Viewport& viewport) {
 	glm::vec4 planes[6];
-	extract_planes(ctx, planes);
-
-	CulledMeshBucket* culled_mesh_bucket = model_renderer.pass_culled_bucket[ctx.pass->id];
+	extract_planes(viewport, planes);
 
 	for (int i = 0; i < MAX_MESH_BUCKETS; i++) {
 		culled_mesh_bucket[i].model_m.clear();
@@ -356,19 +363,13 @@ void CullingSystem::cull(World& world, RenderCtx& ctx) {
 	cull_node(culled_mesh_bucket, scene_partition, scene_partition.nodes[0], 0, planes);
 }
 
-void CullingSystem::build_acceleration(World& world) {
-	build_acceleration_structure(scene_partition, model_renderer.mesh_buckets, assets, world);
-}
-
-void render_node(RenderCtx& ctx, Material* mat, Model* cube, Node& node) {
+void render_node(RenderPass& ctx, material_handle mat, model_handle cube, Node& node) {
 	Transform trans;
 	trans.position = (node.aabb.max + node.aabb.min) * 0.5f;
 	trans.scale = node.aabb.max - node.aabb.min;
 	trans.scale *= 0.5f;
 
-	glm::mat4 model_m = trans.compute_model_matrix();
-
-	ctx.command_buffer.draw(model_m, &cube->meshes[0].buffer, mat);
+	draw_mesh(ctx.cmd_buffer, cube, mat, trans);
 
 	for (int i = 0; i < 2; i++) {
 		if (node.child[i]) render_node(ctx, mat, cube, *node.child[i]);
@@ -377,14 +378,12 @@ void render_node(RenderCtx& ctx, Material* mat, Model* cube, Node& node) {
 
 #include "graphics/assets/material.h"
 
-DrawCommandState draw_wireframe_state = default_draw_state;
+DrawCommandState draw_wireframe_state = PolyMode_Wireframe;
 
-void CullingSystem::render_debug_bvh(World& world, RenderCtx& ctx) {
+void render_debug_bvh(ScenePartition& scene_partition, RenderPass& ctx) {
 	return; //todo make toggle in editor
 
-	model_handle cube = load_Model(assets, "cube.fbx");
-
-	draw_wireframe_state.mode = DrawWireframe;
+	model_handle cube = load_Model("cube.fbx");
 
 	//Material* mat = TEMPORARY_ALLOC(Material);
 	//mat->shader = load(shaders, "shaders/pbr.vert", "shaders/gizmo.frag");

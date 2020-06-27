@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #ifdef RENDER_API_OPENGL
 
 #include "graphics/assets/shader.h"

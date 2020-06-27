@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/vector3.h>
@@ -27,7 +26,7 @@ struct ModelLoadingScratch {
 	 
 	//SUB ALLOCATE VERTICES
 	uint vertices_count = mesh->mNumVertices;
-	auto vertices = scratch->vertex_base + scratch->vertices_count;
+	Vertex* vertices = scratch->vertex_base + scratch->vertices_count;
 	scratch->vertices_count += vertices_count;
 
 	//FILL VERTICES
@@ -108,7 +107,7 @@ void process_Node(ModelLoadingScratch* scratch, aiNode* node) {
 	}
 }
 
-void load_assimp(Model* model, BufferAllocator& buffer_allocator, string_view real_path, const glm::mat4& apply_transform) { //TODO WHEN REIMPORTED, can reuse same memory
+void load_assimp(Model* model, string_view real_path, const glm::mat4& apply_transform) { //TODO WHEN REIMPORTED, can reuse same memory
 	Assimp::Importer importer;
 
 	string_view path = model->path;
@@ -150,7 +149,7 @@ void load_assimp(Model* model, BufferAllocator& buffer_allocator, string_view re
 		Mesh* mesh = scratch.meshes_base + i;
 
 		model->aabb.update_aabb(mesh->aabb);
-		mesh->buffer = alloc_vertex_buffer(buffer_allocator, VERTEX_LAYOUT_DEFAULT, mesh->vertices, mesh->indices);
+		mesh->buffer = alloc_vertex_buffer(VERTEX_LAYOUT_DEFAULT, mesh->vertices, mesh->indices);
 	}
 
 	model->materials.length = scene->mNumMaterials;

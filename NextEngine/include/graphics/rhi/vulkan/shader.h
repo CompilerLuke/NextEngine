@@ -6,22 +6,10 @@
 #include "core/container/vector.h"
 #include "volk.h"
 
-typedef struct shaderc_compiler* shaderc_compiler_t;
-typedef struct shaderc_compiler_result* shaderc_compiler_result_t;
 using ShaderModule = VkShaderModule;
 using shader_flags = u64;
 
-#define MAX_SET 3
-#define MAX_DESCRIPTORS 10
-#define MAX_UBOs 5
-#define MAX_SAMPLERS 10
-#define MAX_BINDING 10
-#define MAX_FIELDS 5
-
-enum Stage {
-	VERTEX_STAGE,
-	FRAGMENT_STAGE
-};
+typedef struct shaderc_compiler* shaderc_compiler_t;
 
 //todo descriptor set info is massive
 //maybe it's better to allocate it in a linear buffer
@@ -45,14 +33,16 @@ struct SamplerInfo {
 	uint id;
 };
 
+//todo, could potentially be removed, very simmilar to DescriptorSetLayoutBinding
 struct DescriptorBindingInfo {
 	uint binding;
 	uint count;
-	VkShaderStageFlagBits stage;
+	VkShaderStageFlags stage;
 	VkDescriptorType type;
 	sstring name;
 };
 
+//todo this is easier to understand and use as a union
 struct DescriptorSetInfo {
 	vector<DescriptorBindingInfo> bindings;
 	vector<UBOInfo> ubos;
@@ -67,6 +57,7 @@ struct ShaderModules {
 	VkShaderModule vert;
 	VkShaderModule frag;
 	ShaderModuleInfo info;
+	vector<VkDescriptorSetLayout> set_layouts;
 };
 
 struct Shader {
@@ -75,7 +66,11 @@ struct Shader {
 	array<10, ShaderModules> configs;
 };
 
+struct Assets;
 
-VkShaderModule make_ShaderModule(VkDevice device, string_view code);
-string_buffer compile_glsl_to_spirv(Assets& assets, shaderc_compiler_t compiler, Stage stage, string_view source, string_view input_file_name, shader_flags flags, string_buffer* err);
+VkShaderModule make_ShaderModule(string_view code);
+
+//ShaderModules make_ShaderModules(ShaderCompiler&, string_view vert, string_view frag);
+string_buffer compile_glsl_to_spirv(shaderc_compiler_t shader_compiler, Stage stage, string_view source, string_view input_file_name, shader_flags flags, string_buffer* err);
 void reflect_module(ShaderModuleInfo& info, string_view vert_spirv, string_view frag_spirv);
+void gen_descriptor_layouts(ShaderModules& shader_modules);

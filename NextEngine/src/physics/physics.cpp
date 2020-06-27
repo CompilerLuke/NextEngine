@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "components/terrain.h"
 
 #include "physics/physics.h"
@@ -393,7 +392,10 @@ void PhysicsSystem::update(World& world, UpdateCtx& params) {
 		set_transform_of_RigidBody(rb->bt_rigid_body, &trans_of_rb);
 	}
 
-	Terrain* terrain = world.filter<Terrain>()[0];
+	auto terrains = world.filter<Terrain>();
+	if (terrains.length == 0) return;
+
+	Terrain* terrain = terrains[0];
 	Transform* terrain_trans = world.by_id<Transform>(world.id_of(terrain));
 
 	for (ID id : world.filter<CharacterController, CapsuleCollider, Transform>(params.layermask)) {

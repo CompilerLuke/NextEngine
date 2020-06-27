@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "components/grass.h"
 
 REFLECT_STRUCT_BEGIN(Grass)

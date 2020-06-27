@@ -1,13 +1,12 @@
-#include "stdafx.h"
-#include <glad/glad.h>
-#include "graphics/rhi/buffer.h"
-#include "core/io/logger.h"
+
+#ifdef RENDER_API_OPENGL
 
 //LAYOUTS
 #include "graphics/assets/model.h"
 #include "graphics/renderer/terrain.h"
-
-#ifdef RENDER_API_OPENGL
+#include <glad/glad.h>
+#include "graphics/rhi/buffer.h"
+#include "core/io/logger.h"
 
 namespace RHI {
 	struct VertexAttrib {

@@ -8,9 +8,14 @@
 //MOREOVER IT SEEMS MANY ASSETS COULD BE REUSED BETWEEN LEVELS, SO DOES IT EVEN MAKE SENSE FOR ASSET LOADING TO DIFFERENTIATE THE FOLDER
 //THE CURRENT FUNCTIONALITY ALLOWS REDIRECTING THE ASSET PREFIX TO AN ABITRARY FOLDER
 
-struct Assets;
+struct FS {
+	string_buffer base_path;
+};
 
-ENGINE_API i64  time_modified(Assets&, string_view path);
-ENGINE_API bool readf(Assets&, string_view path, string_buffer* output);
-ENGINE_API bool readfb(Assets&, string_view path, string_buffer* output);
-ENGINE_API bool writef(Assets&, string_view path, string_view contents);
+void make_FS();
+void destroy_FS();
+
+ENGINE_API i64  io_time_modified(string_view path);
+ENGINE_API bool io_readf(string_view path, string_buffer* output);
+ENGINE_API bool io_readfb(string_view path, string_buffer* output);
+ENGINE_API bool io_writef(string_view path, string_view contents);

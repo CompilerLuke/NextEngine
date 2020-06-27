@@ -1,4 +1,5 @@
-#include "stdafx.h"
+#ifdef RENDER_API_OPENGL
+
 #include "graphics/rhi/draw.h"
 #include "graphics/rhi/buffer.h"
 #include <glad/glad.h>
@@ -9,8 +10,6 @@
 #include "graphics/assets/assets.h"
 #include "core/io/logger.h"
 #include "core/time.h"
-
-#ifdef RENDER_API_OPENGL
 
 REFLECT_BEGIN_ENUM(DrawOrder)
 REFLECT_ENUM_VALUE(draw_opaque)
@@ -114,7 +113,7 @@ void CommandBuffer::clear() {
 
 
 
-void switch_shader(ShaderManager& shader_manager, RenderCtx& ctx, shader_handle shader_id, shader_config_handle config_id, ShaderConfig** found_config, uniform_handle* model_uniform) {
+void switch_shader(ShaderManager& shader_manager, RenderPass& ctx, shader_handle shader_id, shader_config_handle config_id, ShaderConfig** found_config, uniform_handle* model_uniform) {
 	Shader* shader = shader_manager.get(shader_id);
 	ShaderConfig* config = shader_manager.get_config(shader_id, config_id);
 	config->bind();
@@ -359,7 +358,7 @@ struct DrawElementsIndirectCommand {
 	uint  baseInstance;
 };
 
-void CommandBuffer::submit_to_gpu(RenderCtx& ctx) {
+void CommandBuffer::submit_to_gpu(RenderPass& ctx) {
 	CommandBuffer& self = ctx.command_buffer;
 	AssetManager& assets = self.assets;
 	

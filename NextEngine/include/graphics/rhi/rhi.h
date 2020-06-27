@@ -1,6 +1,11 @@
 #pragma once
 
-#include "core/core.h"
+#include "device.h"
+#include "buffer.h"
+#include "frame_buffer.h"
+#include "pipeline.h"
+#include "primitives.h"
+
 
 struct RHI;
 struct BufferAllocator;
@@ -15,9 +20,8 @@ struct DeviceFeatures {
 	bool multi_draw_indirect = true;
 };
 
-ENGINE_API RHI* make_RHI(AppInfo& info, DeviceFeatures&);
-void ENGINE_API begin_gpu_upload(RHI& rhi);
-void ENGINE_API end_gpu_upload(RHI& rhi);
+ENGINE_API void make_RHI(AppInfo& info, DeviceFeatures&);
+void ENGINE_API begin_gpu_upload();
+void ENGINE_API end_gpu_upload();
 
-BufferAllocator& get_BufferAllocator(RHI&);
-void destroy_RHI(RHI* rhi);
+void destroy_RHI();

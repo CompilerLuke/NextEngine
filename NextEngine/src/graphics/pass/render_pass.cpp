@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "graphics/pass/render_pass.h"
 #include "ecs/ecs.h"
 #include "graphics/assets/assets.h"
@@ -10,26 +9,35 @@
 #include "components/transform.h"
 #include "components/camera.h"
 
-MainPass::MainPass(Renderer& renderer, Assets& assets, glm::vec2 size)
+void fill_pass_ubo(PassUBO& pass_ubo, const Viewport& viewport) {
+	pass_ubo.proj = viewport.proj;
+	pass_ubo.view = viewport.view;
+	pass_ubo.resolution.x = viewport.width;
+	pass_ubo.resolution.y = viewport.height;
+
+#ifdef RENDER_API_VULKAN
+	pass_ubo.proj[1][1] *= -1;
+#endif
+}
+
+MainPass::MainPass(Renderer& renderer, glm::vec2 size)
 	:
 	renderer(renderer),
-	depth_prepass(assets, size.x, size.y, true),
-	shadow_pass(assets, renderer, size * 0.25f, depth_prepass.depth_map)
+	depth_prepass(size.x, size.y, true),
+	shadow_pass(renderer, size * 0.25f, depth_prepass.depth_map)
 {
-	AttachmentDesc attachment(frame_map);
-	FramebufferDesc settings;
-	settings.width = size.x;
-	settings.height = size.y;
-	settings.depth_buffer = DepthComponent24;
-	settings.stencil_buffer = StencilComponent8;
-	settings.color_attachments.append(attachment);
-
+	FramebufferDesc desc{ size.x, size.y };
+	desc.depth_buffer = DepthComponent24;
+	desc.stencil_buffer = StencilComponent8;
+	
+	add_color_attachment(desc, &frame_map);
+	
 	output.width = size.x;
 	output.height = size.y;
 	//device.multisampling = 4;
 	//device.clear_colour = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 
-	current_frame = Framebuffer(assets, settings);
+	make_Framebuffer(RenderPass::Scene, desc);
 }
 
  struct LightingUBO {
@@ -39,7 +47,7 @@ MainPass::MainPass(Renderer& renderer, Assets& assets, glm::vec2 size)
 };
 
 //todo this should be a uniform buffer, this current solution is terrible!!
-void MainPass::set_shader_params(ShaderConfig& config, RenderCtx& ctx) {
+void MainPass::set_shader_params(ShaderConfig& config, RenderPass& ctx) {
 	/*if (ctx.cam) {
 		config.set_vec3("viewPos", ctx.view_pos);
 	}
@@ -56,7 +64,8 @@ void MainPass::set_shader_params(ShaderConfig& config, RenderCtx& ctx) {
 #include "graphics/rhi/primitives.h"
 #include "components/camera.h"
 
-void MainPass::render_to_buffer(World& world, RenderCtx& ctx, std::function<void()> bind) {
+/*
+void MainPass::render_to_buffer(World& world, RenderPass& ctx, std::function<void()> bind) {
 
 	unsigned int width = ctx.width;
 	unsigned int height = ctx.height;
@@ -64,8 +73,6 @@ void MainPass::render_to_buffer(World& world, RenderCtx& ctx, std::function<void
 	//params.width = current_frame.width;
 	//params.height = current_frame.height;
 	
-	ctx.command_buffer.clear();
-
 	//update_camera_matrices(world, get_camera(world, ctx.layermask), ctx);
 
 	renderer.render_view(world, ctx);
@@ -90,14 +97,13 @@ void MainPass::render_to_buffer(World& world, RenderCtx& ctx, std::function<void
 	
 	//glClear(GL_STENCIL_BUFFER_BIT);
 
-	CommandBuffer::submit_to_gpu(ctx);
-
+	ctx.command_buffer.submit();
 	current_frame.unbind();
 
 	ctx.width = width;
 	ctx.height = height;
 
-	for (Pass* pass : post_process) {
+	for (RenderPass* pass : post_process) {
 		pass->render(world, ctx);
 	}
 
@@ -106,7 +112,7 @@ void MainPass::render_to_buffer(World& world, RenderCtx& ctx, std::function<void
 	shadow_pass.volumetric.render_upsampled(world, frame_map, ctx.projection);
 }
 
-void MainPass::render(World& world, RenderCtx& params) {
+void MainPass::render(World& world, RenderPass& params) {
 	render_to_buffer(world, params, [this, params]() {
 		output.width = params.width;
 		output.height = params.height;
@@ -116,3 +122,6 @@ void MainPass::render(World& world, RenderCtx& params) {
 		output.clear_depth(glm::vec4(0, 0, 0, 1));
 	});
 }
+
+*/
+

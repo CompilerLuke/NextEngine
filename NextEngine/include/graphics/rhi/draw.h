@@ -1,90 +1,34 @@
 #pragma once
 
-#include "ecs/id.h"
-#include <glm/mat4x4.hpp>
-#include "core/reflection.h"
-#include "core/core.h"
-#include "core/container/slice.h"
 
-enum Cull {Cull_Front, Cull_Back, Cull_None};
-enum DepthFunc {DepthFunc_Less, DepthFunc_Lequal, DepthFunc_None};
-enum DrawOrder {
-	draw_opaque = 0,
-	draw_skybox = 1,
-	draw_transparent = 2,
-	draw_over = 3
-};
+#include "core/handle.h"
+#include "pipeline.h"
+#include "core/container/tvector.h"
+#include "graphics/rhi/shader_access.h"
 
-enum ColorMask { Color_All, Color_None };
-enum StencilOp { Stencil_Keep_Replace };
-enum StencilFunc { StencilFunc_Equal, StencilFunc_NotEqual, StencilFunc_Always, StencilFunc_None };
-using StencilMask = unsigned int;
-enum DrawMode { DrawSolid, DrawWireframe };
+struct CommandBuffer;
 
-struct DrawCommandState {
-	Cull cull = Cull_None;
-	DepthFunc depth_func = DepthFunc_Lequal;
-	bool clear_depth_buffer = false;
-	DrawOrder order = draw_opaque;
-	bool clear_stencil_buffer = false;
-	StencilOp stencil_op = Stencil_Keep_Replace;
-	StencilFunc stencil_func = StencilFunc_None;
-	StencilMask stencil_mask = 0;
-	ColorMask color_mask = Color_All;
-	DrawMode mode = DrawSolid;
+ENGINE_API CommandBuffer& begin_draw_cmds();
+ENGINE_API void end_draw_cmds(CommandBuffer&);
 
-	bool operator==(DrawCommandState&);
+ENGINE_API void draw_mesh(CommandBuffer&, model_handle, slice<material_handle>, struct Transform&);
+ENGINE_API void draw_mesh(CommandBuffer&, model_handle, slice<material_handle>, slice<glm::mat4>);
+ENGINE_API void draw_mesh(CommandBuffer&, model_handle, slice<material_handle>, glm::mat4);
 
-	REFLECT(ENGINE_API)
-};
+ENGINE_API void push_constant(CommandBuffer& cmd_buffer, Stage stage, uint offset, uint size, const void* ptr);
 
-extern DrawCommandState ENGINE_API default_draw_state;
-extern DrawCommandState ENGINE_API draw_draw_over;
+template<typename T>
+void push_constant(CommandBuffer& cmd_buffer, Stage stage, uint offset, const T* ptr) {
+	push_constant(cmd_buffer, stage, offset, sizeof(T), ptr);
+}
 
-using DrawSortKey = unsigned long long;
+ENGINE_API void bind_vertex_buffer(CommandBuffer&, VertexLayout, InstanceLayout);
+ENGINE_API void bind_descriptor(CommandBuffer&, uint, slice<descriptor_set_handle>);
+ENGINE_API void bind_pipeline_layout(CommandBuffer&, pipeline_layout_handle);
+ENGINE_API void bind_pipeline(CommandBuffer&, pipeline_handle);
+ENGINE_API void bind_material(CommandBuffer&, material_handle);
+ENGINE_API void draw_mesh(CommandBuffer&, VertexBuffer, InstanceBuffer);
+ENGINE_API void draw_mesh(CommandBuffer&, VertexBuffer);
 
-struct DrawCommand {
-	glm::mat4 model_m;
-	struct VertexBuffer* buffer;
-	struct InstanceBuffer* instance_buffer = NULL;
-	struct Material* material;
-	int num_instances = 1;
-};
-
-struct Pipeline {
-	shader_handle shader;
-	shader_config_handle config;
-
-	uniform_handle model_u;
-	uniform_handle projection_u;
-	uniform_handle view_u;
-
-	DrawCommandState state;
-};
-
-struct VertexBuffer;
-struct InstanceBuffer;
-struct Material;
-struct Assets;
-struct RenderCtx;
-
-struct CommandBuffer {
-	Assets& assets;
-
-	vector<DrawCommand> commands;
-
-	unsigned int current_texture_index = 0;
-
-	unsigned int next_texture_index();
-
-	ENGINE_API CommandBuffer(Assets& assets);
-	ENGINE_API ~CommandBuffer();
-
-	void ENGINE_API draw(glm::mat4, VertexBuffer*, Material*);
-	void ENGINE_API draw(glm::mat4, model_handle, slice<material_handle>);
-	void ENGINE_API draw(int length, model_handle, InstanceBuffer*, slice<material_handle>);
-	void ENGINE_API draw(int length, VertexBuffer*, InstanceBuffer*, Material*);
-	void ENGINE_API clear();
-
-	static void ENGINE_API submit_to_gpu(RenderCtx&);
-};
+//void begin_render_pass(CommandBuffer&, render_pass_handle);
+//void end_render_pass(CommandBuffer&);

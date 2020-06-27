@@ -38,6 +38,7 @@ struct ShaderNode {
 			glm::vec4 value4;
 		};
 
+		InputChannel() {}
 		InputChannel(string_view, ChannelType);
 		InputChannel(string_view, glm::vec4);
 		InputChannel(string_view, glm::vec3);
@@ -110,16 +111,16 @@ struct ShaderGraph {
 
 	float scale = 1.0f;
 
-	void render(struct World&, struct RenderCtx&, struct Input&, struct Assets&);
+	void render(struct World&, struct RenderPass&, struct Input&);
 };
 
 struct ShaderEditor {
 	bool open = false;
 
-	int current_shader = -1;
+	asset_handle current_shader{ INVALID_HANDLE };
 
 	ShaderEditor();
-	void render(struct World&, struct Editor&, struct RenderCtx&, struct Input&);
+	void render(struct World&, struct Editor&, struct RenderPass&, struct Input&);
 
 	struct ImFont* font[10];
 };
@@ -146,16 +147,16 @@ void render_output(ShaderGraph& graph, shader_node_handle handle);
 glm::vec2 screenspace_to_position(ShaderGraph& graph, glm::vec2 position);
 string_buffer get_dependency(shader_node_handle node);
 
-ShaderAsset* create_new_shader(World& world, AssetTab& self, Editor& editor, RenderCtx& params);
-void asset_properties(struct ShaderAsset* tex, struct Editor& editor, struct World& world, struct AssetTab& self, struct RenderCtx& params);
+ShaderAsset* create_new_shader(World& world, AssetTab& self, Editor& editor);
+void asset_properties(struct ShaderAsset* tex, struct Editor& editor, struct AssetTab& self, struct RenderPass& params);
 
 string_view get_param_name(ShaderGraph& graph, unsigned int i);
 
 struct Assets;
 struct SerializerBuffer;
 
-void load_Shader_for_graph(Assets&, ShaderAsset* asset);
-void compile_shader_graph(AssetTab&, ShaderAsset* asset);
+void load_Shader_for_graph(ShaderAsset* asset);
+void compile_shader_graph(AssetInfo&, ShaderAsset* asset);
 void serialize_shader_asset(struct SerializerBuffer& buffer, ShaderAsset* asset);
 void deserialize_shader_asset(struct DeserializerBuffer& buffer, ShaderAsset* asset);
 

@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "components/flyover.h"
 #include "core/io/input.h"
 #include "components/transform.h"
@@ -10,13 +9,13 @@ REFLECT_STRUCT_MEMBER(mouse_sensitivity)
 REFLECT_STRUCT_MEMBER(movement_speed)
 REFLECT_STRUCT_END()
 
-float get_speed(Flyover& self, UpdateCtx& params, float height) {
+float get_speed(Flyover& self, UpdateCtx& ctx, float height) {
 	auto height_multiplier = 1.0f + height / 10.0f; 
 	
-	if (params.input.key_down(GLFW_KEY_LEFT_SHIFT))
-		return self.movement_speed * 2.0f * height_multiplier * params.delta_time;
+	if (ctx.input.key_down(GLFW_KEY_LEFT_SHIFT))
+		return self.movement_speed * 2.0f * height_multiplier * ctx.delta_time;
 
-	return (float)(self.movement_speed * height_multiplier * params.delta_time);
+	return (float)(self.movement_speed * height_multiplier * ctx.delta_time);
 }
 
 void FlyOverSystem::update(World& world, UpdateCtx& params) {

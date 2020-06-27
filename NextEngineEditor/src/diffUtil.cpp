@@ -1,117 +1,305 @@
-#include "stdafx.h"
 #include "diffUtil.h"
 #include "core/memory/linear_allocator.h"
 #include "core/io/logger.h"
 #include <glm/gtc/epsilon.hpp>
 #include "editor.h"
 
-DiffUtil::DiffUtil(void* ptr, reflect::TypeDescriptor* type, Allocator* allocator) 
-: real_ptr(ptr), type(type) {
-	
-	copy_ptr = allocator->allocate(type->size);
-	memcpy(copy_ptr, real_ptr, type->size);
+void clear_stack(ActionStack& stack) {
+	stack.head = 0;
+	stack.tail = 0;
+	stack.stack.clear();
 }
 
-constexpr float EPSILON = 0.01;
+void init_stack(ActionStack& stack, u64 size) {
+	stack = {};
+	stack.capacity = kb(10);
+	stack.block = PERMANENT_ARRAY(char, stack.capacity);
+}
 
-bool DiffUtil::submit(Editor& editor, const char* name) {
-	vector<unsigned int> offsets_diff;
-	vector<unsigned int> sizes;
-	unsigned int size = 0.0f;
+void init_actions(EditorActions& actions) {
+	init_stack(actions.undo, kb(10));
+	init_stack(actions.redo, kb(10));
+	init_stack(actions.frame_diffs, kb(5));
+}
+
+void destroy_action(ActionStack& stack, EditorActionHeader& header) {
+	if (header.type == EditorActionHeader::Destroy_Entity) {
+
+	}
+}
+
+char* stack_push_action(ActionStack& stack, EditorActionHeader& header) {
+	uint size = header.size;
+	assert(size <= stack.capacity);
 	
-	if (this->type->kind == reflect::Struct_Kind) {
-		reflect::TypeDescriptor_Struct* type = (reflect::TypeDescriptor_Struct*)this->type;
+	//todo extra check, if wrapping!!!!
+	if (stack.head + size > stack.capacity) {
+		stack.head = 0;
 
-		for (auto& member : type->members) {
-			auto original_value = (char*)copy_ptr + member.offset;
-			auto new_value = (char*)real_ptr + member.offset;
+		uint i;
+		for (i = 0; i < stack.stack.length; i++) {
+			EditorActionHeader header = stack.stack[i];
+			stack.tail = (header.ptr - stack.block) + header.size;
 
-			bool modified = false;
+			if (stack.tail >= size) break;
+		}
+
+		uint shift = i + 1;
+
+		for (uint i = 0; i < shift; i++) {
+			destroy_action(stack, stack.stack[i]);
+		}
+
+		stack.stack.shift(shift);
+	}
+	
+	char* ptr = stack.block + stack.head;
+	header.ptr = ptr; 
+	stack.head += size;
+	
+	stack.stack.append(header);
+	
+	return ptr;
+}
+
+template<typename T>
+T* push_ptr(char** block, uint count = 1) {
+	char* ptr = *block;
+	*block += sizeof(T) * count;
+	return (T*)ptr;
+}
+
+void begin_tdiff(DiffUtil& util, void* ptr, reflect::TypeDescriptor* type) {
+	util.real_ptr = ptr;
+	util.copy_ptr = temporary_allocator.allocate(type->size);
+	util.type = type;
+	
+	memcpy(util.copy_ptr, util.real_ptr, type->size);
+}
+
+void begin_diff(DiffUtil& util, void* ptr, void* copy, reflect::TypeDescriptor* type) {
+	util.real_ptr = ptr;
+	util.copy_ptr = copy;
+	util.type = type;
+
+	memcpy(util.copy_ptr, util.real_ptr, type->size);
+}
+
+Diff* copy_onto_stack(ActionStack& stack, EditorActionHeader header, const Diff& diff) {
+	char* data = stack_push_action(stack, header);
+	memset(data, 0, header.size);
+
+	Diff* copy = push_ptr<Diff>(&data);
+
+	copy->copy_ptr = push_ptr<char>(&data, diff.type->size);
+
+	copy->real_ptr = diff.real_ptr;
+	copy->type = diff.type;
+	copy->fields_modified.length = diff.fields_modified.length;
+	copy->fields_modified.data = (uint*)data;
+
+	memcpy(copy->copy_ptr, diff.copy_ptr, copy->type->size);
+	memcpy(copy->fields_modified.data, diff.fields_modified.data, diff.fields_modified.length * sizeof(uint));
+
+	return copy;
+}
+
+bool submit_diff(ActionStack& stack, DiffUtil& util,  string_view string) {
+	assert(util.type->kind == reflect::Struct_Kind || util.type->kind == reflect::Union_Kind);
+
+	tvector<uint> modified_fields;
+	bool is_modified = false;
+
+	if (util.type->kind == reflect::Struct_Kind) {
+		reflect::TypeDescriptor_Struct* type = (reflect::TypeDescriptor_Struct*)util.type;
+
+		for (uint i = 0; i < type->members.length; i++) {
+			auto& member = type->members[i];
+			auto original_value = (char*)util.copy_ptr + member.offset;
+			auto new_value = (char*)util.real_ptr + member.offset;
 
 			if (memcmp(new_value, original_value, member.type->size) != 0) {
-				offsets_diff.append(member.offset);
-				sizes.append(member.type->size);
-				size += member.type->size;
+				modified_fields.append(i);
+				is_modified = true;
 			}
 		}
-	} 
-	else if (this->type->kind == reflect::Union_Kind) {
-		reflect::TypeDescriptor_Union* type = (reflect::TypeDescriptor_Union*)this->type;
-		
-		if (memcmp(copy_ptr, real_ptr, type->size) != 0) {
-			offsets_diff.append(0);
-			sizes.append(type->size);
-			size += type->size;
-		}
 	}
-	else {
-		throw "Unsupported type";
+	else if (util.type->kind == reflect::Union_Kind) {
+		is_modified = memcmp(util.copy_ptr, util.real_ptr, util.type->size) != 0;
 	}
 
-	if (offsets_diff.length > 0) {
-		Diff* diff = new Diff(size);
-		diff->target = real_ptr;
-		diff->name = name;
+	if (!is_modified) return false;
 
-		unsigned int offset_buffer = 0;
+	EditorActionHeader header = {};
+	header.type = EditorActionHeader::Diff;
+	header.name = string;
+	header.size = sizeof(Diff) + util.type->size + sizeof(uint) * modified_fields.length;
 
-		for (unsigned int i = 0; i < offsets_diff.length; i++) {
-			memcpy((char*)diff->redo_buffer + offset_buffer, (char*)real_ptr + offsets_diff[i], sizes[i]);
-			memcpy((char*)diff->undo_buffer + offset_buffer, (char*)copy_ptr + offsets_diff[i], sizes[i]);
+	Diff diff = {};
+	diff.copy_ptr = util.copy_ptr;
+	diff.real_ptr = util.real_ptr;
+	diff.type = util.type;
+	diff.fields_modified = modified_fields;
 
-			offset_buffer += sizes[i];
-		}
-
-		diff->offsets = std::move(offsets_diff);
-		diff->sizes = std::move(sizes);
-
-		editor.submit_action(diff);
-
-		return true;
-	}
-
-	return false;
+	copy_onto_stack(stack, header, diff);
 }
 
-Diff::Diff(unsigned int size) {
-	this->undo_buffer = new char[size];
-	this->redo_buffer = new char[size];
+//this will only work with flat data structures!
+bool end_diff(EditorActions& stack, DiffUtil& util, string_view string) {
+	bool modified = submit_diff(stack.undo, util, string);
+	if (modified) stack.frame_diffs.stack.append(stack.undo.stack.last());
+	return modified;
 }
 
-Diff::Diff(Diff&& other) {
-	this->redo_buffer = other.redo_buffer;
-	this->undo_buffer = other.undo_buffer;
-	this->target = other.target;
-	this->offsets = std::move(other.offsets);
-	this->sizes = std::move(other.sizes);
+void commit_diff(EditorActions& stack, DiffUtil& util) {
+	submit_diff(stack.frame_diffs, util, "");
+}
+
+EntityCopy* save_entity_copy(World& world, ActionStack& stack, ID id, EditorActionHeader& header) {
+	auto components = world.components_by_id(id);
+
+	uint size = sizeof(EntityCopy) + sizeof(Component) * components.length;
 	
-	other.redo_buffer = NULL;
-	other.undo_buffer = NULL;
+	
+	//for (Component& component : components) {
+	//	size += component.type->size;
+	//	size += sizeof(Component);
+	//}
+
+	header.size = size;
+
+	char* data = stack_push_action(stack, header);
+
+	EntityCopy* entity_copy = push_ptr<EntityCopy>(&data);
+	entity_copy->id = id;
+
+	entity_copy->components.data = push_ptr<EntityCopy::Component>(&data, components.length);
+	entity_copy->components.length = components.length;
+
+	printf("=============\n");
+
+	for (uint i = 0; i < components.length; i++) {
+		EntityCopy::Component& component = entity_copy->components[i];
+		component.store = components[i].store;
+		component.ptr = components[i].data; //push_ptr<char>(&data, components[i].type->size);
+		component.size = components[i].type->size;
+
+		printf("Ptr of save entity copy %p\n", component.ptr);
+
+		//memcpy(component.ptr, components[i].data, components[i].type->size);
+	}
+
+	return entity_copy;
 }
 
-void apply_diff(Diff& diff, void* buffer) {
-	unsigned int offset_buffer = 0;
+void copy_to_stack(ActionStack& stack, EditorActionHeader& header, EntityCopy& master) {
+	char* data = stack_push_action(stack, header);
+	memcpy(data, &master, header.size);
 
-	for (unsigned int i = 0; i < diff.offsets.length; i++) {
-		memcpy((char*)diff.target + diff.offsets[i], (char*)buffer + offset_buffer, diff.sizes[i]);
-		offset_buffer += diff.sizes[i];
+	//Fixup pointers
+	EntityCopy* copy = push_ptr<EntityCopy>(&data);
+	copy->components.data = push_ptr<EntityCopy::Component>(&data, master.components.length);
+
+	/*for (uint i = 0; i < master.components.length; i++) {
+		EntityCopy::Component& component = copy->components[i];
+		copy->components[i].ptr = push_ptr<char>(&data, component.size);
+	}*/
+}
+
+void apply_diff_and_move_to(ActionStack& actions, EditorActionHeader& header, Diff* diff) {
+	Diff* copy = copy_onto_stack(actions, header, *diff);
+
+	memcpy(copy->copy_ptr, diff->real_ptr, diff->type->size);
+	memcpy(diff->real_ptr, diff->copy_ptr, diff->type->size);
+}
+
+void destroy_all_components(EntityCopy* copy) {
+	for (EntityCopy::Component component : copy->components) {
+		printf("DESTROY component %p\n", component.ptr);
+		component.store->set_enabled(component.ptr, false);
 	}
 }
 
-void Diff::undo() {
-	apply_diff(*this, this->undo_buffer);
+void create_all_components(EntityCopy* copy) {
+	for (EntityCopy::Component component : copy->components) {
+		printf("CREATE component %p\n", component.ptr);
+		component.store->set_enabled(component.ptr, true);
+		//void* ptr = component.store->make_by_id(copy->id);
+		//memcpy(ptr, component.ptr, component.size);
+	}
 }
 
-void Diff::redo() {
-	apply_diff(*this, this->redo_buffer);
+void entity_create_action(EditorActions& actions, ID id) {
+	char desc[50];
+	sprintf_s(desc, "CREATED ENTITY #%i", id);
+
+	EditorActionHeader header{ EditorActionHeader::Create_Entity , 0, 0, desc};
+	save_entity_copy(actions.world, actions.undo, id, header);
+	actions.frame_diffs.stack.append(header);
+}
+
+void entity_destroy_action(EditorActions& actions, ID id) {
+	char desc[50];
+	sprintf_s(desc, "DESTROYED ENTITY #%i", id);
+	
+	EditorActionHeader header{ EditorActionHeader::Destroy_Entity, 0, 0, desc };
+	EntityCopy* copy = save_entity_copy(actions.world, actions.undo, id, header);
+	destroy_all_components(copy);
+
+	actions.frame_diffs.stack.append(header);
+}
+
+EditorActionHeader pop_action(ActionStack& stack) {
+	EditorActionHeader header = stack.stack.pop();
+	stack.head = (stack.block - header.ptr);
+	return header;
+}
+
+void undo_action(EditorActions& actions) {
+	if (actions.undo.stack.length == 0) return;
+	
+	EditorActionHeader header = pop_action(actions.undo);
+
+	switch (header.type) {
+	case EditorActionHeader::Diff: apply_diff_and_move_to(actions.redo, header, (Diff*)header.ptr); break;
+	case EditorActionHeader::Destroy_Entity: 
+		create_all_components((EntityCopy*)header.ptr);
+		copy_to_stack(actions.redo, header, *(EntityCopy*)header.ptr);
+		break;
+	case EditorActionHeader::Create_Entity: 
+		destroy_all_components((EntityCopy*)header.ptr);
+		copy_to_stack(actions.redo, header, *(EntityCopy*)header.ptr);
+		break;
+	}
+
+	actions.frame_diffs.stack.append(header);
+}
+
+void redo_action(EditorActions& actions) {
+	if (actions.redo.stack.length == 0) return;
+
+	EditorActionHeader header = pop_action(actions.redo);
+
+	switch (header.type) {
+	case EditorActionHeader::Diff: apply_diff_and_move_to(actions.undo, header, (Diff*)header.ptr); break;
+	case EditorActionHeader::Destroy_Entity:
+		destroy_all_components((EntityCopy*)header.ptr);
+		copy_to_stack(actions.undo, header, *(EntityCopy*)header.ptr);
+		break;
+
+	case EditorActionHeader::Create_Entity:
+		create_all_components((EntityCopy*)header.ptr);
+		copy_to_stack(actions.undo, header, *(EntityCopy*)header.ptr);
+		break;
+	}
+
+	actions.frame_diffs.stack.append(header);
 }
 
 
-Diff::~Diff() {
-	delete this->undo_buffer;
-	delete this->redo_buffer;
-}
 
+
+/*
 CreateAction::CreateAction(World& world, ID id) 
 : world(world), id(id) {
 	auto components = world.components_by_id(id);
@@ -175,3 +363,4 @@ DestroyComponentAction::~DestroyComponentAction() {
 		store->free_by_id(((Slot<char>*)ptr)->object.second);
 	}
 }
+*/

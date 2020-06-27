@@ -1,6 +1,5 @@
 #pragma once
 
-#include "stdafx.h"
 #include "objectGizmo.h"
 #include "graphics/assets/assets.h"
 #include "components/transform.h"
@@ -10,11 +9,10 @@
 #include "graphics/renderer/renderer.h"
 #include "graphics/renderer/model_rendering.h"
 
-ObjectGizmoSystem::ObjectGizmoSystem(Assets& assets) 
-: asset_manager(asset_manager) {
-	this->dir_light_model =  load_Model(assets, "editor/dirLight.fbx");
-	this->grass_model =      load_Model(assets, "editor/grass.fbx");
-	this->camera_model =     load_Model(assets, "editor/camera.fbx");
+ObjectGizmoSystem::ObjectGizmoSystem() {
+	this->dir_light_model =  load_Model("editor/dirLight.fbx");
+	this->grass_model =      load_Model("editor/grass.fbx");
+	this->camera_model =     load_Model("editor/camera.fbx");
 
 	//Material gizmo_mat(load_Shader(assets, "shaders/pbr.vert", "shaders/diffuse.frag"));
 	//gizmo_mat.set_vec3(asset_manager.shaders, "material.diffuse", glm::vec3(0, 0.8, 0.8));
@@ -22,17 +20,14 @@ ObjectGizmoSystem::ObjectGizmoSystem(Assets& assets)
 	//this->gizmo_materials.append(asset_manager.materials.assign_handle(std::move(gizmo_mat)));
 }
 
-void render_gizmo(model_handle model, slice<material_handle> gizmo_materials, World& world, RenderCtx& ctx, ID id) {
+void render_gizmo(model_handle model, slice<material_handle> gizmo_materials, World& world, RenderPass& ctx, ID id) {
 	Transform trans = *world.by_id<Transform>(id);
+	draw_mesh(ctx.cmd_buffer, model, gizmo_materials, trans);
 
-	glm::mat4 model_m = model_m = trans.compute_model_matrix();
-
-	if (ctx.layermask & EDITOR_LAYER || ctx.layermask & PICKING_LAYER) {
 	//	ctx.command_buffer.draw(model_m, model, gizmo_materials);
-	}
 }
 
-void ObjectGizmoSystem::render(World& world, RenderCtx& ctx) {
+void ObjectGizmoSystem::render(World& world, RenderPass& ctx) {
 	for (ID id : world.filter<Grass, Transform>(GAME_LAYER)) {
 		render_gizmo(grass_model, gizmo_materials, world, ctx, id);
 	}

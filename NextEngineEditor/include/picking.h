@@ -7,7 +7,7 @@
 #include <limits.h>
 
 struct World;
-struct RenderCtx;
+struct RenderPass;
 struct ShaderConfig;
 struct Input;
 struct Camera;
@@ -42,25 +42,34 @@ struct RayHit {
 	ID id;
 };
 
+
 struct PickingSystem {
-	Assets& assets;
 	PickingScenePartition partition;
 
-	PickingSystem(Assets&);
+	PickingSystem();
 	void rebuild_acceleration_structure(World& world);
 	bool ray_cast(const Ray&, RayHit&);
 	bool ray_cast(World& world, Input& input, RayHit& hit);
-	void visualize(World& world, Input& input, RenderCtx& ctx);
+	void visualize(World& world, Input& input, RenderPass& ctx);
 	int pick(World& world, Input&);
 };
 
-struct OutlineSelected {
-	Assets& asset_manager;
+//void build_acceleration_structure(PickingScenePartition& scene_partition, World& world);
+//bool ray_cast(PickingScenePartition& scene_partition, const Ray&, RayHit&);
+//bool ray_cast(PickingScenePartition& scene_partition, World& world, Input& input, RayHit& hit);
+//void visualize(PickingScenePartition& scene_parition, World& world, Input& input, RenderPass& ctx);
+//int pick(PickingScenePartition&, World& world, Input&);
+
+struct OutlineRenderState {
 	shader_handle outline_shader;
 	material_handle outline_material;
+	material_handle object_material;
 	DrawCommandState object_state;
 	DrawCommandState outline_state;
 
-	OutlineSelected(Assets&);
-	void render(struct World&, slice<ID> highlighted, struct RenderCtx&);
+	//OutlineSelected(Assets&);
+	//void render_outlines(struct World&, slice<ID> highlighted, struct RenderPass&);
 };
+
+void make_outline_render_state(OutlineRenderState& outline);
+void render_object_selected_outline(OutlineRenderState& outline, World&, slice<ID> highlighted, RenderPass&);

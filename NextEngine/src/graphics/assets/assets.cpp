@@ -1,10 +1,10 @@
-#include "stdafx.h"
 #include "graphics/assets/assets.h"
 #include "core/container/hash_map.h"
 #include "core/container/sstring.h"
 #include "core/serializer.h"
 #include "core/memory/linear_allocator.h"
 #include "graphics/rhi/rhi.h"
+
 #include "graphics/assets/material.h"
 #include <stdio.h>
 #include <shaderc/shaderc.h>
@@ -12,43 +12,22 @@
 #include <thread>
 #include <mutex>
 
-#include "graphics/assets/shader.h"
-#include "graphics/assets/model.h"
-#include "graphics/assets/texture.h"
+#include "graphics/assets/assets_store.h"
+#include <stb_image.h>
+#include "graphics/renderer/ibl.h"
 
-#ifdef RENDER_API_VULKAN
-#include "graphics/rhi/vulkan/vulkan.h"
-#include "graphics/rhi/vulkan/shader.h"
-#include "graphics/rhi/vulkan/material.h"
-#include "graphics/rhi/vulkan/texture.h"
-#endif
+Assets assets;
 
-struct Assets {
-	RHI& rhi;
-	shaderc_compiler_t shader_compiler;
+void make_AssetManager(string_view path) {
+	assets.asset_path = path;
 
-	string_buffer asset_path;
-	hash_map<sstring, uint, 1000> path_to_handle;
-
-	HandleManager<Model, model_handle> models;
-	HandleManager<Shader, shader_handle> shaders;
-	HandleManager<Texture, texture_handle> textures;
-	HandleManager<Cubemap, cubemap_handle> cubemaps;
-	HandleManager<Material, material_handle> materials;
-};
-
-Assets* make_Assets(RHI& rhi, string_view path) {
-	Assets* assets = PERMANENT_ALLOC(Assets, { rhi });
-	assets->asset_path = path;
-	assets->shader_compiler = shaderc_compiler_initialize();
-	return assets;
+	init_primitives();
+	make_cubemap_pass_resources(assets.cubemap_pass_resources);
 }
 
-void destroy_Assets(Assets* assets) {
-	shaderc_compiler_release(assets->shader_compiler);
-}
+void destroy_AssetManager() {}
 
-string_buffer tasset_path(Assets& assets, string_view filename) {
+string_buffer tasset_path(string_view filename) {
 	string_buffer buffer;
 	buffer.allocator = &temporary_allocator;
 	buffer.capacity = assets.asset_path.length + filename.length;
@@ -62,11 +41,11 @@ string_buffer tasset_path(Assets& assets, string_view filename) {
 	return buffer;
 }
 
-string_view current_asset_path_folder(Assets& assets) {
+string_view current_asset_path_folder() {
 	return assets.asset_path;
 }
 
-bool asset_path_rel(Assets& assets, string_view filename, string_buffer* result) {
+bool asset_path_rel(string_view filename, string_buffer* result) {
 	if (filename.starts_with(assets.asset_path)) {
 		*result = filename.sub(assets.asset_path.size(), filename.size());
 		return true;
@@ -75,39 +54,36 @@ bool asset_path_rel(Assets& assets, string_view filename, string_buffer* result)
 	return false;
 }
 
-ShaderInfo* shader_info(Assets& assets, shader_handle handle) {
+ShaderInfo* shader_info(shader_handle handle) {
 	Shader* shader = assets.shaders.get(handle);
 	if (shader) return &shader->info;
 	return NULL;
 }
 
-shader_handle load_SinglePass_Shader(Assets& assets, string_view vfilename, string_view ffilename) {
+shader_handle load_SinglePass_Shader(string_view vfilename, string_view ffilename) {
 	shader_flags default_permutations[] = { 0 };
-	return load_Shader(assets, vfilename, ffilename, { default_permutations, 1 });
+	return load_Shader(vfilename, ffilename, { default_permutations, 1 });
 }
 
-shader_handle load_Shader(Assets& assets, string_view vfilename, string_view ffilename) {
+shader_handle load_Shader(string_view vfilename, string_view ffilename) {
 	shader_flags default_permutations[] = { SHADER_INSTANCED, SHADER_INSTANCED | SHADER_DEPTH_ONLY };
-	return load_Shader(assets, vfilename, ffilename, { default_permutations, 2});
+	return load_Shader(vfilename, ffilename, { default_permutations, 2});
 }
 
 
-void load_Shader(Assets& assets, Shader& shader, slice<shader_flags> permutations) {
-	shaderc_compiler_t compiler = assets.shader_compiler;
+void load_Shader(Shader& shader, slice<shader_flags> permutations) {
 	string_view vfilename = shader.info.vfilename;
 	string_view ffilename = shader.info.ffilename;
 
 	string_buffer vert_source, frag_source;
 
-	if (!readf(assets, vfilename, &vert_source)) throw "Could not read vertex shader file";
-	if (!readf(assets, ffilename, &frag_source)) throw "Could not read fragment shader file!";
+	if (!io_readf(vfilename, &vert_source)) throw "Could not read vertex shader file";
+	if (!io_readf(ffilename, &frag_source)) throw "Could not read fragment shader file!";
 
 	shader.info.vfilename = vfilename;
 	shader.info.ffilename = ffilename;
-	shader.info.v_time_modified = time_modified(assets, vfilename);
-	shader.info.f_time_modified = time_modified(assets, ffilename);
-
-	VkDevice device = get_Device(assets.rhi);
+	shader.info.v_time_modified = io_time_modified(vfilename);
+	shader.info.f_time_modified = io_time_modified(ffilename);
 
 	string_buffer err;
 
@@ -116,25 +92,25 @@ void load_Shader(Assets& assets, Shader& shader, slice<shader_flags> permutation
 		string_buffer vert_cache_file = tformat("shaders/cache/", flags, vfilename.sub(strlen("shaders/"), vfilename.length), ".spirv");
 		string_buffer frag_cache_file = tformat("shaders/cache/", flags, ffilename.sub(strlen("shaders/"), ffilename.length), ".spirv");
 
-		i64 vert_time_cached = time_modified(assets, vert_cache_file);
-		i64 frag_time_cached = time_modified(assets, frag_cache_file);
+		i64 vert_time_cached = io_time_modified(vert_cache_file);
+		i64 frag_time_cached = io_time_modified(frag_cache_file);
 
 		string_buffer spirv_vert, spirv_frag;
 
 		if (vert_time_cached != -1 && vert_time_cached > shader.info.v_time_modified) {
-			if (!readf(assets, vert_cache_file, &spirv_vert)) throw "Failed to read cache file";
+			if (!io_readf(vert_cache_file, &spirv_vert)) throw "Failed to read cache file";
 		}
 		else {
-			spirv_vert = compile_glsl_to_spirv(assets, compiler, VERTEX_STAGE, vert_source, vfilename, flags, &err);
-			if (spirv_vert.length > 0) writef(assets, vert_cache_file, spirv_vert);
+			spirv_vert = compile_glsl_to_spirv(rhi.shader_compiler, VERTEX_STAGE, vert_source, vfilename, flags, &err);
+			if (spirv_vert.length > 0) io_writef(vert_cache_file, spirv_vert);
 		}
 
 		if (frag_time_cached != -1 && frag_time_cached > shader.info.f_time_modified) {
-			if (!readf(assets, frag_cache_file, &spirv_frag)) throw "Failed to read cache file";
+			if (!io_readf(frag_cache_file, &spirv_frag)) throw "Failed to read cache file";
 		}
 		else {
-			spirv_frag = compile_glsl_to_spirv(assets, compiler, FRAGMENT_STAGE, frag_source, ffilename, flags, &err);
-			if (spirv_frag.length > 0) writef(assets, frag_cache_file, spirv_frag);
+			spirv_frag = compile_glsl_to_spirv(rhi.shader_compiler, FRAGMENT_STAGE, frag_source, ffilename, flags, &err);
+			if (spirv_frag.length > 0) io_writef(frag_cache_file, spirv_frag);
 		}
 
 		if (err.length > 0) {
@@ -143,10 +119,11 @@ void load_Shader(Assets& assets, Shader& shader, slice<shader_flags> permutation
 		}
 
 		ShaderModules modules = {};
-		modules.vert = make_ShaderModule(device, spirv_vert);
-		modules.frag = make_ShaderModule(device, spirv_frag);
+		modules.vert = make_ShaderModule(spirv_vert);
+		modules.frag = make_ShaderModule(spirv_frag);
 
 		reflect_module(modules.info, spirv_vert, spirv_frag);
+		gen_descriptor_layouts(modules);
 
 		shader.configs.append(modules);
 		shader.config_flags.append(flags);
@@ -155,7 +132,7 @@ void load_Shader(Assets& assets, Shader& shader, slice<shader_flags> permutation
 	log("loaded shader : ", vfilename, " ", ffilename, "\n");
 }
 
-ShaderModules* get_shader_config(Assets& assets, shader_handle handle, shader_flags flags) {
+ShaderModules* get_shader_config(shader_handle handle, shader_flags flags) {
 	Shader* shader = assets.shaders.get(handle);
 
 	for (int i = 0; i < shader->config_flags.length; i++) {
@@ -165,12 +142,11 @@ ShaderModules* get_shader_config(Assets& assets, shader_handle handle, shader_fl
 	return NULL;
 }
 
-shader_handle load_Shader(Assets& assets, string_view vfilename, string_view ffilename, slice<shader_flags> permutations) {
+shader_handle load_Shader(string_view vfilename, string_view ffilename, slice<shader_flags> permutations) {
 	assert(vfilename.starts_with("shaders/"));
 	assert(ffilename.starts_with("shaders/"));
 	
 	string_buffer merged = tformat(vfilename.sub(8, vfilename.length), ffilename.sub(8, ffilename.length));
-	shaderc_compiler_t compiler = assets.shader_compiler;
 
 	int index = assets.path_to_handle.keys.index(merged.view());
 	if (index != -1) return { assets.path_to_handle.values[index] }; //todo this assumes the shader permutations are the same! They may not be!
@@ -178,66 +154,134 @@ shader_handle load_Shader(Assets& assets, string_view vfilename, string_view ffi
 	Shader shader;
 	shader.info.vfilename = vfilename;
 	shader.info.ffilename = ffilename;
-	load_Shader(assets, shader, permutations);
+	load_Shader(shader, permutations);
 
 	return assets.shaders.assign_handle(std::move(shader));
 }
 
-void reload_Shader(Assets& assets, shader_handle handle) {
+void reload_Shader(shader_handle handle) {
 	Shader* shader = assets.shaders.get(handle);
 
-	load_Shader(assets, *shader, shader->config_flags);
+	load_Shader(*shader, shader->config_flags);
 	log("recompiled shader: ", shader->info.vfilename);
 }
 
-void load_Model(Assets& assets, model_handle handle, string_view path, const glm::mat4& matrix) {
+void load_Model(model_handle handle, string_view path, const glm::mat4& matrix) {
 	Model model{ path };
 	assets.models.assign_handle(handle, std::move(model));
-	load_Model(assets, handle, matrix);
+	load_Model(handle, matrix);
 }
 
-void load_Model(Assets& assets, model_handle model_handle, const glm::mat4& trans) {
-	Model* model = get_Model(assets, model_handle);
+void load_Model(model_handle model_handle, const glm::mat4& trans) {
+	Model* model = get_Model(model_handle);
 
-	BufferAllocator& buffer_allocator = get_BufferAllocator(assets.rhi);
-	string_buffer full_path = tasset_path(assets, model->path);
+	string_buffer full_path = tasset_path(model->path);
 
-	load_assimp(model, buffer_allocator, full_path, trans);
+	load_assimp(model, full_path, trans);
 }
 
-model_handle load_Model(Assets& assets, string_view path, bool serialized, const glm::mat4& trans) {
+VertexBuffer get_VertexBuffer(model_handle model_handle, uint mesh_index) {
+	return assets.models.get(model_handle)->meshes[mesh_index].buffer;
+}
+
+model_handle load_Model(string_view path, bool serialized, const glm::mat4& trans) {
+	if (uint* cached = assets.path_to_handle.get(path)) return { *cached };
+
 	int index = assets.path_to_handle.keys.index(path);
 	if (index != -1) return { assets.path_to_handle.values[index] };
 
 	Model model{ path };
 	model_handle model_handle = assets.models.assign_handle(std::move(model), serialized);
 	assets.path_to_handle.set(path, model_handle.id);
-	load_Model(assets, model_handle, trans);
+	load_Model(model_handle, trans);
 	return model_handle;
 }
 
-Model* get_Model(Assets& assets, model_handle handle) {
+Model* get_Model(model_handle handle) {
 	return assets.models.get(handle);
 }
 
 
+texture_handle alloc_Texture(const TextureDesc& desc) {
+	Texture tex = alloc_TextureImage(rhi.texture_allocator, desc);
+	return assets.textures.assign_handle(std::move(tex), false);
+}
 
-texture_handle load_Texture(Assets& assets, string_view path, bool serialized) {
-	Image image = load_Image(assets, path);
-	TextureAllocator& texture_allocator = get_TextureAllocator(assets.rhi);
+texture_handle upload_Texture(const Image& image) {
+	Texture tex = make_TextureImage(rhi.texture_allocator, image);
+	return assets.textures.assign_handle(std::move(tex), false);
+}
+
+Image load_Image(string_view filename, bool reverse) {
+	string_buffer real_filename = tasset_path(filename); 
+
+	stbi_set_flip_vertically_on_load(reverse);
+
+	Image image;
+
+	image.data = stbi_load(real_filename.c_str(), &image.width, &image.height, &image.num_channels, STBI_rgb_alpha); //todo might waste space
+	image.num_channels = 4;
+
+	if (!image.data) throw "Could not load texture";
+
+	return image;
+}
+
+void free_Image(Image& image) {
+	stbi_image_free(image.data);
+}
+
+texture_handle load_Texture(string_view path, bool serialized) {
+	if (uint* cached = assets.path_to_handle.get(path)) return { *cached };
+
+	printf("LOADING TEXTURE %s\n", path.c_str());
 	
-	TextureDesc desc;
-	Texture tex = make_TextureImage(texture_allocator, desc, image);
+	Image image = load_Image(path);
+	image.format = TextureFormat::UNORM;
+	image.usage = TextureUsage::Sampled | TextureUsage::TransferDst;
 
+	texture_handle handle = upload_Texture(image);
 	free_Image(image);
 
-	texture_handle handle = assets.textures.assign_handle(std::move(tex), serialized);
 	assets.path_to_handle.set(path, handle.id);
 
 	return handle;
 }
 
-void load_TextureBatch(Assets& assets, slice<TextureLoadJob> batch) {
+void blit_image(CommandBuffer& cmd_buffer, Filter filter, texture_handle src_handle, ImageOffset src_region[2], texture_handle dst_handle, ImageOffset dst_region[2]) {
+	Texture* src = get_Texture(src_handle);
+	Texture* dst = get_Texture(dst_handle);
+
+	blit_image(cmd_buffer, filter, *src, src_region, *dst, dst_region);
+}
+
+//todo could be moved somewhere else
+static hash_map<SamplerDesc, Sampler, 13> sampler_cache;
+
+sampler_handle query_Sampler(const SamplerDesc& sampler_desc) {
+	int index = sampler_cache.keys.index(sampler_desc);
+	if (index == -1) {
+		Sampler sampler = make_TextureSampler(sampler_desc);
+		index = sampler_cache.set(sampler_desc, sampler);
+	}
+
+	return { (uint)(index + 1) };
+}
+
+Sampler get_Sampler(sampler_handle sampler_handle) {
+	return sampler_cache.values[sampler_handle.id - 1];
+}
+
+u64 hash_func(SamplerDesc& sampler_desc) {
+	return ((uint)sampler_desc.min_filter << 0)
+		| ((uint)sampler_desc.mag_filter << 2)
+		| ((uint)sampler_desc.mip_mode << 4)
+		| ((uint)sampler_desc.wrap_u << 6)
+		| ((uint)sampler_desc.wrap_v << 8)
+		| ((uint)sampler_desc.max_anisotropy << 10);
+}
+
+void load_TextureBatch(slice<TextureLoadJob> batch) {
 	/*
 	string_buffer buffer;
 	buffer.allocator = &temporary_allocator;
@@ -317,24 +361,28 @@ void load() {
 
 }
 
-u64 underlying_texture(Assets& assets, texture_handle handle) {
+u64 underlying_texture(texture_handle handle) {
 	return (u64)assets.textures.get(handle)->image;
 }
 
-Texture* get_Texture(Assets& assets, texture_handle handle) {
+Texture* get_Texture(texture_handle handle) {
 	return assets.textures.get(handle);
 }
 
-material_handle make_Material(Assets& assets, MaterialDesc& desc) {
-	Material material = make_material_descriptors(assets.rhi, assets, desc);
+Cubemap* get_Cubemap(cubemap_handle handle) {
+	return assets.cubemaps.get(handle);
+}
+
+material_handle make_Material(MaterialDesc& desc) {
+	Material material =  rhi.material_allocator.make(desc);
 	return assets.materials.assign_handle(std::move(material));
 }
 
-Material* get_Material(Assets& assets, material_handle handle) {
+Material* get_Material(material_handle handle) {
 	return assets.materials.get(handle);
 }
 
-void replace_Material(Assets& assets, material_handle handle, MaterialDesc& desc) {
+void replace_Material(material_handle handle, MaterialDesc& desc) {
 	Material* mat = assets.materials.get(handle);
 	if (!mat) {
 		Material material;
@@ -347,14 +395,61 @@ void replace_Material(Assets& assets, material_handle handle, MaterialDesc& desc
 
 }
 
-MaterialDesc* material_desc(Assets& assets, material_handle handle) {
+MaterialDesc* material_desc(material_handle handle) {
 	Material* mat = assets.materials.get(handle);
 	if (mat) return &mat->desc;
 	return NULL;
 }
 
-void reload_modified(Assets& assets) {
+void reload_modified() {
 
+}
+
+//cubemaps are somewhat of a special case as they require 
+//processing on the graphics queue which is somewhat awkward
+
+void load_assets_in_queue() {
+	return;
+	begin_gpu_upload();
+
+	while (EquirectangularToCubemapJob* job = assets.equirectangular_to_cubemap_jobs.try_dequeue()) {
+		Cubemap* cubemap = assets.cubemaps.get(job->handle);
+
+		*cubemap = convert_equirectangular_to_cubemap(assets.cubemap_pass_resources, job->env_map);
+
+		printf("LOADING HDR\n");
+	}
+
+	end_gpu_upload();
+}
+
+
+cubemap_handle load_HDR(string_view filename) {
+	if (uint* cached = assets.path_to_handle.get(filename)) return { *cached };
+
+	string_buffer real_filename = tasset_path(filename);
+
+	
+	Image image = {};
+	image.data = stbi_loadf(real_filename.c_str(), &image.width, &image.height, &image.num_channels, STBI_rgb_alpha);
+	image.num_channels = 4;
+	image.format = TextureFormat::HDR;
+
+	assert(image.data);
+
+	Texture texture = make_TextureImage(rhi.texture_allocator, image);
+	texture_handle env_map = assets.textures.assign_handle(std::move(texture));
+
+	printf("LOADED ENV MAP %p\n", texture.image);
+
+	stbi_image_free(image.data);
+	
+
+	//texture_handle env_map = load_Texture("Wood_2//Stylized_Wood_basecolor.jpg");
+
+	Cubemap cubemap = convert_equirectangular_to_cubemap(assets.cubemap_pass_resources, env_map);
+
+	return assets.cubemaps.assign_handle(std::move(cubemap));
 }
 
 //REFLECT_STRUCT_BEGIN(Model)

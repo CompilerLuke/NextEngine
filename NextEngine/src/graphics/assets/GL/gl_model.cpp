@@ -1,5 +1,3 @@
-#include "stdafx.h"
-
 #ifdef RENDER_API_OPENGL
 
 #include "core/memory/linear_allocator.h"

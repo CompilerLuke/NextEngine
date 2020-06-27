@@ -1,9 +1,8 @@
-#include "stdafx.h"
+#ifdef RENDER_API_OPENGL
+
 #include "graphics/rhi/frame_buffer.h"
 #include <glad/glad.h>
 #include "graphics/assets/texture.h"
-
-#ifdef RENDER_API_OPENGL
 
 AttachmentDesc::AttachmentDesc(texture_handle& id) 
 : tex_id(id) {}

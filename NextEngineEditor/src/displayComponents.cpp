@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "displayComponents.h"
 #include <imgui/imgui.h>
 #include "editor.h"
@@ -6,6 +5,7 @@
 #include "ecs/ecs.h"
 #include "core/io/logger.h"
 #include "core/container/hash_map.h"
+#include "graphics/assets/assets.h"
 
 hash_map<sstring, OnInspectGUICallback, 103> override_inspect;
 
@@ -58,12 +58,18 @@ bool render_fields_primitive(bool* ptr, string_view prefix) {
 #include <imgui/imgui_internal.h>
 
 namespace ImGui {
-	bool ImageButton(Assets& assets, texture_handle handle, glm::vec2 size) {
-		return ImageButton((ImTextureID)underlying_texture(assets, handle), size, ImVec2(0,1), ImVec2(1,0));
+	bool ImageButton(texture_handle handle, glm::vec2 size, glm::vec2 uv0, glm::vec2 uv1) {
+		static texture_handle white = load_Texture("solid_white.png");
+		if (handle.id == INVALID_HANDLE) handle = white;
+
+		return ImageButton((ImTextureID)handle.id, size, uv0, uv1); 
 	}
 
-	void Image(Assets& assets, texture_handle handle, glm::vec2 size) {
-		Image((ImTextureID)underlying_texture(assets, handle), size, ImVec2(0, 1), ImVec2(1, 0));
+	void Image(texture_handle handle, glm::vec2 size, glm::vec2 uv0, glm::vec2 uv1) {
+		static texture_handle white = load_Texture("solid_white.png");
+		if (handle.id == INVALID_HANDLE) handle = white;
+
+		Image( (ImTextureID)handle.id, size, uv0, uv1); 
 	}
 }
 
@@ -200,7 +206,7 @@ bool render_fields(reflect::TypeDescriptor* type, void* data, string_view prefix
 
 void DisplayComponents::update(World& world, UpdateCtx& params) {}
 
-void DisplayComponents::render(World& world, RenderCtx& params, Editor& editor) {
+void DisplayComponents::render(World& world, RenderPass& params, Editor& editor) {
 	//ImGui::SetNextWindowSize(ImVec2(params.width * editor.editor_tab_width, params.height));
 	//ImGui::SetNextWindowPos(ImVec2(0, 0));
 
@@ -230,7 +236,8 @@ void DisplayComponents::render(World& world, RenderCtx& params, Editor& editor) 
 				if (uncollapse)
 					ImGui::SetNextTreeNodeOpen(true);
 
-				DiffUtil diff_util(comp.data, comp.type, &temporary_allocator);
+				DiffUtil diff_util;
+				begin_tdiff(diff_util, comp.data, comp.type);
 
 				bool open = render_fields(comp.type, comp.data, "Component", editor);
 				if (open) {
@@ -242,7 +249,7 @@ void DisplayComponents::render(World& world, RenderCtx& params, Editor& editor) 
 						for (int i = 0; i < world.components_hash_size; i++) {
 							ComponentStore* store = world.components[i].get();
 							if (store && string_view(store->get_component_type()->name) == comp.type->name) {
-								editor.submit_action(new DestroyComponentAction(store, selected_id));
+								entity_create_action(editor.actions, selected_id);
 
 								break;
 							}
@@ -252,7 +259,7 @@ void DisplayComponents::render(World& world, RenderCtx& params, Editor& editor) 
 					}
 					ImGui::EndPopup();
 				} else {
-					diff_util.submit(editor, "Edited Property");
+					end_diff(editor.actions, diff_util, "Edited Property");
 				}
 
 				ImGui::EndGroup();

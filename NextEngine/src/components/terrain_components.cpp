@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "components/terrain.h"
 #include "components/transform.h"
 #include "core/reflection.h"

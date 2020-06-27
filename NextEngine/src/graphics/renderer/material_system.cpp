@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "graphics/assets/material.h"
 #include "graphics/assets/assets.h"
 #include "core/io/logger.h"
@@ -19,16 +18,16 @@ REFLECT_STRUCT_MEMBER(materials)
 REFLECT_STRUCT_END()
 
 material_handle make_SubstanceMaterial(Assets& assets, string_view folder, string_view name) {
-	auto shad = load_Shader(assets, "shaders/pbr.vert", "shaders/pbr.frag");
+	auto shad = load_Shader("shaders/pbr.vert", "shaders/pbr.frag");
 	
 	MaterialDesc mat{ shad };
-	mat_image(mat, "material.diffuse", load_Texture(assets, format(folder, "\\", name, "_basecolor.jpg")));
-	mat_image(mat, "material.metallic", load_Texture(assets, format(folder, "\\", name, "_metallic.jpg")));
-	mat_image(mat, "material.roughness", load_Texture(assets, format(folder, "\\", name, "_roughness.jpg")));
-	mat_image(mat, "material.normal", load_Texture(assets, format(folder, "\\", name, "_normal.jpg")));
+	mat_image(mat, "material.diffuse", load_Texture(tformat(folder, "\\", name, "_basecolor.jpg")));
+	mat_image(mat, "material.metallic", load_Texture(tformat(folder, "\\", name, "_metallic.jpg")));
+	mat_image(mat, "material.roughness", load_Texture(tformat(folder, "\\", name, "_roughness.jpg")));
+	mat_image(mat, "material.normal", load_Texture(tformat(folder, "\\", name, "_normal.jpg")));
 	mat_vec2(mat, "transformUVs", glm::vec2(1, 1));
 
-	return make_Material(assets, mat);
+	return make_Material(mat);
 }
 
 void mat_int(MaterialDesc& desc, string_view name, int value) {
@@ -81,6 +80,7 @@ void mat_cubemap(MaterialDesc& desc, string_view name, cubemap_handle value) {
 	param.name = name;
 	param.type = Param_Cubemap;
 	param.image = value.id;
+	param.vec3 = glm::vec3(1);
 	
 	desc.params.append(param);
 }

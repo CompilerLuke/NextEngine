@@ -8,13 +8,13 @@
 #include "system.h"
 #include "vector.h"
 
-extern int global_type_id;
+constexpr int global_type_id = 0;
 using typeid_t = int;
 
 template <typename T>
 constexpr typeid_t type_id() noexcept
 {
-	static int const type_id = global_type_id++;
+	int constexpr type_id = global_type_id++;
 	return type_id;
 }
 
@@ -280,13 +280,13 @@ struct World {
 		return by_id<T>(id) != NULL && has_component<Args...>(id);
 	}
 
-	template<typename A, typename... Args>
+	template<typename T, typename... Args>
 	typename std::enable_if<(sizeof...(Args) > 0), vector <ID> >::type
 		filter(Layermask layermask) {
 		vector<ID> ids;
 
 		for (int i = 0; i < num_entities; i++) {
-			if (has_component<A, Args...>(i)) {
+			if (has_component<T, Args...>(i)) {
 				auto entity = by_id<Entity>(i);
 				if (entity && entity->enabled && entity->layermask & layermask) {
 					ids.push_back(i);

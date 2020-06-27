@@ -229,12 +229,18 @@
     <ClCompile Include="src\graphics\rhi\vulkan\vk_device.cpp" />
     <ClCompile Include="src\graphics\rhi\vulkan\vk_swapchain.cpp" />
     <ClCompile Include="src\graphics\rhi\vulkan\vk_pipeline.cpp" />
-    <ClCompile Include="src\graphics\rhi\vulkan\rhi.cpp" />
     <ClCompile Include="src\graphics\rhi\vulkan\vk_cmd_buffer.cpp" />
     <ClCompile Include="src\graphics\assets\VULKAN\vk_material.cpp" />
     <ClCompile Include="vendor\spirv-reflect\spirv_reflect.cpp" />
     <ClCompile Include="src\graphics\assets\assets.cpp" />
-    <ClCompile Include="src\graphics\rhi\vulkan\shader_access.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_shader_access.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_rhi.cpp" />
+    <ClCompile Include="src\graphics\renderer\lighting_system.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_ubo.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_framegraph.cpp" />
+    <ClCompile Include="src\ecs\ecs20.cpp" />
+    <ClCompile Include="vendor\imgui\imgui_impl_vulkan.cpp" />
+    <ClCompile Include="src\components\transform_ref.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="vendor\imgui\imconfig.h">
@@ -386,24 +392,6 @@
     <ClInclude Include="include\graphics\renderer\renderer.h">
       <Filter>include\graphics</Filter>
     </ClInclude>
-    <ClInclude Include="include\graphics\rhi\buffer.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\rhi\device.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\rhi\draw.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\rhi\frame_buffer.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\rhi\primitives.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\rhi\window.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
     <ClInclude Include="include\graphics\renderer\transforms.h">
       <Filter>include\graphics</Filter>
     </ClInclude>
@@ -441,7 +429,6 @@
     </ClInclude>
     <ClInclude Include="include\core\container\bitset.h" />
     <ClInclude Include="include\graphics\pass\render_graph.h" />
-    <ClInclude Include="include\graphics\assets\material_manager.h" />
     <ClInclude Include="include\core\container\tvector.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\vulkan.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\device.h" />
@@ -451,7 +438,6 @@
     <ClInclude Include="include\graphics\rhi\vulkan\buffer.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\pipeline.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\shader.h" />
-    <ClInclude Include="include\graphics\rhi\rhi.h" />
     <ClInclude Include="include\graphics\assets\assets.h" />
     <ClInclude Include="include\graphics\assets\material.h">
       <Filter>include\graphics</Filter>
@@ -462,5 +448,36 @@
     <ClInclude Include="include\graphics\rhi\vulkan\shader_access.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\core.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\command_buffer.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\draw.h" />
+    <ClInclude Include="include\graphics\rhi\rhi.h" />
+    <ClInclude Include="include\graphics\rhi\buffer.h">
+      <Filter>include\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\frame_buffer.h">
+      <Filter>include\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\pipeline.h" />
+    <ClInclude Include="include\graphics\rhi\primitives.h">
+      <Filter>include\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\window.h">
+      <Filter>include\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\draw.h" />
+    <ClInclude Include="include\graphics\rhi\render_passh.h" />
+    <ClInclude Include="include\graphics\renderer\lighting_system.h" />
+    <ClInclude Include="include\graphics\assets\assets_store.h" />
+    <ClInclude Include="include\core\container.h" />
+    <ClInclude Include="include\core\container\queue.h" />
+    <ClInclude Include="include\components\skybox.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\frame_graph.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\frame_buffer.h" />
+    <ClInclude Include="include\graphics\rhi\shader_access.h" />
+    <ClInclude Include="include\core\event.h" />
+    <ClInclude Include="include\ecs\ecs20.h" />
+    <ClInclude Include="include\core\container\tuple.h" />
+    <ClInclude Include="vendor\imgui\imgui_impl_vulkan.h" />
+    <ClInclude Include="src\components\transform_ref.h" />
+    <ClInclude Include="include\core\reflection2.h" />
   </ItemGroup>
 </Project>

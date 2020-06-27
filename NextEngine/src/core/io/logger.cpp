@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "core/io/logger.h"
 #include <string>
 

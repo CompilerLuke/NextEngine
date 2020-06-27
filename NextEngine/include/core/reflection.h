@@ -6,6 +6,7 @@
 #include <glm/vec3.hpp>
 #include "core/container/string_buffer.h"
 #include "core/io/logger.h"
+#include <glm/mat4x4.hpp>
 
 struct World;
 

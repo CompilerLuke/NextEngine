@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "assetTab.h"
 #include <imgui/imgui.h>
 #include "ecs/ecs.h"
@@ -402,7 +401,7 @@ glm::vec2 calc_pos_of_node(ShaderGraph& graph, shader_node_handle handle, bool i
 	return position;
 }
 
-void render_node_inner(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle, Assets& assets);
+void render_node_inner(ShaderGraph& graph, ShaderNode* self, shader_node_handle handle);
 
 void deselect(ShaderGraph& graph, shader_node_handle handle) {
 	for (auto& selected_handle : graph.selected) {
@@ -413,7 +412,7 @@ void deselect(ShaderGraph& graph, shader_node_handle handle) {
 	}
 }
 
-void render_node(ShaderGraph& graph, shader_node_handle handle, Assets& assets) {
+void render_node(ShaderGraph& graph, shader_node_handle handle) {
 	auto self = graph.nodes_manager.get(handle);
 
 	glm::vec2 size = calc_size(graph, self);
@@ -480,7 +479,7 @@ void render_node(ShaderGraph& graph, shader_node_handle handle, Assets& assets) 
 	ImGui::BeginGroup(); // Lock horizontal position
 	//ImGui::PopID();
 
-	render_node_inner(graph, self, handle, assets);
+	render_node_inner(graph, self, handle);
 
 	for (int i = 0; i < self->inputs.length; i++) {
 		auto& input = self->inputs[i];
@@ -518,7 +517,8 @@ void render_node(ShaderGraph& graph, shader_node_handle handle, Assets& assets) 
 #include "GLFW/glfw3.h"
 
 void set_params_for_shader_graph(AssetTab& asset_tab, shader_handle shader_handle) {
-	ShaderAsset* asset = asset_tab.shader_handle_to_asset[shader_handle.id];
+	AssetNode* asset_node = asset_tab.info.asset_type_handle_to_node[AssetNode::Shader][shader_handle.id];
+	ShaderAsset* asset = asset_node ? &asset_node->shader : nullptr;
 
 	MaterialDesc desc{ asset->handle };
 
@@ -537,9 +537,7 @@ void set_params_for_shader_graph(AssetTab& asset_tab, shader_handle shader_handl
 	mat_vec2(desc, "transformUVs", glm::vec2(1.0f));
 }
 
-void render_preview(ShaderAsset* asset, World& world, AssetTab& tab, RenderCtx& old_ctx) {
-	Assets& assets = tab.asset_manager;
-	
+void render_preview(ShaderAsset* asset, AssetInfo& tab, RenderPass& old_ctx) {	
 	ShaderGraph& graph = *asset->graph;
 	
 	/*
@@ -574,7 +572,7 @@ void render_preview(ShaderAsset* asset, World& world, AssetTab& tab, RenderCtx& 
 	vector<material_handle> materials = { mat_handle };
 
 	CommandBuffer cmd_buffer(assets);
-	RenderCtx render_ctx = create_preview_command_buffer(cmd_buffer, old_ctx, tab, cam, world);
+	RenderPass render_ctx = create_preview_command_buffer(cmd_buffer, old_ctx, tab, cam, world);
 
 	cmd_buffer.draw(model_m, sphere, materials);
 
@@ -627,7 +625,7 @@ void set_scale(ShaderGraph* graph, Input& input, float scale) {
 	}
 }
 
-void ShaderGraph::render(World& world, RenderCtx& ctx, Input& input, Assets& assets) {
+void ShaderGraph::render(World& world, RenderPass& ctx, Input& input) {
 	ImGui::PushClipRect(ImGui::GetCursorScreenPos(), ImVec2(ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionMax().x, ImGui::GetCursorScreenPos().y + ImGui::GetContentRegionMax().y), true);
 
 	float scroll_speed = 0.2f;
@@ -659,7 +657,7 @@ void ShaderGraph::render(World& world, RenderCtx& ctx, Input& input, Assets& ass
 
 	//Draw Nodes
 	for (unsigned int i = 0; i < nodes_manager.slots.length; i++) {
-		render_node(*this, nodes_manager.index_to_handle(i), assets);
+		render_node(*this, nodes_manager.index_to_handle(i));
 	}
 
 	draw_list->ChannelsSetCurrent(0);
@@ -876,16 +874,13 @@ void ShaderCompiler::compile() {
 	end();
 }
 
-void load_Shader_for_graph(Assets& assets, ShaderAsset* asset) {
+void load_Shader_for_graph(ShaderAsset* asset) {
 	string_buffer file_path = tformat("data/shader_output/", asset->name, ".frag");
-	
-	asset->handle = load_Shader(assets, "shaders/pbr.vert", file_path);
+	asset->handle = load_Shader("shaders/pbr.vert", file_path);
 }
 
 //todo ShaderGraph needs serious efforts to function again
-void compile_shader_graph(AssetTab& asset_tab, ShaderAsset* asset) {
-	Assets& assets = asset_tab.asset_manager;
-	
+void compile_shader_graph(AssetInfo& asset_tab, ShaderAsset* asset) {	
 	static string_buffer last_output;
 	
 	ShaderCompiler compiler(*asset->graph);
@@ -895,14 +890,14 @@ void compile_shader_graph(AssetTab& asset_tab, ShaderAsset* asset) {
 
 	string_buffer file_path = format("data/shader_output/", asset->name, ".frag");
 
-	if (!writef(asset_tab.asset_manager, file_path, compiler.contents)) {
+	if (!io_writef(file_path, compiler.contents)) {
 		log("Could not open file to write shader output");
 		return;
 	}
 
-	load_Shader_for_graph(asset_tab.asset_manager, asset);
+	load_Shader_for_graph(asset);
 
-	insert_shader_handle_to_asset(asset_tab, asset);
+	asset_tab.asset_type_handle_to_node[AssetNode::Shader][asset->handle.id] = (AssetNode*)((char*)asset - (offsetof(AssetNode, shader)));
 	
 	//reload(assets, asset->handle);
 
@@ -911,33 +906,32 @@ void compile_shader_graph(AssetTab& asset_tab, ShaderAsset* asset) {
 
 void new_node_popup(ShaderAsset* asset);
 
-void ShaderEditor::render(World& world, Editor& editor, RenderCtx& ctx, Input& input) {
+void ShaderEditor::render(World& world, Editor& editor, RenderPass& ctx, Input& input) {
 	if (!this->open) return;
 
-	AssetTab& tab = editor.asset_tab;
-	Assets& shaders = tab.asset_manager;
+	AssetInfo& tab = editor.asset_info;
 
 	if (ImGui::Begin("Shader Graph Editor", &this->open, ImGuiWindowFlags_NoScrollbar)) {
-		if (this->current_shader == -1) {
+		if (this->current_shader.id == INVALID_HANDLE) {
 			ImGui::Text("Please select a shader");
 			ImGui::End();
 			return;
 		}
 
-		ShaderAsset* asset = tab.assets.by_id<ShaderAsset>(current_shader);
+		ShaderAsset* asset = &get_asset(tab, current_shader)->shader;
 
 		ImGui::SetNextItemWidth(ImGui::GetContentRegionMax().x * 0.8);
-		render_name(asset->name, tab.default_font);
+		render_name(asset->name);
 
 		ImGui::SameLine();
 		if (ImGui::Button("Compile")) {
 			compile_shader_graph(tab, asset);
-			render_preview(asset, world, tab, ctx);
+			render_preview(asset, tab, ctx);
 		}
 
 		if (input.key_pressed('R', true) && input.key_down(GLFW_KEY_LEFT_CONTROL, true)) {
 			compile_shader_graph(tab, asset);
-			render_preview(asset, world, tab, ctx);
+			render_preview(asset, tab, ctx);
 		}
 
 		if (input.key_pressed('S', true) && input.key_down(GLFW_KEY_LEFT_SHIFT, true)) {
@@ -970,7 +964,7 @@ void ShaderEditor::render(World& world, Editor& editor, RenderCtx& ctx, Input& i
 		
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f * asset->graph->scale, 2.0f * asset->graph->scale));
 
-		asset->graph->render(world, ctx, input, tab.asset_manager);
+		asset->graph->render(world, ctx, input);
 
 		glm::vec2 mouse_drag_begin(ImGui::GetMousePos().x, ImGui::GetMousePos().y);
 		mouse_drag_begin.x -= ImGui::GetMouseDragDelta().x;
@@ -1055,29 +1049,26 @@ void ShaderEditor::render(World& world, Editor& editor, RenderCtx& ctx, Input& i
 	ImGui::End();
 }
 
-ShaderAsset* create_new_shader(World& world, AssetTab& self, Editor& editor, RenderCtx& ctx) {
-	ID id = self.assets.make_ID();
-	ShaderAsset* asset = self.assets.make<ShaderAsset>(id);
-	asset->name = "Shader Graph";
+ShaderAsset* create_new_shader(World& world, AssetTab& self, Editor& editor) {
+	AssetNode asset(AssetNode::Shader);
+	asset.shader.name = "Shader Graph";
 
-	add_asset(self, id);
-	
+	add_asset_to_current_folder(self, std::move(asset));
+
 	return NULL;
 }
 
 ShaderNode make_pbr_node();
 
-void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTab& self, RenderCtx& ctx) {
-	Assets& assets = self.asset_manager;
-	
-	render_name(shader->name, self.default_font);
+void asset_properties(ShaderAsset* shader, Editor& editor, AssetTab& self, RenderPass& ctx) {	
+	render_name(shader->name);
 	
 	ImGui::SetNextTreeNodeOpen(true);
 	ImGui::CollapsingHeader("Shader Graph");
 
 	if (ImGui::Button("Open Shader Editor")) {
 		editor.shader_editor.open = true;
-		editor.shader_editor.current_shader = self.selected;
+		editor.shader_editor.current_shader = self.explorer.selected;
 	}
 
 	if (shader->graph == NULL) {
@@ -1085,7 +1076,7 @@ void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTa
 		shader->graph->nodes_manager.assign_handle(make_pbr_node(), true);
 	}
 
-	compile_shader_graph(self, shader); //todo use undo redo system to detect change
+	compile_shader_graph(self.info, shader); //todo use undo redo system to detect change
 
 	ImGui::SetNextTreeNodeOpen(true);
 	ImGui::CollapsingHeader("Properties");
@@ -1105,7 +1096,7 @@ void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTa
 		}
 
 		if (param.type == Param_Image) {
-			ImGui::Image(self.asset_manager, { param.image }, ImVec2(200, 200));
+			ImGui::Image({ param.image }, ImVec2(200, 200));
 			
 			accept_drop("DRAG_AND_DROP_IMAGE", &param.image, sizeof(texture_handle));
 			
@@ -1114,7 +1105,7 @@ void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTa
 			ImGui::Button(name.c_str()); //todo implement rename
 
 			if (ImGui::BeginDragDropSource()) {
-				ImGui::Image(self.asset_manager, { param.image }, ImVec2(200, 200));
+				ImGui::Image({ param.image }, ImVec2(200, 200));
 				ImGui::SetDragDropPayload("DRAG_AND_DROP_IMAGE_PARAM", &i, sizeof(string_view));
 				ImGui::EndDragDropSource();
 			}
@@ -1162,8 +1153,8 @@ void asset_properties(ShaderAsset* shader, Editor& editor, World& world, AssetTa
 		ImGui::EndPopup();
 	}
 
-	rot_preview(assets, shader->graph->rot_preview);
-	render_preview(shader, world, self, ctx);
+	rot_preview(self.preview_resources, shader->graph->rot_preview);
+	render_preview(shader, self.info, ctx);
 }
 
 #include "core/serializer.h"
@@ -1236,13 +1227,7 @@ void deserialize_shader_asset(DeserializerBuffer& buffer, ShaderAsset* asset) {
 
 	buffer.read_int();
 
-	vector<Param> params;
-	buffer.read_array((reflect::TypeDescriptor_Vector*) reflect::TypeResolver<vector<Param>>::get(), &params);
-	for (Param& param : params) {
-		ParamDesc desc;
-		convert_to_desc(param, desc);
-		graph->parameters.append(desc);
-	}
+	buffer.read_array((reflect::TypeDescriptor_Vector*) reflect::TypeResolver<vector<ParamDesc>>::get(), &graph->parameters);
 
 	unsigned num_names = buffer.read_int();
 	

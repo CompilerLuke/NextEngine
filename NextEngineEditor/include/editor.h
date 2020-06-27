@@ -16,6 +16,7 @@
 #include "graphics/rhi/frame_buffer.h"
 #include "shaderGraph.h"
 #include "visualize_profiler.h"
+#include "editor_viewport.h"
 #include "engine/application.h"
 #include "components/flyover.h"
 #include "graphics/assets/shader.h"
@@ -60,7 +61,6 @@ struct Editor {
 	World& world;
 	Input& input;
 	Time& time;
-	Assets& asset_manager;
 
 	struct World& copy_of_world;
 
@@ -68,9 +68,6 @@ struct Editor {
 	Framebuffer scene_view_fbo;
 
 	int selected_id = -1;
-
-	float viewport_width;
-	float viewport_height;
 
 	bool playing_game = false;
 	bool game_fullscreen = false;
@@ -82,13 +79,12 @@ struct Editor {
 
 	vector<Icon> icons;
 
-	vector<std::unique_ptr<EditorAction>> undos;
-	vector<std::unique_ptr<EditorAction>> redos;
-
-	void submit_action(EditorAction*);
+	EditorActions actions;
 
 	texture_handle get_icon(string_view name);
 	
+	AssetInfo asset_info;
+
 	FlyOverSystem fly_over_system;
 	VisualizeProfiler profiler;
 	ShaderEditor shader_editor;
@@ -97,7 +93,9 @@ struct Editor {
 	DisplayComponents display_components;
 	Gizmo gizmo;
 	PickingSystem picking;
-	OutlineSelected outline_selected;
+	OutlineRenderState outline_selected;
+
+	EditorViewport editor_viewport;
 	
 	bool droppable_field_active;
 	DroppableField droppable_field;
@@ -112,12 +110,13 @@ struct Editor {
 	void init_imgui();
 
 	void begin_imgui(struct Input&);
-	void end_imgui();
+	void end_imgui(struct CommandBuffer&);
 
 	void select(int);
 };
 
 namespace ImGui {
+	void InputText(const char*, sstring&);
 	void InputText(const char*, string_buffer&);
 }
 

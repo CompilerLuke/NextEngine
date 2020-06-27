@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #ifdef RENDER_API_OPENGL
 
 #define STB_IMAGE_IMPLEMENTATION

@@ -9,10 +9,8 @@ struct ENGINE_API Modules {
 	struct World* world;
 	struct Input* input;
 	struct Renderer* renderer;
-	struct Assets* assets;
 	struct PhysicsSystem* physics_system;
 	struct LocalTransformSystem* local_transforms_system;
-	struct RHI* rhi;
 
 	Modules(const char* app_name, const char* level_path);
 	void begin_frame();

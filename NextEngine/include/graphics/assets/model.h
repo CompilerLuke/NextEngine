@@ -46,7 +46,9 @@ struct ModelRenderer {
 	REFLECT(ENGINE_API)
 };
 
-struct Level;
-struct BufferAllocator;
+struct VertexBuffer;
+struct VertexStreaming;
+struct Assets;
 
-void load_assimp(Model* model, BufferAllocator& buffer_allocator, string_view real_path, const glm::mat4& apply_transform);
+VertexBuffer get_VertexBuffer(model_handle model, uint index);
+void load_assimp(Model* model, string_view real_path, const glm::mat4& apply_transform);

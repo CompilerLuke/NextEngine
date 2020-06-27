@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "components/transform.h"
 
 #define GLM_FORCE_SSE2 // or GLM_FORCE_SSE42 if your processor supports it

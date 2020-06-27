@@ -1,39 +1,33 @@
-#include "stdafx.h"
 #include "graphics/pass/volumetric.h"
 #include "graphics/assets/assets.h"
 #include "graphics/rhi/primitives.h"
 #include "graphics/renderer/renderer.h"
+#include "graphics/renderer/lighting_system.h"
 
 #include "components/lights.h"
 #include "components/transform.h"
 #include "components/camera.h"
 #include "core/io/logger.h"
 
-FogMap::FogMap(Assets& assets, unsigned int width, unsigned int height) {
-	texture_handle tex;
+FogMap::FogMap(unsigned int width, unsigned int height) {
+	FramebufferDesc desc{ width, height };		
+	add_color_attachment(desc, &map); //Should this really be creating a handle to the actuall resource
 	
-	AttachmentDesc color_attachment(tex); //Should this really be creating a handle to the actuall resource
-	color_attachment.min_filter = Filter::Linear;
-	color_attachment.mag_filter = Filter::Linear;
-	color_attachment.wrap_s = Wrap::ClampToBorder;
-	color_attachment.wrap_t = Wrap::ClampToBorder;
+	SamplerDesc sampler_desc;
+	sampler_desc.min_filter = Filter::Linear;
+	sampler_desc.mag_filter = Filter::Linear;
+	sampler_desc.wrap_u = Wrap::ClampToBorder;
+	sampler_desc.wrap_v = Wrap::ClampToBorder;
 
-	FramebufferDesc settings;
-	settings.width = width;
-	settings.height = height;
-	settings.depth_buffer = DepthComponent24;
-	settings.color_attachments.append(color_attachment);
-
-	this->fbo = Framebuffer(assets, settings);
-	this->map = tex;
+	make_Framebuffer(RenderPass::Volumetric, desc);
 }
 
-VolumetricPass::VolumetricPass(Assets& assets, glm::vec2 size, texture_handle depth_prepass)
-	: assets(assets),
-	  calc_fog(assets, size.x / 2, size.y / 2),
+VolumetricPass::VolumetricPass(glm::vec2 size, texture_handle depth_prepass)
+	: 
+	  calc_fog(size.x / 2, size.y / 2),
 	  depth_prepass(depth_prepass),
-	  volume_shader(load_Shader(assets, "shaders/screenspace.vert", "shaders/volumetric.frag")),
-	  upsample_shader(load_Shader(assets, "shaders/screenspace.vert", "shaders/volumetric_upsample.frag"))
+	  volume_shader(load_Shader("shaders/screenspace.vert", "shaders/volumetric.frag")),
+	  upsample_shader(load_Shader("shaders/screenspace.vert", "shaders/volumetric_upsample.frag"))
 {
 }
 
@@ -54,32 +48,25 @@ struct VolumeUBO {
 	int cascade_end;
 };
 
-void VolumetricPass::render_with_cascade(World& world, RenderCtx& render_params, ShadowParams& params) {
-	if (!render_params.cam) return;
+void render_with_cascade(VolumetricPass& pass, glm::vec3 cam_trans, DirLightUBO& dir_light_ubo,  RenderPass& render_params, ShadowParams& params) {
 
 	//Shader* volume_shader = assets.shaders.get(this->volume_shader);
 	
 	//volume_shader->bind();
 
-	calc_fog.fbo.bind();
+	pass.calc_fog.fbo.bind();
 	
 	//glDisable(GL_DEPTH_TEST);
 	//glEnable(GL_BLEND);
 
 	//glBlendFunc(GL_ONE, GL_ONE);
 
-	auto dir_light = get_dir_light(world, GAME_LAYER);
-	auto dir_light_trans = world.by_id<Transform>(world.id_of(dir_light));
-	if (!dir_light_trans) return;
 
 	//gl_bind_to(assets.textures, depth_prepass, 0);
 	//volume_shader->set_int("depthPrepass", 0);
 
 	//gl_bind_to(assets.textures, params.depth_map, 1);
 	//volume_shader->set_int("depthMap", 1);
-
-	auto cam_trans = world.by_id<Transform>(world.id_of(render_params.cam));
-	if (!cam_trans) return;
 
 	//volume_shader->set_vec3("camPosition", cam_trans->position);
 	//volume_shader->set_vec3("sunColor", dir_light->color);
@@ -103,12 +90,29 @@ void VolumetricPass::render_with_cascade(World& world, RenderCtx& render_params,
 	//glDisable(GL_BLEND);
 	//glEnable(GL_DEPTH_TEST);
 
-	calc_fog.fbo.unbind();
+	pass.calc_fog.fbo.unbind();
 }
 
-void VolumetricPass::render_upsampled(World& world, texture_handle current_frame_id, glm::mat4& proj_matrix) {
-	auto volumetric_map = calc_fog.map;
-	auto current_frame = current_frame_id;
+#include "graphics/assets/material.h"
+
+
+void render_upsampled(VolumetricPass& self, World& world, texture_handle current_frame, glm::mat4& proj_matrix) {
+	glm::mat4 depth_proj = glm::inverse(proj_matrix);
+	
+	/*RenderPass pass = begin_render_pass(RenderPass::Screen, RenderPass::Standard, self.calc_fog.fbo);
+	
+	MaterialDesc upsample_material_desc{ self.upsample_shader };
+	mat_image(upsample_material_desc, "depthPrepass", self.depth_prepass);
+	mat_image(upsample_material_desc, "volumetricMap", self.calc_fog.map);
+	mat_image(upsample_material_desc, "frameMap", current_frame);
+	mat_mat4(upsample_material_desc, "depthProj", depth_proj);
+
+	material_handle upsample_material = make_Material(upsample_material_desc);
+
+	draw_mesh(pass.cmd_buffer, primitives.quad, upsample_material, glm::mat4(1.0));
+
+	end_render_pass(pass);
+	*/
 	
 	//Shader* upsample_shader = assets.shaders.get(this->upsample_shader);
 

@@ -9,6 +9,11 @@ struct Device;
 const int MAX_SWAPCHAIN_IMAGES = 4;
 
 struct Swapchain {
+	VkDevice device;
+	VkInstance instance;
+	Window* window;
+	VkSurfaceKHR surface;
+	
 	VkSwapchainKHR swapchain;
 	array<10, VkImage> images;
 	VkFormat imageFormat;
@@ -24,14 +29,13 @@ struct Swapchain {
 	VkFence in_flight_fences[MAX_SWAPCHAIN_IMAGES];
 	array<10, VkFence> images_in_flight;
 
-	VkSurfaceKHR surface;
-
 	operator VkSwapchainKHR() {
 		return swapchain;
 	}
 };
 
-Swapchain make_SwapChain(Device& device, Window& window, VkSurfaceKHR surface);
+void make_Swapchain(Swapchain& swapchain, Device& device, Window& window, VkSurfaceKHR surface);
+void make_SyncObjects(Swapchain& swapchain);
 VkSurfaceKHR make_Surface(VkInstance instance, Window& window);
-void destroy_Surface(VkInstance instance, VkSurfaceKHR surface);
-void destroy_sync_objects(VkDevice device, Swapchain& swapchain);
+void present_swapchain_image(Swapchain& swapchain);
+void destroy_Swapchain(Swapchain& swapchain);

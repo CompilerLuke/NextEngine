@@ -1,8 +1,6 @@
-#include "stdafx.h"
 #include "graphics/rhi/window.h"
 #include "core/io/logger.h"
 
-#define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
@@ -46,10 +44,11 @@ void scroll_callback(GLFWwindow* window_ptr, double xoffset, double yoffset)
 	window->on_scroll.broadcast(glm::vec2(xoffset, yoffset));
 }
 
-void gl_error_callback(GLenum source, GLenum typ, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* ptr) {
-	log(message);
-}
-
+#ifdef RENDER_API_OPENGL
+//void gl_error_callback(GLenum source, GLenum typ, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* ptr) {
+//	log(message);
+//}
+#endif
 
 void Window::init() {
 	glfwInit();

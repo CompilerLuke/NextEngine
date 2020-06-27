@@ -21,7 +21,24 @@ struct QueueFamilyIndices {
 	}
 };
 
+struct VulkanDesc {
+	const char* app_name = "No name";
+	const char* engine_name = "No name";
+
+	uint32_t engine_version;
+	uint32_t app_version;
+	uint32_t api_version;
+
+	uint32_t min_log_severity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
+	uint32_t num_validation_layers = 0;
+	const char** validation_layers;
+
+	VkPhysicalDeviceFeatures device_features;
+};
+
 struct Device {
+	VulkanDesc desc;
+
 	VkInstance instance;
 	VkDebugUtilsMessengerEXT debug_messenger;
 
@@ -29,6 +46,7 @@ struct Device {
 	VkDevice device;
 
 	VkPhysicalDeviceFeatures device_features;
+	VkPhysicalDeviceLimits device_limits;
 
 	QueueFamilyIndices queue_families;
 
@@ -37,14 +55,13 @@ struct Device {
 	VkQueue transfer_queue;
 	VkQueue present_queue;
 
-	operator VkDevice() {
-		return device;
-	}
-
-	inline VkQueue operator[](QueueType type) {
-		return (&graphics_queue)[type];
-	}
+	inline operator VkDevice() { return device; }
+	inline operator VkPhysicalDevice() { return physical_device; }
+	inline VkQueue operator[](QueueType type) { return (&graphics_queue)[type]; }
 };
+
+VkSurfaceKHR make_Device(Device& device, const VulkanDesc& desc, struct Window& window);
+void destroy_Device(Device& device);
 
 struct SwapChainSupportDetails {
 	VkSurfaceCapabilitiesKHR capabilities;
@@ -58,27 +75,24 @@ struct QueueSubmitInfo {
 	
 	tvector<VkPipelineStageFlags> wait_dst_stages;
 	tvector<VkSemaphore> wait_semaphores;
+	//tvector<VkSemaphore> wait_timeline_semaphores;
 	tvector<VkSemaphore> signal_semaphores;
+	//tvector<VkSemaphore> signal_timeline_semaphores;
 	
 	tvector<u64> wait_semaphores_values;
 	tvector<u64> signal_semaphores_values;
 };
 
-void queue_wait_semaphore(QueueSubmitInfo& info, VkPipelineStageFlags, VkSemaphore);
-void queue_wait_timeline_semaphore(QueueSubmitInfo& info, VkPipelineStageFlags, VkSemaphore, u64);
-void queue_signal_timeline_semaphore(QueueSubmitInfo& info, VkSemaphore, u64);
-void queue_signal_semaphore(QueueSubmitInfo& info, VkSemaphore);
+void queue_wait_semaphore(QueueSubmitInfo&, VkPipelineStageFlags, VkSemaphore);
+void queue_wait_timeline_semaphore(QueueSubmitInfo&, VkPipelineStageFlags, VkSemaphore, u64);
+void queue_signal_timeline_semaphore(QueueSubmitInfo&, VkSemaphore, u64);
+void queue_signal_semaphore(QueueSubmitInfo&, VkSemaphore);
 void queue_submit(Device& device, QueueType type, const QueueSubmitInfo&);
 void queue_submit(VkDevice device, VkQueue queue, const QueueSubmitInfo&);
 
-VkFence make_Fence(VkDevice);
+VkEvent     make_Event(VkDevice);
+VkFence     make_Fence(VkDevice);
 VkSemaphore make_timeline_Semaphore(VkDevice);
 VkSemaphore make_Semaphore(VkDevice);
 
-void setup_debug_messenger(VkInstance instance, const VulkanDesc& desc, VkDebugUtilsMessengerEXT* result);
-void make_logical_devices(Device& device, const VulkanDesc& desc, VkSurfaceKHR surface);
-VkPhysicalDevice pick_physical_devices(VkInstance instance, VkSurfaceKHR surface);
-VkInstance make_Instance(const VulkanDesc& desc);
 SwapChainSupportDetails query_swapchain_support(VkSurfaceKHR surface, VkPhysicalDevice device);
-void destroy_Instance(VkInstance instance);
-void destroy_validation_layers(VkInstance instance, VkDebugUtilsMessengerEXT debug_messenger);

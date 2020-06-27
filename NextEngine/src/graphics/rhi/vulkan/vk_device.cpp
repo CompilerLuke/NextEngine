@@ -1,12 +1,10 @@
-#include "stdafx.h"
+#ifdef RENDER_API_VULKAN
+
 #include "graphics/rhi/vulkan/device.h"
 #include "graphics/rhi/vulkan/vulkan.h"
 #include <string.h>
 #include <stdio.h>
 #include <GLFW/glfw3.h>
-#include <glad/glad.h>
-
-#ifdef RENDER_API_VULKAN
 
 bool check_validation_layer_support(const VulkanDesc& desc) {
 	if (desc.num_validation_layers == 0) return true;
@@ -211,9 +209,9 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
 ) {
 	VulkanDesc* desc = (VulkanDesc*)pUserData;
 
-	if (messageSeverity >= desc->min_log_severity) {
+	//if (messageSeverity >= desc->min_log_severity) {
 		printf("validation layers: %s", pCallbackData->pMessage);
-	}
+	//}
 
 	return VK_FALSE;
 }
@@ -231,7 +229,7 @@ void populate_debug_messenger_create_info(VkDebugUtilsMessengerCreateInfoEXT& ma
 void setup_debug_messenger(VkInstance instance, const VulkanDesc& desc, VkDebugUtilsMessengerEXT* result) {
 	if (desc.num_validation_layers == 0) return;
 
-	VkDebugUtilsMessengerCreateInfoEXT makeInfo;
+	VkDebugUtilsMessengerCreateInfoEXT makeInfo = {};
 	populate_debug_messenger_create_info(makeInfo, desc);
 
 	if (vkCreateDebugUtilsMessengerEXT(instance, &makeInfo, nullptr, result) != VK_SUCCESS) {
@@ -327,10 +325,9 @@ VkPhysicalDevice pick_physical_devices(VkInstance instance, VkSurfaceKHR surface
 	return devices[index];
 }
 
-void make_logical_devices(Device& device, const VulkanDesc& desc, VkSurfaceKHR surface) {
-	VkPhysicalDevice physical_device = device.physical_device;
-
-	QueueFamilyIndices indices = find_queue_families(physical_device, surface);
+void make_logical_device(Device& device, const VulkanDesc& desc, VkSurfaceKHR surface) {	
+	QueueFamilyIndices queue_families = find_queue_families(device.physical_device, surface);
+	device.queue_families = queue_families;
 
 	//VkPhysicalDeviceTimelineSemaphoreFeatures semaphore_features = {};
 	//semaphore_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES;
@@ -362,10 +359,10 @@ void make_logical_devices(Device& device, const VulkanDesc& desc, VkSurfaceKHR s
 	//DEFINE ALL QUEUES TO BE CREATED
 	array<4, uint32_t> uniqueQueueFamilies;
 
-	if (!uniqueQueueFamilies.contains(indices.graphics_family)) uniqueQueueFamilies.append(indices.graphics_family);
-	if (!uniqueQueueFamilies.contains(indices.async_compute_family)) uniqueQueueFamilies.append(indices.async_compute_family);
-	if (!uniqueQueueFamilies.contains(indices.async_transfer_family)) uniqueQueueFamilies.append(indices.async_transfer_family);
-	if (!uniqueQueueFamilies.contains(indices.present_family)) uniqueQueueFamilies.append(indices.present_family);
+	if (!uniqueQueueFamilies.contains(queue_families.graphics_family)) uniqueQueueFamilies.append(queue_families.graphics_family);
+	if (!uniqueQueueFamilies.contains(queue_families.async_compute_family)) uniqueQueueFamilies.append(queue_families.async_compute_family);
+	if (!uniqueQueueFamilies.contains(queue_families.async_transfer_family)) uniqueQueueFamilies.append(queue_families.async_transfer_family);
+	if (!uniqueQueueFamilies.contains(queue_families.present_family)) uniqueQueueFamilies.append(queue_families.present_family);
 
 	array<4, VkDeviceQueueCreateInfo> queueCreateInfos(uniqueQueueFamilies.length);
 
@@ -383,7 +380,7 @@ void make_logical_devices(Device& device, const VulkanDesc& desc, VkSurfaceKHR s
 	makeInfo.queueCreateInfoCount = queueCreateInfos.length;
 	makeInfo.pQueueCreateInfos = queueCreateInfos.data;
 	
-	if (vkCreateDevice(physical_device, &makeInfo, nullptr, &device.device) != VK_SUCCESS) {
+	if (vkCreateDevice(device.physical_device, &makeInfo, nullptr, &device.device) != VK_SUCCESS) {
 		throw "failed to make logical device!";
 	}
 
@@ -396,19 +393,19 @@ void make_logical_devices(Device& device, const VulkanDesc& desc, VkSurfaceKHR s
 
 	VkPhysicalDeviceProperties2 properties = {};
 	properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-	properties.pNext = &properties_12;
+	properties.pNext = &semaphore_properties;
 
-	vkGetPhysicalDeviceProperties2(physical_device, &properties);
-
+	vkGetPhysicalDeviceProperties2(device.physical_device, &properties);
+	
+	device.device_limits = properties.properties.limits;
+	
 	printf("\n\nSEMAPHORE MAX VALUE DIFFERENCE %i\n", properties_12.maxTimelineSemaphoreValueDifference);
 	printf("\n\nSEMAPHORE MAX VALUE DIFFERENCE %i\n", semaphore_properties.maxTimelineSemaphoreValueDifference);
 
-	vkGetDeviceQueue(device, indices.graphics_family, 0, &device.graphics_queue);
-	vkGetDeviceQueue(device, indices.present_family, 0, &device.present_queue);
-	vkGetDeviceQueue(device, indices.async_compute_family, 0, &device.compute_queue);
-	vkGetDeviceQueue(device, indices.async_transfer_family, 0, &device.transfer_queue);
-
-	device.queue_families = indices;
+	vkGetDeviceQueue(device, queue_families.graphics_family, 0, &device.graphics_queue);
+	vkGetDeviceQueue(device, queue_families.present_family, 0, &device.present_queue);
+	vkGetDeviceQueue(device, queue_families.async_compute_family, 0, &device.compute_queue);
+	vkGetDeviceQueue(device, queue_families.async_transfer_family, 0, &device.transfer_queue);
 }
 
 void destroy_Instance(VkInstance instance) {
@@ -421,12 +418,45 @@ void destroy_validation_layers(VkInstance instance, VkDebugUtilsMessengerEXT deb
 	}
 }
 
-void make_Device(Device& device, const VulkanDesc& desc) {
-
+void destroy_Device(Device& device) {
+	destroy_validation_layers(device.instance, device.debug_messenger);
+	destroy_Instance(device.instance);
+	vkDestroyDevice(device.device, nullptr);
 }
 
-void destroy_Device(Device& device) {
-	destroy_Instance(device.instance);
+VkSurfaceKHR make_Device(Device& device, const VulkanDesc& desc, Window& window) {
+	device.desc = desc;
+
+	device.instance = make_Instance(desc);
+	volkLoadInstance(device.instance);
+	setup_debug_messenger(device.instance, desc, &device.debug_messenger);
+	VkSurfaceKHR surface = make_Surface(device.instance, window);
+
+	device.physical_device = pick_physical_devices(device.instance, surface);
+	make_logical_device(device, desc, surface);
+
+	volkLoadDevice(device);
+
+	return surface;
+}
+	
+void make_instance(Device& device) {
+	device.instance = make_Instance(device.desc);
+	volkLoadInstance(device.instance);
+	setup_debug_messenger(device.instance, device.desc, &device.debug_messenger);
+}
+
+
+void pick_physical_device(Device& device, VkSurfaceKHR surface) {
+	device.physical_device = pick_physical_devices(device.instance, surface);
+	make_logical_device(device, device.desc, surface);
+
+	volkLoadDevice(device);
+}
+
+
+void destroy_instance(Device& device) {
+	vkDestroyInstance(device.instance, nullptr);
 }
 
 void queue_wait_semaphore(QueueSubmitInfo& info, VkPipelineStageFlags stage, VkSemaphore semaphore) {
@@ -463,7 +493,6 @@ void queue_submit(VkDevice device, VkQueue queue, const QueueSubmitInfo& info) {
 	semaphore_timeline_info.pSignalSemaphoreValues = info.signal_semaphores_values.data;
 	semaphore_timeline_info.signalSemaphoreValueCount = info.signal_semaphores_values.length;
 	
-	
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	
@@ -479,6 +508,17 @@ void queue_submit(VkDevice device, VkQueue queue, const QueueSubmitInfo& info) {
 	if (vkQueueSubmit(queue, 1, &submitInfo, info.completion_fence) != VK_SUCCESS) {
 		throw "Failed to submit draw command buffers!";
 	}
+}
+
+VkEvent make_Event(VkDevice device) {
+	VkEventCreateInfo info = {};
+	info.sType = VK_STRUCTURE_TYPE_EVENT_CREATE_INFO;
+	info.flags = 0;
+
+	VkEvent event;
+	VK_CHECK(vkCreateEvent(device, &info, nullptr, &event));
+
+	return event;
 }
 
 VkSemaphore make_Semaphore(VkDevice device) {

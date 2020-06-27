@@ -1,30 +1,25 @@
-#include "stdafx.h"
 #include "graphics/renderer/model_rendering.h"
 #include "graphics/renderer/renderer.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include "components/transform.h"
 #include "core/memory/linear_allocator.h"
 #include "core/io/logger.h"
-#include "graphics/rhi/rhi.h"
+#include "graphics/rhi/draw.h"
 #include "graphics/assets/assets.h"
+
+#include "graphics/assets/material.h"
 
 REFLECT_STRUCT_BEGIN(ModelRenderer)
 REFLECT_STRUCT_MEMBER(visible)
 REFLECT_STRUCT_MEMBER(model_id)
 REFLECT_STRUCT_END()
 
-ModelRendererSystem::ModelRendererSystem(RHI& rhi, Assets& assets) 
-	: rhi(rhi), assets(assets) {
-	
-	BufferAllocator& buffer_allocator = get_BufferAllocator(rhi);
-	
-	for (int i = 0; i < Pass::Count; i++) {
-		instance_buffer[i] = alloc_instance_buffer(buffer_allocator, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4, MAX_MESH_INSTANCES, 0);
-	}
-}
+//todo IT MIGHT BE MORE EFFICIENT TO ALLOCATE THE INSTANCE BUFFER ON THE FLY
+//INSTEAD OF PREALLOCATING, AS IT MEMORY CAN BE DISTRIBUTED MORE DYNAMICALLY
 
+/*
 void ModelRendererSystem::pre_render() { 	
-	/*auto& renderer = gb::renderer;
+	auto& renderer = gb::renderer;
 	auto filtered = world.filter<ModelRenderer, Materials, Transform>(params.layermask);
 
 	for (int i = 0; i < NUM_INSTANCES; i++) {
@@ -74,8 +69,8 @@ void ModelRendererSystem::pre_render() {
 		else if (inst.aabbs.length > 0) {
 			inst.instance_buffer.data(inst.transforms);
 		}
-	}*/
-}
+	}
+}*/
 
 bool bit_set(uint* bit_visible, int i) {
 	uint chunk_visible = bit_visible[i / 32];
@@ -84,48 +79,49 @@ bool bit_set(uint* bit_visible, int i) {
 }
 
 
-void ModelRendererSystem::render(World& world, RenderCtx& ctx) {
-	CulledMeshBucket* buckets = pass_culled_bucket[ctx.pass->id];
+void render_meshes(const MeshBucketCache& mesh_buckets, CulledMeshBucket* buckets, RenderPass& ctx) {
+	CommandBuffer& cmd_buffer = ctx.cmd_buffer;
 
-	glm::mat4* instance_data = TEMPORARY_ARRAY(glm::mat4, MAX_MESH_INSTANCES);
-
-	//GENERATE DRAW CALLS
-	uint instance_count = 0;
-	InstanceBuffer& instance_buffer = this->instance_buffer[ctx.pass->id];
+	bind_vertex_buffer(cmd_buffer, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4);
 
 	for (uint i = 0; i < MAX_MESH_BUCKETS; i++) {
-		MeshBucket& bucket = mesh_buckets.keys[i];
-		CulledMeshBucket & instances = buckets[i];
+		const MeshBucket& bucket = mesh_buckets.keys[i];
+		CulledMeshBucket& instances = buckets[i];
 		int count = instances.model_m.length;
 
-		if (!(bucket.flags & CAST_SHADOWS) && ctx.layermask & SHADOW_LAYER) continue;
+		if (!(bucket.flags & CAST_SHADOWS) && ctx.id != RenderPass::Scene) continue;
 		if (count == 0) continue;
 
-		memcpy(instance_data + instance_count, instances.model_m.data, instances.model_m.length * sizeof(glm::mat4));
+		//todo performance: this goes through three levels of indirection
+		VertexBuffer vertex_buffer = get_VertexBuffer(bucket.model_id, bucket.mesh_id);
 
-		Model* model = NULL; ///assets.models.get(bucket.model_id);
-		VertexBuffer* vertex_buffer = &model->meshes[bucket.mesh_id].buffer;
+		InstanceBuffer instance_offset = frame_alloc_instance_buffer<glm::mat4>(INSTANCE_LAYOUT_MAT4X4, instances.model_m);
 
-		InstanceBuffer* instance_offset = TEMPORARY_ALLOC(InstanceBuffer);
-		*instance_offset = instance_buffer;
-		instance_offset->base += instance_count;
-		instance_offset->length = count;
+		shader_handle shader = material_desc(bucket.mat_id)->shader;
+		ShaderInfo& info = *shader_info(shader);
 
-		//Material* material = assets.materials.get(bucket.mat_id);
-
-		/*for (int j = 0; j < count; j++) {
-			instance_data[j + instance_count] = instances.model_m[j];
-		
-			DrawCommand cmd(0, instances.model_m[j], vertex_buffer, material);
-			ctx.command_buffer->submit(cmd);
-		}*/
-
-		//ctx.command_buffer.draw(count, vertex_buffer, instance_offset, material);
-
-		instance_count += count;
+		bind_pipeline(cmd_buffer, bucket.pipeline_id[ctx.id]);
+		bind_material(cmd_buffer, bucket.mat_id);
+		draw_mesh(cmd_buffer, vertex_buffer, instance_offset);
 	}
 
-	//upload_data(assets.buffer_allocator, instance_buffer, instance_count, instance_data);
 
+	//glm::mat4* instance_data = TEMPORARY_ARRAY(glm::mat4, MAX_MESH_INSTANCES);
+
+//GENERATE DRAW CALLS
+
+	//memcpy(instance_data + instance_count, instances.model_m.data, instances.model_m.length * sizeof(glm::mat4));
+
+
+	//Material* material = get_Material(assets, bucket.mat_id);
+
+	/*for (int j = 0; j < count; j++) {
+	instance_data[j + instance_count] = instances.model_m[j];
+
+	DrawCommand cmd(0, instances.model_m[j], vertex_buffer, material);
+	ctx.command_buffer->submit(cmd);
+	}*/
+
+	//upload_data(buffer_allocator, instance_buffer, instance_count, instance_data);
 	//flush_logger();
 }

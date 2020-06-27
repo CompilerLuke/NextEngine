@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "custom_inspect.h"
 #include "displayComponents.h"
 #include <imgui/imgui.h>
@@ -7,10 +6,11 @@
 #include <glm/gtc/type_ptr.hpp>
 #include "graphics/renderer/ibl.h"
 #include "graphics/renderer/renderer.h"
-#include "grass.h"
 #include "graphics/assets/assets.h"
 #include "graphics/assets/model.h"
+#include "grass.h"
 #include "editor.h"
+#include "components/lights.h"
 
 bool Quat_inspect(void* data, string_view prefix, Editor& editor) {
 	ImGui::PushID((long long)data);
@@ -55,9 +55,8 @@ bool Mat4_inspect(void* data, string_view prefix, Editor& editor) {
 
 //Shaders
 bool Shader_inspect(void* data, string_view prefix, Editor& editor) { //todo how do we pass state into these functions
-	Assets& assets = editor.asset_manager;
 	auto handle_shader = (shader_handle*)data;
-	auto shader = shader_info(assets, *handle_shader);
+	auto shader = shader_info(*handle_shader);
 	if (!shader) return true;
 
 	auto name = tformat(shader->vfilename, ", ", shader->ffilename);
@@ -66,31 +65,29 @@ bool Shader_inspect(void* data, string_view prefix, Editor& editor) { //todo how
 	return true;
 }
 
-template<typename H, typename T>
-bool render_asset_preview(Assets& assets, H* handle_ptr, vector<T*>& to_asset, string_view prefix, const char * drag_and_drop) {
-	H asset_id = *handle_ptr;
+bool render_asset_preview(AssetTab& asset_tab, AssetNode::Type type, uint* asset_handle, string_view prefix) {
+	AssetNode* node = NULL;
+	if (*asset_handle < MAX_ASSETS) node = asset_tab.info.asset_type_handle_to_node[type][*asset_handle]; //todo probably want reference to editor
 
-	T* asset = NULL;
-	if (asset_id.id < to_asset.length) asset = to_asset[asset_id.id]; //todo probably want reference to editor
 
-	if (asset == NULL) {
+	if (node == NULL) {
 		ImGui::Text("Not set");
 		ImGui::NewLine();
 	}
 	else {
-		ImGui::Image(assets, asset->rot_preview.preview, ImVec2(128, 128));
+		preview_image(asset_tab.preview_resources, node->model.rot_preview, ImVec2(128, 128));
 	}
 
-	accept_drop(drag_and_drop, handle_ptr, sizeof(uint));
+	accept_drop(drop_types[type], &asset_handle, sizeof(uint));
 
 	ImGui::SameLine();
-	if (asset) ImGui::Text(tformat(prefix, " : ", asset->name).c_str());
+	if (node) ImGui::Text(tformat(prefix, " : ", node->asset.name).c_str());
 
 	return true;
 }
 
 bool Model_inspect(void* data, string_view prefix, Editor& editor) {
-	return render_asset_preview(editor.asset_manager, (model_asset_handle*)data, editor.asset_tab.model_handle_to_asset, prefix, "DRAG_AND_DROP_MODEL");
+	return render_asset_preview(editor.asset_tab, AssetNode::Model, (uint*)data, prefix);
 }
 
 bool Layermask_inspect(void* data, string_view prefix, Editor& editor) {
@@ -134,7 +131,7 @@ bool accept_drop(const char* drop_type, void* ptr, unsigned int size) {
 
 //Materials
 bool Material_inspect(void* data, string_view prefix, Editor& editor) {
-	return render_asset_preview(editor.asset_manager, (material_asset_handle*)data, editor.asset_tab.material_handle_to_asset, prefix, "DRAG_AND_DROP_MATERIAL");
+	return render_asset_preview(editor.asset_tab, AssetNode::Material, (uint*)data, prefix);
 }
 
 bool Materials_inspect(void* data, string_view prefix, Editor& editor) {
@@ -150,13 +147,12 @@ bool Materials_inspect(void* data, string_view prefix, Editor& editor) {
 	return false;
 }
 
-bool Skybox_inspect(void* data, string_view prefix, Editor& editor) {
+bool SkyLight_inspect(void* data, string_view prefix, Editor& editor) {
 	if (ImGui::CollapsingHeader("Skylight")) {
 		if (ImGui::Button("Capture")) {
-			((Skybox*)data)->capture_scene = true;
+			((SkyLight*)data)->capture_scene = true;
 			
-			Renderer& renderer = editor.renderer;
-			renderer.skybox_renderer->load((Skybox*)data);
+			//todo implement skybox scene capture
 		}
 		return true;
 	}
@@ -196,7 +192,7 @@ bool Grass_inspect(void* data, string_view prefix, Editor& editor) {
 
 	ID id = world.id_of<Grass>(grass);
 
-	Model* model = get_Model(editor.asset_manager, grass->placement_model);
+	Model* model = get_Model(grass->placement_model);
 	Materials* materials = world.by_id<Materials>(id);
 	if (materials) {
 		int diff = model->materials.length - materials->materials.length;
@@ -217,7 +213,7 @@ bool Grass_inspect(void* data, string_view prefix, Editor& editor) {
 }
 
 void register_on_inspect_callbacks() {
-	register_on_inspect_gui("Skybox", Skybox_inspect);
+	register_on_inspect_gui("Skybox", SkyLight_inspect);
 	register_on_inspect_gui("Material", Material_inspect);
 	register_on_inspect_gui("Materials", Materials_inspect);
 	register_on_inspect_gui("shader_handle", Shader_inspect);

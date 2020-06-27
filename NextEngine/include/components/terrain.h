@@ -1,4 +1,7 @@
+#pragma once
+
 #include "core/core.h"
+#include "core/handle.h"
 #include "core/reflection.h"
 
 struct TerrainControlPoint {
@@ -18,5 +21,5 @@ struct Terrain {
 	REFLECT(ENGINE_API)
 };
 
-float ENGINE_API barryCentric(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec2 pos);
+float ENGINE_API barry_centric(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec2 pos);
 float ENGINE_API sample_terrain_height(Terrain* terrain, struct Transform* terrain_trans, glm::vec2 position);

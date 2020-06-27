@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "core/memory/allocator.h"
 #include "core/io/logger.h"
 #include <stdlib.h>
@@ -20,6 +19,7 @@ void* BlockAllocator::allocate(std::size_t size) {
 	log("Out of memory for default allocator");
 	exit(1);
 }
+
 
 void BlockAllocator::deallocate(void* ptr) {
 	if (ptr == NULL) return;

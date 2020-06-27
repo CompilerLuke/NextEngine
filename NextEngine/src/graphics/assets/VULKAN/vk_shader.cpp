@@ -1,5 +1,3 @@
-#include "stdafx.h"
-
 #ifdef RENDER_API_VULKAN
 
 #include "graphics/rhi/vulkan/vulkan.h"
@@ -19,7 +17,9 @@ REFLECT_STRUCT_MEMBER(vfilename)
 REFLECT_STRUCT_MEMBER(ffilename)
 REFLECT_STRUCT_END()
 
-VkShaderModule make_ShaderModule(VkDevice device, string_view code) {
+VkShaderModule make_ShaderModule(string_view code) {
+	VkDevice device = rhi.device;
+
 	VkShaderModuleCreateInfo makeInfo = {};
 	makeInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	makeInfo.codeSize = code.length;
@@ -31,6 +31,7 @@ VkShaderModule make_ShaderModule(VkDevice device, string_view code) {
 
 	return shaderModule;
 }
+
 
 string_buffer preprocess_source(Assets&, string_view source, shader_flags flags);
 
@@ -66,6 +67,7 @@ enum MaterialInputType {
 	Channel1,
 	Channel2,
 	Channel3,
+	Cubemap,
 	Float,
 	Int,
 	Vec2,
@@ -73,7 +75,7 @@ enum MaterialInputType {
 	Vec4
 };
 
-string_buffer preprocess_gen(Assets& assets, slice<string_view> tokens, Stage stage, shader_flags flags) {
+string_buffer preprocess_gen(slice<string_view> tokens, Stage stage, shader_flags flags) {
 	vector<string_view> already_included;
 	vector<string_view> channels;
 
@@ -112,8 +114,8 @@ string_buffer preprocess_gen(Assets& assets, slice<string_view> tokens, Stage st
 				string_buffer src;
 				src.allocator = &temporary_allocator;
 
-				if (!readf(assets, name, &src)) {
-					fprintf(stderr, "Could not #include source file %s\n", name);
+				if (!io_readf(name, &src)) {
+					fprintf(stderr, "Could not #include source file %s\n", name.c_str());
 					return "";
 				}
 
@@ -168,6 +170,7 @@ string_buffer preprocess_gen(Assets& assets, slice<string_view> tokens, Stage st
 					if (channel_type == "channel1") type = Channel1;
 					if (channel_type == "channel2") type = Channel2;
 					if (channel_type == "channel3") type = Channel3;
+					if (channel_type == "samplerCube") type = Cubemap;
 					if (channel_type == "float") type = Float;
 					if (channel_type == "int") type = Int;
 					if (channel_type == "vec2") type = Vec2;
@@ -189,26 +192,27 @@ string_buffer preprocess_gen(Assets& assets, slice<string_view> tokens, Stage st
 
 				if (tokens[++i] != ";") throw "expecting semi colon";
 
-				output += "layout (std140, set = 1, binding = 0) uniform Material {\n";
+				output += tformat("layout (std140, set = ", MATERIAL_SET, ", binding = 0) uniform Material {\n");
 
 				for (int i = 0; i < names.length; i++) {
 					int type_index = (int)types[i];
-					string_view scalar_types[] = { "float", "vec2", "vec3", "float", "int", "vec2", "vec3", "vec4" };
+					string_view scalar_types[] = { "float", "vec2", "vec3", "vec3", "float", "int", "vec2", "vec3", "vec4" };
 
-					if (type_index > Channel3) {
-						output += tformat("\t", scalar_types[type_index], " ", names[i], ";\n");
+					if (type_index <= Cubemap) {
+						output += tformat("\t", scalar_types[type_index], " ", names[i], "_scalar", ";\n");
 					}
 					else {
-						output += tformat("\t", scalar_types[type_index], " ", names[i], "_scalar", ";\n");
+						output += tformat("\t", scalar_types[type_index], " ", names[i], ";\n");
 					}
 				}
 
 				output += "};\n";
 
+
 				for (int i = 0; i < names.length; i++) {
 					int type_index = (int)types[i];
-					if (type_index > Channel3) continue;
-					output += tformat("layout (set = 1, binding = ", i + 1, ") uniform sampler2D ", names[i], ";\n");
+					if (type_index <= Channel3) output += tformat("layout (set = ", MATERIAL_SET, ", binding = ", i + 1, ") uniform sampler2D ", names[i], ";\n");
+					if (type_index == Cubemap) output += tformat("layout (set = ", MATERIAL_SET, ", binding = ", i + 1, ") uniform samplerCube ", names[i], ";\n");
 				}
 			}
 			else {
@@ -229,15 +233,17 @@ string_buffer preprocess_gen(Assets& assets, slice<string_view> tokens, Stage st
 	return output;
 }
 
+//shader_compiler->shaderc = shaderc_compiler_initialize();
+//shaderc_compiler_release(compiler);
 
-string_buffer preprocess_source(Assets& assets, string_view source, Stage stage, shader_flags flags) { //todo refactor into struct
+string_buffer preprocess_source(string_view source, Stage stage, shader_flags flags) { //todo refactor into struct
 	tvector<string_view> tokens = preprocess_lex(source);
-	return preprocess_gen(assets, tokens, stage, flags);
+	return preprocess_gen(tokens, stage, flags);
 }
 
 
-string_buffer compile_glsl_to_spirv(Assets& assets, shaderc_compiler_t compiler, Stage stage, string_view source, string_view input_file_name, shader_flags flags, string_buffer* err) {
-	string_buffer source_assembly = preprocess_source(assets, source, stage, flags);
+string_buffer compile_glsl_to_spirv(shaderc_compiler_t compiler, Stage stage, string_view source, string_view input_file_name, shader_flags flags, string_buffer* err) {
+	string_buffer source_assembly = preprocess_source(source, stage, flags);
 
 	printf("Source: %s", source_assembly.data);
 
@@ -373,17 +379,21 @@ void print_module(ShaderModuleInfo& info) {
 		for (int binding_i = 0; binding_i < descriptor.bindings.length; binding_i++) {
 			DescriptorBindingInfo& binding = descriptor.bindings[binding_i];
 
+			sstring stage;
+			if (binding.stage | VK_SHADER_STAGE_VERTEX_BIT) stage += "VERTEX ";
+			if (binding.stage | VK_SHADER_STAGE_FRAGMENT_BIT) stage += "FRAGMENT ";
+
 			if (binding.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
-				printf("\tBINDING %i sampler2D %s %\n", binding.binding, binding.name);
+				printf("\tBINDING %i %s sampler2D %s %\n", binding.binding, stage.data, binding.name.data);
 			}
 				
 			if (binding.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {
 				UBOInfo& ubo = descriptor.ubos[uniform_index++];
 				
-				printf("\tBINDING %i uniform %s{\n", binding.binding, ubo.type_name);
+				printf("\tBINDING %i %s uniform %s{\n", binding.binding, stage.data, ubo.type_name.data);
 
 				for (UBOFieldInfo& field : ubo.fields) {
-					printf("\t\tFIELD %s;\n", field.name);
+					printf("\t\tFIELD %s;\n", field.name.data);
 				}
 
 				printf("\t}\n");
@@ -416,6 +426,13 @@ void reflect_module(ShaderModuleInfo& info, string_view vert_spirv, string_view 
 	spvReflectDestroyShaderModule(&frag_module);
 }
 
+void gen_descriptor_layouts(ShaderModules& modules) {
+	for (DescriptorSetInfo& set_info : modules.info.sets) {
+		modules.set_layouts.append(make_set_layout(rhi.device, set_info));
+	}
+}
+
+/*
 void gen_descriptors(ShaderModuleInfo& info) {
 	int set_index = 0;
 	for (int set_i = 0; set_i < info.sets.length; set_i++) {
@@ -440,6 +457,7 @@ void gen_descriptors(ShaderModuleInfo& info) {
 		
 	}
 }
+*/
 
 
 //void ShaderConfig::bind() {

@@ -78,6 +78,7 @@ int main() {
 #else
 	Application editor(modules, engine_dll_path);
 	editor.init((void*)game_dll_path);
+
 	editor.run();
 
 #endif

@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "ecs/system.h"
 #include "engine/engine.h"
 #include "core/time.h"

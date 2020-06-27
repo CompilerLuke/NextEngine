@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/core.h"
-#include "core/memory/allocator.h"
+#include "core/memory/linear_allocator.h"
 #include "core/container/string_buffer.h"
 #include "core/container/string_view.h"
 #include "core/container/sstring.h"

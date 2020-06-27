@@ -1,4 +1,3 @@
-#include "stdafx.h"
 #include "core/reflection.h"
 #include "core/handle.h"
 #include "core/container/vector.h"
@@ -7,7 +6,6 @@
 #include "components/terrain.h"
 #include "ecs/ecs.h"
 #include "terrain.h"
-#include <glad/glad.h>
 #include "core/io/input.h"
 #include "editor.h"
 #include "core/container/string_buffer.h"
