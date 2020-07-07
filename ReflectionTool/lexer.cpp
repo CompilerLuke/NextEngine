@@ -178,9 +178,15 @@ namespace pixc {
             add_keyword("struct", Keyword, Struct);
             add_keyword("enum", Keyword, Enum);
             add_keyword("int", Keyword, IntType);
+            add_keyword("uint", Keyword, UintType);
+			add_keyword("i64", Keyword, I64Type);
+			add_keyword("u64", Keyword, U64Type);
             add_keyword("float", Keyword, FloatType);
             add_keyword("bool", Keyword, BoolType);
             add_keyword("char", Keyword, CharType);
+			//add_keyword("sstring", Keyword, SStringType);
+			//add_keyword("string_view", Keyword, StringViewType);
+			//add_keyword("string_", Keyword, );
             add_keyword("static", Keyword, Static);
             add_keyword("constexpr", Keyword, Constexpr);
         }
@@ -208,17 +214,20 @@ namespace pixc {
             lexer.tok.data = lexer.input.data;
             lexer.err = err;
             lexer.line = 1;
+
+			uint length = lexer.input.length;
             
-            for (lexer.i = 0; lexer.i < lexer.input.length; lexer.i++, lexer.column++) {
+            for (lexer.i = 0; lexer.i < length; lexer.i++, lexer.column++) {
                 char c = lexer.input[lexer.i];
+				bool can_look_ahead = lexer.i + 1 < length;
                 
                 Delimitter& d = delimitters[c];
                 
                 if (c == ' ' || c == '\r' || c == '\t') {
                     reset_tok(lexer);
                 }
-                else if (c == '/' && lexer.input[lexer.i + 1] == '/') {
-                    while (lexer.input[lexer.i] != '\n') {
+                else if (c == '/' && can_look_ahead && lexer.input[lexer.i + 1] == '/') {
+                    while (lexer.i < length && lexer.input[lexer.i] != '\n') {
                         lexer.i++;
                     }
                     lexer.line++;

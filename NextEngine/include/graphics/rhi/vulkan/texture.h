@@ -2,6 +2,7 @@
 
 #include "volk.h"
 #include "graphics/assets/texture.h"
+#include "graphics/rhi/vulkan/buffer.h"
 
 struct StagingQueue;
 struct Image;
@@ -21,8 +22,6 @@ struct Cubemap {
 	VkImage image;
 	TextureAllocInfo* alloc_info; //set allocation data
 	VkImageView view;
-
-	REFLECT(ENGINE_API)
 };
 
 #define MAX_IMAGE_UPLOAD mb(256)

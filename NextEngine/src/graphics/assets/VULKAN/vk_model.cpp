@@ -6,13 +6,6 @@
 #include "graphics/assets/material.h"
 #include "graphics/assets/model.h"
 
-REFLECT_STRUCT_BEGIN(Vertex)
-REFLECT_STRUCT_MEMBER(position)
-REFLECT_STRUCT_MEMBER(normal)
-REFLECT_STRUCT_MEMBER(tex_coord)
-REFLECT_STRUCT_MEMBER(tangent)
-REFLECT_STRUCT_MEMBER(bitangent)
-REFLECT_STRUCT_END()
 
 /*
 REFLECT_STRUCT_BEGIN(Mesh)

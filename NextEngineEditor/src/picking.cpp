@@ -71,7 +71,7 @@ void build_acceleration_structure(PickingScenePartition& scene_partition, World&
 	ids.allocator = &temporary_allocator;
 
 	for (ID id : world.filter<ModelRenderer, Transform>(ANY_LAYER)) {
-		auto model_m = world.by_id<Transform>(id)->compute_model_matrix();
+		auto model_m = compute_model_matrix(*world.by_id<Transform>(id));
 		auto model_renderer = world.by_id<ModelRenderer>(id);
 
 		Model* model = get_Model(model_renderer->model_id);		
@@ -269,7 +269,7 @@ void render_object_selected_outline(OutlineRenderState& outline, World& world, s
 		Materials* materials = world.by_id<Materials>(id);
 
 		if (trans && model_renderer && materials) {
-			glm::mat4 model_m = trans->compute_model_matrix();
+			glm::mat4 model_m = compute_model_matrix(*trans);
 
 			draw_mesh(ctx.cmd_buffer, model_renderer->model_id, outline.object_material, model_m);
 			draw_mesh(ctx.cmd_buffer, model_renderer->model_id, outline.outline_material, model_m);

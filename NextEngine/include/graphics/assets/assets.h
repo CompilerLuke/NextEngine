@@ -1,7 +1,11 @@
 #pragma once
 
-#include "core/core.h"
+#include "core/handle.h"
+#include "core/container/string_view.h"
+#include "core/container/sstring.h"
+#include "core/container/slice.h"
 #include "core/container/string_buffer.h"
+#include <glm/glm.hpp>
 
 using shader_flags = u64;
 
@@ -45,4 +49,4 @@ ENGINE_API string_buffer tasset_path(string_view filename);
 ENGINE_API string_view current_asset_path_folder();
 bool ENGINE_API asset_path_rel(string_view filename, string_buffer*);
 
-void ENGINE_API load_Scene(World& world, Renderer& renderer, string_view path);
+void ENGINE_API load_Scene(struct World& world, struct Renderer& renderer, string_view path);

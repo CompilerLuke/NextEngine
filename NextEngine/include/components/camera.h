@@ -1,21 +1,15 @@
 #pragma once
 
-#include "ecs/ecs.h"
-#include "core/reflection.h"
+#include "core/core.h"
+#include "graphics/pass/pass.h"
+#include "ecs/layermask.h"
+#include <glm/mat4x4.hpp>
 
 COMP
-struct CameraComponent {
-	float near_plane = 0.1f;
-	float far_plane = 600;
-	float fov = 60;
-};
-
 struct Camera {
 	float near_plane = 0.1f;
 	float far_plane = 600;
 	float fov = 60;
-
-	REFLECT(ENGINE_API)
 };
 
 struct Transform;

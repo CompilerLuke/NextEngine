@@ -43,16 +43,17 @@ struct material_asset_handle {
 };
 */
 
+struct AssetNode;
+
 struct NamedAsset {
 	uint handle;
 	sstring name;
 };
 
+REFL
 struct TextureAsset {
 	texture_handle handle;
 	sstring name;
-
-	REFLECT(NO_ARG)
 };
 
 struct RotatablePreview {
@@ -63,6 +64,7 @@ struct RotatablePreview {
 	glm::quat rot;
 };
 
+REFL
 struct ModelAsset {
 	model_handle handle = { INVALID_HANDLE };
 	sstring name;
@@ -71,10 +73,9 @@ struct ModelAsset {
 	vector<material_handle> materials;
 	
 	Transform trans;
-
-	REFLECT(NO_ARG)
 };
 
+REFL 
 struct ShaderAsset {
 	shader_handle handle = { INVALID_HANDLE };
 	sstring name;
@@ -82,32 +83,24 @@ struct ShaderAsset {
 	vector<ParamDesc> shader_arguments;
 
 	ShaderGraph* graph = NULL; //todo this leaks now
-
-	REFLECT(NO_ARG)
 };
 
+REFL
 struct MaterialAsset {
 	material_handle handle = { INVALID_HANDLE };
 	sstring name;
 	RotatablePreview rot_preview;
-
-	REFLECT()
 };
 
-struct asset_handle {
+REFL struct asset_handle {
 	uint id;
-
-	REFLECT(NO_ARG)
 };
 
+REFL
 struct AssetFolder {
-	//asset_folder_handle handle = { INVALID_HANDLE }; //contains id to itself, used to select folder to move
-	
 	sstring name;
-	vector<struct AssetNode> contents;
+	vector<AssetNode> contents;
 	asset_handle owner;
-
-	REFLECT(NO_ARG)
 };
 
 struct AssetNode {
@@ -127,13 +120,7 @@ struct AssetNode {
 	~AssetNode();
 	AssetNode(AssetNode::Type type);
 	void operator=(AssetNode&&);
-
-	REFLECT(NO_ARG)
 };
-
-//todo HandleManager is a relatively slow
-//and fragmented data structure, could get much better
-//cache locality by copying and adjusting pointers
 
 const uint MAX_ASSETS = 1000;
 const uint MAX_PER_ASSET_TYPE = 200;

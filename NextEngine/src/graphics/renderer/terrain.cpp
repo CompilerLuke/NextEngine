@@ -123,7 +123,7 @@ void extract_render_data_terrain(TerrainRenderData& render_data, World& world, c
 				t.scale = glm::vec3((float)self->size_of_block);
 
 				ChunkInfo chunk_info;
-				chunk_info.model_m = t.compute_model_matrix();
+				chunk_info.model_m = compute_model_matrix(t);
 				chunk_info.displacement_offset = glm::vec2(1.0 / self->width * w, 1.0 / self->height * h);
 
 				//Cull and compute lod of chunk

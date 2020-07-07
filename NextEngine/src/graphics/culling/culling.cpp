@@ -241,7 +241,7 @@ void build_acceleration_structure(ScenePartition& scene_partition, hash_set<Mesh
 		auto materials = world.by_id<Materials>(id);
 
 		Model* model = get_Model(model_renderer->model_id);
-		glm::mat4 model_m = trans->compute_model_matrix();
+		glm::mat4 model_m = compute_model_matrix(*trans);
 
 		if (model == NULL) continue;
 
@@ -312,7 +312,7 @@ void build_acceleration_structure(ScenePartition& scene_partition, hash_set<Mesh
 			int bucket_id = mesh_buckets.add(bucket);
 
 			for (Transform& trans : grass->transforms) {
-				glm::mat4 model_m = trans.compute_model_matrix();
+				glm::mat4 model_m = compute_model_matrix(trans);
 
 				aabbs.append(mesh.aabb.apply(model_m));
 				meshes.append(bucket_id);

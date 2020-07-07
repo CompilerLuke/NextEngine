@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="include\core\container\array.h" />
+    <ClInclude Include="include\core\container\bitset.h" />
+    <ClInclude Include="include\core\container\event_dispatcher.h" />
+    <ClInclude Include="include\core\container\handle_manager.h" />
+    <ClInclude Include="include\core\container\hash_map.h" />
+    <ClInclude Include="include\core\container\pool.h" />
+    <ClInclude Include="include\core\container\queue.h" />
+    <ClInclude Include="include\core\container\slice.h" />
+    <ClInclude Include="include\core\container\sort.h" />
+    <ClInclude Include="include\core\container\sstring.h" />
+    <ClInclude Include="include\core\container\string_buffer.h" />
+    <ClInclude Include="include\core\container\string_view.h" />
+    <ClInclude Include="include\core\container\tuple.h" />
+    <ClInclude Include="include\core\container\tvector.h" />
+    <ClInclude Include="include\core\container\vector.h" />
+    <ClInclude Include="include\core\container.h" />
+    <ClInclude Include="include\core\core.h" />
+    <ClInclude Include="include\core\event.h" />
+    <ClInclude Include="include\core\handle.h" />
+    <ClInclude Include="include\core\io\logger.h" />
+    <ClInclude Include="include\core\io\vfs.h" />
+    <ClInclude Include="include\core\math\vec.h" />
+    <ClInclude Include="include\core\memory\allocator.h" />
+    <ClInclude Include="include\core\memory\linear_allocator.h" />
+    <ClInclude Include="include\core\profiler.h" />
+    <ClInclude Include="include\core\reflection.h" />
+    <ClInclude Include="include\core\reflection2.h" />
+    <ClInclude Include="include\core\serializer.h" />
+    <ClInclude Include="include\core\time.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\core\container\string_view.cpp" />
+    <ClCompile Include="src\core\io\logger.cpp" />
+    <ClCompile Include="src\core\io\vfs.cpp" />
+    <ClCompile Include="src\core\memory\allocator.cpp" />
+    <ClCompile Include="src\core\memory\linear_allocator.cpp" />
+    <ClCompile Include="src\core\profiler.cpp" />
+    <ClCompile Include="src\core\reflection.cpp" />
+    <ClCompile Include="src\core\serializer.cpp" />
+    <ClCompile Include="src\core\time.cpp" />
+  </ItemGroup>
+</Project>

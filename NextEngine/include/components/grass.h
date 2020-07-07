@@ -3,6 +3,7 @@
 #include "core/handle.h"
 #include "transform.h"
 
+COMP
 struct Grass {
 	model_handle placement_model = { INVALID_HANDLE };
 	bool cast_shadows = false;
@@ -17,6 +18,4 @@ struct Grass {
 	bool align_to_terrain_normal = false;
 
 	vector<Transform> transforms;
-
-	REFLECT(ENGINE_API)
 };

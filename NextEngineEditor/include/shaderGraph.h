@@ -6,10 +6,9 @@
 
 enum ChannelType { Channel1, Channel2, Channel3, Channel4, ChannelNone };
 
+REFL
 struct shader_node_handle {
 	uint id = INVALID_HANDLE;
-
-	REFLECT()
 };
 
 struct ShaderNode {
@@ -20,8 +19,6 @@ struct ShaderNode {
 		shader_node_handle from{ INVALID_HANDLE };
 
 		unsigned int index = 0;
-
-		REFLECT(NO_ARG)
 	};
 
 	struct InputChannel {
@@ -44,8 +41,6 @@ struct ShaderNode {
 		InputChannel(string_view, glm::vec3);
 		InputChannel(string_view, glm::vec2);
 		InputChannel(string_view, float);
-
-		REFLECT_UNION(NO_ARG)
 	};
 
 	struct OutputChannel {
@@ -55,8 +50,6 @@ struct ShaderNode {
 
 		ChannelType type = ChannelNone;
 		bool is_being_dragged = false;
-
-		REFLECT(NO_ARG)
 	};
 
 	vector<InputChannel> inputs;

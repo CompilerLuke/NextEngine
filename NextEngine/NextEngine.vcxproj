@@ -207,6 +207,7 @@
     <ClInclude Include="include\core\container\array.h" />
     <ClInclude Include="include\core\container\queue.h" />
     <ClInclude Include="include\components\skybox.h" />
+    <ClInclude Include="include\core\container\string.h" />
     <ClInclude Include="include\core\container\tuple.h" />
     <ClInclude Include="include\core\container\tvector.h" />
     <ClInclude Include="include\core\event.h" />
@@ -289,7 +290,7 @@
     <ClInclude Include="include\physics\physics.h" />
     <ClInclude Include="include\core\reflection.h" />
     <ClInclude Include="include\core\reflection2.h" />
-    <ClInclude Include="src\components\transform_ref.h" />
+    <ClInclude Include="src\generated.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="vendor\imgui\imconfig.h" />
@@ -305,8 +306,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
-    <ClCompile Include="src\components\transform_ref.cpp" />
     <ClCompile Include="src\ecs\ecs20.cpp" />
+    <ClCompile Include="src\generated.cpp" />
     <ClCompile Include="src\graphics\assets\assimp_model_loader.cpp" />
     <ClCompile Include="src\core\container\string_view.cpp" />
     <ClCompile Include="NextEngine.cpp">
@@ -443,6 +444,9 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="src\refl_filepaths.refl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

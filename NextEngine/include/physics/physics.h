@@ -6,28 +6,26 @@
 #include "physics/btWrapper.h"
 #include "core/reflection.h"
 
-struct CapsuleCollider {
+struct btRigidBody;
+
+COMP struct CapsuleCollider {
 	float radius;
 	float height;
-	REFLECT(ENGINE_API)
 };
 
-struct SphereCollider {
+COMP struct SphereCollider {
 	float radius;
-	REFLECT(ENGINE_API)
 };
 
-struct BoxCollider {
+COMP struct BoxCollider {
 	glm::vec3 scale;
-	REFLECT(ENGINE_API)
 };
 
-struct PlaneCollider {
+COMP struct PlaneCollider {
 	glm::vec3 normal;
-	REFLECT(ENGINE_API)
 };
 
-struct RigidBody {
+COMP struct RigidBody {
 	float mass = 0;
 	glm::vec3 velocity;
 	bool override_position = false;
@@ -39,17 +37,14 @@ struct RigidBody {
 
 	bool continous = false;
 
-	class btRigidBody* bt_rigid_body = NULL;
-	REFLECT(ENGINE_API)
+	REFL_FALSE btRigidBody* bt_rigid_body = NULL;
 };
 
-struct CharacterController {
+COMP struct CharacterController {
 	bool on_ground = true;
 	glm::vec3 velocity;
 
 	float feet_height = 1;
-
-	REFLECT(ENGINE_API)
 };
 
 struct PhysicsSystem : System {

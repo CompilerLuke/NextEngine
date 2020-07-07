@@ -5,7 +5,9 @@
 #include "ecs/ecs.h"
 #include "core/io/logger.h"
 #include "core/container/hash_map.h"
+#include "core/container/string_view.h"
 #include "graphics/assets/assets.h"
+
 
 hash_map<sstring, OnInspectGUICallback, 103> override_inspect;
 
@@ -73,11 +75,11 @@ namespace ImGui {
 	}
 }
 
-const char* destroy_component_popup_name(reflect::TypeDescriptor_Struct* type) {
+const char* destroy_component_popup_name(refl::Struct* type) {
 	return tformat("DestroyComponent", type->name).c_str();
 }
 
-bool render_fields_struct(reflect::TypeDescriptor_Struct* self, void* data, string_view prefix, Editor& editor) {
+bool render_fields_struct(refl::Struct* self, void* data, string_view prefix, Editor& editor) {
 	if (override_inspect.keys.index(self->name) != -1) {
 		return override_inspect[self->name](data, prefix, editor);
 	}
@@ -86,8 +88,8 @@ bool render_fields_struct(reflect::TypeDescriptor_Struct* self, void* data, stri
 
 	auto id = ImGui::GetID(name.c_str());
 
-	if (self->members.length == 1 && prefix != "Component") {
-		auto& field = self->members[0];
+	if (self->fields.length == 1 && prefix != "Component") {
+		auto& field = self->fields[0];
 		render_fields(field.type, (char*)data + field.offset, field.name, editor);
 		return true;
 	}
@@ -109,13 +111,13 @@ bool render_fields_struct(reflect::TypeDescriptor_Struct* self, void* data, stri
 	}
 
 	if (open) {
-		for (auto field : self->members) {
+		for (auto field : self->fields) {
 			auto offset_ptr = (char*)data + field.offset;
 			
-			if (field.tag == reflect::LayermaskTag) {
+			if (field.flags & refl::LAYERMASK_TAG) {
 				override_inspect["Layermask"](offset_ptr, prefix, editor);
 			}
-			else if (field.tag == reflect::HideInInspectorTag) {}
+			else if (field.flags == refl::HIDE_IN_EDITOR_TAG) {}
 			else {
 				render_fields(field.type, offset_ptr, field.name, editor);
 			}
@@ -125,6 +127,7 @@ bool render_fields_struct(reflect::TypeDescriptor_Struct* self, void* data, stri
 	return open;
 }
 
+/*
 bool render_fields_union(reflect::TypeDescriptor_Union* self, void* data, string_view prefix, Editor& editor) {
 
 	int tag = *((char*)data + self->tag_offset);
@@ -150,9 +153,10 @@ bool render_fields_union(reflect::TypeDescriptor_Union* self, void* data, string
 		return true;
 	}
 	return false;
-}
+}*/
 
-bool render_fields_enum(reflect::TypeDescriptor_Enum* self, void* data, string_view prefix, Editor& world) {
+
+bool render_fields_enum(refl::Enum* self, void* data, string_view prefix, Editor& world) {
 	int tag = *((int*)data);
 
 	int i = 0;
@@ -168,23 +172,32 @@ bool render_fields_enum(reflect::TypeDescriptor_Enum* self, void* data, string_v
 	return true;
 }
 
-bool render_fields_ptr(reflect::TypeDescriptor_Pointer* self, void* data, string_view prefix, Editor& world) {
+string_view type_to_string(refl::Type* type) {
+	switch (type->type) {
+	case refl::Type::UInt: return "uint";
+	case refl::Type::Int: return "int";
+	case refl::Type::Bool: return "bool";
+	case refl::Type::Float: return "float";
+	}
+}
+
+bool render_fields_ptr(refl::Ptr* self, void* data, string_view prefix, Editor& world) {
 	if (*(void**)data == NULL) {
 		ImGui::LabelText(prefix.c_str(), "NULL");
 		return false;
 	}
-	return render_fields(self->itemType, *(void**)data, prefix, world);
+	return render_fields(self->element, *(void**)data, prefix, world);
 }
 
-bool render_fields_vector(reflect::TypeDescriptor_Vector* self, void* data, string_view prefix, Editor& world) {
+bool render_fields_vector(refl::Array* self, void* data, string_view prefix, Editor& world) {
 	auto ptr = (vector<char>*)data;
 	data = ptr->data;
 
-	auto name = tformat(prefix, " : ", self->name);
+	auto name = tformat(prefix, " : ", self->element->name);
 	if (ImGui::TreeNode(name.c_str())) {
 		for (unsigned int i = 0; i < ptr->length; i++) {
 			auto name = "[" + std::to_string(i) + "]";
-			render_fields(self->itemType, (char*)data + (i * self->itemType->size), name.c_str(), world);
+			render_fields(self->element, (char*)data + (i * self->element->size), name.c_str(), world);
 		}
 		ImGui::TreePop();
 		return true;
@@ -192,16 +205,16 @@ bool render_fields_vector(reflect::TypeDescriptor_Vector* self, void* data, stri
 	return false;
 }
 
-bool render_fields(reflect::TypeDescriptor* type, void* data, string_view prefix, Editor& editor) {
-	if (type->kind == reflect::Struct_Kind) return render_fields_struct((reflect::TypeDescriptor_Struct*)type, data, prefix, editor);
-	else if (type->kind == reflect::Union_Kind) return render_fields_union((reflect::TypeDescriptor_Union*)type, data, prefix, editor);
-	else if (type->kind == reflect::Vector_Kind) return render_fields_vector((reflect::TypeDescriptor_Vector*)type, data, prefix, editor);
-	else if (type->kind == reflect::Enum_Kind) return render_fields_enum((reflect::TypeDescriptor_Enum*)type, data, prefix, editor);
-	else if (type->kind == reflect::Float_Kind) return render_fields_primitive((float*)data, prefix);
-	else if (type->kind == reflect::Int_Kind) return render_fields_primitive((int*)data, prefix);
-	else if (type->kind == reflect::Bool_Kind) return render_fields_primitive((bool*)data, prefix);
-	else if (type->kind == reflect::Unsigned_Int_Kind) return render_fields_primitive((unsigned int*)data, prefix);
-	else if (type->kind == reflect::StringBuffer_Kind) return render_fields_primitive((string_buffer*)data, prefix);
+bool render_fields(refl::Type* type, void* data, string_view prefix, Editor& editor) {
+	if (type->type == refl::Type::Struct) return render_fields_struct((refl::Struct*)type, data, prefix, editor);
+	//else if (type->kind == refl::Union_Kind) return render_fields_union((reflect::TypeDescriptor_Union*)type, data, prefix, editor);
+	else if (type->type == refl::Type::Array) return render_fields_vector((refl::Array*)type, data, prefix, editor);
+	else if (type->type == refl::Type::Enum) return render_fields_enum((refl::Enum*)type, data, prefix, editor);
+	else if (type->type == refl::Type::Float) return render_fields_primitive((float*)data, prefix);
+	else if (type->type == refl::Type::Int) return render_fields_primitive((int*)data, prefix);
+	else if (type->type == refl::Type::Bool) return render_fields_primitive((bool*)data, prefix);
+	else if (type->type == refl::Type::UInt) return render_fields_primitive((unsigned int*)data, prefix);
+	else if (type->type == refl::Type::StringBuffer) return render_fields_primitive((string_buffer*)data, prefix);
 }
 
 void DisplayComponents::update(World& world, UpdateCtx& params) {}
@@ -244,7 +257,7 @@ void DisplayComponents::render(World& world, RenderPass& params, Editor& editor)
 					ImGui::Dummy(ImVec2(10, 20));
 				}
 
-				if (ImGui::BeginPopup(destroy_component_popup_name((reflect::TypeDescriptor_Struct*)comp.type))) {
+				if (ImGui::BeginPopup(destroy_component_popup_name((refl::Struct*)comp.type))) {
 					if (ImGui::Button("Delete")) {
 						for (int i = 0; i < world.components_hash_size; i++) {
 							ComponentStore* store = world.components[i].get();

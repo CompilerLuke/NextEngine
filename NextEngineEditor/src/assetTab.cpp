@@ -42,46 +42,11 @@
 
 #undef max
 
-REFLECT_STRUCT_BEGIN(AssetFolder)
-REFLECT_STRUCT_MEMBER(name)
-REFLECT_STRUCT_MEMBER(contents)
-REFLECT_STRUCT_MEMBER(owner)
-REFLECT_STRUCT_END()
-
-REFLECT_STRUCT_BEGIN(TextureAsset)
-REFLECT_STRUCT_MEMBER(name)
-REFLECT_STRUCT_MEMBER(handle)
-REFLECT_STRUCT_END()
-
-REFLECT_STRUCT_BEGIN(ShaderAsset)
-REFLECT_STRUCT_MEMBER(name)
-REFLECT_STRUCT_MEMBER(handle)
-REFLECT_STRUCT_END()
-
-REFLECT_STRUCT_BEGIN(ModelAsset)
-REFLECT_STRUCT_MEMBER(name)
-REFLECT_STRUCT_MEMBER(handle)
-REFLECT_STRUCT_MEMBER(materials)
-REFLECT_STRUCT_MEMBER(trans)
-REFLECT_STRUCT_END()
-
-REFLECT_STRUCT_BEGIN(MaterialAsset)
-REFLECT_STRUCT_MEMBER(name)
-REFLECT_STRUCT_MEMBER(handle)
-REFLECT_STRUCT_END()
-
 DEFINE_APP_COMPONENT_ID(AssetFolder, 0)
 DEFINE_APP_COMPONENT_ID(TextureAsset, 1)
 DEFINE_APP_COMPONENT_ID(ShaderAsset, 2)
 DEFINE_APP_COMPONENT_ID(ModelAsset, 3)
 DEFINE_APP_COMPONENT_ID(MaterialAsset, 4)
-
-REFLECT_STRUCT_BEGIN(asset_handle)
-REFLECT_STRUCT_MEMBER(id)
-REFLECT_STRUCT_END()
-
-REFLECT_STRUCT_BEGIN(AssetNode)
-REFLECT_STRUCT_END()
 
 const uint ATLAS_PREVIEWS_WIDTH = 10;
 const uint ATLAS_PREVIEWS_HEIGHT = 10;
@@ -523,11 +488,19 @@ void channel_image(uint& image, string_view name) {
 void set_params_for_shader_graph(AssetTab& asset_tab, shader_handle shader);
 
 //todo refactor Editor into smaller chunks
-void inspect_material_params(Editor& editor, MaterialDesc* material) {	
-	for (auto& param : material->params) {
-		DiffUtil diff_util;
-		begin_tdiff(diff_util, &param);
+void inspect_material_params(Editor& editor, material_handle handle, MaterialDesc* material) {	
+	static DiffUtil diff_util;
+	static MaterialDesc copy;
+	static material_handle last_asset = {INVALID_HANDLE};
 
+	if (handle.id != last_asset.id) {
+		diff_util.id = handle.id;
+		begin_diff(diff_util, material, &copy);
+	}
+	
+	bool slider_active = false;
+
+	for (auto& param : material->params) {
 		const char* name = param.name.data;
 
 		if (param.type == Param_Vec2) {
@@ -556,14 +529,14 @@ void inspect_material_params(Editor& editor, MaterialDesc* material) {
 		if (param.type == Param_Float) {
 			ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.3f);
 			ImGui::SliderFloat(name, &param.real, -1.0f, 1.0f);
+			
+			slider_active |= ImGui::IsItemActive();
 		}
 
 		if (param.type == Param_Channel3) {
-
-
-	
 			channel_image(param.image, name);
 			edit_color(param.vec3, name, glm::vec2(50, 50));
+			slider_active |= ImGui::IsItemActive();
 		}
 
 		if (param.type == Param_Channel2) {
@@ -576,11 +549,15 @@ void inspect_material_params(Editor& editor, MaterialDesc* material) {
 			channel_image(param.image, name);
 			ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.3f);
 			ImGui::SliderFloat(tformat("##", name).c_str(), &param.real, 0, 1.0f);
+			slider_active |= ImGui::IsItemActive();
 		}
+	}
 
-		if (end_diff(editor.actions, diff_util, "Material Property")) {
-			
-		}
+	if (slider_active) {
+		submit_diff(editor.actions.frame_diffs, diff_util, "Material Property");
+	}
+	else {
+		end_diff(editor.actions, diff_util, "Material Property");
 	}
 }
 
@@ -646,7 +623,7 @@ void asset_properties(MaterialAsset* mat_asset, Editor& editor, AssetTab& self, 
 		ImGui::EndPopup();
 	}
 
-	inspect_material_params(editor, desc);
+	inspect_material_params(editor, mat_asset->handle, desc);
 	
 	rot_preview(self.preview_resources, mat_asset->rot_preview);
 	render_preview_for(self.preview_resources, *mat_asset);
@@ -669,7 +646,7 @@ void asset_properties(ModelAsset* mod_asset, Editor& editor, AssetTab& self, Ren
 	end_diff(editor.actions, diff_util, "Properties Material");
 
 	if (ImGui::Button("Apply")) {
-		load_Model(mod_asset->handle, mod_asset->trans.compute_model_matrix());
+		load_Model(mod_asset->handle, compute_model_matrix(mod_asset->trans));
 
 		mod_asset->rot_preview.rot_deg = glm::vec2();
 		mod_asset->rot_preview.current = glm::vec2();
@@ -983,12 +960,12 @@ struct TaskList {
 	bool pop();
 };
 
-unsigned int read_save_file(string_view filename, DeserializerBuffer* serializer, string_buffer* buffer) {
+/*unsigned int read_save_file(string_view filename, DeserializerBuffer* serializer, string_buffer* buffer) {
 	if (!io_readfb(filename, buffer)) throw "Could not read serialization file!";
 	
 	new (serializer) DeserializerBuffer(buffer->data, buffer->length);
 	return serializer->read_int();
-}
+}*/
 
 /*
 REFLECT_UNION_BEGIN(Param)

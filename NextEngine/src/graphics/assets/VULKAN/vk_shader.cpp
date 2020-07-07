@@ -12,11 +12,6 @@
 #include <shaderc/shaderc.h>
 #include <spirv-reflect/spirv_reflect.h>
 
-REFLECT_STRUCT_BEGIN(ShaderInfo)
-REFLECT_STRUCT_MEMBER(vfilename)
-REFLECT_STRUCT_MEMBER(ffilename)
-REFLECT_STRUCT_END()
-
 VkShaderModule make_ShaderModule(string_view code) {
 	VkDevice device = rhi.device;
 

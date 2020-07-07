@@ -4,10 +4,10 @@
 #include "core/handle.h"
 #include "core/reflection.h"
 
-struct TerrainControlPoint {
-	REFLECT(ENGINE_API)
-};
+COMP
+struct TerrainControlPoint {};
 
+COMP
 struct Terrain {
 	uint width = 12;
 	uint height = 12;
@@ -17,8 +17,6 @@ struct Terrain {
 
 	vector<float> heightmap_points;
 	float max_height = 10.0f;
-
-	REFLECT(ENGINE_API)
 };
 
 float ENGINE_API barry_centric(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec2 pos);

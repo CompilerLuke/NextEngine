@@ -13,6 +13,9 @@ DEFINE_APP_COMPONENT_ID(Bow, 2)
 DEFINE_APP_COMPONENT_ID(Arrow, 3);
 
 ID clone(World& world, ID id) {
+	return world.make_ID();
+	
+	/*
 	ID new_id = world.make_ID();
 
 	for (int i = 0; i < world.components_hash_size; i++) {
@@ -25,15 +28,15 @@ ID clone(World& world, ID id) {
 				void* dest = store->make_by_id(new_id);
 
 				SerializerBuffer buffer_write;
-				buffer_write.write_struct((reflect::TypeDescriptor_Struct*)src.type, src.data);
+				buffer_write.write_struct((refl::Struct*)src.type, src.data);
 
 				DeserializerBuffer buffer_read(buffer_write.data, buffer_write.index);
-				buffer_read.read_struct((reflect::TypeDescriptor_Struct*)src.type, dest);
+				buffer_read.read_struct((refl::Struct*)src.type, dest);
 			}
 		}
-	}
+	}*/
 
-	return new_id;
+	//return new_id;
 }
 
 #include <glm/gtc/quaternion.hpp>
@@ -180,7 +183,7 @@ void BowSystem::update(World& world, UpdateCtx& params) {
 				} 
 			}
 			else {
-				local->calc_global_transform(world);
+				calc_global_transform(world, bow->attached); 
 				bow->state = Bow::Firing;
 			}
 			break;
@@ -201,7 +204,7 @@ void BowSystem::update(World& world, UpdateCtx& params) {
 				ID cloned = clone(world, bow->attached);
 
 				arrow_local->position.z = arrow_local->position.z - params.delta_time * speed;
-				arrow_local->calc_global_transform(world);
+				calc_global_transform(world, bow->attached); 
 				world.free_by_id<LocalTransform>(bow->attached);
 
 				BoxCollider* box = world.make<BoxCollider>(bow->attached);
@@ -234,7 +237,7 @@ void BowSystem::update(World& world, UpdateCtx& params) {
 				bow->state = Bow::Idle;
 
 				world.by_id<Entity>(bow->attached)->enabled = true;
-				world.by_id<LocalTransform>(bow->attached)->calc_global_transform(world);
+				calc_global_transform(world, bow->attached); 
 			}
 			break;
 		}

@@ -16,6 +16,8 @@
 #include <stb_image.h>
 #include "graphics/renderer/ibl.h"
 
+#include "core/io/logger.h"
+
 Assets assets;
 
 void make_AssetManager(string_view path) {
@@ -374,7 +376,8 @@ Cubemap* get_Cubemap(cubemap_handle handle) {
 }
 
 material_handle make_Material(MaterialDesc& desc) {
-	Material material =  rhi.material_allocator.make(desc);
+	Material material;
+	rhi.material_allocator.make(desc, &material);
 	return assets.materials.assign_handle(std::move(material));
 }
 
@@ -384,15 +387,9 @@ Material* get_Material(material_handle handle) {
 
 void replace_Material(material_handle handle, MaterialDesc& desc) {
 	Material* mat = assets.materials.get(handle);
-	if (!mat) {
-		Material material;
-		material.desc = desc;
-		assets.materials.assign_handle(handle, std::move(material));
-	}
-	else {
-		mat->desc = desc;
-	}
+	if (!mat) assets.materials.assign_handle(handle, {});
 
+	rhi.material_allocator.make(desc, mat);
 }
 
 MaterialDesc* material_desc(material_handle handle) {

@@ -44,6 +44,7 @@ void Application::load_functions() {
 	is_running_func = (IsRunningFunction)get_Func(dll_handle, "is_running");
 	deinit_func = (DeinitFunction)get_Func(dll_handle, "deinit");
 	reload_func = (ReloadFunction)get_Func(dll_handle, "reload");
+	register_components_func = (RegisterComponents)get_Func(dll_handle, "register_components");
 
 	if (!init_func || !deinit_func || !update_func || !render_func) {
 		throw "Missing application functions";

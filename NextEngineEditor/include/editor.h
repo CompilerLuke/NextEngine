@@ -26,16 +26,18 @@ struct Time;
 struct Input;
 struct Assets;
 
+/*
 struct DroppableField {
 	void* ptr;
 	string_buffer typ;
 	ID id;
 };
 
+
 struct SwitchCase {
 	void* ptr;
 	int tag;
-	reflect::TypeDescriptor_Union* type;
+	refl::TypeDescriptor_Union* type;
 	int case_of_union;
 };
 
@@ -47,7 +49,7 @@ struct AddComponent {
 struct DeleteComponent {
 	ID id;
 	struct ComponentStore* store;
-};
+};*/
 
 struct Icon {
 	string_buffer name;
@@ -85,7 +87,6 @@ struct Editor {
 	
 	AssetInfo asset_info;
 
-	FlyOverSystem fly_over_system;
 	VisualizeProfiler profiler;
 	ShaderEditor shader_editor;
 	AssetTab asset_tab;
@@ -97,8 +98,8 @@ struct Editor {
 
 	EditorViewport editor_viewport;
 	
-	bool droppable_field_active;
-	DroppableField droppable_field;
+	//bool droppable_field_active;
+	//DroppableField droppable_field;
 
 	EventDispatcher<ID> selected;
 

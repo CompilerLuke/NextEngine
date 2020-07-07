@@ -31,7 +31,7 @@ void end_draw_cmds(CommandBuffer& cmd_buffer) {
 }
 
 void draw_mesh(CommandBuffer& cmd_buffer, model_handle model_handle, slice<material_handle> materials, Transform& trans) {
-	glm::mat4 model_m = trans.compute_model_matrix();
+	glm::mat4 model_m = compute_model_matrix(trans);
 	draw_mesh(cmd_buffer, model_handle, materials, model_m);
 }
 
@@ -102,11 +102,13 @@ void bind_pipeline(CommandBuffer& cmd_buffer, pipeline_handle pipeline_handle) {
 	cmd_buffer.bound_pipeline_layout = { (u64)get_pipeline_layout(rhi.pipeline_cache, pipeline_handle) };
 }
 
-void bind_material(CommandBuffer& cmd_buffer, material_handle mat_handle) {	
+void bind_material(CommandBuffer& cmd_buffer, material_handle mat_handle) {
 	if (cmd_buffer.bound_material.id == mat_handle.id) return;
 	cmd_buffer.bound_material = mat_handle;
 
-	descriptor_set_handle set_handle = get_Material(mat_handle)->set;
+	Material* mat = get_Material(mat_handle);
+
+	descriptor_set_handle set_handle = mat->sets[mat->index];
 	VkDescriptorSet set = get_descriptor_set(set_handle);
 	VkPipelineLayout pipeline_layout = get_pipeline_layout(rhi.pipeline_cache, cmd_buffer.bound_pipeline_layout);
 

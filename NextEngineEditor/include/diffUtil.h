@@ -34,14 +34,16 @@ struct EditorActions {
 struct DiffUtil {
 	void* real_ptr = NULL;
 	void* copy_ptr = NULL;
-	reflect::TypeDescriptor* type = NULL;
+	refl::Type* type = NULL;
+	uint id = 0;
 };
 
 struct Diff {
 	void* real_ptr;
 	void* copy_ptr;
-	reflect::TypeDescriptor* type;
+	refl::Type* type;
 	slice<uint> fields_modified;
+	uint id;
 };
 
 struct EntityCopy {
@@ -63,22 +65,24 @@ struct AssetCopy {
 void clear_stack(ActionStack&);
 void init_actions(EditorActions&);
 
-void begin_diff(DiffUtil&, void* ptr, void* copy, reflect::TypeDescriptor* type);
-void begin_tdiff(DiffUtil&, void* ptr, reflect::TypeDescriptor* type);
+void begin_diff(DiffUtil&, void* ptr, void* copy, refl::Type* type);
+void begin_tdiff(DiffUtil&, void* ptr, refl::Type* type);
 bool end_diff(EditorActions&, DiffUtil&, string_view);
 void commit_diff(EditorActions&, DiffUtil&);
+
+bool submit_diff(ActionStack& stack, DiffUtil& util, string_view string);
 
 void entity_create_action(EditorActions& actions, ID id);
 void entity_destroy_action(EditorActions& actions, ID id);
 
 template<typename T>
 void begin_diff(DiffUtil& util, T* ptr, T* copy) {
-	begin_diff(util, ptr, copy, reflect::TypeResolver<T>::get());
+	begin_diff(util, ptr, copy, refl_type(T));
 }
 
 template<typename T>
 void begin_tdiff(DiffUtil& util, T* ptr) {
-	begin_tdiff(util, ptr, reflect::TypeResolver<T>::get());
+	begin_tdiff(util, ptr, refl_type(T));
 }
 
 void undo_action(EditorActions&);

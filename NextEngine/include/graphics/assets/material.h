@@ -41,12 +41,10 @@ struct ParamDesc {
 
 	ParamDesc() {};
 	ParamDesc(const ParamDesc& other) { memcpy(this, &other, sizeof(ParamDesc)); }
-
-	REFLECT_UNION(ENGINE_API)
 };
-
-
-struct ENGINE_API MaterialDesc {	
+ 
+REFL
+struct MaterialDesc {	
 	shader_handle shader = { INVALID_HANDLE };
 	enum Mode { Static, Update } mode;
 	DrawCommandState draw_state;
@@ -69,10 +67,9 @@ ENGINE_API material_handle make_Material(MaterialDesc&);
 ENGINE_API MaterialDesc* material_desc(material_handle);
 ENGINE_API void replace_Material(material_handle, MaterialDesc&);
 
+REFL
 struct Materials {
 	vector<material_handle> materials;
-
-	REFLECT(ENGINE_API)
 };
 
 material_handle make_SubstanceMaterial(string_view folder, string_view);

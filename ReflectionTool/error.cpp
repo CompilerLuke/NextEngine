@@ -78,6 +78,7 @@ namespace pixc {
             switch (error->id) {
                 case IndentationError: group = "IndentationError"; break;
                 case SyntaxError: group = "SyntaxError"; break;
+				case SemanticError: group = "SemanticError"; break;
                 case UnknownToken: group = "LexingError"; break;
                 case RedefinitionError: group = "RedefinitionError"; break;
                 case UnknownVariable: group = "UnknownVariableError"; break;

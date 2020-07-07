@@ -4,6 +4,7 @@
 #include "ecs/system.h"
 #include "core/reflection.h"
 
+COMP
 struct Bow {
 	ID attached;
 
@@ -18,15 +19,12 @@ struct Bow {
 
 	float arrow_speed = 30.0f;
 	float reload_time = 1.0f;
-
-	REFLECT()
 };
 
+COMP
 struct Arrow {
 	enum State { Fired, AttachedToBow } state = AttachedToBow;
 	float duration = 0.0f;
-
-	REFLECT()
 };
 
 struct BowSystem : System {

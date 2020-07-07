@@ -169,9 +169,10 @@ bool Grass_inspect(void* data, string_view prefix, Editor& editor) {
 	if (ImGui::CollapsingHeader("Grass")) {
 		Grass* grass = (Grass*)data;
 		
-		auto type = (reflect::TypeDescriptor_Struct*)reflect::TypeResolver<Grass>::get();
-		for (auto& member : type->members) {
-			if (member.tag == reflect::HideInInspectorTag) continue;
+		//todo auto generate ui!
+		auto type = (refl::Struct*)refl_type(Grass);
+		for (auto& member : type->fields) {
+			if (member.flags & refl::HIDE_IN_EDITOR_TAG) continue;
 			if (member.name == "density") {
 				ImGui::InputFloat2("density range", &density_range.x);
 				ImGui::SliderFloat("density", &grass->density, density_range.x, density_range.y);

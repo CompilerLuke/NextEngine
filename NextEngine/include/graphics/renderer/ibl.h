@@ -33,6 +33,9 @@ struct SkyboxRenderData {
 
 
 #if RENDER_API_VULKAN
+#include <vulkan/vulkan.h>
+#include "graphics/rhi/vulkan/texture.h"
+
 struct CubemapPassResources {
 	VkRenderPass wait_after_render_pass;
 	VkRenderPass no_wait_render_pass;

@@ -17,14 +17,17 @@ using string = string_view;
 namespace pixc {
     namespace lexer {
         enum TokenGroup { Literal, Operator, Symbol, Terminator, Keyword };
-        enum TokenType {
+        
+		//todo enforce naming convention
+		enum TokenType {
             MulOp, AssignOp,
             Int, Float, Bool,
-            IntType, FloatType, BoolType, CharType,
+            IntType, UintType, I64Type, U64Type, FloatType, F64Type, BoolType, CharType,
+			//SStringType, StringViewType, StringBufferType,
             Open_Paren, Close_Paren, DoubleColon, Colon, Open_Bracket, Close_Bracket, Comma, SemiColon, Open_SquareBracket, Close_SquareBracket, GreaterThan, LessThan,
             Identifier,
             Newline, EndOfFile, Open_Indent, Close_Indent,
-            Struct, Enum, Namespace, Pragma, Static, Constexpr
+            Struct, Enum, Class, Namespace, Pragma, Static, Constexpr
         };
         
         struct Token {

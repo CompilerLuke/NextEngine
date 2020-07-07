@@ -69,7 +69,7 @@ T* push_ptr(char** block, uint count = 1) {
 	return (T*)ptr;
 }
 
-void begin_tdiff(DiffUtil& util, void* ptr, reflect::TypeDescriptor* type) {
+void begin_tdiff(DiffUtil& util, void* ptr, refl::Type* type) {
 	util.real_ptr = ptr;
 	util.copy_ptr = temporary_allocator.allocate(type->size);
 	util.type = type;
@@ -77,7 +77,7 @@ void begin_tdiff(DiffUtil& util, void* ptr, reflect::TypeDescriptor* type) {
 	memcpy(util.copy_ptr, util.real_ptr, type->size);
 }
 
-void begin_diff(DiffUtil& util, void* ptr, void* copy, reflect::TypeDescriptor* type) {
+void begin_diff(DiffUtil& util, void* ptr, void* copy, refl::Type* type) {
 	util.real_ptr = ptr;
 	util.copy_ptr = copy;
 	util.type = type;
@@ -90,7 +90,7 @@ Diff* copy_onto_stack(ActionStack& stack, EditorActionHeader header, const Diff&
 	memset(data, 0, header.size);
 
 	Diff* copy = push_ptr<Diff>(&data);
-
+	copy->id = diff.id;
 	copy->copy_ptr = push_ptr<char>(&data, diff.type->size);
 
 	copy->real_ptr = diff.real_ptr;
@@ -105,16 +105,17 @@ Diff* copy_onto_stack(ActionStack& stack, EditorActionHeader header, const Diff&
 }
 
 bool submit_diff(ActionStack& stack, DiffUtil& util,  string_view string) {
-	assert(util.type->kind == reflect::Struct_Kind || util.type->kind == reflect::Union_Kind);
+	assert(util.type->type == refl::Type::Struct || util.type->type == refl::Type::Union);
+	assert(util.type->size < 1000);
 
 	tvector<uint> modified_fields;
 	bool is_modified = false;
 
-	if (util.type->kind == reflect::Struct_Kind) {
-		reflect::TypeDescriptor_Struct* type = (reflect::TypeDescriptor_Struct*)util.type;
+	if (util.type->type == refl::Type::Struct) {
+		refl::Struct* type = (refl::Struct*)util.type;
 
-		for (uint i = 0; i < type->members.length; i++) {
-			auto& member = type->members[i];
+		for (uint i = 0; i < type->fields.length; i++) {
+			auto& member = type->fields[i];
 			auto original_value = (char*)util.copy_ptr + member.offset;
 			auto new_value = (char*)util.real_ptr + member.offset;
 
@@ -124,7 +125,7 @@ bool submit_diff(ActionStack& stack, DiffUtil& util,  string_view string) {
 			}
 		}
 	}
-	else if (util.type->kind == reflect::Union_Kind) {
+	else if (util.type->type == refl::Type::Union) {
 		is_modified = memcmp(util.copy_ptr, util.real_ptr, util.type->size) != 0;
 	}
 
@@ -136,12 +137,16 @@ bool submit_diff(ActionStack& stack, DiffUtil& util,  string_view string) {
 	header.size = sizeof(Diff) + util.type->size + sizeof(uint) * modified_fields.length;
 
 	Diff diff = {};
+	diff.id = util.id;
 	diff.copy_ptr = util.copy_ptr;
 	diff.real_ptr = util.real_ptr;
 	diff.type = util.type;
 	diff.fields_modified = modified_fields;
 
+
 	copy_onto_stack(stack, header, diff);
+
+	return true;
 }
 
 //this will only work with flat data structures!

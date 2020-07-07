@@ -27,7 +27,7 @@ bool render_fields_primitive(float*, string_view);
 bool render_fields_primitive(string_buffer*, string_view);
 bool render_fields_primitive(bool*, string_view);
 
-bool render_fields(reflect::TypeDescriptor*, void*, string_view, Editor&);
+bool render_fields(refl::Type*, void*, string_view, Editor&);
 
 using OnInspectGUICallback = bool(*)(void*, string_view, Editor&);
 

@@ -11,10 +11,6 @@
 #include "graphics/renderer/renderer.h"
 #include <GLFW/glfw3.h>
 
-REFLECT_STRUCT_BEGIN(shader_node_handle)
-REFLECT_STRUCT_MEMBER(id)
-REFLECT_STRUCT_END()
-
 float GRID_SZ = 64.0f;
 
 ShaderNode::ShaderNode(Type type, ChannelType output_type) {
@@ -1157,6 +1153,11 @@ void asset_properties(ShaderAsset* shader, Editor& editor, AssetTab& self, Rende
 	render_preview(shader, self.info, ctx);
 }
 
+string_view get_param_name(ShaderGraph& graph, unsigned int i) {
+	return graph.parameters[i].name;
+}
+
+/*
 #include "core/serializer.h"
 
 REFLECT_BEGIN_ENUM(ChannelType)
@@ -1187,9 +1188,7 @@ REFLECT_STRUCT_MEMBER(links)
 REFLECT_STRUCT_MEMBER(position)
 REFLECT_STRUCT_END()
 
-string_view get_param_name(ShaderGraph& graph, unsigned int i) {
-	return graph.parameters[i].name;
-}
+
 
 void deserialize_shader_asset(DeserializerBuffer& buffer, ShaderAsset* asset) {
 	if (asset->graph == NULL) {
@@ -1208,9 +1207,9 @@ void deserialize_shader_asset(DeserializerBuffer& buffer, ShaderAsset* asset) {
 		node.type = (ShaderNode::Type) buffer.read_int();
 		node.collapsed = buffer.read_byte();
 
-		buffer.read_struct((reflect::TypeDescriptor_Struct*) reflect::TypeResolver<glm::vec2>::get(), &node.position);
+		buffer.read_struct((refl::Struct*) reflect::TypeResolver<glm::vec2>::get(), &node.position);
 		buffer.read_array((reflect::TypeDescriptor_Vector*)  reflect::TypeResolver<decltype(node.inputs)>::get(), &node.inputs);
-		buffer.read_struct((reflect::TypeDescriptor_Struct*) reflect::TypeResolver<decltype(node.output)>::get(), &node.output);
+		buffer.read_struct((refl::Struct*) reflect::TypeResolver<decltype(node.output)>::get(), &node.output);
 
 		if (node.type == ShaderNode::MATH_NODE) {
 			node.tex_node.from_param = buffer.read_byte();
@@ -1252,9 +1251,9 @@ void serialize_shader_asset(SerializerBuffer& buffer,  ShaderAsset* asset) {
 		
 		buffer.write_int(node->type);
 		buffer.write_byte(node->collapsed);
-		buffer.write_struct((reflect::TypeDescriptor_Struct*) reflect::TypeResolver<glm::vec2>::get(), &node->position);
+		buffer.write_struct((refl::Struct*) reflect::TypeResolver<glm::vec2>::get(), &node->position);
 		buffer.write_array((reflect::TypeDescriptor_Vector*)  reflect::TypeResolver<decltype(node->inputs)>::get(), &node->inputs);
-		buffer.write_struct((reflect::TypeDescriptor_Struct*) reflect::TypeResolver<decltype(node->output)>::get(), &node->output);
+		buffer.write_struct((refl::Struct*) reflect::TypeResolver<decltype(node->output)>::get(), &node->output);
 
 		if (node->type == ShaderNode::MATH_NODE) {
 			buffer.write_byte(node->tex_node.from_param);
@@ -1269,3 +1268,4 @@ void serialize_shader_asset(SerializerBuffer& buffer,  ShaderAsset* asset) {
 
 	buffer.write_array((reflect::TypeDescriptor_Vector*) reflect::TypeResolver<decltype(graph->parameters)>::get(), &graph->parameters);
 }
+*/

@@ -22,6 +22,7 @@ using u16 = uint16_t;
 
 #define COMP
 #define REFL
+#define REFL_FALSE
 
 #undef max
 #undef min

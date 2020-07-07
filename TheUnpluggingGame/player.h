@@ -1,11 +1,8 @@
 #pragma once
 
-#include <core/reflection.h>
+#include <core/core.h>
 
-#define COMPONENT()
-
-COMPONENT()
+COMP
 struct Player {
-	REFLECT()
 	float health = 100;
 };

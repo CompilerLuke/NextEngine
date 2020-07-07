@@ -2,6 +2,7 @@
 #include <ecs/system.h>
 #include <core/reflection.h>
 
+COMP
 struct PlayerInput {
 	float yaw = 0;
 	float pitch = 0;
@@ -11,8 +12,6 @@ struct PlayerInput {
 	bool shift = false;
 	bool space = false;
 	bool holding_mouse_left = false;
-
-	REFLECT()
 };
 
 PlayerInput* get_player_input(struct World&);

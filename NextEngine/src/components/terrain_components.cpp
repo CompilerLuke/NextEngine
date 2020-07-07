@@ -2,17 +2,6 @@
 #include "components/transform.h"
 #include "core/reflection.h"
 
-REFLECT_STRUCT_BEGIN(TerrainControlPoint)
-REFLECT_STRUCT_END()
-
-REFLECT_STRUCT_BEGIN(Terrain)
-REFLECT_STRUCT_MEMBER(width)
-REFLECT_STRUCT_MEMBER(height)
-REFLECT_STRUCT_MEMBER(size_of_block)
-REFLECT_STRUCT_MEMBER_TAG(heightmap_points, reflect::HideInInspectorTag)
-REFLECT_STRUCT_MEMBER(show_control_points)
-REFLECT_STRUCT_END()
-
 float barryCentric(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec2 pos) {
 	float det = (p2.z - p3.z) * (p1.x - p3.x) + (p3.x - p2.x) * (p1.z - p3.z);
 	float l1 = ((p2.z - p3.z) * (pos.x - p3.x) + (p3.x - p2.x) * (pos.y - p3.z)) / det;

@@ -13,6 +13,9 @@
 #include "graphics/rhi/vulkan/buffer.h"
 #include "graphics/rhi/vulkan/vulkan.h"
 
+//HACK ACKWARD INITIALIZATION
+#include "ecs/ecs.h"
+
 Renderer* make_Renderer(const RenderSettings& settings, World& world) {
 	Renderer* renderer = PERMANENT_ALLOC(Renderer);
 	renderer->settings = settings;

@@ -41,9 +41,8 @@ Stage from_vk_stage(VkShaderStageFlags flags) {
 	return stage;
 }
 
-Material MaterialAllocator::make(MaterialDesc& desc) {	
-	Material material;
-	material.desc = desc;
+void MaterialAllocator::make(MaterialDesc& desc, Material* material) {	
+	material->desc = desc;
 
 	shader_flags permutations[] = { SHADER_INSTANCED };
 
@@ -52,6 +51,10 @@ Material MaterialAllocator::make(MaterialDesc& desc) {
 	static texture_handle white_texture = load_Texture("solid_white.png");
 
 	static texture_handle ccc = load_Texture("wood_2/Stylized_Wood_basecolor.jpg");
+
+	//bool initialized = material->set.id != INVALID_HANDLE;
+
+	material->index = (material->index + 1) % MAX_FRAMES_IN_FLIGHT;
 
 	for (int perm = 0; perm < 1; perm++) {
 		ShaderModules* module = get_shader_config(desc.shader, permutations[perm]);
@@ -65,10 +68,13 @@ Material MaterialAllocator::make(MaterialDesc& desc) {
 		DescriptorSetInfo& material_bindings = module->info.sets[MATERIAL_SET];
 		UBOInfo& ubo_info = material_bindings.ubos[0];
 
-		UBOBuffer ubo_buffer = alloc_ubo_buffer(ubo_info.size, UBO_MAP_UNMAP);
 
 		DescriptorDesc descriptor_desc;
-		add_ubo(descriptor_desc, from_vk_stage(material_bindings.bindings[ubo_info.id].stage), ubo_buffer, 0);
+		UBOBuffer& ubo_buffer = material->ubos[material->index];
+		if (material->sets[material->index].id == INVALID_HANDLE) {
+			ubo_buffer = alloc_ubo_buffer(ubo_info.size, UBO_MAP_UNMAP);
+			add_ubo(descriptor_desc, from_vk_stage(material_bindings.bindings[ubo_info.id].stage), ubo_buffer, 0);
+		}
 
 		char ubo_memory[256] = {};
 
@@ -144,9 +150,13 @@ Material MaterialAllocator::make(MaterialDesc& desc) {
 
 		memcpy_ubo_buffer(ubo_buffer, ubo_info.size, ubo_memory);
 
-		update_descriptor_set(material.set, descriptor_desc);
-		material.ubo = ubo_buffer;
-	}
+		// TODO FIX BUG, WHERE DESCRIPTOR IS STILL IN USE!
+		// ONE POSSIBILITY IS A DESCRIPTOR REUSE SYSTEM, WHERE WHEN
+		// THE FRAME INDEX IS RESET THE DESCRIPTOR IS FREED
+		// OTHERWISE WE WILL x3 the number of descriptors that we actually need!
 
-	return material;
+		printf("UPDATING DESCRIPTOR #%i\n", material->index);
+		update_descriptor_set(material->sets[material->index], descriptor_desc);
+		printf("DESCRIPTOR %p\n", get_descriptor_set(material->sets[material->index]));
+	}
 }

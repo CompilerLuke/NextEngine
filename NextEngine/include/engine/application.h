@@ -13,6 +13,7 @@ using RenderFunction    = void  (*)(void*, Modules&);
 using DeinitFunction    = void  (*)(void*, Modules&);
 using ReloadFunction    = void  (*)(void*, Modules&);
 using IsRunningFunction = bool  (*)(void*, Modules&);
+using RegisterComponents = void(*)(World& world);
 
 class Application {
 	string_buffer path;
@@ -26,6 +27,7 @@ class Application {
 	IsRunningFunction is_running_func;
 	DeinitFunction deinit_func;
 	ReloadFunction reload_func;
+	RegisterComponents register_components_func;
 
 	void load_functions();
 

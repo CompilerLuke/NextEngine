@@ -44,7 +44,7 @@ constexpr unsigned int max_entities = 20000;
 struct Component {
 	ID id;
 	struct ComponentStore* store;
-	reflect::TypeDescriptor* type;
+	refl::Struct* type;
 	void* data;
 };
 
@@ -55,7 +55,7 @@ struct ComponentStore {
 	virtual Component get_by_id(ID) = 0;
 	virtual void set_enabled(void*, bool) = 0;
 	virtual vector<Component> filter_untyped() = 0;
-	virtual reflect::TypeDescriptor* get_component_type() = 0;
+	virtual refl::Struct* get_component_type() = 0;
 	virtual ComponentStore* clone() = 0;
 	virtual void copy_from(const ComponentStore*) = 0;
 	virtual void fire_callbacks() = 0;
@@ -140,7 +140,7 @@ struct Store : ComponentStore {
 	}
 
 	Component get_by_id(ID id) final {
-		return { id, this, reflect::TypeResolver<T>::get(), (T*)by_id(id) };
+		return { id, this, (refl::Struct*)refl_type(T), (T*)by_id(id) };
 	}
 
 	uint component_id(T* ptr) {
@@ -232,8 +232,8 @@ struct Store : ComponentStore {
 		return arr;
 	}
 
-	reflect::TypeDescriptor* get_component_type() override final {
-		return reflect::TypeResolver<T>::get();
+	refl::Struct* get_component_type() override final {
+		return (refl::Struct*)refl_type(T);
 	}
 
 	vector<Component> filter_untyped() override final { //todo merge definitions
@@ -301,12 +301,11 @@ struct Store : ComponentStore {
 	}
 };
 
+COMP
 struct Entity {
 	bool enabled = true;
 	Layermask layermask = GAME_LAYER | PICKING_LAYER;
 	Flags flags = STATIC;
-
-	REFLECT(ENGINE_API)
 };
 
 struct World {

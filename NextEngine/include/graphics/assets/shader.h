@@ -20,13 +20,12 @@ struct UniformInfo {
 	enum Type {} type;
 };
 
+REFL
 struct ShaderInfo {
 	sstring vfilename;
 	sstring ffilename;
 	u64 v_time_modified;
 	u64 f_time_modified;
-
-	REFLECT(ENGINE_API)
 };
 
 struct GlobalShaders {

@@ -7,11 +7,10 @@
 #include "core/container/vector.h"
 #include "core/container/string_buffer.h"
 
+COMP
 struct EntityEditor { //Editor meta data for this entity
 	string_buffer name;
 	vector<ID> children;
-
-	REFLECT(NO_ARG)
 };
 
 struct Lister {

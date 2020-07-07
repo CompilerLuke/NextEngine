@@ -10,7 +10,7 @@ glm::mat4* compute_model_matrices(vector<Transform>& transforms) {
 	glm::mat4* result = TEMPORARY_ARRAY(glm::mat4, transforms.length);
 
 	for (unsigned int i = 0; i < transforms.length; i++) {
-		result[i] = transforms[i].compute_model_matrix();
+		result[i] = compute_model_matrix(transforms[i]); 
 	}
 
 	return result;

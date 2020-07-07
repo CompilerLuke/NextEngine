@@ -240,7 +240,7 @@
     <ClCompile Include="src\graphics\rhi\vulkan\vk_framegraph.cpp" />
     <ClCompile Include="src\ecs\ecs20.cpp" />
     <ClCompile Include="vendor\imgui\imgui_impl_vulkan.cpp" />
-    <ClCompile Include="src\components\transform_ref.cpp" />
+    <ClCompile Include="src\generated.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="vendor\imgui\imconfig.h">
@@ -477,7 +477,11 @@
     <ClInclude Include="include\ecs\ecs20.h" />
     <ClInclude Include="include\core\container\tuple.h" />
     <ClInclude Include="vendor\imgui\imgui_impl_vulkan.h" />
-    <ClInclude Include="src\components\transform_ref.h" />
     <ClInclude Include="include\core\reflection2.h" />
+    <ClInclude Include="include\core\container\string.h" />
+    <ClInclude Include="src\generated.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="src\refl_filepaths.refl" />
   </ItemGroup>
 </Project>

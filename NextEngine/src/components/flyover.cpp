@@ -4,11 +4,6 @@
 #include "core/io/logger.h"
 #include <GLFW/glfw3.h>
 
-REFLECT_STRUCT_BEGIN(Flyover)
-REFLECT_STRUCT_MEMBER(mouse_sensitivity)
-REFLECT_STRUCT_MEMBER(movement_speed)
-REFLECT_STRUCT_END()
-
 float get_speed(Flyover& self, UpdateCtx& ctx, float height) {
 	auto height_multiplier = 1.0f + height / 10.0f; 
 	
@@ -18,10 +13,10 @@ float get_speed(Flyover& self, UpdateCtx& ctx, float height) {
 	return (float)(self.movement_speed * height_multiplier * ctx.delta_time);
 }
 
-void FlyOverSystem::update(World& world, UpdateCtx& params) {
+void update_flyover(World& world, UpdateCtx& ctx) {
 	auto debugging = world.get<Flyover>();
 
-	for (ID id : world.filter <Flyover, Transform>(params.layermask)) {
+	for (ID id : world.filter <Flyover, Transform>(ctx.layermask)) {
 		auto trans = world.by_id<Transform>(id);
 		auto self = world.by_id<Flyover>(id);
 
@@ -29,16 +24,16 @@ void FlyOverSystem::update(World& world, UpdateCtx& params) {
 		auto forward = glm::normalize(facing_rotation * glm::vec3(0, 0, -1));
 		auto right = glm::normalize(facing_rotation * glm::vec3(1, 0, 0));
 
-		float vertical_axis = params.input.get_vertical_axis();
-		float horizontal_axis = params.input.get_horizontal_axis();
+		float vertical_axis = ctx.input.get_vertical_axis();
+		float horizontal_axis = ctx.input.get_horizontal_axis();
 
-		float speed = get_speed(*self, params, trans->position.y
+		float speed = get_speed(*self, ctx, trans->position.y
 		
 		);
 		trans->position += forward * speed * vertical_axis;
 		trans->position += right * speed * horizontal_axis;
 
-		auto last_mouse_offset = params.input.mouse_offset * self->mouse_sensitivity;
+		auto last_mouse_offset = ctx.input.mouse_offset * self->mouse_sensitivity;
 
 		if (self->past_movement_speed_length < NUM_PAST_MOVEMENT_SPEEDS) {
 			self->past_movement_speed[self->past_movement_speed_length] = last_mouse_offset;
@@ -61,12 +56,12 @@ void FlyOverSystem::update(World& world, UpdateCtx& params) {
 			mouse_offset += self->past_movement_speed[i];
 		}
 		
-		if (params.input.mouse_button_down(Right)) {
-			params.input.capture_mouse(true);
+		if (ctx.input.mouse_button_down(Right)) {
+			ctx.input.capture_mouse(true);
 			mouse_offset = mouse_offset * (1.0f / self->past_movement_speed_length);
 		}
 		else {
-			params.input.capture_mouse(false);
+			ctx.input.capture_mouse(false);
 			mouse_offset = glm::vec2(0);
 		}
 

@@ -3,12 +3,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "graphics/renderer/renderer.h"
 
-REFLECT_STRUCT_BEGIN(Camera)
-REFLECT_STRUCT_MEMBER(near_plane)
-REFLECT_STRUCT_MEMBER(far_plane)
-REFLECT_STRUCT_MEMBER(fov)
-REFLECT_STRUCT_END()
-
 glm::mat4 get_view_matrix(Transform& trans) {
 	auto rotate_m = glm::mat4_cast(trans.rotation);
 	rotate_m = glm::inverse(rotate_m);

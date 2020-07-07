@@ -61,7 +61,7 @@ void Gizmo::render(World& world, Editor& editor, Viewport& viewport, Input& inpu
 
 	ImGuiIO& io = ImGui::GetIO();
 
-	glm::mat4 model_matrix = trans->compute_model_matrix();
+	glm::mat4 model_matrix = compute_model_matrix(*trans);
 
 	glm::vec3 snap_vec(snap_amount);
 

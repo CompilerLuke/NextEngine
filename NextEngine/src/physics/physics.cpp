@@ -221,40 +221,6 @@ void free_collision_shape(btCollisionShape* shape) {
 	delete shape;
 }
 
-REFLECT_STRUCT_BEGIN(CapsuleCollider)
-REFLECT_STRUCT_MEMBER(radius)
-REFLECT_STRUCT_MEMBER(height)
-REFLECT_STRUCT_END()
-
-REFLECT_STRUCT_BEGIN(SphereCollider)
-REFLECT_STRUCT_MEMBER(radius)
-REFLECT_STRUCT_END()
-
-REFLECT_STRUCT_BEGIN(BoxCollider)
-REFLECT_STRUCT_MEMBER(scale)
-REFLECT_STRUCT_END()
-
-REFLECT_STRUCT_BEGIN(PlaneCollider)
-REFLECT_STRUCT_MEMBER(normal)
-REFLECT_STRUCT_END()
-
-REFLECT_STRUCT_BEGIN(CharacterController)
-REFLECT_STRUCT_MEMBER_TAG(on_ground, reflect::HideInInspectorTag)
-REFLECT_STRUCT_MEMBER_TAG(velocity, reflect::HideInInspectorTag)
-REFLECT_STRUCT_MEMBER(feet_height)
-REFLECT_STRUCT_END()
-
-REFLECT_STRUCT_BEGIN(RigidBody)
-REFLECT_STRUCT_MEMBER(mass)
-REFLECT_STRUCT_MEMBER(velocity)
-REFLECT_STRUCT_MEMBER(override_position)
-REFLECT_STRUCT_MEMBER(override_rotation)
-REFLECT_STRUCT_MEMBER(override_velocity_x)
-REFLECT_STRUCT_MEMBER(override_velocity_y)
-REFLECT_STRUCT_MEMBER(override_velocity_z)
-REFLECT_STRUCT_MEMBER(continous)
-REFLECT_STRUCT_END()
-
 PhysicsSystem::PhysicsSystem()
 	: bt_wrapper(make_BulletWrapper()) {}
 

@@ -15,7 +15,7 @@ using string = string_view;
 
 namespace pixc {
     namespace error {
-        enum ErrorID { UnknownToken, SyntaxError, IndentationError, RedefinitionError, UnknownVariable, TypeError };
+        enum ErrorID { UnknownToken, SyntaxError, SemanticError, IndentationError, RedefinitionError, UnknownVariable, TypeError };
         
         struct Error {
 			struct LinearAllocator* allocator;

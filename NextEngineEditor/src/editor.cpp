@@ -164,6 +164,7 @@ string_buffer save_component_to(ComponentStore* store) {
 	return string_buffer("data/") + store->get_component_type()->name + ".ne";
 }
 
+/*
 void on_load_world(Editor& editor) {
 	World& world = get_World(editor);
 
@@ -177,16 +178,20 @@ void on_load_world(Editor& editor) {
 			string_buffer data_buffer;
 			if (!io_readfb(component_path, &data_buffer)) continue;
 
-			DeserializerBuffer buffer(data_buffer.data, data_buffer.length);
-			reflect::TypeDescriptor* component_type = store->get_component_type();
+			DeserializerBuffer buffer{ data_buffer.data, data_buffer.length };
+			refl::Type* component_type = store->get_component_type();
 
-			unsigned num_components = buffer.read_int();
+			uint num_components;
+			read_from_buffer(buffer, &num_components); //.read_int();
+			
 			for (unsigned int i = 0; i < num_components; i++) {
 				unsigned int id = buffer.read_int();
 
 				if (id == 0 && false) {
 					id = world.make_ID();
 					void* ptr = store->make_by_id(id);
+
+
 
 					buffer.read(component_type, ptr);
 
@@ -205,7 +210,7 @@ void on_load_world(Editor& editor) {
 	}
 
 	//if (save_files_available == 0) default_scene(editor);
-}
+}*/
 
 void default_scene(Editor& editor);
 
@@ -215,7 +220,7 @@ void on_load(Editor& editor) {
 	default_scene(editor);
 	return;
 
-	on_load_world(editor);
+	//on_load_world(editor);
 
 	world.get<Skybox>()->fire_callbacks();
 
@@ -238,13 +243,14 @@ void on_save_world(Editor& editor) {
 					filtered.append(comp);
 			}
 
-			buffer.write_int(filtered.length);
+			write_to_buffer(buffer, filtered.length);
 
 			log("Serialized ", filtered.length, " ", store->get_component_type()->name);
 
 			for (Component& comp : filtered) {
-				buffer.write_int(comp.id);
-				buffer.write(comp.type, comp.data);
+				write_to_buffer(buffer, comp.id);
+				//buffer.write_int(comp.id);
+				//buffer.write(comp.type, comp.data);
 			}
 
 			string_buffer component_save_path = save_component_to(store);
@@ -298,6 +304,7 @@ Editor::Editor(Modules& modules, const char* game_code) :
 	//world.add(new TerrainSystem(world, this));
 	//world.add(new PickingSystem(*this));
 
+	world.add(new Store<EntityEditor>(100));
 
 	FramebufferDesc settings{ window.width, window.height };
 	add_color_attachment(settings, &scene_view);
@@ -546,6 +553,7 @@ void render_frame(Editor& editor, World& world) {
 
 	render_Editor(editor, gpu_submission.render_passes[RenderPass::Screen], gpu_submission.render_passes[RenderPass::Scene]);
 	
+
 	submit_frame(renderer, gpu_submission);
 
 	/*
@@ -884,9 +892,6 @@ void respond_to_framediffs(Editor& editor) {
 			build_acceleration_structure(renderer.scene_partition, renderer.mesh_buckets, editor.world);
 		}
 	}
-
-
-	clear_stack(stack);
 }
 
 #include "graphics/rhi/rhi.h"
@@ -909,7 +914,6 @@ APPLICATION_API bool is_running(Editor* editor, Modules& engine) {
 }
 
 APPLICATION_API void update(Editor& editor, Modules& modules) {
-	respond_to_framediffs(editor);
 	respond_to_shortcut(editor);
 
 	UpdateCtx update_ctx(editor.time, editor.input);
@@ -922,9 +926,11 @@ APPLICATION_API void update(Editor& editor, Modules& modules) {
 		editor.game.update();
 	}
 	else {
-		editor.fly_over_system.update(editor.world, update_ctx);
+		update_flyover(editor.world, update_ctx);
 		//FlyOverSystem::update(engine.world, update_ctx);
 	}
+
+	respond_to_framediffs(editor);
 }
 
 #include "graphics/renderer/model_rendering.h"
@@ -936,6 +942,8 @@ APPLICATION_API void render(Editor& editor, Modules& engine) {
 	Layermask layermask = editor.playing_game ? GAME_LAYER : GAME_LAYER | EDITOR_LAYER;
 
 	render_frame(editor, world);
+
+	clear_stack(editor.actions.frame_diffs);
 }
 
 APPLICATION_API void deinit(Editor* editor) {

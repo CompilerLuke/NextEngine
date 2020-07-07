@@ -10,10 +10,6 @@
 #include "grass.h"
 #include "components/terrain.h"
 
-REFLECT_STRUCT_BEGIN(EntityEditor)
-REFLECT_STRUCT_MEMBER(name)
-REFLECT_STRUCT_END()
-
 string_buffer name_with_id(World& world, ID id) {
 	auto name = world.by_id<EntityEditor>(id);
 	if (name) return tformat("#", id, " : ", name->name);

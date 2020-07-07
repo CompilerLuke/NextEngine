@@ -9,8 +9,9 @@ struct Assets;
 
 struct Material {
 	MaterialDesc desc;
-	UBOBuffer ubo;
-	descriptor_set_handle set;
+	UBOBuffer ubos[MAX_FRAMES_IN_FLIGHT] = {};
+	descriptor_set_handle sets[MAX_FRAMES_IN_FLIGHT] = {};
+	uint index = 0;
 };
 
 struct MaterialAllocator {
@@ -23,7 +24,7 @@ struct MaterialAllocator {
 	void init();
 	~MaterialAllocator();
 
-	Material make(MaterialDesc& desc);
+	void make(MaterialDesc& desc, Material* material);
 };
 
 //void make_MaterialAllocator(MaterialAllocator&);

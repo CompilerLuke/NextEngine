@@ -16,18 +16,14 @@ struct Vertex {
 	glm::vec2 tex_coord;
 	glm::vec3 tangent;
 	glm::vec3 bitangent;
-
-	REFLECT(ENGINE_API)
 };
 
 struct Mesh {
-	VertexBuffer buffer;
+	REFL_FALSE VertexBuffer buffer;
 	slice<Vertex> vertices;
 	slice<uint> indices;
 	AABB aabb;
 	uint material_id;
-
-	REFLECT(ENGINE_API)
 };
 
 struct Model {
@@ -35,15 +31,12 @@ struct Model {
 	slice<Mesh> meshes;
 	slice<sstring> materials;
 	AABB aabb;
-
-	REFLECT(ENGINE_API)
 };
 
+COMP
 struct ModelRenderer {
 	bool visible = true;
 	model_handle model_id;
-
-	REFLECT(ENGINE_API)
 };
 
 struct VertexBuffer;

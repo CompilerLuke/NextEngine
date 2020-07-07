@@ -2,6 +2,9 @@
 #include "graphics/assets/assets.h"
 #include "core/io/logger.h"
 
+#include "core/serializer.h"
+
+/*
 REFLECT_UNION_BEGIN(ParamDesc)
 REFLECT_UNION_FIELD(name)
 REFLECT_UNION_FIELD(name)
@@ -12,10 +15,24 @@ REFLECT_UNION_CASE(real)
 REFLECT_UNION_CASE(vec2)
 REFLECT_UNION_CASE(vec3)
 REFLECT_UNION_END()
+*/
 
-REFLECT_STRUCT_BEGIN(Materials)
-REFLECT_STRUCT_MEMBER(materials)
-REFLECT_STRUCT_END()
+void write_to_buffer(SerializerBuffer& buffer, ParamDesc& param) {
+	write_to_buffer(buffer, &param, sizeof(ParamDesc));
+}
+
+void read_from_buffer(DeserializerBuffer& buffer, ParamDesc* param) {
+	read_from_buffer(buffer, param, sizeof(ParamDesc));
+}
+
+template<>
+struct refl::TypeResolver<ParamDesc> {
+	ENGINE_API static refl::Type* get() {
+		static Union type = { Type::Union, sizeof(ParamDesc), "ParamDesc" };
+		return &type;
+	}
+};
+
 
 material_handle make_SubstanceMaterial(Assets& assets, string_view folder, string_view name) {
 	auto shad = load_Shader("shaders/pbr.vert", "shaders/pbr.frag");

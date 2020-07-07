@@ -1,6 +1,7 @@
+/*
 #include "core/serializer.h"
 #include "core/io/vfs.h"
-#include "ecs/ecs.h"
+#include <glm/gtc/quaternion.hpp>
 
 #include <WinSock2.h>
 #pragma comment(lib, "Ws2_32.lib")
@@ -35,19 +36,20 @@ const void* DeserializerBuffer::pointer_to_n_bytes(unsigned int num) {
 	return ptr;
 }
 
-void SerializerBuffer::write_struct(reflect::TypeDescriptor_Struct* type, void* ptr) {
-	for (auto& member : type->members) {
+void SerializerBuffer::write_struct(refl::Struct* type, void* ptr) {
+	for (auto& member : type->fields) {
 		write(member.type, (char*)ptr + member.offset);
 	}
 }
 
-void DeserializerBuffer::read_struct(reflect::TypeDescriptor_Struct* type, void* ptr) {
-	for (auto& member : type->members) {
+void DeserializerBuffer::read_struct(refl::Struct* type, void* ptr) {
+	for (auto& member : type->fields) {
 		read(member.type, (char*)ptr + member.offset);
 	}
 }
 
-void SerializerBuffer::write_union(reflect::TypeDescriptor_Union* type, void* ptr) {
+/*
+void SerializerBuffer::write_union(refl::TypeDescriptor_Union* type, void* ptr) {
 	int tag = *(int*)((char*)ptr + type->tag_offset);
 
 	write_int(tag);
@@ -58,8 +60,9 @@ void SerializerBuffer::write_union(reflect::TypeDescriptor_Union* type, void* pt
 
 	auto& union_case = type->cases[tag];
 	write(union_case.type, (char*)ptr + union_case.offset);
-}
+}*/
 
+/*
 void DeserializerBuffer::read_union(reflect::TypeDescriptor_Union* type, void* ptr) {
 	int tag = read_int();
 	*(int*)((char*)ptr + type->tag_offset) = (char)tag;
@@ -81,6 +84,12 @@ uint8_t DeserializerBuffer::read_byte() {
 }
 
 void SerializerBuffer::write_int(int32_t value) {
+	auto ptr = (uint32_t*)pointer_to_n_bytes(4);
+	*ptr = u32_to_network(*(uint32_t*)&value);
+}
+
+
+void SerializerBuffer::write_uint(uint32_t value) {
 	auto ptr = (uint32_t*)pointer_to_n_bytes(4);
 	*ptr = u32_to_network(*(uint32_t*)&value);
 }
@@ -119,25 +128,25 @@ double DeserializerBuffer::read_double() {
 	return (double)read_long() * double_precision;
 }
 
-void SerializerBuffer::write_array(reflect::TypeDescriptor_Vector* type, void* ptr) {
+void SerializerBuffer::write_array(refl::Array* type, void* ptr) {
 	vector<char>* arr = (vector<char>*)ptr;
 
 	write_int(arr->length);
 	for (int i = 0; i < arr->length; i++) {
-		write(type->itemType, (char*)arr->data + (i * type->itemType->size));
+		write(type->element, (char*)arr->data + (i * type->element->size));
 	}
 }
 
-void DeserializerBuffer::read_array(reflect::TypeDescriptor_Vector* type, void* ptr) {
+void DeserializerBuffer::read_array(refl::Array* type, void* ptr) {
 	vector<char>* arr = (vector<char>*)ptr;
 
 	unsigned int length = (unsigned int)read_int();
 	arr->length = length;
-	arr->reserve(length * type->itemType->size);
+	arr->reserve(length * type->element->size);
 	arr->capacity = length;
 
 	for (int i = 0; i < arr->length; i++) {
-		read(type->itemType, (char*)arr->data + (i * type->itemType->size));
+		read(type->element, (char*)arr->data + (i * type->element->size));
 	}
 }
 
@@ -184,31 +193,35 @@ void DeserializerBuffer::read_string(sstring& str) {
 }
 
 
-void SerializerBuffer::write(reflect::TypeDescriptor* type, void* ptr) {
-	if (type->kind == reflect::Struct_Kind) write_struct((reflect::TypeDescriptor_Struct*)type, ptr);
-	else if (type->kind == reflect::Union_Kind) write_union((reflect::TypeDescriptor_Union*)type, ptr);
-	else if (type->kind == reflect::Bool_Kind) write_byte(*(bool*)ptr);
-	else if (type->kind == reflect::Float_Kind) write_float(*(float*)ptr);
-	else if (type->kind == reflect::Int_Kind) write_int(*(int*)ptr);
-	else if (type->kind == reflect::Unsigned_Int_Kind) write_int(*(unsigned int*)ptr);
-	else if (type->kind == reflect::StringBuffer_Kind) write_string(*(string_buffer*)ptr);
-	else if (type->kind == reflect::SString_Kind) write_string(*(sstring*)ptr);
-	else if (type->kind == reflect::Vector_Kind) write_array((reflect::TypeDescriptor_Vector*)type, ptr);
-	else if (type->kind == reflect::Enum_Kind) write_int(*(int*)ptr);
+void SerializerBuffer::write(refl::Type* type, void* ptr) {
+	using refl::Type;
+	
+	if (type->type == refl::Type::Struct) write_struct((refl::Struct*)type, ptr);
+	//else if (type->type == refl::Type::Union) write_union((reflect::TypeDescriptor_Union*)type, ptr);
+	else if (type->type == Type::Bool) write_byte(*(bool*)ptr);
+	else if (type->type == Type::Float) write_float(*(float*)ptr);
+	else if (type->type == Type::Int) write_int(*(int*)ptr);
+	else if (type->type == Type::UInt) write_int(*(unsigned int*)ptr);
+	else if (type->type == Type::StringBuffer) write_string(*(string_buffer*)ptr);
+	else if (type->type == Type::SString) write_string(*(sstring*)ptr);
+	else if (type->type == Type::Array) write_array((refl::Array*)type, ptr);
+	//else if (type->kind == Type::Enum) write_int(*(int*)ptr);
 	else throw "Unexpected type";
 }
 
-void DeserializerBuffer::read(reflect::TypeDescriptor* type, void* ptr) {
-	if (type->kind == reflect::Struct_Kind) read_struct((reflect::TypeDescriptor_Struct*)type, ptr);
-	else if (type->kind == reflect::Union_Kind) read_union((reflect::TypeDescriptor_Union*)type, ptr);
-	else if (type->kind == reflect::Bool_Kind) *(bool*)ptr = read_byte();
-	else if (type->kind == reflect::Float_Kind) *(float*)ptr = read_float();
-	else if (type->kind == reflect::Int_Kind) *(int*)ptr = read_int();
-	else if (type->kind == reflect::Unsigned_Int_Kind) *(int*)ptr = read_int();
-	else if (type->kind == reflect::StringBuffer_Kind) read_string(*(string_buffer*)ptr);
-	else if (type->kind == reflect::SString_Kind) read_string(*(sstring*)ptr);
-	else if (type->kind == reflect::Vector_Kind) read_array((reflect::TypeDescriptor_Vector*)type, ptr);
-	else if (type->kind == reflect::Enum_Kind) *(int*)ptr = read_int();
+void DeserializerBuffer::read(refl::Type* type, void* ptr) {
+	using refl::Type;
+	
+	if (type->type == refl::Type::Struct) read_struct((refl::Struct*)type, ptr);
+	//else if (type->kind == reflect::Union_Kind) read_union((reflect::TypeDescriptor_Union*)type, ptr);
+	else if (type->type == Type::Bool) *(bool*)ptr = read_byte();
+	else if (type->type == Type::Float) *(float*)ptr = read_float();
+	else if (type->type == Type::Int) *(int*)ptr = read_int();
+	else if (type->type == Type::UInt) *(int*)ptr = read_int();
+	else if (type->type == Type::StringBuffer) read_string(*(string_buffer*)ptr);
+	else if (type->type == Type::SString) read_string(*(sstring*)ptr);
+	else if (type->type == Type::Array) read_array((refl::Array*)type, ptr);
+	//else if (type->kind == reflect::Enum_Kind) *(int*)ptr = read_int();
 	else throw "Unexpected type";
 }
 
@@ -221,3 +234,33 @@ DeserializerBuffer::DeserializerBuffer(const char* data, unsigned int length) : 
 }
 
 DeserializerBuffer::DeserializerBuffer() {}
+
+
+void write_to_buffer(SerializerBuffer& buffer, uint value) {
+	memcpy(buffer.data, &value, sizeof(uint));
+	buffer.index += sizeof(uint);
+}
+
+void write_to_buffer(SerializerBuffer& buffer, glm::vec2 value) {
+	memcpy(buffer.data, &value, sizeof(glm::vec2));
+	buffer.index += sizeof(uint);
+}
+
+void write_to_buffer(SerializerBuffer& buffer, glm::vec3 value) {
+}
+
+void write_to_buffer(SerializerBuffer& buffer, glm::quat value) {
+	buffer.write_float(value.x);
+	buffer.write_float(value.y);
+	buffer.write_float(value.z);
+	buffer.write_float(value.w);
+}
+
+void write_to_buffer(SerializerBuffer& buffer, const sstring& str) {
+	buffer.write_int(str.length());
+
+	for (uint i = 0; i < str.length(); i++) {
+		buffer.write_byte(str.data[i]);
+	}
+}
+*/
