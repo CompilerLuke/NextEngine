@@ -303,15 +303,26 @@ void write_joint_ref(ShaderModuleInfo* info, VkShaderStageFlagBits stage, Shader
 
 		DescriptorSetInfo& set_info = info->sets[set];
 
-		if (descriptor->binding_count >= set_info.bindings.length) {
-			set_info.bindings.resize(descriptor->binding_count);
+		uint binding_count = set_info.bindings.length;
+		for (uint i = 0; i < descriptor->binding_count; i++) {
+			binding_count = max(binding_count, descriptor->bindings[i]->binding + 1);
 		}
+
+		uint diff = binding_count - set_info.bindings.length;
+		set_info.bindings.resize(binding_count);
+
+		memset(set_info.bindings.data + set_info.bindings.length - diff, 0, sizeof(DescriptorBindingInfo) * diff);
 
 		for (uint i = 0; i < descriptor->binding_count; i++) {
 			auto binding = descriptor->bindings[i];
-			DescriptorBindingInfo& out = set_info.bindings[i];
+
+			DescriptorBindingInfo& out = set_info.bindings[binding->binding];
 
 			assert(binding->binding < MAX_BINDING);
+
+			if (strcmp(binding->name, "blend_idx_map") == 0) {
+				printf("FOUND BLEND IDX MAP");
+			}
 
 			if (out.stage == 0) {
 				out.binding = binding->binding;
@@ -344,7 +355,7 @@ void write_joint_ref(ShaderModuleInfo* info, VkShaderStageFlagBits stage, Shader
 					set_info.ubos.append(ubo_info);
 				}
 
-				if (out.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
+				else if (out.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
 					SamplerInfo sampler_info = {};
 					sampler_info.id = binding->binding;
 		
@@ -375,8 +386,8 @@ void print_module(ShaderModuleInfo& info) {
 			DescriptorBindingInfo& binding = descriptor.bindings[binding_i];
 
 			sstring stage;
-			if (binding.stage | VK_SHADER_STAGE_VERTEX_BIT) stage += "VERTEX ";
-			if (binding.stage | VK_SHADER_STAGE_FRAGMENT_BIT) stage += "FRAGMENT ";
+			if (binding.stage & VK_SHADER_STAGE_VERTEX_BIT) stage += "VERTEX ";
+			if (binding.stage & VK_SHADER_STAGE_FRAGMENT_BIT) stage += "FRAGMENT ";
 
 			if (binding.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
 				printf("\tBINDING %i %s sampler2D %s %\n", binding.binding, stage.data, binding.name.data);

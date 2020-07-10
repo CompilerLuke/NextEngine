@@ -392,27 +392,23 @@ void recompute_lighting_from_cubemap(LightingSystem& lighting_system, SkyLight& 
 ID make_default_Skybox(World& world, string_view filename) {
 	cubemap_handle env_map = load_HDR(filename);
 
-	auto id = world.make_ID();
-	auto e = world.make<Entity>(id);
-	auto sky = world.make<Skybox>(id);
-	auto skylight = world.make<SkyLight>(id);
-	auto materials = world.make<Materials>(id);
+	auto[e, trans, sky, skylight, materials] = world.make<Transform, Skybox, SkyLight, Materials>();
 
-	sky->cubemap = env_map;
-	skylight->capture_scene = false;
-	skylight->cubemap = env_map;
+	sky.cubemap = env_map;
+	skylight.capture_scene = false;
+	skylight.cubemap = env_map;
 
 	Cubemap irradiance = compute_irradiance(assets.cubemap_pass_resources, env_map);
 	Cubemap prefilter = compute_reflection(assets.cubemap_pass_resources, env_map);
 	
-	skylight->irradiance = assets.cubemaps.assign_handle(std::move(irradiance));
-	skylight->prefilter = assets.cubemaps.assign_handle(std::move(prefilter));
+	skylight.irradiance = assets.cubemaps.assign_handle(std::move(irradiance));
+	skylight.prefilter = assets.cubemaps.assign_handle(std::move(prefilter));
 
 
 	//auto name = world.make<EntityEditor>(id);
 	//name->name = "Skylight";
 
-	skylight->capture_scene = true;
+	skylight.capture_scene = true;
 
 	auto skybox_shader = load_Shader("shaders/skybox.vert", "shaders/skybox.frag");
 
@@ -420,26 +416,20 @@ ID make_default_Skybox(World& world, string_view filename) {
 	MaterialDesc mat{ skybox_shader };
 	mat.draw_state = Cull_None | DepthFunc_Lequal;
 	
-	mat_cubemap(mat, "environmentMap", sky->cubemap);
+	mat_cubemap(mat, "environmentMap", sky.cubemap);
 
 	//mat_vec3(mat, "skyhorizon", glm::vec3(66, 135, 245) / 400.0f);
 	//mat_vec3(mat, "skytop", glm::vec3(66, 188, 245) / 200.0f);
 
-	materials->materials.append(make_Material(mat));
+	materials.materials.append(make_Material(mat));
 
-	auto trans = world.make<Transform>(id);
-
-	return id;
+	return e.id;
 }
 
 void extract_skybox(SkyboxRenderData& data, World& world, Layermask layermask) {
-	for (ID id : world.filter<Transform, Skybox, Materials>(layermask)) {
-		Transform* trans = world.by_id<Transform>(id);
-		Skybox* skybox = world.by_id<Skybox>(id);
-		Materials* materials = world.by_id<Materials>(id);
-
-		data.position = trans->position;
-		data.material = materials->materials[0];
+	for (auto [e, trans, skybox, materials] : world.filter<Transform, Skybox, Materials>(layermask)) {
+		data.position = trans.position;
+		data.material = materials.materials[0];
 
 		break;
 	}
@@ -843,21 +833,18 @@ struct CubemapCapture {
 		new_params.viewport.width = width;
 		new_params.viewport.height = height;
 
-		ID id = world.make_ID();
-		Entity* e = world.make<Entity>(id);
-		Transform* new_trans = world.make<Transform>(id);
-		new_trans->position = world.by_id<Transform>(capture_id)->position;
-		new_trans->rotation = glm::inverse(glm::quat_cast(captureViews[i])); //captureViewsQ[i];
+		auto[e, new_trans, camera] = world.make<Transform, Camera>();
+		new_trans.position = world.by_id<Transform>(capture_id)->position;
+		new_trans.rotation = glm::inverse(glm::quat_cast(captureViews[i])); //captureViewsQ[i];
 
-		Camera* camera = world.make<Camera>(id);
-		camera->far_plane = 600;
-		camera->near_plane = 0.1f;
-		camera->fov = 90.0f;
+		camera.far_plane = 600;
+		camera.near_plane = 0.1f;
+		camera.fov = 90.0f;
 
 
-		world.by_id<Entity>(main_camera)->enabled = false;
+		/* world.by_id<Entity>(main_camera)->enabled = false; */
 
-		update_camera_matrices(world, id, new_params.viewport);
+		update_camera_matrices(world, e.id, new_params.viewport);
 
 		//((MainPass*)new_params.pass)->render_to_buffer(world, new_params, [this, i]() {
 			//glViewport(0, 0, width, width); // don't forget to configure the viewport to the capture dimensions.
@@ -866,8 +853,8 @@ struct CubemapCapture {
 			//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		//});
 
-		world.free_now_by_id(id);
+		world.free_now_by_id(e.id);
 
-		world.by_id<Entity>(main_camera)->enabled = true;
+		/* world.by_id<Entity>(main_camera)->enabled = true; */
 	}
 };

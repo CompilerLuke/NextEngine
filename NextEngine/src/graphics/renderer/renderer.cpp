@@ -5,8 +5,6 @@
 #include "graphics/assets/assets.h"
 #include "components/camera.h"
 #include "graphics/rhi/draw.h"
-#include "graphics/pass/render_pass.h"
-#include "graphics/renderer/lighting_system.h"
 #include "core/memory/linear_allocator.h"
 #include "graphics/pass/pass.h"
 #include "graphics/rhi/window.h"
@@ -25,6 +23,7 @@ Renderer* make_Renderer(const RenderSettings& settings, World& world) {
 
 	extract_lighting_from_cubemap(renderer->lighting_system, *skylight);
 	make_lighting_system(renderer->lighting_system, *skylight);
+
 
 	{
 		renderer->scene_pass_ubo = alloc_ubo_buffer(sizeof(PassUBO), UBO_PERMANENT_MAP);
@@ -54,6 +53,8 @@ Renderer* make_Renderer(const RenderSettings& settings, World& world) {
 
 		make_Framebuffer(RenderPass::Scene, desc);
 	}
+
+	init_terrain_render_resources(renderer->terrain_render_resources);
 
 	return renderer;
 }
@@ -93,18 +94,15 @@ void extract_render_data(Renderer& renderer, Viewport& viewport, FrameData& fram
 		frame.culled_mesh_bucket[i] = TEMPORARY_ARRAY(CulledMeshBucket, MAX_MESH_BUCKETS);
 	}
 
-	fill_light_ubo(frame.light_ubo, world, layermask);
-
-	{
-		ID main_pass_camera = get_camera(world, layermask);
-		update_camera_matrices(world, main_pass_camera, viewport);
-
-		cull_meshes(renderer.scene_partition, frame.culled_mesh_bucket[RenderPass::Scene], viewport);
-	
-		extract_skybox(frame.skybox_data, world, layermask);
-	}
+	ID main_pass_camera = get_camera(world, layermask);
+	update_camera_matrices(world, main_pass_camera, viewport);
 
 	fill_pass_ubo(frame.pass_ubo, viewport);
+	fill_light_ubo(frame.light_ubo, world, layermask);
+	cull_meshes(renderer.scene_partition, frame.culled_mesh_bucket[RenderPass::Scene], viewport);
+	extract_render_data_terrain(frame.terrain_data, world, &viewport, layermask);
+	extract_skybox(frame.skybox_data, world, layermask);
+
 }
 
 GPUSubmission build_command_buffers(Renderer& renderer, const FrameData& frame) {
@@ -134,7 +132,7 @@ GPUSubmission build_command_buffers(Renderer& renderer, const FrameData& frame) 
 	bind_descriptor(main_pass.cmd_buffer, 0, renderer.scene_pass_descriptor);
 	bind_descriptor(main_pass.cmd_buffer, 1, renderer.lighting_system.pbr_descriptor);
 
-
+	render_terrain(renderer.terrain_render_resources, frame.terrain_data, submission.render_passes);
 	render_meshes(renderer.mesh_buckets, frame.culled_mesh_bucket[RenderPass::Scene], main_pass);
 	render_skybox(frame.skybox_data, main_pass);
 

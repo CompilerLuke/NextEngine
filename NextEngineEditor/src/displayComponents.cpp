@@ -219,6 +219,7 @@ bool render_fields(refl::Type* type, void* data, string_view prefix, Editor& edi
 
 void DisplayComponents::update(World& world, UpdateCtx& params) {}
 
+//todo bug when custom ui for component, as it does not respect prefix!
 void DisplayComponents::render(World& world, RenderPass& params, Editor& editor) {
 	//ImGui::SetNextWindowSize(ImVec2(params.width * editor.editor_tab_width, params.height));
 	//ImGui::SetNextWindowPos(ImVec2(0, 0));
@@ -227,47 +228,42 @@ void DisplayComponents::render(World& world, RenderPass& params, Editor& editor)
 		int selected_id = editor.selected_id;
 
 		if (selected_id >= 0) {
-			auto name_and_id = std::string("Entity #") + std::to_string(selected_id);
+			auto name_and_id = tformat("Entity #", selected_id);
 
-			auto meta = world.by_id<EntityEditor>(selected_id);
-			if (meta) {
-				char buff[50];
-				memcpy(buff, meta->name.c_str(), meta->name.size() + 1);
-				ImGui::InputText(name_and_id.c_str(), buff, 50);
-				meta->name = buff;
+			EntityNode* node = editor.lister.by_id[selected_id];
+			if (node) {
+				ImGui::InputText(name_and_id.c_str(), node->name);
 			}
 			else {
 				ImGui::Text(name_and_id.c_str());
 			}
 
+			Archetype arch = world.arch_of_id(selected_id);
+
 			bool uncollapse = ImGui::Button("uncollapse all");
 
-			auto components = world.components_by_id(selected_id);
+			for (uint component_id = 0; component_id < MAX_COMPONENTS; component_id++) {
+				if (((1ull << component_id) & arch) == 0) continue;
 
-			for (auto& comp : components) {
+				refl::Struct* type = world.component_type[component_id];
+				void* data = world.id_to_ptr[component_id][selected_id];
+
 				ImGui::BeginGroup();
 				if (uncollapse)
 					ImGui::SetNextTreeNodeOpen(true);
 
 				DiffUtil diff_util;
-				begin_tdiff(diff_util, comp.data, comp.type);
+				begin_tdiff(diff_util, data, type);
 
-				bool open = render_fields(comp.type, comp.data, "Component", editor);
+				bool open = render_fields(type, data, "Component", editor);
 				if (open) {
 					ImGui::Dummy(ImVec2(10, 20));
 				}
 
-				if (ImGui::BeginPopup(destroy_component_popup_name((refl::Struct*)comp.type))) {
+				if (ImGui::BeginPopup(destroy_component_popup_name(type))) {
 					if (ImGui::Button("Delete")) {
-						for (int i = 0; i < world.components_hash_size; i++) {
-							ComponentStore* store = world.components[i].get();
-							if (store && string_view(store->get_component_type()->name) == comp.type->name) {
-								entity_create_action(editor.actions, selected_id);
-
-								break;
-							}
-						}
-
+						entity_destroy_component_action(editor.actions, component_id, selected_id);
+	
 						ImGui::CloseCurrentPopup();
 					}
 					ImGui::EndPopup();
@@ -278,29 +274,25 @@ void DisplayComponents::render(World& world, RenderPass& params, Editor& editor)
 				ImGui::EndGroup();
 			}
 
-			if (ImGui::Button("Add Component")) {
+
+
+			if (ImGui::Button("Add Component... ....")) {
 				ImGui::OpenPopup("createComponent");
 			}
 			if (ImGui::BeginPopup("createComponent")) {
-				char buff[50];
-				memcpy(buff, filter.c_str(), filter.length + 1);
-				ImGui::InputText("filter", buff, 50);
-				filter = string_buffer(buff);
+				ImGui::InputText("filter", filter);
 
-				for (int i = 0; i < world.components_hash_size; i++) {
-					ComponentStore* store = world.components[i].get();
-					if (store == NULL) continue;
-					if (store->get_by_id(selected_id).data != NULL) continue;
+				for (uint i = 0; i < MAX_COMPONENTS; i++) {
+					refl::Struct* type = world.component_type[i];
+					if (!type || (1ull << i) & arch) continue;
+					if (!type->name.starts_with_ignore_case(filter)) continue;
 
-					string_view type_name = string_view(store->get_component_type()->name);
-
-					if (!type_name.starts_with_ignore_case(filter)) continue;
-
-					if (ImGui::Button(type_name.c_str())) { //todo make work with undo and redo
-						store->make_by_id(selected_id);
+					if (ImGui::Button(type->name.c_str())) { //todo make work with undo and redo
+						entity_create_component_action(editor.actions, i, selected_id);
 						ImGui::CloseCurrentPopup();
 					}
 				}
+
 				ImGui::EndPopup();
 			}
 		}

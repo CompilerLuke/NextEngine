@@ -70,17 +70,16 @@ void build_acceleration_structure(PickingScenePartition& scene_partition, World&
 	aabbs.allocator = &temporary_allocator;
 	ids.allocator = &temporary_allocator;
 
-	for (ID id : world.filter<ModelRenderer, Transform>(ANY_LAYER)) {
-		auto model_m = compute_model_matrix(*world.by_id<Transform>(id));
-		auto model_renderer = world.by_id<ModelRenderer>(id);
+	for (auto [e, trans, model_renderer] : world.filter<Transform, ModelRenderer>(ANY_LAYER)) {
+		auto model_m = compute_model_matrix(trans);
 
-		Model* model = get_Model(model_renderer->model_id);		
+		Model* model = get_Model(model_renderer.model_id);		
 		if (model == NULL) continue;
 
 		AABB aabb = model->aabb.apply(model_m);
 		world_bounds.update_aabb(aabb);
 		aabbs.append(aabb);
-		ids.append(id);
+		ids.append(e.id);
 	}
 
 	subdivide_BVH(scene_partition, world_bounds, 0, aabbs.length, aabbs.data, ids.data);

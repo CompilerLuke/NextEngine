@@ -67,8 +67,7 @@ bool Shader_inspect(void* data, string_view prefix, Editor& editor) { //todo how
 
 bool render_asset_preview(AssetTab& asset_tab, AssetNode::Type type, uint* asset_handle, string_view prefix) {
 	AssetNode* node = NULL;
-	if (*asset_handle < MAX_ASSETS) node = asset_tab.info.asset_type_handle_to_node[type][*asset_handle]; //todo probably want reference to editor
-
+	if (*asset_handle != INVALID_HANDLE && *asset_handle < MAX_ASSETS) node = asset_tab.info.asset_type_handle_to_node[type][*asset_handle]; //todo probably want reference to editor
 
 	if (node == NULL) {
 		ImGui::Text("Not set");
@@ -78,7 +77,7 @@ bool render_asset_preview(AssetTab& asset_tab, AssetNode::Type type, uint* asset
 		preview_image(asset_tab.preview_resources, node->model.rot_preview, ImVec2(128, 128));
 	}
 
-	accept_drop(drop_types[type], &asset_handle, sizeof(uint));
+	accept_drop(drop_types[type], asset_handle, sizeof(uint));
 
 	ImGui::SameLine();
 	if (node) ImGui::Text(tformat(prefix, " : ", node->asset.name).c_str());
@@ -165,6 +164,9 @@ bool Grass_inspect(void* data, string_view prefix, Editor& editor) {
 	Grass* grass = (Grass*)data;
 
 	static glm::vec2 density_range(0, 0.1);
+
+	ID id = editor.selected_id; //todo get correct ID!  // world.id_of<Grass>(grass);
+
 	
 	if (ImGui::CollapsingHeader("Grass")) {
 		Grass* grass = (Grass*)data;
@@ -185,17 +187,16 @@ bool Grass_inspect(void* data, string_view prefix, Editor& editor) {
 		ImGui::NewLine();
 
 		if (ImGui::Button("Place")) {
-			place_Grass(grass, world);
+			place_Grass(world, id);
 		}
 
 		return true;
 	}
 
-	ID id = world.id_of<Grass>(grass);
 
 	Model* model = get_Model(grass->placement_model);
 	Materials* materials = world.by_id<Materials>(id);
-	if (materials) {
+	if (materials && model) {
 		int diff = model->materials.length - materials->materials.length;
 
 		if (diff > 0) {

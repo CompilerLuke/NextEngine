@@ -10,52 +10,105 @@
 #include "grass.h"
 #include "components/terrain.h"
 
-string_buffer name_with_id(World& world, ID id) {
-	auto name = world.by_id<EntityEditor>(id);
-	if (name) return tformat("#", id, " : ", name->name);
+
+string_buffer name_with_id(ID id, string_view name) {
+	if (name.length != 0) return tformat("#", id, " : ", name);
 	else return tformat("#", id);
 }
 
-void render_hierarchies(vector<struct NameHierarchy*> & top, World& world, Editor& editor, RenderPass& params, string_view filter, int indent = 0);
 
-struct NameHierarchy {
-	string_view name;
-	vector<NameHierarchy*> children;
-	ID id;
-
-	NameHierarchy(string_view name) : name(name) {};
-
-	void render_hierarchy(World& world, Editor& editor, RenderPass& params, string_view filter, int indent = 0) {
-		bool selected = editor.selected_id == id;
+void render_hierarchy(EntityNode& node, Editor& editor, int indent = 0) {
+	EntityNode* real = editor.lister.by_id[node.id];
+	
+	ID id = node.id;
+	bool selected = editor.selected_id == node.id;
 		
-		ImGuiStyle* style = &ImGui::GetStyle();
+	ImGuiStyle* style = &ImGui::GetStyle();
 
-		ImGui::Dummy(ImVec2(indent, 0));
-		ImGui::SameLine();
+	ImGui::Dummy(ImVec2(indent, 0));
+	ImGui::SameLine();
 
-		if (selected) ImGui::PushStyleColor(ImGuiCol_Button, style->Colors[ImGuiCol_ButtonActive]);
+	if (selected) ImGui::PushStyleColor(ImGuiCol_Button, style->Colors[ImGuiCol_ButtonActive]);
 
-		ImGui::PushID(id);
-		if (ImGui::Button(name.c_str())) {
-			editor.select(id);
+	ImGui::PushID(id);
+	if (ImGui::Button(node.name.data)) editor.select(id); // 	if (ImGui::CollapsingHeader()
+	 
+	ImGui::PopID();
+
+	if (selected) ImGui::PopStyleColor();
+
+	if (real->expanded) {
+		for (EntityNode& child : node.children) {
+			render_hierarchy(child, editor, indent + 30);
 		}
-		ImGui::PopID();
-
-		if (selected) ImGui::PopStyleColor();
-
-		render_hierarchies(this->children, world, editor, params, filter, indent + 30);
-	}
-
-	NameHierarchy(const NameHierarchy& other) : name(other.name) {
-	}
-};
-
-void render_hierarchies(vector<NameHierarchy*>& top, World& world, Editor& editor, RenderPass& params, string_view filter, int indent) {
-	for (auto child : top) {
-		child->render_hierarchy(world, editor, params, filter, indent);
 	}
 }
 
+struct EntityFilter {
+	string_view filter = "";
+	Archetype archetype = 0;
+};
+
+bool filter_hierarchy(EntityNode* result, EntityNode& top, World& world, EntityFilter& filter) {
+	Archetype arch = world.arch_of_id(top.id);
+
+	bool has_archetype = (arch & filter.archetype) == filter.archetype;
+	bool name_meets_filter = string_view(top.name).starts_with(filter.filter);
+	
+	*result = {};
+	result->id = top.id;
+	result->name = top.name;
+	result->children.allocator = &temporary_allocator;
+
+	for (EntityNode& child : top.children) {
+		EntityNode node;
+		if (filter_hierarchy(&node, child, world, filter)) {
+			result->children.append(node);
+		}
+	}
+
+	return result->children.length > 0 || (has_archetype && name_meets_filter);
+}
+
+void add_child(Lister& lister, EntityNode& parent, EntityNode&& child) {
+	uint capacity = parent.children.capacity;
+	
+	parent.children.append(std::move(child));
+
+	if (capacity == parent.children.capacity) { //NO RESIZE
+		lister.by_id[child.id] = &parent.children.last();
+	}
+	else { //RESIZE MEANING POINTERS ARE INVALIDATED!
+		for (EntityNode& children : parent.children) {
+			lister.by_id[children.id] = &children;
+		}
+	}
+}
+
+EntityNode remove_child(Lister& lister, EntityNode& parent, ID id) {
+	EntityNode* node = lister.by_id[id];
+	assert(node);
+
+	uint position = node - parent.children.data;
+	assert(position < parent.children.length);
+
+	EntityNode moved = std::move(parent.children[position]);
+
+	for (uint i = position; i + 1 < parent.children.length; i++) {
+		EntityNode& insert_at = parent.children[i];
+		insert_at = std::move(parent.children[i + 1]);
+		lister.by_id[insert_at.id] = &insert_at;
+	}
+	parent.children.length--;
+
+	return moved;
+}
+
+void register_entity(Lister& lister, string_view name, ID id) {
+	add_child(lister, lister.root_node, { name, id });
+}
+
+/*
 void get_hierarchy(vector<EntityEditor*>& active_named, World& world, vector<NameHierarchy*>& top, std::unordered_map<ID, NameHierarchy*> names) {
 	for (auto name : world.filter<EntityEditor>()) {
 		names[world.id_of(name)] = TEMPORARY_ALLOC(NameHierarchy, name->name );
@@ -78,114 +131,87 @@ void get_hierarchy(vector<EntityEditor*>& active_named, World& world, vector<Nam
 		else
 			top.append(hierarchy);
 	}
+}*/
+
+void create_object_popup(Lister& lister, World& world, material_handle default_material) {
+	if (ImGui::IsWindowHovered()) {
+		if (ImGui::GetIO().MouseClicked[1]) ImGui::OpenPopup("CreateObject");
+	}
+
+	if (ImGui::BeginPopup("CreateObject")) {
+		if (ImGui::MenuItem("New Terrain")) { //todo handle undos
+			auto [e,trans,terrain,materials] = world.make<Transform, Terrain, Materials>();
+			materials.materials.append(default_material);
+			
+			register_entity(lister, "Terrain", e.id);
+		}
+
+		if (ImGui::MenuItem("New Grass")) {
+			auto[e, trans, grass, materials] = world.make<Transform, Grass, Materials>();
+			materials.materials.append(default_material);
+
+			register_entity(lister, "Grass", e.id);
+		}
+
+		if (ImGui::MenuItem("New Empty")) {
+			Entity e = world.make();
+
+			register_entity(lister, "Empty", e.id);
+		}
+
+		ImGui::EndPopup();
+	}
 }
 
+
 void Lister::render(World& world, Editor& editor, RenderPass& params) {
-	vector<NameHierarchy*> top;
-	top.allocator = &temporary_allocator;
-
-	std::unordered_map<ID, NameHierarchy*> names;
-
-	//ImGui::SetNextWindowSize(ImVec2(0.15 * params.width, params.height));
-
 	if (ImGui::Begin("Lister")) {
-		auto no_filter_active_named = world.filter<EntityEditor>();
-		vector<EntityEditor*> active_named;
-		active_named.allocator = &temporary_allocator;
+		ImGui::InputText("filter", filter);
 
+		EntityNode* filter_root = &root_node;
+		EntityFilter entity_filter;
+		entity_filter.filter = filter;
 
-		char buf[50];
-		std::memcpy(buf, filter.c_str(), filter.size() + 1);
-		ImGui::InputText("filter", buf, 50);
-		this->filter = string_buffer(buf);
-
-		if (ImGui::IsWindowHovered()) {
-			if (ImGui::GetIO().MouseClicked[1]) ImGui::OpenPopup("CreateObject");
-		}
-
-		if (ImGui::BeginPopup("CreateObject"))
-		{
-			if (ImGui::MenuItem("New Terrain")) //todo handle undos
-			{
-				ID id = world.make_ID();
-				Entity* e = world.make<Entity>(id);
-				Transform* trans = world.make<Transform>(id);
-				Terrain* terrain = world.make<Terrain>(id);
-				EntityEditor* name = world.make<EntityEditor>(id);
-				Materials* mat = world.make<Materials>(id);
-				mat->materials.append(editor.asset_tab.default_material);
-				name->name = "Terrain";
-			}
-
-			if (ImGui::MenuItem("New Grass")) {
-				ID id = world.make_ID();
-				Entity* e = world.make<Entity>(id);
-				Transform* trans = world.make<Transform>(id);
-				Grass* grass = world.make<Grass>(id);
-				EntityEditor* name = world.make<EntityEditor>(id);
-				name->name = "Grass";
-				Materials* mat = world.make <Materials>(id);
-				mat->materials.append(editor.asset_tab.default_material);
-			}
-
-			if (ImGui::MenuItem("New Empty")) //todo handle undos
-			{
-				ID id = world.make_ID();
-				Entity* e = world.make<Entity>(id);
-				EntityEditor* name = world.make<EntityEditor>(id);
-				name->name = "Empty";
-			}
-
-			ImGui::EndPopup();
-		}
+		create_object_popup(*this, world, editor.asset_tab.default_material);
 
 		if (filter.starts_with("#")) {
 			auto splice = filter.sub(1, filter.size());
 
 			ID id;
-			if (!string_to_uint(splice, &id)) {
-				ImGui::Text("Please enter a valid integer");
+			if (!string_to_uint(splice, &id) || (id < 0 || id >= MAX_ENTITIES)) {
+				ImGui::Text("Please enter a valid ID");
 			}
 
-			auto e = world.by_id<EntityEditor>(id);
-			if (e) {
-				active_named = { e };
-			}
+			EntityNode* e = by_id[id]; 
+			if (e) filter_root = e;
+			else ImGui::Text("Gameobject with id not found");
 		} 
 		else if (filter.starts_with(":")) {
 			auto name = filter.sub(1, filter.size());
+			bool found = false;
 
-			ComponentStore* store = NULL;
+			for (int i = 0; i < MAX_COMPONENTS; i++) {
+				refl::Struct* comp_type = world.component_type[i];
 
-			for (int i = 0; i < world.components_hash_size; i++) {
-				ComponentStore* comp_store = world.components[i].get();
-				if (comp_store != NULL && name == comp_store->get_component_type()->name) {
-					store = comp_store;
+				if (comp_type != NULL && comp_type->name != name) {
+					entity_filter.archetype = 1 << i;
+					found = true;
 					break;
 				}
 			}
 
-			if (store == NULL) {
+			if (!found) {
 				ImGui::Text("No such component");
-			}
-			else {
-				for (auto name : no_filter_active_named) {
-					if (store->get_by_id(world.id_of(name)).data != NULL) {
-						active_named.append(name);
-					}
-				}
-			}
-		}
-		else {
-			for (auto name : no_filter_active_named) {
-				if (name->name.starts_with_ignore_case(filter)) {
-					active_named.append(name);
-				}
 			}
 		}
 
-		get_hierarchy(active_named, world, top, names);
-		render_hierarchies(top, world, editor, params, filter);
+		EntityNode result;
+		if (filter_hierarchy(&result, *filter_root, world, entity_filter)) {
+			for (EntityNode& node : filter_root->children) {
+				render_hierarchy(node, editor);
+			}
+		}
+
 	}
 
 	ImGui::End();

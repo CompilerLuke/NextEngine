@@ -353,6 +353,17 @@ VkImageUsageFlags to_vk_usage_flags(TextureUsage usage) {
 	return usage_flags;
 }
 
+VkFormat to_vk_image_format(const TextureDesc& image) {
+	VkFormat formats_by_channel_count[4][4] = {
+		{ VK_FORMAT_R32_UINT, VK_FORMAT_R8G8_UNORM, VK_FORMAT_R8G8B8_UNORM, VK_FORMAT_R8G8B8A8_UNORM },
+		{VK_FORMAT_R8_SRGB, VK_FORMAT_R8G8_SRGB, VK_FORMAT_R8G8B8_SRGB, VK_FORMAT_R8G8B8A8_SRGB},
+		{VK_FORMAT_R32_SFLOAT, VK_FORMAT_R32G32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32A32_SFLOAT},
+		{VK_FORMAT_R8_UINT, VK_FORMAT_R8G8_UINT, VK_FORMAT_R8G8B8_UINT, VK_FORMAT_R8G8B8A8_UINT}
+	};
+
+	return formats_by_channel_count[(uint)image.format][image.num_channels - 1];
+}
+
 Texture alloc_TextureImage(TextureAllocator& allocator, const TextureDesc& desc) {
 	uint width = desc.width;
 	uint height = desc.height;
@@ -362,10 +373,11 @@ Texture alloc_TextureImage(TextureAllocator& allocator, const TextureDesc& desc)
 	VkPhysicalDevice physical_device = allocator.physical_device;
 	StagingQueue& staging_queue = allocator.staging_queue;
 
-	VkFormat formats_by_channel_count[] = { VK_FORMAT_R8_SRGB, VK_FORMAT_R8G8_SRGB, VK_FORMAT_R8G8B8_SRGB, VK_FORMAT_R8G8B8A8_SRGB };
-	VkFormat image_format = formats_by_channel_count[num_channels - 1];
+	VkFormat image_format = to_vk_image_format(desc);
 
-	VkDeviceSize image_size = width * height * num_channels;
+	u64 texel_sizes[3] = { 1, 1, 4 };
+	u64 texel_alignment = texel_sizes[(uint)desc.format] * desc.num_channels;
+	VkDeviceSize image_size = desc.width * desc.height * desc.num_channels * texel_sizes[(uint)desc.format];
 
 	/*
 	int32_t offset = allocator.staging_buffer_offset;
@@ -449,15 +461,6 @@ void blit_image(VkCommandBuffer cmd_buffer, Filter filter, Texture& src, ImageOf
 	vkCmdBlitImage(cmd_buffer, src.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, dst.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region, to_vk_filter[(uint)filter]);
 }
 
-VkFormat to_vk_image_format(const TextureDesc& image) {
-	VkFormat formats_by_channel_count[3][4] = {
-		{ VK_FORMAT_R32_UINT, VK_FORMAT_R8G8_UNORM, VK_FORMAT_R8G8B8_UNORM, VK_FORMAT_R8G8B8A8_UNORM },
-		{VK_FORMAT_R8_SRGB, VK_FORMAT_R8G8_SRGB, VK_FORMAT_R8G8B8_SRGB, VK_FORMAT_R8G8B8A8_SRGB},
-		{VK_FORMAT_R32_SFLOAT, VK_FORMAT_R32G32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32A32_SFLOAT}
-	};
-
-	return formats_by_channel_count[(uint)image.format][image.num_channels - 1];
-}
 
 void alloc_and_bind_memory(TextureAllocator& allocator, VkImage image) {
 	VkDevice device = allocator.device;
@@ -489,7 +492,7 @@ Texture make_TextureImage(TextureAllocator& allocator, const Image& image) {
 
 	void* pixels = image.data;
 
-	u64 texel_sizes[3] = { 1, 1, 4 };
+	u64 texel_sizes[4] = { 1, 1, 4, 1 };
 	u64 texel_alignment = texel_sizes[(uint)image.format] * image.num_channels;
 	VkDeviceSize image_size = image.width * image.height * image.num_channels * texel_sizes[(uint)image.format];
 
@@ -499,7 +502,7 @@ Texture make_TextureImage(TextureAllocator& allocator, const Image& image) {
 	int32_t offset = aligned_incr(&allocator.staging_buffer_offset, image_size, texel_alignment);
 	memcpy((char*)allocator.staging.mapped + offset, pixels, image_size);
 
-	assert(allocator.staging_buffer_offset, MAX_IMAGE_UPLOAD);
+	assert(allocator.staging_buffer_offset < MAX_IMAGE_UPLOAD);
 	assert(offset % texel_alignment == 0);
 
 	int mip = select_mip(image.width, image.height);

@@ -26,15 +26,20 @@ struct TerrainRenderResources {
 	material_handle control_point_material;
 
 	UBOBuffer terrain_ubo;
-	texture_handle displacement;
+	texture_handle blend_idx_map;
+	texture_handle blend_values_map;
+	texture_handle displacement_map;
+	sampler_handle blend_idx_sampler;
+	sampler_handle blend_values_sampler;
 	sampler_handle displacement_sampler;
 	pipeline_handle terrain_pipeline[RenderPass::ScenePassCount];
 	descriptor_set_handle terrain_descriptor;
 };
 
 struct TerrainUBO {
-	alignas(16) float max_height;
 	glm::vec2 displacement_scale;
+	glm::vec2 transformUVs;
+	alignas(16) float max_height;
 };
 
 #define MAX_TERRAIN_CHUNK_LOD 3
@@ -49,8 +54,10 @@ struct TerrainRenderData {
 	tvector<ChunkInfo> lod_chunks[RenderPass::ScenePassCount][MAX_TERRAIN_CHUNK_LOD];
 };
 
+struct Terrain;
+
 void init_terrain_render_resources(TerrainRenderResources&);
-void update_terrain_material(TerrainRenderResources&, material_handle);
-void extract_terrain_render_data(TerrainRenderData&, World& world, Viewport viewports[RenderPass::ScenePassCount], Layermask layermask);
-void render_terrain(TerrainRenderData&, RenderPass render_passes[RenderPass::ScenePassCount]);
+ENGINE_API void update_terrain_material(TerrainRenderResources& resources, Terrain& terrain);
+void extract_render_data_terrain(TerrainRenderData& render_data, World& world, const Viewport [RenderPass::ScenePassCount], Layermask layermask);
+void render_terrain(TerrainRenderResources& resources, const TerrainRenderData& data, RenderPass render_passes[RenderPass::ScenePassCount]);
 

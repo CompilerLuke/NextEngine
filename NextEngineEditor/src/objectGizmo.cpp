@@ -20,29 +20,25 @@ ObjectGizmoSystem::ObjectGizmoSystem() {
 	//this->gizmo_materials.append(asset_manager.materials.assign_handle(std::move(gizmo_mat)));
 }
 
-void render_gizmo(model_handle model, slice<material_handle> gizmo_materials, World& world, RenderPass& ctx, ID id) {
-	Transform trans = *world.by_id<Transform>(id);
+void render_gizmo(model_handle model, slice<material_handle> gizmo_materials, RenderPass& ctx, Transform& trans) {
 	draw_mesh(ctx.cmd_buffer, model, gizmo_materials, trans);
 
 	//	ctx.command_buffer.draw(model_m, model, gizmo_materials);
 }
 
 void ObjectGizmoSystem::render(World& world, RenderPass& ctx) {
-	for (ID id : world.filter<Grass, Transform>(GAME_LAYER)) {
-		render_gizmo(grass_model, gizmo_materials, world, ctx, id);
+	for (auto [e,trans,grass] : world.filter<Transform, Grass>(GAME_LAYER)) {
+		render_gizmo(grass_model, gizmo_materials, ctx, trans);
 	}
 
-	for (ID id : world.filter<Camera, Transform>(GAME_LAYER)) {
-		render_gizmo(camera_model, gizmo_materials, world, ctx, id);
+	for (auto [e,trans,camera] : world.filter<Transform,Camera>(GAME_LAYER)) {
+		render_gizmo(camera_model, gizmo_materials, ctx, trans);
 	}
 
-	for (ID id : world.filter<DirLight, Transform>(GAME_LAYER)) {
-		auto dir_light = world.by_id<DirLight>(id);
-		auto trans = world.by_id<Transform>(id);
+	for (auto [e,trans,dir_light] : world.filter<Transform, DirLight>(GAME_LAYER)) {
+		dir_light.direction = trans.rotation * glm::vec3(0, 1, 0);
+		dir_light.direction = glm::normalize(dir_light.direction);
 
-		dir_light->direction = trans->rotation * glm::vec3(0, 1, 0);
-		dir_light->direction = glm::normalize(dir_light->direction);
-
-		render_gizmo(dir_light_model, gizmo_materials, world, ctx, id);
+		render_gizmo(dir_light_model, gizmo_materials, ctx, trans);
 	}
 }

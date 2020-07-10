@@ -52,22 +52,19 @@ void fill_light_ubo(LightUBO& light_ubo, World& world, Layermask mask) {
 	light_ubo = {};
 	light_ubo.viewpos = camera_trans->position;
 
-	for (ID id : world.filter<Transform, PointLight>(mask)) {
-		Transform* trans = world.by_id<Transform>(id);
-		PointLight* point_light = world.by_id<PointLight>(id);
-
+	for (auto [e, trans, point_light] : world.filter<Transform, PointLight>(mask)) {
 		PointLightUBO& ubo = light_ubo.point_lights[light_ubo.num_point_lights++];
-		ubo.position = trans->position;
-		ubo.color = glm::vec4(point_light->color, 1.0);
-		ubo.radius = point_light->radius;
+		ubo.position = trans.position;
+		ubo.color = glm::vec4(point_light.color, 1.0);
+		ubo.radius = point_light.radius;
 
 		if (light_ubo.num_point_lights == MAX_POINT_LIGHTS) break;
 	}
 
-	for (DirLight* dir_light : world.filter<DirLight>(mask)) {
+	for (auto [e,dir_light] : world.filter<DirLight>(mask)) {
 		DirLightUBO ubo = {};
-		ubo.direction = glm::vec4(dir_light->direction, 1.0);
-		ubo.color = glm::vec4(dir_light->color, 1.0);
+		ubo.direction = glm::vec4(dir_light.direction, 1.0);
+		ubo.color = glm::vec4(dir_light.color, 1.0);
 	
 		light_ubo.dir_light = ubo;
 		break;

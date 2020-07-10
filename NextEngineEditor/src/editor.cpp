@@ -34,7 +34,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
-DEFINE_APP_COMPONENT_ID(EntityEditor, 15)
 
 //theme by Derydoca 
 void set_darcula_theme() {
@@ -160,9 +159,9 @@ World& get_World(Editor& editor) {
 	return editor.world;
 }
 
-string_buffer save_component_to(ComponentStore* store) {
-	return string_buffer("data/") + store->get_component_type()->name + ".ne";
-}
+//string_buffer save_component_to(ComponentStore* store) {
+//	return string_buffer("data/") + store->get_component_type()->name + ".ne";
+//}
 
 /*
 void on_load_world(Editor& editor) {
@@ -222,7 +221,8 @@ void on_load(Editor& editor) {
 
 	//on_load_world(editor);
 
-	world.get<Skybox>()->fire_callbacks();
+	//todo call callbacks
+	//world.get<Skybox>()->fire_callbacks();
 
 	editor.asset_tab.on_load(world);
 
@@ -232,6 +232,7 @@ void on_load(Editor& editor) {
 void on_save_world(Editor& editor) {
 	World& world = get_World(editor);
 
+	/*
 	for (int i = 0; i < world.components_hash_size; i++) {
 		auto store = world.components[i].get();
 		if (store != NULL) {
@@ -258,7 +259,7 @@ void on_save_world(Editor& editor) {
 				throw "Could not save data";
 			}
 		}
-	}
+	}*/
 }
 
 void on_save(Editor& editor) {
@@ -267,11 +268,11 @@ void on_save(Editor& editor) {
 }
 
 void register_callbacks(Editor& editor, Modules& engine) {
+	editor.selected.listeners.clear();
+	
 	Window& window = *engine.window;
 	World& world = *engine.world;
-	
-	editor.editor_viewport.input.init(window);
-	editor.selected.listeners.clear();
+
 
 	register_on_inspect_callbacks();
 
@@ -297,14 +298,12 @@ Editor::Editor(Modules& modules, const char* game_code) :
 	time(*modules.time),
 	game(modules, game_code),
 	asset_tab(renderer, asset_info, window),
-	copy_of_world(*PERMANENT_ALLOC(World)),
+	copy_of_world(*PERMANENT_ALLOC(World, WORLD_SIZE)),
 	actions{world}
 {
 	//world.add(new DebugShaderReloadSystem());
 	//world.add(new TerrainSystem(world, this));
 	//world.add(new PickingSystem(*this));
-
-	world.add(new Store<EntityEditor>(100));
 
 	FramebufferDesc settings{ window.width, window.height };
 	add_color_attachment(settings, &scene_view);
@@ -320,7 +319,7 @@ Editor::Editor(Modules& modules, const char* game_code) :
 	//MainPass* main_pass = renderer.main_pass;
 	//main_pass->post_process.append(&picking_pass);
 
-	on_load(*this); //todo remove any rendering from load
+	on_load(*this);
 
 	modules.input->capture_mouse(false);
 
@@ -350,6 +349,7 @@ Editor::Editor(Modules& modules, const char* game_code) :
 	build_framegraph(renderer, { dependencies, 2});
 
 	init_imgui();
+	editor_viewport.input.init(window);
 	register_callbacks(*this, modules);
 
 	game.init();
@@ -423,67 +423,55 @@ void default_scene(Editor& editor) {
 
 	editor.asset_tab.default_material = create_new_material(editor.asset_tab, editor);
 
-	auto model_renderer_id = world.make_ID();
-
 	{
-		auto id = model_renderer_id;
-		auto e = world.make<Entity>(id);
-		auto trans = world.make<Transform>(id);
-		trans->position.z = -4;
-		trans->position.y = 1;
-		trans->position.x = -2;
-		trans->rotation = glm::normalize(glm::angleAxis(glm::radians(90.0f), glm::vec3(-1, 0, 0)));
+		auto [e, trans, model_renderer, materials] = world.make<Transform, ModelRenderer, Materials>();
+		trans.position.z = -4;
+		trans.position.y = 1;
+		trans.position.x = -2;
+		trans.rotation = glm::normalize(glm::angleAxis(glm::radians(90.0f), glm::vec3(-1, 0, 0)));
 		//trans->position = glm::vec3(0, -10, 0);
 
-		editor.select(id);
+		editor.select(e.id);
 
-		auto name = world.make<EntityEditor>(id);
-		name->name = "Plane";
+		model_renderer.model_id = import_model(editor.asset_tab, "HOVERTANK.fbx");
+		materials.materials.append(editor.asset_tab.default_material);
+
+		register_entity(editor.lister, "Plane", e.id);
 	}
-
-	auto model_render = world.make<ModelRenderer>(model_renderer_id);
-	model_render->model_id = import_model(editor.asset_tab, "HOVERTANK.fbx");
-
-	auto materials = world.make<Materials>(model_renderer_id);
-	materials->materials.append(editor.asset_tab.default_material);
 
 
 	//Ground Plane
+	/*{
+		auto[e, trans, mr, materials] = world.make<Transform, ModelRenderer, Materials>();
+
+		trans.position = glm::vec3(-5, 0, 0);
+		trans.scale = glm::vec3(5);
+		mr.model_id = load_Model("subdivided_plane8.fbx");
+		materials.materials.append(editor.asset_tab.default_material);
+
+		register_entity(editor.lister, "Ground", e.id);
+	}*/ 
+
 	{
-		auto id = world.make_ID();
-		auto e = world.make<Entity>(id);
-		auto name = world.make<EntityEditor>(id);
-		name->name = "Ground";
+		auto[e, trans, terrain] = world.make<Transform, Terrain>();
 
-		auto trans = world.make<Transform>(id);
-		trans->position = glm::vec3(-5, 0, 0);
-		trans->scale = glm::vec3(5);
-		auto mr = world.make<ModelRenderer>(id);
-		mr->model_id = load_Model("subdivided_plane8.fbx");
+		
+		update_terrain_material(editor.renderer.terrain_render_resources, terrain);
 
-		auto materials = world.make<Materials>(id);
-		materials->materials.append(editor.asset_tab.default_material);
+		register_entity(editor.lister, "Terrain", e.id);
 	}
 
 	//Light
 	{
-		auto id = world.make_ID();
-		auto e = world.make<Entity>(id);
-		auto trans = world.make<Transform>(id);
-		auto dir_light = world.make<DirLight>(id);
-		auto entity_editor = world.make<EntityEditor>(id);
-		entity_editor->name = "Sun Light";
+		auto[e, trans, dir_light] = world.make<Transform, DirLight>();
+		register_entity(editor.lister, "Sun Light", e.id);
 	}
 
 	{
-		auto id = world.make_ID();
-		auto e = world.make<Entity>(id);
-		e->layermask |= EDITOR_LAYER;
-		auto trans = world.make<Transform>(id);
-		auto fly = world.make<Flyover>(id);
-		auto cam = world.make<Camera>(id);
-		auto entity_editor = world.make<EntityEditor>(id);
-		entity_editor->name = "Camera";
+		auto[e, trans, flyover, camera] = world.make<Transform, Flyover, Camera>();
+		e.layermask |= EDITOR_LAYER;
+
+		register_entity(editor.lister, "Camera", e.id);
 	}
 
 	/*
@@ -603,27 +591,12 @@ void spawn_Model(World& world, Editor& editor, model_handle model_handle) { //to
 	ModelAsset* model_asset = node ? &node->model : nullptr;
 		
 	if (model_asset) {
+		auto[e, trans, model_renderer, materials] = world.make<Transform, ModelRenderer, Materials>();
+		materials.materials = model_asset->materials;
+		model_renderer.model_id = model_asset->handle;
 
-		ID id = world.make_ID();
-		Entity* e = world.make<Entity>(id);
-
-		EntityEditor* name = world.make<EntityEditor>(id);
-		name->name = model_asset->name;
-
-		Transform * trans = world.make<Transform>(id);
-
-		Materials* materials = world.make<Materials>(id);
-		materials->materials = model_asset->materials;
-
-		ModelRenderer* mr = world.make<ModelRenderer>(id);
-		mr->model_id = model_asset->handle;
-
-		ID cam = get_camera(world, EDITOR_LAYER);
-
-		Transform* cam_trans = world.by_id<Transform>(cam);
-		trans->position = editor.place_at_cursor();
-
-		entity_create_action(editor.actions, id);
+		trans.position = editor.place_at_cursor();
+		editor.create_new_object(model_asset->name, e.id);
 	}
 }
 
@@ -807,6 +780,11 @@ void render_Editor(Editor& editor, RenderPass& ctx, RenderPass& scene) {
 	editor.end_imgui(ctx.cmd_buffer);
 }
 
+void Editor::create_new_object(string_view name, ID id) {
+	entity_create_action(actions, id);
+	register_entity(lister, name, id);
+}
+
 Editor::~Editor() {
 	log("destructor");
 	ImGui_ImplVulkan_Shutdown();
@@ -851,6 +829,8 @@ void respond_to_shortcut(Editor& editor) {
 	editor.gizmo.update(world, editor, ctx);
 }
 
+//Slightly wierd ---> frame diff --> render update (rebuild material), next frame --> update 
+
 void respond_to_framediffs(Editor& editor) {
 	ActionStack& stack = editor.actions.frame_diffs;
 
@@ -892,6 +872,8 @@ void respond_to_framediffs(Editor& editor) {
 			build_acceleration_structure(renderer.scene_partition, renderer.mesh_buckets, editor.world);
 		}
 	}
+
+	clear_stack(editor.actions.frame_diffs);
 }
 
 #include "graphics/rhi/rhi.h"
@@ -936,14 +918,16 @@ APPLICATION_API void update(Editor& editor, Modules& modules) {
 #include "graphics/renderer/model_rendering.h"
 #include "graphics/renderer/transforms.h"
 
+APPLICATION_API void reload(Editor& editor, Modules& modules) {
+	register_callbacks(editor, modules);
+}
+
 APPLICATION_API void render(Editor& editor, Modules& engine) {
 	World& world = get_World(editor);
 
 	Layermask layermask = editor.playing_game ? GAME_LAYER : GAME_LAYER | EDITOR_LAYER;
 
 	render_frame(editor, world);
-
-	clear_stack(editor.actions.frame_diffs);
 }
 
 APPLICATION_API void deinit(Editor* editor) {

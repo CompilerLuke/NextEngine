@@ -1,8 +1,6 @@
 #pragma once
 
 #include "ecs/id.h"
-#include "ecs/system.h"
-#include "core/reflection.h"
 
 COMP
 struct Bow {
@@ -27,6 +25,4 @@ struct Arrow {
 	float duration = 0.0f;
 };
 
-struct BowSystem : System {
-	void update(World& world, UpdateCtx& params);
-};
+void update_bows(struct World& world, struct UpdateCtx& ctx);

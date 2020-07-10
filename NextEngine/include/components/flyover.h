@@ -2,6 +2,7 @@
 
 #include "core/core.h"
 #include <glm/vec2.hpp>
+#include "core/container/array.h"
 
 constexpr int NUM_PAST_MOVEMENT_SPEEDS = 3;
 
@@ -12,8 +13,7 @@ struct Flyover {
 	float yaw = 0;
 	float pitch = 0;
 
-	glm::vec2 past_movement_speed[3];
-	int past_movement_speed_length = 0;
+	array<3, glm::vec2> past_movement_speed;
 };
 
 ENGINE_API void update_flyover(struct World&, struct UpdateCtx&);

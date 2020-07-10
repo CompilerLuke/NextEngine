@@ -73,3 +73,6 @@ struct Materials {
 };
 
 material_handle make_SubstanceMaterial(string_view folder, string_view);
+
+void write_to_buffer(struct SerializerBuffer& buffer, ParamDesc& data);
+void read_to_buffer(struct SerializerBuffer& buffer, ParamDesc* data);

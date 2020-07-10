@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "bowWeapon.h"
-#include "ecs/ecs.h"
+#include <ecs/ecs.h>
 #include "playerInput.h"
 #include "physics/physics.h"
 #include "components/transform.h"
@@ -9,11 +9,15 @@
 #include "core/io/logger.h"
 #include "core/serializer.h"
 
+#include <ecs/system.h>
+
 DEFINE_APP_COMPONENT_ID(Bow, 2)
 DEFINE_APP_COMPONENT_ID(Arrow, 3);
 
 ID clone(World& world, ID id) {
-	return world.make_ID();
+	return 0;
+	
+	//return world.make_ID();
 	
 	/*
 	ID new_id = world.make_ID();
@@ -130,99 +134,92 @@ glm::quat quat_look_rotation(glm::vec3 direction, glm::vec3 upDirection) {
 	*/
 }
 
-void BowSystem::update(World& world, UpdateCtx& params) {
+void update_bows(World& world, UpdateCtx& params) {
 	PlayerInput* input = get_player_input(world);
 
-	for (ID id : world.filter<Arrow, Transform, RigidBody>(params.layermask)) {
-		Arrow* arrow = world.by_id<Arrow>(id);
-		Transform* trans = world.by_id<Transform>(id);
-		RigidBody* rb = world.by_id<RigidBody>(id);
-		LocalTransform* local = world.by_id<LocalTransform>(id);
-
-		if (arrow->state == Arrow::Fired) {
-			arrow->duration -= params.delta_time;
-			if (arrow->duration <= 0) {
-				world.free_by_id(id);
+	for (auto[e, trans, local, rb, arrow] : world.filter<Transform, LocalTransform, RigidBody, Arrow>(params.layermask)) {
+		if (arrow.state == Arrow::Fired) {
+			arrow.duration -= params.delta_time;
+			if (arrow.duration <= 0) {
+				world.free_by_id(e.id);
 			}
 			else {
-				glm::mat4 rot =  glm::lookAt(glm::vec3(0, 0, 0), glm::normalize(rb->velocity), glm::vec3(0, 1, 0));
+				glm::mat4 rot = glm::lookAt(glm::vec3(0, 0, 0), glm::normalize(rb.velocity), glm::vec3(0, 1, 0));
 
-				trans->rotation = quat_look_rotation(-rb->velocity, glm::vec3(0, 1, 0));
+				trans.rotation = quat_look_rotation(-rb.velocity, glm::vec3(0, 1, 0));
 			}
 		}
 	}
 
-	for (ID id : world.filter<Bow, LocalTransform, Transform>(params.layermask)) {
-		Bow* bow = world.by_id<Bow>(id);
-		LocalTransform* local = world.by_id<LocalTransform>(id);
-		Transform* trans = world.by_id<Transform>(id);
-		
-		LocalTransform* cam_trans = world.by_id<LocalTransform>(local->owner);
-		if (!cam_trans) continue;
+	for (auto[e, trans, local, bow] : world.filter<Transform, LocalTransform, Bow>(params.layermask)) {
+		auto camera_components = world.get_by_id<LocalTransform, Transform>(local.owner);
+		if (!camera_components) continue;
 
-		Transform* cam_world_trans = world.by_id<Transform>(local->owner);
+		auto[cam_trans, cam_world_trans] = *camera_components;
 
-		switch (bow->state) {
+		switch (bow.state) {
 		case Bow::Idle: {
 			if (input->holding_mouse_left) {
-				bow->duration = 0.1;
-				bow->state = Bow::Charging;
+				bow.duration = 0.1;
+				bow.state = Bow::Charging;
 			}
 			break;
 		}
 
 		case Bow::Charging: {
-			local->rotation = glm::angleAxis(glm::radians(-87.0f), glm::vec3(0,0,1));
+			local.rotation = glm::angleAxis(glm::radians(-87.0f), glm::vec3(0,0,1));
 
 			if (input->holding_mouse_left) {
-				LocalTransform* arrow_trans = world.by_id<LocalTransform>(bow->attached);
+				LocalTransform* arrow_trans = world.by_id<LocalTransform>(bow.attached);
 
-				if (bow->duration <= 1.5) {
+				if (bow.duration <= 1.5) {
 					arrow_trans->position.z += params.delta_time * 0.15;
-					bow->duration += params.delta_time;
+					bow.duration += params.delta_time;
 				} 
 			}
 			else {
-				calc_global_transform(world, bow->attached); 
-				bow->state = Bow::Firing;
+				calc_global_transform(world, bow.attached); 
+				bow.state = Bow::Firing;
 			}
 			break;
 		}
 		case Bow::Firing: {
-			float speed = bow->duration * bow->arrow_speed;
+			float speed = bow.duration * bow.arrow_speed;
 
-			Arrow* arrow = world.by_id<Arrow>(bow->attached);
+			Arrow* arrow = world.by_id<Arrow>(bow.attached);
 			if (!arrow) continue;
 
-			LocalTransform* arrow_local = world.by_id<LocalTransform>(bow->attached);
+			LocalTransform* arrow_local = world.by_id<LocalTransform>(bow.attached);
 			if (!arrow_local) continue;
 
 			if (true) { //arrow_local->position.z <= -0.8) {
 				arrow->state = Arrow::Fired;
 				arrow->duration = 5.0f;
 
-				ID cloned = clone(world, bow->attached);
+				ID cloned = clone(world, bow.attached);
 
+				/*
 				arrow_local->position.z = arrow_local->position.z - params.delta_time * speed;
-				calc_global_transform(world, bow->attached); 
-				world.free_by_id<LocalTransform>(bow->attached);
+				calc_global_transform(world, bow.attached); 
+				world.free_by_id<LocalTransform>(bow.attached);
 
-				BoxCollider* box = world.make<BoxCollider>(bow->attached);
+				BoxCollider* box = world.make<BoxCollider>(bow.attached);
 				box->scale = glm::vec3(0.1f, 0.1f, 0.5f);
-				RigidBody* rb = world.make<RigidBody>(bow->attached);
+				RigidBody* rb = world.make<RigidBody>(bow.attached);
 				rb->mass = 0.1f;
 				rb->override_rotation = true;
-				rb->velocity = cam_world_trans->rotation * glm::vec3(0, 0, -speed);
+				rb->velocity = cam_world_trans.rotation * glm::vec3(0, 0, -speed);
 			
-				bow->attached = cloned;
+				bow.attached = cloned;
 
-				bow->state = Bow::Reloading;
-				bow->duration = bow->reload_time;
+				bow.state = Bow::Reloading;
+				bow.duration = bow.reload_time;
 
-				world.by_id<Entity>(cloned)->enabled = false;
+				world.by_id<Entity>(cloned).enabled = false;
 				world.by_id<LocalTransform>(cloned)->position.z = -0.4;
 
-				local->rotation = glm::angleAxis(glm::radians(-90.0f), glm::vec3(0, 0, 1));
+				local.rotation = glm::angleAxis(glm::radians(-90.0f), glm::vec3(0, 0, 1));
+				*/
 			}
 			else {
 				arrow_local->position.z -= params.delta_time * speed;
@@ -232,12 +229,12 @@ void BowSystem::update(World& world, UpdateCtx& params) {
 		}
 
 		case Bow::Reloading: {
-			bow->duration -= params.delta_time;
-			if (bow->duration <= 0) {
-				bow->state = Bow::Idle;
+			bow.duration -= params.delta_time;
+			if (bow.duration <= 0) {
+				bow.state = Bow::Idle;
 
-				world.by_id<Entity>(bow->attached)->enabled = true;
-				calc_global_transform(world, bow->attached); 
+				//world.by_id<Entity>(bow.attached)->enabled = true;
+				calc_global_transform(world, bow.attached); 
 			}
 			break;
 		}

@@ -67,7 +67,10 @@ i64 io_time_modified(string_view filename) {
 wchar_t* to_wide_char(const char* orig);
 
 /*
-void WatchFileChange(string_view file, std::function<void()> func) {
+#include <Windows.h>
+#include "core/container/event_dispatcher.h"
+
+void WatchFileChange(string_view file, EventDispatcher<string_view> event) {
 	static int iCount = 0;
 	DWORD dwWaitStatus;
 	HANDLE dwChangeHandles;

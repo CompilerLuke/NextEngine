@@ -9,7 +9,7 @@
 #define MAX_DESCRIPTORS 10
 #define MAX_UBOS 5
 #define MAX_SAMPLERS 10
-#define MAX_BINDING 10
+#define MAX_BINDING 20
 #define MAX_FIELDS 5
 
 enum Stage : char {

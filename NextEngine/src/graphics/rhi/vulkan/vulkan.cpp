@@ -619,7 +619,7 @@ void vk_begin_frame() {
 void acquire_swapchain_image(Swapchain& swapchain) {
 	VkDevice device = swapchain.device;
 
-	printf("====== WAITING ON FRAME %i =====\n", swapchain.current_frame);
+	//printf("====== WAITING ON FRAME %i =====\n", swapchain.current_frame);
 	vkWaitForFences(device, 1, &swapchain.in_flight_fences[swapchain.current_frame], VK_TRUE, UINT64_MAX);
 
 	VkResult result = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, swapchain.image_available_semaphore[swapchain.current_frame], VK_NULL_HANDLE, &swapchain.image_index);

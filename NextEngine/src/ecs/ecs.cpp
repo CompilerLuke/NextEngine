@@ -1,6 +1,6 @@
 #include "ecs/ecs.h"
 
-#if 1
+#if 0
 
 //REFLECT_ALIAS(ID, unsigned int) requires strong typedef
 //REFLECT_ALIAS(Layermask, unsigned int) requires strong typedef

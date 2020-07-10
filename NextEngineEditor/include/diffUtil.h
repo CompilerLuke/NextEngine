@@ -50,9 +50,11 @@ struct EntityCopy {
 	struct Component {
 		void* ptr;
 		uint size;
-		ComponentStore* store;
+		uint component_id;
 	};
 
+	Archetype from;
+	Archetype to;
 	ID id;
 	slice<Component> components;
 };
@@ -73,7 +75,9 @@ void commit_diff(EditorActions&, DiffUtil&);
 bool submit_diff(ActionStack& stack, DiffUtil& util, string_view string);
 
 void entity_create_action(EditorActions& actions, ID id);
-void entity_destroy_action(EditorActions& actions, ID id);
+void entity_destroy_action(EditorActions& actions, ID id); //will destroy for you
+void entity_create_component_action(EditorActions& actions, uint component_id, ID id); //will create for you
+void entity_destroy_component_action(EditorActions& actions, uint component_id, ID id);  //will destroy for you
 
 template<typename T>
 void begin_diff(DiffUtil& util, T* ptr, T* copy) {

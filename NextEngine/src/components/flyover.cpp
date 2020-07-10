@@ -14,51 +14,34 @@ float get_speed(Flyover& self, UpdateCtx& ctx, float height) {
 }
 
 void update_flyover(World& world, UpdateCtx& ctx) {
-	auto debugging = world.get<Flyover>();
-
-	for (ID id : world.filter <Flyover, Transform>(ctx.layermask)) {
-		auto trans = world.by_id<Transform>(id);
-		auto self = world.by_id<Flyover>(id);
-
-		auto& facing_rotation = trans->rotation;
+	for (auto [e,trans,self]: world.filter<Transform, Flyover>(ctx.layermask)) {
+		auto& facing_rotation = trans.rotation;
 		auto forward = glm::normalize(facing_rotation * glm::vec3(0, 0, -1));
 		auto right = glm::normalize(facing_rotation * glm::vec3(1, 0, 0));
 
 		float vertical_axis = ctx.input.get_vertical_axis();
 		float horizontal_axis = ctx.input.get_horizontal_axis();
 
-		float speed = get_speed(*self, ctx, trans->position.y
-		
-		);
-		trans->position += forward * speed * vertical_axis;
-		trans->position += right * speed * horizontal_axis;
+		float speed = get_speed(self, ctx, trans.position.y);
 
-		auto last_mouse_offset = ctx.input.mouse_offset * self->mouse_sensitivity;
+		trans.position += forward * speed * vertical_axis;
+		trans.position += right * speed * horizontal_axis;
 
-		if (self->past_movement_speed_length < NUM_PAST_MOVEMENT_SPEEDS) {
-			self->past_movement_speed[self->past_movement_speed_length] = last_mouse_offset;
-			self->past_movement_speed_length++;
+		auto last_mouse_offset = ctx.input.mouse_offset * self.mouse_sensitivity;
+
+		if (self.past_movement_speed.length == NUM_PAST_MOVEMENT_SPEEDS) {
+			self.past_movement_speed.shift(1);
 		}
-		else {
-			glm::vec2 copy_past_movement_speed[NUM_PAST_MOVEMENT_SPEEDS];
-			for (int i = 0; i < NUM_PAST_MOVEMENT_SPEEDS; i++)
-				copy_past_movement_speed[i] = self->past_movement_speed[i];
-
-			for (int i = 0; i < NUM_PAST_MOVEMENT_SPEEDS - 1; i++) {
-				self->past_movement_speed[i] = copy_past_movement_speed[i + 1];
-			}
-		
-			self->past_movement_speed[NUM_PAST_MOVEMENT_SPEEDS - 1] = last_mouse_offset;
-		}
+		self.past_movement_speed.append(last_mouse_offset);
 
 		glm::vec2 mouse_offset;
-		for (int i = 0; i < NUM_PAST_MOVEMENT_SPEEDS; i++) {
-			mouse_offset += self->past_movement_speed[i];
+		for (glm::vec2 past_speed : self.past_movement_speed) {
+			mouse_offset += past_speed;
 		}
 		
 		if (ctx.input.mouse_button_down(Right)) {
 			ctx.input.capture_mouse(true);
-			mouse_offset = mouse_offset * (1.0f / self->past_movement_speed_length);
+			mouse_offset = mouse_offset * (1.0f / self.past_movement_speed.length);
 		}
 		else {
 			ctx.input.capture_mouse(false);
@@ -67,19 +50,19 @@ void update_flyover(World& world, UpdateCtx& ctx) {
 
 		
 
-		self->yaw = -mouse_offset.x + self->yaw;
-		self->pitch = mouse_offset.y + self->pitch;
+		self.yaw = -mouse_offset.x + self.yaw;
+		self.pitch = mouse_offset.y + self.pitch;
 
-		if (self->pitch > 89) 
-			self->pitch = 89;
-		if (self->pitch < -89) 
-			self->pitch = -89;
-		if (self->yaw > 360) 
-			self->yaw -= 360;
-		if (self->yaw < -360) 
-			self->yaw += 360;
+		if (self.pitch > 89) 
+			self.pitch = 89;
+		if (self.pitch < -89) 
+			self.pitch = -89;
+		if (self.yaw > 360) 
+			self.yaw -= 360;
+		if (self.yaw < -360) 
+			self.yaw += 360;
 		
-		auto orientation = glm::quat(glm::vec3(glm::radians(self->pitch), glm::radians(self->yaw), 0));
-		trans->rotation = orientation;
+		auto orientation = glm::quat(glm::vec3(glm::radians(self.pitch), glm::radians(self.yaw), 0));
+		trans.rotation = orientation;
 	}
 }

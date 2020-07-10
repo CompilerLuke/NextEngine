@@ -218,7 +218,7 @@ struct ShaderUBO {
 
 
 void ShadowPass::render(World& world, RenderPass& params) {
-	auto dir_light = (DirLight*)NULL; //get_dir_light(world, params.layermask);
+	/*auto dir_light = (DirLight*)NULL; //get_dir_light(world, params.layermask);
 	if (!dir_light) return;
 	auto dir_light_id = world.id_of(dir_light);
 
@@ -256,7 +256,7 @@ void ShadowPass::render(World& world, RenderPass& params) {
 
 		//glDisable(GL_DEPTH_TEST);
 
-		/*Shader* shadow_mask_shader = assets.shaders.get(this->shadow_mask_shader);
+		Shader* shadow_mask_shader = assets.shaders.get(this->shadow_mask_shader);
 
 		shadow_mask_shader->bind();
 
@@ -275,7 +275,7 @@ void ShadowPass::render(World& world, RenderPass& params) {
 		glm::mat4 ident_matrix(1.0);
 		shadow_mask_shader->set_mat4("model", ident_matrix);
 
-		shadow_mask_shader->set_int("cascadeLevel", i);*/
+		shadow_mask_shader->set_int("cascadeLevel", i);
 
 		glm::vec2 in_range(last_clip_space, proj_info.endClipSpace);
 
@@ -311,7 +311,7 @@ void ShadowPass::render(World& world, RenderPass& params) {
 		//if (!horizontal) shadow_mask.shadow_mask_map_fbo.bind();
 		//else ping_pong_shadow_mask.shadow_mask_map_fbo.bind();
 
-		/*Shader* screenspace_blur_shader = assets.shaders.get(this->screenspace_blur_shader);
+		Shader* screenspace_blur_shader = assets.shaders.get(this->screenspace_blur_shader);
 
 		screenspace_blur_shader->bind();
 		
@@ -330,9 +330,11 @@ void ShadowPass::render(World& world, RenderPass& params) {
 
 		horizontal = !horizontal;
 		first_iteration = false;
-		*/
+		
 	}
 
 	//shadow_mask.shadow_mask_map_fbo.unbind();
 	//glEnable(GL_DEPTH_TEST);
+
+	*/
 }

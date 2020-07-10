@@ -68,7 +68,7 @@ VertexBuffer alloc_vertex_buffer(VertexLayout layout, slice<T> vertices, slice<u
 
 
 template<typename T>
-InstanceBuffer frame_alloc_instance_buffer(InstanceLayout layout, slice<T> data) {
+InstanceBuffer frame_alloc_instance_buffer(InstanceLayout layout, const slice<T> data) {
 	void* mapped;
 	InstanceBuffer buffer = frame_alloc_instance_buffer(layout, data.length, &mapped);
 	memcpy(mapped, data.data, sizeof(T) * data.length);

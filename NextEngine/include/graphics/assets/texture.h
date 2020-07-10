@@ -13,7 +13,7 @@ using TextureID = uint;
 //todo these need to be revised
 
 
-enum class TextureFormat { UNORM, SRGB, HDR };
+enum class TextureFormat { UNORM, SRGB, HDR, U8 };
 enum class Filter { Nearest, Linear };
 enum class Wrap { ClampToBorder, Repeat };
 enum class TextureLayout { Undefined, TransferSrcOptimal, TransferDstOptimal, ShaderReadOptimal };

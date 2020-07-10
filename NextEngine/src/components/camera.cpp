@@ -38,5 +38,6 @@ void update_camera_matrices(World& world, ID id, Viewport& viewport) {
 }
 
 ID get_camera(World& world, Layermask layermask) {
-	return world.id_of(world.filter<Camera>(layermask)[0]);
+	auto [e,_] = *world.first<Camera>(layermask);
+	return e.id;
 }

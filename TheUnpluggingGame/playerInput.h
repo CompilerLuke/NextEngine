@@ -1,6 +1,6 @@
 #pragma once
-#include <ecs/system.h>
-#include <core/reflection.h>
+
+#include "core/core.h"
 
 COMP
 struct PlayerInput {
@@ -16,6 +16,4 @@ struct PlayerInput {
 
 PlayerInput* get_player_input(struct World&);
 
-struct PlayerInputSystem : System {
-	void update(struct World&, UpdateCtx& params);
-};
+void update_player_input(struct World&, struct UpdateCtx& ctx);

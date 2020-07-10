@@ -17,6 +17,7 @@
 #include "helper.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/stat.h>
 
 using string = string_view;
 
@@ -831,16 +832,17 @@ namespace pixc {
 				fprintf(header_file, "#pragma once\n#include \"core/core.h\"\n\n");
 
                 fprintf(file, "#include \"%s\"\n", buffer); 
-                fprintf(file, "#include \"core/memory/linear_allocator.h\"\n");
-				fprintf(file, "#include \"core/serializer.h\"\n");
-                fprintf(file, "#include \"core/reflection.h\"\n");
-                fprintf(file, "#include \"core/container/array.h\"\n");
+                fprintf(header_file, "#include \"core/memory/linear_allocator.h\"\n");
+				fprintf(header_file, "#include \"core/serializer.h\"\n");
+                fprintf(header_file, "#include \"core/reflection.h\"\n");
+                fprintf(header_file, "#include \"core/container/array.h\"\n");
                 
 				for (int i = 0; i < ref.header_files.length; i++) {
-					fprintf(file, "#include \"%s\"\n", ref.header_files[i]);
+					fprintf(header_file, "#include \"%s\"\n", ref.header_files[i]);
 				}
 				
 				fprintf(file, "\n");
+				fprintf(header_file, "\n");
 
                 //fprintf(file, "LinearAllocator reflection_allocator(kb(512));\n\n");
                 
@@ -924,6 +926,8 @@ int main(int argc, const char** c_args) {
 
 	printf("==== INPUT FILES ====\n");
 
+	bool modified = false;
+
 	//Profile input_profile("INPUT PROFILE");
 
     for (int i = 1; i < argc; i++) {
@@ -933,6 +937,10 @@ int main(int argc, const char** c_args) {
         if (arg == "-o") {
             reflector.output = c_args[++i];
         }
+
+		else if (arg == "-r") {
+			modified = true;
+		}
 
 		else if (arg == "-d") {
 			const char* filename = c_args[++i];
@@ -951,7 +959,28 @@ int main(int argc, const char** c_args) {
 		}
     }
 
-	
+
+	if (!modified) {
+		char generated_cpp_filename[100];
+		sprintf_s(generated_cpp_filename, "%s.cpp", reflector.output);
+
+		struct _stat output_info;
+		_stat(generated_cpp_filename, &output_info);
+
+		for (string_view filename : reflector.header_files) {
+			struct _stat info;
+			_stat(filename.c_str(), &info);
+
+			if (info.st_mtime > output_info.st_mtime) {
+				modified = true;
+			}
+		}
+
+		if (!modified) {
+			printf("\n=== NO FILE MODIFIED ===\n");
+			return 0;
+		}
+	}
 
 	//printf("=== SEARCHING DIRECTORIES TOOK %f", input_profile.end());
 
@@ -963,7 +992,7 @@ int main(int argc, const char** c_args) {
 		string_buffer contents;
 		contents.allocator = &temporary_allocator;
 		if (!io_readf(filename, &contents)) {
-			fprintf(stderr, "Could not open file!");
+			fprintf(stderr, "Could not open file! %s", filename.data);
 			exit(1);
 		}
 

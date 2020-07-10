@@ -10,29 +10,29 @@ float barryCentric(glm::vec3 p1, glm::vec3 p2, glm::vec3 p3, glm::vec2 pos) {
 	return l1 * p1.y + l2 * p2.y + l3 * p3.y;
 }
 
-float sample_terrain_height(Terrain* terrain, Transform* terrain_trans, glm::vec2 position) {
-	glm::vec2 quad_size = glm::vec2(terrain->size_of_block / 32.0f);
+float sample_terrain_height(Terrain& terrain, Transform& terrain_trans, glm::vec2 position) {
+	glm::vec2 quad_size = glm::vec2(terrain.size_of_block / 32.0f);
 
-	glm::vec2 sample = position - glm::vec2(terrain_trans->position.x, terrain_trans->position.z);
+	glm::vec2 sample = position - glm::vec2(terrain_trans.position.x, terrain_trans.position.z);
 	glm::vec2 local = sample;
 	sample /= quad_size;
 
 	int gridX = (int)sample.x;
 	int gridZ = (int)sample.y;
 
-	int width = 32 * terrain->width;
+	int width = 32 * terrain.width;
 
 	float xCoord = fmodf(local.x, quad_size.x) / quad_size.x;
 	float zCoord = fmodf(local.y, quad_size.y) / quad_size.y;
 
 	if (xCoord <= (1 - zCoord)) {
-		return terrain->max_height * barryCentric(glm::vec3(0, terrain->heightmap_points[gridX + gridZ * width], 0), glm::vec3(1,
-			terrain->heightmap_points[gridX + 1 + gridZ * width], 0), glm::vec3(0,
-				terrain->heightmap_points[gridX + (gridZ + 1) * width], 1), glm::vec2(xCoord, zCoord));
+		return terrain.max_height * barryCentric(glm::vec3(0, terrain.displacement_map[gridX + gridZ * width], 0), glm::vec3(1,
+			terrain.displacement_map[gridX + 1 + gridZ * width], 0), glm::vec3(0,
+				terrain.displacement_map[gridX + (gridZ + 1) * width], 1), glm::vec2(xCoord, zCoord));
 	}
 	else {
-		return terrain->max_height * barryCentric(glm::vec3(1, terrain->heightmap_points[gridX + 1 + gridZ * width], 0), glm::vec3(1,
-			terrain->heightmap_points[gridX + 1 + (gridZ + 1) * width], 1), glm::vec3(0,
-				terrain->heightmap_points[gridX + (gridZ + 1) * width], 1), glm::vec2(xCoord, zCoord));
+		return terrain.max_height * barryCentric(glm::vec3(1, terrain.displacement_map[gridX + 1 + gridZ * width], 0), glm::vec3(1,
+			terrain.displacement_map[gridX + 1 + (gridZ + 1) * width], 1), glm::vec3(0,
+				terrain.displacement_map[gridX + (gridZ + 1) * width], 1), glm::vec2(xCoord, zCoord));
 	}
 }

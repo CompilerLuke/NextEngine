@@ -225,6 +225,9 @@ PhysicsSystem::PhysicsSystem()
 	: bt_wrapper(make_BulletWrapper()) {}
 
 void PhysicsSystem::init(World& world) {
+	//todo implement creation/ destruction callbacks!
+	
+	/*
 	world.on_free<RigidBody>([this, &world](vector<ID>& freed) {
 		for (ID id : freed) {
 			RigidBody* rb = world.by_id<RigidBody>(id);
@@ -232,6 +235,7 @@ void PhysicsSystem::init(World& world) {
 				free_RigidBody(bt_wrapper, rb->bt_rigid_body);
 		}
 	});
+	*/
 }
 
 PhysicsSystem::~PhysicsSystem() {
@@ -242,40 +246,39 @@ void PhysicsSystem::update(World& world, UpdateCtx& params) {
 	if (params.layermask & GAME_LAYER) 
 		step_BulletWrapper(bt_wrapper, params.delta_time);
 
-	for (ID id : world.filter<RigidBody, Transform>(params.layermask)) {
-		auto rb = world.by_id<RigidBody>(id);
-		auto trans = world.by_id<Transform>(id);
-
-		if (!rb->bt_rigid_body) {
+	for (auto [e,rb,trans]: world.filter<RigidBody, Transform>(params.layermask)) {
+		ID id = e.id;
+		
+		if (!rb.bt_rigid_body) {
 			RigidBodySettings settings;
-			settings.origin.x = trans->position.x;
-			settings.origin.y = trans->position.y;
-			settings.origin.z = trans->position.z;
-			settings.velocity.x = rb->velocity.x;
-			settings.velocity.y = rb->velocity.y;
-			settings.velocity.z = rb->velocity.z;
+			settings.origin.x = trans.position.x;
+			settings.origin.y = trans.position.y;
+			settings.origin.z = trans.position.z;
+			settings.velocity.x = rb.velocity.x;
+			settings.velocity.y = rb.velocity.y;
+			settings.velocity.z = rb.velocity.z;
 
 			btCollisionShape* shape = NULL;
-			if (world.by_id<SphereCollider>(id)) {
-				auto collider = world.by_id<SphereCollider>(id);
-				shape = make_SphereShape(collider->radius * trans->scale.x);
-				if (rb->continous) {
-					settings.sweep_radius = collider->radius * trans->scale.x;
+			if (world.by_id<SphereCollider>(e.id)) {
+				auto collider = world.by_id<SphereCollider>(e.id);
+				shape = make_SphereShape(collider->radius * trans.scale.x);
+				if (rb.continous) {
+					settings.sweep_radius = collider->radius * trans.scale.x;
 				}
 			}
-			else if (world.by_id<BoxCollider>(id)) {
-				auto collider = world.by_id<BoxCollider>(id);
-				glm::vec3 size = collider->scale * trans->scale;
+			else if (world.by_id<BoxCollider>(e.id)) {
+				auto collider = world.by_id<BoxCollider>(e.id);
+				glm::vec3 size = collider->scale * trans.scale;
 				shape = make_BoxShape(size);
-				if (rb->continous) {
+				if (rb.continous) {
 					settings.sweep_radius = glm::max(size.z, glm::max(size.x, size.y));
 				}
 			}
-			else if (world.by_id<CapsuleCollider>(id)) {
+			else if (world.by_id<CapsuleCollider>(e.id)) {
 				auto collider = world.by_id<CapsuleCollider>(id);
-				shape = make_CapsuleShape(collider->radius * trans->scale.x, collider->height * trans->scale.y);
-				if (rb->continous) {
-					settings.sweep_radius = collider->radius * trans->scale.x + collider->height * trans->scale.y;
+				shape = make_CapsuleShape(collider->radius * trans.scale.x, collider->height * trans.scale.y);
+				if (rb.continous) {
+					settings.sweep_radius = collider->radius * trans.scale.x + collider->height * trans.scale.y;
 				}
 			}
 			else if (world.by_id<PlaneCollider>(id)) {
@@ -320,61 +323,56 @@ void PhysicsSystem::update(World& world, UpdateCtx& params) {
 			}
 
 			settings.id = id;
-			settings.mass = rb->mass;
-			settings.lock_rotation = rb->override_rotation;
+			settings.mass = rb.mass;
+			settings.lock_rotation = rb.override_rotation;
 			settings.shape = shape;
 
 			if (shape != NULL) {
-				rb->bt_rigid_body = make_RigidBody(bt_wrapper, &settings);
+				rb.bt_rigid_body = make_RigidBody(bt_wrapper, &settings);
 			}
 		}
 
-		if (rb->mass == 0) continue;
+		if (rb.mass == 0) continue;
 
 		BulletWrapperTransform trans_of_rb;
 
-		transform_of_RigidBody(rb->bt_rigid_body, &trans_of_rb);
+		transform_of_RigidBody(rb.bt_rigid_body, &trans_of_rb);
 
-		if (!rb->override_position) 
-			trans->position = trans_of_rb.position;
+		if (!rb.override_position) 
+			trans.position = trans_of_rb.position;
 		else 
-			trans_of_rb.position = trans->position;
+			trans_of_rb.position = trans.position;
 		
-		if (!rb->override_velocity_x)
-			rb->velocity.x = trans_of_rb.velocity.x;
+		if (!rb.override_velocity_x)
+			rb.velocity.x = trans_of_rb.velocity.x;
 		else
-			trans_of_rb.velocity.x = rb->velocity.x;
+			trans_of_rb.velocity.x = rb.velocity.x;
 
-		if (!rb->override_velocity_y)
-			rb->velocity.y = trans_of_rb.velocity.y;
+		if (!rb.override_velocity_y)
+			rb.velocity.y = trans_of_rb.velocity.y;
 		else
-			trans_of_rb.velocity.y = rb->velocity.y;
+			trans_of_rb.velocity.y = rb.velocity.y;
 
-		if (!rb->override_velocity_z)
-			rb->velocity.z = trans_of_rb.velocity.z;
+		if (!rb.override_velocity_z)
+			rb.velocity.z = trans_of_rb.velocity.z;
 		else
-			trans_of_rb.velocity.z = rb->velocity.z;
+			trans_of_rb.velocity.z = rb.velocity.z;
 
-		set_transform_of_RigidBody(rb->bt_rigid_body, &trans_of_rb);
+		set_transform_of_RigidBody(rb.bt_rigid_body, &trans_of_rb);
 	}
 
-	auto terrains = world.filter<Terrain>();
-	if (terrains.length == 0) return;
+	auto terrains = world.first<Terrain, Transform>(ANY_LAYER);
+	if (terrains.some) return;
 
-	Terrain* terrain = terrains[0];
-	Transform* terrain_trans = world.by_id<Transform>(world.id_of(terrain));
+	auto [terrain_e, terrain, terrain_trans] = *terrains;
 
-	for (ID id : world.filter<CharacterController, CapsuleCollider, Transform>(params.layermask)) {
-		Transform* trans = world.by_id<Transform>(id);
-		CharacterController* cc = world.by_id<CharacterController>(id);
-		CapsuleCollider* collider = world.by_id<CapsuleCollider>(id);
+	for (auto [e,trans,cc,collider] : world.filter<Transform, CharacterController, CapsuleCollider>(params.layermask)) {
+		trans.position += cc.velocity * (float)params.delta_time;
 
-		trans->position += cc->velocity * (float)params.delta_time;
+		float height = sample_terrain_height(terrain, terrain_trans, glm::vec2(trans.position.x, trans.position.z));
+		height += 0.5f * collider.height + collider.radius;
 
-		float height = sample_terrain_height(terrain, terrain_trans, glm::vec2(trans->position.x, trans->position.z));
-		height += 0.5f * collider->height + collider->radius;
-
-		if (trans->position.y < height) trans->position.y = height;
-		cc->on_ground = trans->position.y == height;
+		if (trans.position.y < height) trans.position.y = height;
+		cc.on_ground = trans.position.y == height;
 	}
 }

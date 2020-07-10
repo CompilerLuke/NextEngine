@@ -12,4 +12,4 @@ struct FPSController {
 	float roll_blend = 0;
 };
 
-void update_FPSControllers(struct World&, struct UpdateCtx&);
+void update_fps_controllers(struct World&, struct UpdateCtx&);

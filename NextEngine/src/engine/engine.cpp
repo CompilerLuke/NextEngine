@@ -20,7 +20,7 @@ Modules::Modules(const char* app_name, const char* level_path) {
 	window = new Window();
 	input = new Input();
 	time = new Time();
-	world = new World();	
+	world = new World(WORLD_SIZE);	
 	local_transforms_system = new LocalTransformSystem();
 	physics_system = new PhysicsSystem();
 

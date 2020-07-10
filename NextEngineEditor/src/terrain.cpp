@@ -14,55 +14,46 @@
 void edit_Terrain(Editor& editor, Assets& assets, World& world, UpdateCtx& params) {
 	if (!(params.layermask & EDITOR_LAYER)) return;
 
-	for (ID id : world.filter<Terrain, Transform>(params.layermask | GAME_LAYER)) {
-		auto self = world.by_id<Terrain>(id);
-		auto self_trans = world.by_id<Transform>(id);
-		auto width_quads = 32 * self->width;
-		auto height_quads = 32 * self->height;
+	for (auto [e, trans, terrain] : world.filter<Transform, Terrain>(params.layermask | GAME_LAYER)) {
+		auto width_quads = 32 * terrain.width;
+		auto height_quads = 32 * terrain.height;
 
-		if (params.input.key_pressed('I')) {
-			ID id = world.make_ID();
-			Entity* e = world.make<Entity>(id);
-			e->layermask = EDITOR_LAYER | PICKING_LAYER;
+		if (params.input.key_pressed('I')) { 
+			auto[e,trans,control] = world.make<Transform, TerrainControlPoint>();
+			e.layermask = EDITOR_LAYER | PICKING_LAYER;
 
-			Transform* trans = world.make<Transform>(id);
-			trans->scale = glm::vec3(0.1);
-			trans->position = editor.place_at_cursor();
+			trans.scale = glm::vec3(0.1);
+			trans.position = editor.place_at_cursor();
 
-			TerrainControlPoint* control = world.make<TerrainControlPoint>(id);
-
-			EntityEditor* name = world.make<EntityEditor>(id);
-			name->name = "Control Point";
-
-			editor.select(id); 
+			editor.create_new_object("Control Point", e.id);
 		}
 
 		if (!params.input.key_pressed('B')) continue;
 
 		//auto texture_id = gl_id_of(assets.textures, self->heightmap);
 		
-		if (!self->show_control_points) continue;
+		if (!terrain.show_control_points) continue;
 
 		auto control_points_filtered = world.filter<TerrainControlPoint, Transform>(EDITOR_LAYER);
 
-		auto& heightmap = self->heightmap_points;
+		auto& heightmap = terrain.displacement_map;
 		heightmap.clear();
 
 		heightmap.reserve(width_quads * height_quads);
 
-		auto size_per_quad = self->size_of_block / 32.0f;
+		auto size_per_quad = terrain.size_of_block / 32.0f;
 
+		glm::vec3 terrain_position = trans.position;
+
+		//todo optimize this loop
 		for (unsigned int h = 0; h < height_quads; h++) {
 			for (unsigned int w = 0; w < width_quads; w++) {
 				float height = 0.0f;
 				float total_weight = 0.1f;
 
-				for (ID id : control_points_filtered) {
-					auto control_point = world.by_id<TerrainControlPoint>(id);
-					auto control_point_trans = world.by_id<Transform>(id);
-
+				for (auto [e,control_point,control_point_trans] : control_points_filtered) {
 					auto pos = glm::vec2(w, h);
-					auto p = glm::vec2(control_point_trans->position.x - self_trans->position.x, control_point_trans->position.z - self_trans->position.z);
+					auto p = glm::vec2(control_point_trans.position.x - terrain_position.x, control_point_trans.position.z - terrain_position.z);
 					p /= size_per_quad;
 
 					float radius = 50.0f;
@@ -71,10 +62,10 @@ void edit_Terrain(Editor& editor, Assets& assets, World& world, UpdateCtx& param
 					float weight = std::powf(glm::max(radius - dist, 0.0f) / radius, 1.3f);
 					total_weight += weight;
 
-					height += weight * (control_point_trans->position.y);				
+					height += weight * (control_point_trans.position.y);				
 				}
 
-				height = height / total_weight / self->max_height;
+				height = height / total_weight / terrain.max_height;
 				heightmap.append(height);
 			}
 		}

@@ -11,14 +11,11 @@ DEFINE_APP_COMPONENT_ID(FPSController, 1);
 float gravity = -9.81;
 
 
-void update_FPSControllers(World& world, UpdateCtx& params) {
+void update_fps_controllers(World& world, UpdateCtx& params) {
 	PlayerInput* player_input = get_player_input(world);
 	
-	for (ID id : world.filter<FPSController, LocalTransform>(params.layermask)) {
-		FPSController* self = world.by_id<FPSController>(id);
-		LocalTransform* trans = world.by_id<LocalTransform>(id);
-
-		CharacterController* cc = world.by_id<CharacterController>(trans->owner);
+	for (auto [e, trans, camera, self] : world.filter<LocalTransform, Camera, FPSController>(params.layermask)) {
+		CharacterController* cc = world.by_id<CharacterController>(trans.owner);
 		if (cc == NULL) continue;
 
 		float pitch = player_input->pitch;
@@ -28,18 +25,18 @@ void update_FPSControllers(World& world, UpdateCtx& params) {
 		glm::vec3 forward = glm::normalize(facing_rotation * glm::vec3(0, 0, -1));
 		glm::vec3 right = glm::normalize(facing_rotation * glm::vec3(1, 0, 0));
 		
-		self->roll_cooldown -= params.delta_time;
-		self->roll_cooldown = glm::max(0.0f, self->roll_cooldown);
+		self.roll_cooldown -= params.delta_time;
+		self.roll_cooldown = glm::max(0.0f, self.roll_cooldown);
 
-		if (player_input->shift && self->roll_cooldown <= 0) {
-			self->roll_cooldown = self->roll_cooldown_time;
-			self->roll_blend = 1;
+		if (player_input->shift && self.roll_cooldown <= 0) {
+			self.roll_cooldown = self.roll_cooldown_time;
+			self.roll_blend = 1;
 		}
 
-		float vel = (self->roll_speed * self->roll_blend) + (self->movement_speed * (1.0 - self->roll_blend));
+		float vel = (self.roll_speed * self.roll_blend) + (self.movement_speed * (1.0 - self.roll_blend));
 
-		self->roll_blend -= params.delta_time / self->roll_duration;
-		self->roll_blend = glm::max(0.0f, self->roll_blend);
+		self.roll_blend -= params.delta_time / self.roll_duration;
+		self.roll_blend = glm::max(0.0f, self.roll_blend);
 
 		glm::vec3 vec = forward * player_input->vertical_axis * vel;
 		vec += right * player_input->horizonal_axis * vel;
@@ -55,10 +52,9 @@ void update_FPSControllers(World& world, UpdateCtx& params) {
 			cc->velocity.y += gravity * params.delta_time;
 		}
 
-		trans->rotation = glm::quat(glm::vec3(glm::radians(pitch), glm::radians(yaw), 0));
+		trans.rotation = glm::quat(glm::vec3(glm::radians(pitch), glm::radians(yaw), 0));
 
-		Camera* cam = world.by_id<Camera>(id);
-		cam->fov = (1.0 - self->roll_blend) * 60.0f + self->roll_blend * 70.0f;
+		camera.fov = (1.0 - self.roll_blend) * 60.0f + self.roll_blend * 70.0f;
 
 	}
 }

@@ -2,4 +2,5 @@
 
 #include "components/grass.h"
 
-void place_Grass(Grass*, World&);
+
+void place_Grass(World&, ID id);

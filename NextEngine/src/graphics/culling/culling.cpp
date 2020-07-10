@@ -235,13 +235,9 @@ void build_acceleration_structure(ScenePartition& scene_partition, hash_set<Mesh
 	meshes.allocator = &temporary_allocator;
 	models_m.allocator = &temporary_allocator;
 
-	for (ID id : world.filter<ModelRenderer, Materials, Transform>(ANY_LAYER)) {
-		auto trans = world.by_id<Transform>(id);
-		auto model_renderer = world.by_id<ModelRenderer>(id);
-		auto materials = world.by_id<Materials>(id);
-
-		Model* model = get_Model(model_renderer->model_id);
-		glm::mat4 model_m = compute_model_matrix(*trans);
+	for (auto [e,trans,model_renderer,materials] : world.filter<Transform,ModelRenderer, Materials>(ANY_LAYER)) {
+		Model* model = get_Model(model_renderer.model_id);
+		glm::mat4 model_m = compute_model_matrix(trans);
 
 		if (model == NULL) continue;
 
@@ -251,11 +247,11 @@ void build_acceleration_structure(ScenePartition& scene_partition, hash_set<Mesh
 
 		for (int mesh_index = 0; mesh_index < model->meshes.length; mesh_index++) {
 			Mesh& mesh = model->meshes[mesh_index];
-			material_handle mat_handle = materials->materials[mesh.material_id];
+			material_handle mat_handle = materials.materials[mesh.material_id];
 			MaterialDesc* mat_desc = material_desc(mat_handle);
 
 			MeshBucket bucket;
-			bucket.model_id = model_renderer->model_id;
+			bucket.model_id = model_renderer.model_id;
 			bucket.mesh_id = mesh_index;
 			bucket.mat_id = mat_handle;
 			bucket.flags = CAST_SHADOWS;
@@ -279,39 +275,35 @@ void build_acceleration_structure(ScenePartition& scene_partition, hash_set<Mesh
 		}
 	}
 
-	for (ID id : world.filter<Transform, Materials, Grass>(ANY_LAYER)) {
-		auto trans = world.by_id<Transform>(id);
-		auto grass = world.by_id<Grass>(id);
-		auto materials = world.by_id<Materials>(id);
-
-		Model* model = get_Model(grass->placement_model);
+	for (auto [e,trans,grass,materials] : world.filter<Transform, Grass, Materials>(ANY_LAYER)) {
+		Model* model = get_Model(grass.placement_model);
 		
 		if (model == NULL) continue;
 
 		AABB aabb;
-		aabb.min = -0.5f * glm::vec3(grass->width, 0, grass->height);
-		aabb.max = 0.5f * glm::vec3(grass->width, grass->max_height, grass->height);
+		aabb.min = -0.5f * glm::vec3(grass.width, 0, grass.height);
+		aabb.max = 0.5f * glm::vec3(grass.width, grass.max_height, grass.height);
 		
-		aabb.min.x += trans->position.x;
-		aabb.min.z += trans->position.z;
-		aabb.max.x += trans->position.x;
-		aabb.max.z += trans->position.z;
+		aabb.min.x += trans.position.x;
+		aabb.min.z += trans.position.z;
+		aabb.max.x += trans.position.x;
+		aabb.max.z += trans.position.z;
 
 		world_bounds.update_aabb(aabb);
 
 		for (int mesh_index = 0; mesh_index < model->meshes.length; mesh_index++) {
 			Mesh& mesh = model->meshes[mesh_index];
-			material_handle mat_handle = materials->materials[mesh.material_id];
+			material_handle mat_handle = materials.materials[mesh.material_id];
 
 			MeshBucket bucket;
-			bucket.model_id = grass->placement_model;
+			bucket.model_id = grass.placement_model;
 			bucket.mesh_id = mesh_index;
 			bucket.mat_id = mat_handle;
-			bucket.flags = grass->cast_shadows ? CAST_SHADOWS : 0;
+			bucket.flags = grass.cast_shadows ? CAST_SHADOWS : 0;
 			
 			int bucket_id = mesh_buckets.add(bucket);
 
-			for (Transform& trans : grass->transforms) {
+			for (Transform& trans : grass.transforms) {
 				glm::mat4 model_m = compute_model_matrix(trans);
 
 				aabbs.append(mesh.aabb.apply(model_m));

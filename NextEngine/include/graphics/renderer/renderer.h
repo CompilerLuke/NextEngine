@@ -9,6 +9,7 @@
 #include "graphics/renderer/terrain.h"
 #include "graphics/renderer/model_rendering.h"
 #include "graphics/renderer/lighting_system.h"
+#include "graphics/renderer/terrain.h"
 #include "graphics/renderer/ibl.h"
 #include "graphics/culling/scene_partition.h"
 #include <glm/mat4x4.hpp>
@@ -35,6 +36,7 @@ struct FrameData {
 	PassUBO pass_ubo;
 	LightUBO light_ubo;
 	SkyboxRenderData skybox_data;
+	TerrainRenderData terrain_data;
 	struct CulledMeshBucket* culled_mesh_bucket[RenderPass::ScenePassCount];
 };
 

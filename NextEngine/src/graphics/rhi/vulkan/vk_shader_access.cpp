@@ -88,22 +88,25 @@ void update_UniformBuffer(VkDevice device, uint32_t currentImage, Viewport& view
 
 
 VkDescriptorSetLayout make_set_layout(VkDevice device, DescriptorSetInfo& info) {
-	VkDescriptorSetLayoutBinding layout_bindings[MAX_BINDING] = {};
+	array<MAX_BINDING, VkDescriptorSetLayoutBinding> layout_bindings;
 	slice<DescriptorBindingInfo> binding_info = info.bindings;
 
 	assert(binding_info.length <= MAX_BINDING);
 
 	for (uint i = 0; i < binding_info.length; i++) {
 		DescriptorBindingInfo& binding = binding_info[i];
+		if (binding.count == 0) continue;
 
-		VkDescriptorSetLayoutBinding& layout_binding = layout_bindings[i];
+		VkDescriptorSetLayoutBinding layout_binding = {};
 		layout_binding.binding = binding.binding;
 		layout_binding.descriptorCount = binding.count;
 		layout_binding.descriptorType = binding.type;
 		layout_binding.stageFlags = binding.stage;			
+
+		layout_bindings.append(layout_binding);
 	}
 
-	return make_set_layout(device, { layout_bindings, binding_info.length});
+	return make_set_layout(device, layout_bindings);
 }
 
 void update_descriptor_set(VkDevice device, VkDescriptorSet descriptor_set, DescriptorBinding& binding) {	

@@ -3,19 +3,6 @@
 
 #include <engine/application.h>
 #include <engine/engine.h>
-#include <graphics/rhi/window.h>
-#include <core/io/vfs.h>
-#include <core/io/logger.h>
-#include <core/container/string_buffer.h>
-
-#include <core/profiler.h>
-#include <stdio.h>
-
-#include "../TheUnpluggingGame/playerInput.h"
-#include "../TheUnpluggingGame/fpsController.h"
-#include "../TheUnpluggingGame/bowWeapon.h"
-#include "../NextEngineEditor/include/editor.h"
-#include <ecs/ecs.h>
 
 int main() {
 	const char* level = "C:\\Users\\User\\Desktop\\TopCCompiler\\TopCompiler\\Fernix\\assets\\level2\\";

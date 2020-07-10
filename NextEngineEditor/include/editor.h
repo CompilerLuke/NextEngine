@@ -110,6 +110,7 @@ struct Editor {
 
 	void init_imgui();
 
+	void create_new_object(string_view, ID id);
 	void begin_imgui(struct Input&);
 	void end_imgui(struct CommandBuffer&);
 
@@ -117,6 +118,7 @@ struct Editor {
 };
 
 namespace ImGui {
+	void Button(string_view);
 	void InputText(const char*, sstring&);
 	void InputText(const char*, string_buffer&);
 }

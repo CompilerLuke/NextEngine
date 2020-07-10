@@ -7,5 +7,5 @@
 #include "components/skybox.h"
 
 DirLight* get_dir_light(World& world, Layermask mask) {
-	return world.filter<DirLight>(mask)[0];
+	return &world.first<DirLight>(mask)->get<1>();
 }

@@ -160,16 +160,15 @@ void commit_diff(EditorActions& stack, DiffUtil& util) {
 	submit_diff(stack.frame_diffs, util, "");
 }
 
-EntityCopy* save_entity_copy(World& world, ActionStack& stack, ID id, EditorActionHeader& header) {
-	auto components = world.components_by_id(id);
+EntityCopy* save_entity_copy(World& world, ActionStack& stack, Archetype copy_archetype, Archetype mask, ID id, EditorActionHeader& header) {
+	auto components = world.components_by_id(id, copy_archetype);
 
-	uint size = sizeof(EntityCopy) + sizeof(Component) * components.length;
+	uint size = sizeof(EntityCopy);
 	
-	
-	//for (Component& component : components) {
-	//	size += component.type->size;
-	//	size += sizeof(Component);
-	//}
+	for (ComponentPtr& component : components) {
+		size += world.get_type_for(component)->size;
+		size += sizeof(EntityCopy::Component);
+	}
 
 	header.size = size;
 
@@ -177,21 +176,31 @@ EntityCopy* save_entity_copy(World& world, ActionStack& stack, ID id, EditorActi
 
 	EntityCopy* entity_copy = push_ptr<EntityCopy>(&data);
 	entity_copy->id = id;
-
+	entity_copy->from = world.arch_of_id(id);
+	entity_copy->to = (entity_copy->from | copy_archetype) & mask;
 	entity_copy->components.data = push_ptr<EntityCopy::Component>(&data, components.length);
 	entity_copy->components.length = components.length;
 
 	printf("=============\n");
 
 	for (uint i = 0; i < components.length; i++) {
+		ComponentPtr& component_ptr = components[i];
+		refl::Struct* type = world.get_type_for(component_ptr);
+
 		EntityCopy::Component& component = entity_copy->components[i];
-		component.store = components[i].store;
-		component.ptr = components[i].data; //push_ptr<char>(&data, components[i].type->size);
-		component.size = components[i].type->size;
+		component.component_id = component_ptr.component_id;
+		component.ptr = push_ptr<char>(&data, type->size);
+		component.size = type->size;
 
 		printf("Ptr of save entity copy %p\n", component.ptr);
 
-		//memcpy(component.ptr, components[i].data, components[i].type->size);
+		memcpy(component.ptr, component_ptr.data, type->size);
+
+		if (component.component_id == 0) {
+			Entity* o = (Entity*)component_ptr.data;
+			Entity* e = (Entity*)(component.ptr);
+			printf("ENTITY COPY! SAVED ENTITY id: %i layermask: %i, original: %i\n", e->id, e->layermask, o->id);
+		}
 	}
 
 	return entity_copy;
@@ -205,10 +214,15 @@ void copy_to_stack(ActionStack& stack, EditorActionHeader& header, EntityCopy& m
 	EntityCopy* copy = push_ptr<EntityCopy>(&data);
 	copy->components.data = push_ptr<EntityCopy::Component>(&data, master.components.length);
 
-	/*for (uint i = 0; i < master.components.length; i++) {
+	for (uint i = 0; i < master.components.length; i++) {
 		EntityCopy::Component& component = copy->components[i];
 		copy->components[i].ptr = push_ptr<char>(&data, component.size);
-	}*/
+
+		if (component.component_id == 0) {
+			Entity* e = (Entity*)(component.ptr);
+			printf("COPYING OVER DATA! SAVED ENTITY id: %i layermask: %i\n", e->id, e->layermask);
+		}
+	}
 }
 
 void apply_diff_and_move_to(ActionStack& actions, EditorActionHeader& header, Diff* diff) {
@@ -218,28 +232,34 @@ void apply_diff_and_move_to(ActionStack& actions, EditorActionHeader& header, Di
 	memcpy(diff->real_ptr, diff->copy_ptr, diff->type->size);
 }
 
-void destroy_all_components(EntityCopy* copy) {
+void destroy_components(World& world, EntityCopy* copy) {
+	world.change_archetype(copy->id, copy->from, copy->to, false);
+	std::swap(copy->from, copy->to);
+}
+
+void create_components(World& world, EntityCopy* copy) {
+	world.change_archetype(copy->id, copy->from, copy->to, false);
+	std::swap(copy->from, copy->to);
+
 	for (EntityCopy::Component component : copy->components) {
-		printf("DESTROY component %p\n", component.ptr);
-		component.store->set_enabled(component.ptr, false);
+		u8* ptr = (u8*)world.id_to_ptr[component.component_id][copy->id];
+		memcpy(ptr, component.ptr, component.size);
+
+		if (component.component_id == 0) {
+			Entity* e = (Entity*)(component.ptr);
+			printf("SAVED ENTITY id: %i layermask: %i\n", e->id, e->layermask);
+		}
 	}
 }
 
-void create_all_components(EntityCopy* copy) {
-	for (EntityCopy::Component component : copy->components) {
-		printf("CREATE component %p\n", component.ptr);
-		component.store->set_enabled(component.ptr, true);
-		//void* ptr = component.store->make_by_id(copy->id);
-		//memcpy(ptr, component.ptr, component.size);
-	}
-}
+//NOTE Somewhat counter intiutive behaviour, since calling destroy or create components will flip the from/to
 
 void entity_create_action(EditorActions& actions, ID id) {
 	char desc[50];
 	sprintf_s(desc, "CREATED ENTITY #%i", id);
 
 	EditorActionHeader header{ EditorActionHeader::Create_Entity , 0, 0, desc};
-	save_entity_copy(actions.world, actions.undo, id, header);
+	save_entity_copy(actions.world, actions.undo, ANY_ARCHETYPE, 0, id, header);
 	actions.frame_diffs.stack.append(header);
 }
 
@@ -248,8 +268,36 @@ void entity_destroy_action(EditorActions& actions, ID id) {
 	sprintf_s(desc, "DESTROYED ENTITY #%i", id);
 	
 	EditorActionHeader header{ EditorActionHeader::Destroy_Entity, 0, 0, desc };
-	EntityCopy* copy = save_entity_copy(actions.world, actions.undo, id, header);
-	destroy_all_components(copy);
+	EntityCopy* copy = save_entity_copy(actions.world, actions.undo, ANY_ARCHETYPE, 0, id, header);
+	destroy_components(actions.world, copy);
+
+	actions.frame_diffs.stack.append(header);
+}
+
+void entity_create_component_action(EditorActions& actions, ComponentID component_id, ID id) {
+	char desc[50];
+	sprintf_s(desc, "CREATED COMPONENT %s #i", actions.world.component_type[component_id], id);
+
+	Archetype component_mask = 1ull << component_id;
+	Archetype arch = actions.world.arch_of_id(id);
+
+	actions.world.change_archetype(id, arch, arch | component_mask, true);
+
+	EditorActionHeader header{ EditorActionHeader::Create_Component, 0, 0, desc };
+	EntityCopy* copy = save_entity_copy(actions.world, actions.undo, component_mask, ~component_mask, id, header);
+
+	actions.frame_diffs.stack.append(header);
+}
+
+void entity_destroy_component_action(EditorActions& actions, ComponentID component_id, ID id) {
+	char desc[50];
+	sprintf_s(desc, "DESTROYED COMPONENT %s #i", actions.world.component_type[component_id], id);
+
+	Archetype component_mask = 1ull << component_id;
+
+	EditorActionHeader header{ EditorActionHeader::Destroy_Component, 0, 0, desc };
+	EntityCopy* copy = save_entity_copy(actions.world, actions.undo, component_mask, ~component_mask, id, header);
+	destroy_components(actions.world, copy);
 
 	actions.frame_diffs.stack.append(header);
 }
@@ -267,12 +315,14 @@ void undo_action(EditorActions& actions) {
 
 	switch (header.type) {
 	case EditorActionHeader::Diff: apply_diff_and_move_to(actions.redo, header, (Diff*)header.ptr); break;
+	case EditorActionHeader::Destroy_Component:
 	case EditorActionHeader::Destroy_Entity: 
-		create_all_components((EntityCopy*)header.ptr);
+		create_components(actions.world, (EntityCopy*)header.ptr);
 		copy_to_stack(actions.redo, header, *(EntityCopy*)header.ptr);
 		break;
+	case EditorActionHeader::Create_Component:
 	case EditorActionHeader::Create_Entity: 
-		destroy_all_components((EntityCopy*)header.ptr);
+		destroy_components(actions.world, (EntityCopy*)header.ptr);
 		copy_to_stack(actions.redo, header, *(EntityCopy*)header.ptr);
 		break;
 	}
@@ -287,13 +337,15 @@ void redo_action(EditorActions& actions) {
 
 	switch (header.type) {
 	case EditorActionHeader::Diff: apply_diff_and_move_to(actions.undo, header, (Diff*)header.ptr); break;
+	case EditorActionHeader::Destroy_Component:
 	case EditorActionHeader::Destroy_Entity:
-		destroy_all_components((EntityCopy*)header.ptr);
+		destroy_components(actions.world, (EntityCopy*)header.ptr);
 		copy_to_stack(actions.undo, header, *(EntityCopy*)header.ptr);
 		break;
 
+	case EditorActionHeader::Create_Component:
 	case EditorActionHeader::Create_Entity:
-		create_all_components((EntityCopy*)header.ptr);
+		create_components(actions.world, (EntityCopy*)header.ptr);
 		copy_to_stack(actions.undo, header, *(EntityCopy*)header.ptr);
 		break;
 	}
