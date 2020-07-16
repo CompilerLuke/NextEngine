@@ -54,6 +54,14 @@ struct DescriptorDesc {
 	array<10, Binding> bindings;
 };
 
+struct periodically_updated_descriptor {
+	descriptor_set_handle modified_in_frame[MAX_FRAMES_IN_FLIGHT] = {};
+	descriptor_set_handle current;
+	uint updated_in_frame = 0;
+
+	operator descriptor_set_handle() { return current; }
+};
+
 ENGINE_API void add_combined_sampler(DescriptorDesc&, Stage, slice<CombinedSampler>, uint binding);
 ENGINE_API void add_combined_sampler(DescriptorDesc&, Stage, sampler_handle, cubemap_handle, uint binding);
 ENGINE_API void add_combined_sampler(DescriptorDesc&, Stage, sampler_handle, texture_handle, uint binding);
@@ -61,3 +69,6 @@ ENGINE_API void add_ubo(DescriptorDesc&, Stage, slice<UBOBuffer>, uint binding);
 
 descriptor_set_handle alloc_descriptor_set();
 ENGINE_API void update_descriptor_set(descriptor_set_handle&, DescriptorDesc&);
+ENGINE_API void update_descriptor_set(periodically_updated_descriptor&, DescriptorDesc&);
+ENGINE_API void recycle_descriptor_set(periodically_updated_descriptor&);
+ENGINE_API void destroy_descriptor_set(descriptor_set_handle);

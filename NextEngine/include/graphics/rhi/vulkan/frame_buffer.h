@@ -12,6 +12,8 @@ struct Attachment {
 	VkImage image;
 	VkImageView view;
 	VkFormat format;
+	VkImageLayout final_layout;
+	uint mips = 1;
 };
 
 //todo rename

@@ -10,6 +10,7 @@
 #include "graphics/rhi/window.h"
 #include "graphics/rhi/vulkan/buffer.h"
 #include "graphics/rhi/vulkan/vulkan.h"
+#include "graphics/culling/culling.h"
 
 //HACK ACKWARD INITIALIZATION
 #include "ecs/ecs.h"
@@ -46,6 +47,9 @@ Renderer* make_Renderer(const RenderSettings& settings, World& world) {
 	{
 		FramebufferDesc desc{ settings.display_resolution_width, settings.display_resolution_height };
 		add_color_attachment(desc, &renderer->scene_map);
+
+		add_dependency(desc, VERTEX_STAGE, RenderPass::TerrainHeightGeneration);
+		add_dependency(desc, FRAGMENT_STAGE, RenderPass::TerrainTextureGeneration);
 
 		for (uint i = 0; i < 4; i++) {
 			add_dependency(desc, FRAGMENT_STAGE, (RenderPass::ID)(RenderPass::Shadow0 + i));
@@ -133,8 +137,17 @@ GPUSubmission build_command_buffers(Renderer& renderer, const FrameData& frame) 
 	bind_descriptor(main_pass.cmd_buffer, 1, renderer.lighting_system.pbr_descriptor);
 
 	render_terrain(renderer.terrain_render_resources, frame.terrain_data, submission.render_passes);
+
+	//todo paritition into lit, unlit, transparent passes
+	
+	bind_pipeline_layout(main_pass.cmd_buffer, renderer.pipeline_layout);
+	bind_descriptor(main_pass.cmd_buffer, 1, renderer.lighting_system.pbr_descriptor);
+
 	render_meshes(renderer.mesh_buckets, frame.culled_mesh_bucket[RenderPass::Scene], main_pass);
 	render_skybox(frame.skybox_data, main_pass);
+
+	
+
 
 	return submission;
 }

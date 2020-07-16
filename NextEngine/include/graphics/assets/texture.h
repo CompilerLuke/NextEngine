@@ -37,6 +37,7 @@ struct TextureDesc {
 	TextureFormat format;
 	int width, height, num_channels;
 	TextureUsage usage = TextureUsage::Sampled | TextureUsage::TransferDst;
+	uint num_mips = 1;
 };
 
 struct Image : TextureDesc {

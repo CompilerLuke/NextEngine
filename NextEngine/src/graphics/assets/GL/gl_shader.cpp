@@ -5,7 +5,6 @@
 #include "core/io/logger.h"
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
-#include "ecs/layermask.h"
 
 REFLECT_STRUCT_BEGIN(Shader)
 REFLECT_STRUCT_MEMBER(v_filename)

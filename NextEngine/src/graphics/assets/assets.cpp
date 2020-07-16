@@ -19,12 +19,17 @@
 #include "core/io/logger.h"
 
 Assets assets;
+DefaultTextures default_textures;
 
 void make_AssetManager(string_view path) {
 	assets.asset_path = path;
 
 	init_primitives();
 	make_cubemap_pass_resources(assets.cubemap_pass_resources);
+
+	default_textures.white = load_Texture("solid_white.png");
+	default_textures.black = load_Texture("black.png");
+	default_textures.normal = load_Texture("normal.jpg");
 }
 
 void destroy_AssetManager() {}
@@ -130,6 +135,7 @@ void load_Shader(Shader& shader, slice<shader_flags> permutations) {
 		shader.configs.append(modules);
 		shader.config_flags.append(flags);
 	}
+
 
 	log("loaded shader : ", vfilename, " ", ffilename, "\n");
 }

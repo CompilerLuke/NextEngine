@@ -22,7 +22,7 @@ struct EventDispatcher {
 	}
 
 	void broadcast(T mesg) {
-		for (auto func : listeners) {
+		for (auto& func : listeners) {
 			func(mesg);
 		}
 	}

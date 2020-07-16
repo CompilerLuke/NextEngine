@@ -171,18 +171,16 @@ bool Grass_inspect(void* data, string_view prefix, Editor& editor) {
 	if (ImGui::CollapsingHeader("Grass")) {
 		Grass* grass = (Grass*)data;
 		
-		//todo auto generate ui!
-		auto type = (refl::Struct*)refl_type(Grass);
-		for (auto& member : type->fields) {
-			if (member.flags & refl::HIDE_IN_EDITOR_TAG) continue;
-			if (member.name == "density") {
-				ImGui::InputFloat2("density range", &density_range.x);
-				ImGui::SliderFloat("density", &grass->density, density_range.x, density_range.y);
-				continue;
-			}
 
-			render_fields(member.type, (char*)data + member.offset, member.name, editor);
-		}
+		//todo auto generate ui!
+		Model_inspect(&grass->placement_model, "", editor);
+		ImGui::Checkbox("cast_shadows", &grass->cast_shadows);
+		ImGui::InputFloat2("covers", &grass->width);
+		ImGui::InputFloat("max_height", &grass->max_height);
+		ImGui::InputFloat2("density_range", &density_range.x);
+		ImGui::SliderFloat("density", &grass->density, density_range.x, density_range.y);
+		ImGui::SliderFloat("random_rotation", &grass->random_rotation, 0, 1);
+		ImGui::Checkbox("align_to_terrain normal", &grass->align_to_terrain_normal);
 
 		ImGui::NewLine();
 
@@ -214,6 +212,76 @@ bool Grass_inspect(void* data, string_view prefix, Editor& editor) {
 	return false;
 }
 
+#include "components/terrain.h"
+
+void terrain_material_image(const char* name, texture_handle& handle) {
+	ImGui::Text(name); 
+	ImGui::SameLine(ImGui::GetContentRegionMax().x - 100);
+	ImGui::Image(handle, ImVec2(128, 128));
+	accept_drop("DRAG_AND_DROP_IMAGE", &handle, sizeof(texture_handle));
+}
+
+bool TerrainMaterials_inspect(void* data, string_view prefix, Editor& editor) {
+	if (ImGui::CollapsingHeader("Materials")) {
+		vector<TerrainMaterial>& materials = *(vector<TerrainMaterial>*)data;
+
+		for (TerrainMaterial& material : materials) {
+			ImGui::InputText("name", material.name);
+
+			terrain_material_image("diffuse", material.diffuse);
+			terrain_material_image("metallic", material.metallic);
+			terrain_material_image("roughness", material.roughness);
+			terrain_material_image("normal", material.normal);
+			terrain_material_image("height", material.height);
+			terrain_material_image("ao", material.ao);
+		}
+
+		if (ImGui::Button("Add Material")) {
+			TerrainMaterial material = {};
+			material.name = "Material";
+			material.diffuse = default_textures.white;
+			material.metallic = default_textures.white;
+			material.roughness = default_textures.white;
+			material.normal = default_textures.normal;
+			material.height = default_textures.white;
+			material.ao = default_textures.white;
+
+			materials.append(material);
+		}
+	}
+
+	return true;
+}
+
+bool TerrainSplat_inspect(void* data, string_view prefix, Editor& editor) {
+	if (ImGui::CollapsingHeader("TerrainSplat")) {
+		TerrainSplat& splat = *(TerrainSplat*)data;
+
+		auto[e, terrain] = *editor.world.first<Terrain>();
+
+		ImGui::SliderFloat("hardness", &splat.hardness, 0.0f, 1.0f);
+		ImGui::SliderFloat("min_height", &splat.min_height, 0.0f, terrain.max_height);
+		ImGui::SliderFloat("max_height", &splat.max_height, 0.0f, terrain.max_height);
+
+		ImGui::CollapsingHeader("Brush");
+		ImGui::Image(load_Texture("brush_low_res.png"), ImVec2(128, 128));
+		
+		ImGui::CollapsingHeader("Material");
+
+		for (uint i = 0; i < terrain.materials.length; i++) {
+			bool selected = i == splat.material;
+			
+			if (selected) ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 3);
+
+			if (ImGui::ImageButton(terrain.materials[i].diffuse, ImVec2(128, 128))) {
+				splat.material = i;
+			}
+
+			if (selected) ImGui::PopStyleVar();
+		}
+	}
+}
+
 void register_on_inspect_callbacks() {
 	register_on_inspect_gui("Skybox", SkyLight_inspect);
 	register_on_inspect_gui("Material", Material_inspect);
@@ -223,6 +291,9 @@ void register_on_inspect_callbacks() {
 	register_on_inspect_gui("Layermask", Layermask_inspect);
 	register_on_inspect_gui("EntityEditor", EntityEditor_inspect);
 	register_on_inspect_gui("Grass", Grass_inspect);
+	register_on_inspect_gui("TerrainSplat", TerrainSplat_inspect);
+	register_on_inspect_gui("vector<TerrainMaterial>", TerrainMaterials_inspect);
+
 	
 	register_on_inspect_gui("glm::vec2", Vec2_inspect);
 	register_on_inspect_gui("glm::quat", Quat_inspect);

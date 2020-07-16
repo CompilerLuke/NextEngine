@@ -26,6 +26,7 @@
 #include "diffUtil.h"
 #include "graphics/renderer/renderer.h"
 #include <imgui/imgui.h>
+#include <core/types.h>
 
 #include "graphics/rhi/draw.h"
 #include "graphics/rhi/pipeline.h"
@@ -47,13 +48,18 @@ const uint ATLAS_PREVIEWS_HEIGHT = 10;
 
 const uint ATLAS_PREVIEW_RESOLUTION = 128;
 
+
+
 AssetNode::AssetNode() {}
 AssetNode::AssetNode(Type type) {
 	memset(this, 0, sizeof(AssetNode));
 	this->type = type;
 
 	if (type == Shader) shader.shader_arguments.allocator = &default_allocator;
-	if (type == Model) model.materials.allocator = &default_allocator;
+	if (type == Model) {
+		model.materials.allocator = &default_allocator;
+		model.trans.scale = glm::vec3(1.0);
+	}
 	if (type == Folder) folder.contents.allocator = &default_allocator;
 }
 
@@ -141,9 +147,9 @@ void render_asset(AssetExplorer& tab, AssetNode& node, texture_handle tex_handle
 	bool selected = node.handle.id == tab.selected.id;
 	if (selected) ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 3);
 
-
+	ImGui::PushID(node.handle.id);
 	bool is_selected = ImGui::ImageButton(tex_handle, ImVec2(128, 128), uv0, uv1);
-	if (ImGui::IsItemHovered() && ImGui::GetIO().MouseClicked[0]) {
+	if (ImGui::IsItemHovered() && ImGui::GetIO().MouseClicked[1]) { //Right click
 		tab.selected = node.handle;
 		*deselect = false;
 		ImGui::OpenPopup("EditAsset");
@@ -159,12 +165,14 @@ void render_asset(AssetExplorer& tab, AssetNode& node, texture_handle tex_handle
 		ImGui::EndDragDropSource();
 	}
 	else if (is_selected) {
+		//*deselect = false;
 		tab.selected = node.handle;
 	}
 
 	render_name(node.asset.name, tab.filename_font);
 
 	ImGui::NextColumn();
+	ImGui::PopID();
 }
 
 void preview_from_atlas(AssetPreviewResources& resources, RotatablePreview& preview, texture_handle* handle, glm::vec2* uv0, glm::vec2* uv1) {
@@ -384,7 +392,7 @@ void render_preview_for(AssetPreviewResources& self, ModelAsset& asset) {
 	float radius = 0;
 
 	glm::vec4 verts[8];
-	aabb_to_verts(&aabb, verts);
+	aabb.to_verts(verts);
 	for (int i = 0; i < 8; i++) {
 		radius = glm::max(radius, glm::length(glm::vec3(verts[i]) - center));
 	}
@@ -462,10 +470,8 @@ void edit_color(glm::vec3& color, string_view name, glm::vec2 size) {
 	color = color4;
 }
 
-void channel_image(uint& image, string_view name) {
-	static texture_handle tex = load_Texture("solid_white.png");
-	
-	if (image == INVALID_HANDLE) { ImGui::Image(tex, ImVec2(200, 200)); }
+void channel_image(uint& image, string_view name) {	
+	if (image == INVALID_HANDLE) { ImGui::Image(default_textures.white, ImVec2(200, 200)); }
 	else ImGui::Image({ image }, ImVec2(200, 200));
 	
 	if (ImGui::IsMouseDragging() && ImGui::IsItemHovered()) {
@@ -489,7 +495,7 @@ void inspect_material_params(Editor& editor, material_handle handle, MaterialDes
 
 	if (handle.id != last_asset.id) {
 		diff_util.id = handle.id;
-		begin_diff(diff_util, material, &copy);
+		begin_diff(diff_util, material, &copy, get_MaterialDesc_type());
 	}
 	
 	bool slider_active = false;
@@ -508,10 +514,7 @@ void inspect_material_params(Editor& editor, material_handle handle, MaterialDes
 			ImGui::Text(name);
 		}
 		if (param.type == Param_Image) {
-			ImGui::Image(texture_handle{ param.image }, ImVec2(200, 200));
-
-			accept_drop("DRAG_AND_DROP_IMAGE", &param.image, sizeof(texture_handle));
-
+			channel_image(param.image, param.name);
 			ImGui::SameLine();
 			ImGui::Text(name);
 		}
@@ -595,6 +598,23 @@ void asset_properties(MaterialAsset* mat_asset, Editor& editor, AssetTab& self, 
 		if (ImGui::Button("shaders/tree.frag")) {
 			shader_handle new_shad = load_Shader("shaders/tree.vert", "shaders/tree.frag");
 			if (new_shad.id != desc->shader.id) {
+				//todo enable undo/redo for switching shaders
+				//DiffUtil util;
+				//begin_tdiff(util, &desc);
+				
+				*desc = {};
+				desc->shader = new_shad;
+				desc->draw_state = Cull_None;
+				mat_channel3(*desc, "diffuse", glm::vec3(1.0f));
+				mat_channel3(*desc, "metallic", glm::vec3(0.0f));
+				mat_channel1(*desc, "roughness", 0.9f);
+				mat_channel1(*desc, "normal", 1.0f, default_textures.normal);
+				mat_float(*desc, "cutoff", 0.5f);
+
+				replace_Material(mat_asset->handle, *desc);
+
+				//end_diff(editor.actions, util, "Switch to tree shader");
+
 				//set_base_shader_params(texture_manager, shader_manager, material, new_shad);
 				//material->set_float(shader_manager, "cutoff", 0.1f),
 				//material->set_vec2(shader_manager, "transformUVs", glm::vec2(1, 1));
@@ -629,7 +649,7 @@ void asset_properties(ModelAsset* mod_asset, Editor& editor, AssetTab& self, Ren
 	render_name(mod_asset->name, self.explorer.default_font);
 
 	DiffUtil diff_util;
-	begin_tdiff(diff_util, &mod_asset->trans);
+	begin_tdiff(diff_util, &mod_asset->trans, get_Transform_type());
 
 	ImGui::SetNextTreeNodeOpen(true);
 	ImGui::CollapsingHeader("Transform");
@@ -640,7 +660,9 @@ void asset_properties(ModelAsset* mod_asset, Editor& editor, AssetTab& self, Ren
 	end_diff(editor.actions, diff_util, "Properties Material");
 
 	if (ImGui::Button("Apply")) {
+		begin_gpu_upload();
 		load_Model(mod_asset->handle, compute_model_matrix(mod_asset->trans));
+		end_gpu_upload();
 
 		mod_asset->rot_preview.rot_deg = glm::vec2();
 		mod_asset->rot_preview.current = glm::vec2();
@@ -668,7 +690,7 @@ sstring name_from_filename(string_view filename) {
 	return filename.sub(after_slash, filename.find_last_of('.'));
 }
 
-model_handle import_model(AssetTab& self, string_view filename) {	
+model_handle import_model(AssetTab& self, string_view filename) {		
 	model_handle handle = load_Model(filename, true);
 	Model* model = get_Model(handle);
 
@@ -694,6 +716,8 @@ void import_texture(Editor& editor, AssetTab& self, string_view filename) {
 
 	add_asset_to_current_folder(self, std::move(asset));
 }
+
+
 
 void import_shader(Editor& editor, AssetTab& self, string_view filename) {
 	return; //
@@ -724,10 +748,14 @@ void import_filename(Editor& editor, World& world, RenderPass& ctx, AssetTab& se
 	log(asset_path);
 
 	if (asset_path.ends_with(".fbx") || asset_path.ends_with(".FBX")) {
+		begin_gpu_upload();
 		import_model(self, asset_path);
+		end_gpu_upload();
 	}
 	else if (asset_path.ends_with(".jpg") || asset_path.ends_with(".png")) {
+		begin_gpu_upload();
 		import_texture(editor, self, asset_path);
+		end_gpu_upload();
 	}
 	else if (asset_path.ends_with(".vert") || asset_path.ends_with(".frag")) {
 		import_shader(editor, self, asset_path);

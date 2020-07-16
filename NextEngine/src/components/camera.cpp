@@ -26,6 +26,7 @@ glm::mat4 get_proj_matrix(Camera& camera, float asp) {
 void update_camera_matrices(Transform& trans, Camera& camera, Viewport& viewport) {
 	viewport.proj = get_proj_matrix(camera, (float)viewport.width / viewport.height);
 	viewport.view = get_view_matrix(trans);
+	viewport.cam_pos = trans.position;
 
 	//viewport.cam = world.by_id<Camera>(id);
 	//ctx.view_pos = world.by_id<Transform>(id)->position;

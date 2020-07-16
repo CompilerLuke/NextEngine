@@ -206,6 +206,8 @@ bool render_fields_vector(refl::Array* self, void* data, string_view prefix, Edi
 }
 
 bool render_fields(refl::Type* type, void* data, string_view prefix, Editor& editor) {
+	if (override_inspect.keys.index(type->name) != -1) return override_inspect[type->name](data, prefix, editor);
+
 	if (type->type == refl::Type::Struct) return render_fields_struct((refl::Struct*)type, data, prefix, editor);
 	//else if (type->kind == refl::Union_Kind) return render_fields_union((reflect::TypeDescriptor_Union*)type, data, prefix, editor);
 	else if (type->type == refl::Type::Array) return render_fields_vector((refl::Array*)type, data, prefix, editor);
@@ -276,7 +278,7 @@ void DisplayComponents::render(World& world, RenderPass& params, Editor& editor)
 
 
 
-			if (ImGui::Button("Add Component... ....")) {
+			if (ImGui::Button("Add Component")) {
 				ImGui::OpenPopup("createComponent");
 			}
 			if (ImGui::BeginPopup("createComponent")) {
@@ -287,7 +289,7 @@ void DisplayComponents::render(World& world, RenderPass& params, Editor& editor)
 					if (!type || (1ull << i) & arch) continue;
 					if (!type->name.starts_with_ignore_case(filter)) continue;
 
-					if (ImGui::Button(type->name.c_str())) { //todo make work with undo and redo
+					if (ImGui::Button(type->name.c_str())) { 
 						entity_create_component_action(editor.actions, i, selected_id);
 						ImGui::CloseCurrentPopup();
 					}

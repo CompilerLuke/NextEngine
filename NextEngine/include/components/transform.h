@@ -29,5 +29,7 @@ struct LocalTransformSystem : System {
 	void update(World&, UpdateCtx&) override;
 };
 
+
+
 ENGINE_API void calc_global_transform(World& world, ID id);
 ENGINE_API glm::mat4 compute_model_matrix(Transform&);

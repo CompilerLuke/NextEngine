@@ -2,7 +2,6 @@
 
 #include "core/core.h"
 #include "graphics/pass/pass.h"
-#include "ecs/layermask.h"
 #include <glm/mat4x4.hpp>
 
 COMP
@@ -11,6 +10,7 @@ struct Camera {
 	float far_plane = 600;
 	float fov = 60;
 };
+
 
 struct Transform;
 struct Camera;

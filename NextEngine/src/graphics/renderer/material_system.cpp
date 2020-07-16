@@ -17,21 +17,18 @@ REFLECT_UNION_CASE(vec3)
 REFLECT_UNION_END()
 */
 
-void write_to_buffer(SerializerBuffer& buffer, ParamDesc& param) {
-	write_to_buffer(buffer, &param, sizeof(ParamDesc));
+void write_ParamDesc_to_buffer(SerializerBuffer& buffer, ParamDesc& param) {
+	write_n_to_buffer(buffer, &param, sizeof(ParamDesc));
 }
 
-void read_from_buffer(DeserializerBuffer& buffer, ParamDesc* param) {
-	read_from_buffer(buffer, param, sizeof(ParamDesc));
+void read_ParamDesc_from_buffer(DeserializerBuffer& buffer, ParamDesc* param) {
+	read_n_from_buffer(buffer, param, sizeof(ParamDesc));
 }
 
-template<>
-struct refl::TypeResolver<ParamDesc> {
-	ENGINE_API static refl::Type* get() {
-		static Union type = { Type::Union, sizeof(ParamDesc), "ParamDesc" };
-		return &type;
-	}
-};
+refl::Union* get_ParamDesc_type() {
+	static refl::Union type = { refl::Type::Union, sizeof(ParamDesc), "ParamDesc" };
+	return &type;
+}
 
 
 material_handle make_SubstanceMaterial(Assets& assets, string_view folder, string_view name) {

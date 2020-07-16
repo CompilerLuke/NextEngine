@@ -31,7 +31,7 @@ struct Transition {
 	VkImageLayout new_layout;
 };
 
-void transition_ImageLayout(VkCommandBuffer cmd_buffer, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, int src_queue = VK_QUEUE_FAMILY_IGNORED, int dst_queue = VK_QUEUE_FAMILY_IGNORED) {
+void transition_ImageLayout(VkCommandBuffer cmd_buffer, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, int mips, int src_queue = VK_QUEUE_FAMILY_IGNORED, int dst_queue = VK_QUEUE_FAMILY_IGNORED) {
 	VkImageMemoryBarrier barrier = {};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 	barrier.oldLayout = oldLayout;
@@ -40,7 +40,7 @@ void transition_ImageLayout(VkCommandBuffer cmd_buffer, VkImage image, VkFormat 
 	barrier.dstQueueFamilyIndex = dst_queue;
 	barrier.image = image;
 	barrier.subresourceRange.baseMipLevel = 0;
-	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.levelCount = mips;
 	barrier.subresourceRange.baseArrayLayer = 0;
 	barrier.subresourceRange.layerCount = 1;
 	barrier.srcAccessMask = 0;
@@ -219,37 +219,6 @@ void make_Image(VkDevice device, VkPhysicalDevice physical_device, uint32_t widt
 	}
 }
 
-//todo this function is never used, delete it
-/*void make_TextureImage(VkImage* result, VkDeviceMemory* result_memory,  StagingQueue& staging_queue, Image& image, int32_t transfer_dst) {
-	VkDevice device = staging_queue.device;
-	VkPhysicalDevice physical_device = staging_queue.physical_device;
-
-	void* pixels = image.data;
-
-	VkDeviceSize imageSize = image.width * image.height * 4;
-
-	if (!pixels) throw "Failed to load texture image!";
-
-	VkBuffer stagingBuffer;
-	VkDeviceMemory stagingBufferMemory;
-
-	make_Buffer(device, physical_device, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-
-	void* data;
-	vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
-	memcpy(data, pixels, imageSize);
-	vkUnmapMemory(device, stagingBufferMemory);
-
-	make_alloc_Image(device, physical_device, image.width, image.height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, result, result_memory);
-
-	transition_ImageLayout(staging_queue, *result, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	copy_buffer_to_image(staging_queue, stagingBuffer, *result, image.width, image.height);
-	transition_ImageLayout(staging_queue, *result, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, transfer_dst);
-
-	staging_queue.destroyBuffers.append(stagingBuffer);
-	staging_queue.destroyDeviceMemory.append(stagingBufferMemory);
-}*/
-
 VkFilter to_vk_filter[] = { VK_FILTER_NEAREST, VK_FILTER_LINEAR };
 VkSamplerMipmapMode to_vk_mipmap_mode[] = { VK_SAMPLER_MIPMAP_MODE_NEAREST, VK_SAMPLER_MIPMAP_MODE_LINEAR };
 VkSamplerAddressMode to_vk_address[] = { VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER, VK_SAMPLER_ADDRESS_MODE_REPEAT };
@@ -353,7 +322,7 @@ VkImageUsageFlags to_vk_usage_flags(TextureUsage usage) {
 	return usage_flags;
 }
 
-VkFormat to_vk_image_format(const TextureDesc& image) {
+VkFormat to_vk_image_format(TextureFormat format, uint num_channels) {
 	VkFormat formats_by_channel_count[4][4] = {
 		{ VK_FORMAT_R32_UINT, VK_FORMAT_R8G8_UNORM, VK_FORMAT_R8G8B8_UNORM, VK_FORMAT_R8G8B8A8_UNORM },
 		{VK_FORMAT_R8_SRGB, VK_FORMAT_R8G8_SRGB, VK_FORMAT_R8G8B8_SRGB, VK_FORMAT_R8G8B8A8_SRGB},
@@ -361,7 +330,11 @@ VkFormat to_vk_image_format(const TextureDesc& image) {
 		{VK_FORMAT_R8_UINT, VK_FORMAT_R8G8_UINT, VK_FORMAT_R8G8B8_UINT, VK_FORMAT_R8G8B8A8_UINT}
 	};
 
-	return formats_by_channel_count[(uint)image.format][image.num_channels - 1];
+	return formats_by_channel_count[(uint)format][num_channels - 1];
+}
+
+VkFormat to_vk_image_format(const TextureDesc& desc) {
+	return to_vk_image_format(desc.format, desc.num_channels);
 }
 
 Texture alloc_TextureImage(TextureAllocator& allocator, const TextureDesc& desc) {
@@ -469,9 +442,9 @@ void alloc_and_bind_memory(TextureAllocator& allocator, VkImage image) {
 	vkGetImageMemoryRequirements(allocator.device, image, &memRequirements);
 
 	u64 offset = aligned_incr(&allocator.image_memory_offset, memRequirements.size, memRequirements.alignment);
-	vkBindImageMemory(device, image, allocator.image_memory, offset);
+	assert(allocator.image_memory_offset < MAX_IMAGE_DATA);
 
-	assert(allocator.image_memory_offset, MAX_IMAGE_DATA);
+	vkBindImageMemory(device, image, allocator.image_memory, offset);
 }
 
 Texture make_TextureImage(TextureAllocator& allocator, const Image& image) {
@@ -543,9 +516,9 @@ Texture make_TextureImage(TextureAllocator& allocator, const Image& image) {
 
 	printf("COPYING DATA TO IMAGE : 0x%p %ix%i\n", vk_image, info->width, info->height);
 
-	transition_ImageLayout(cmd_buffer, vk_image, image_format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	transition_ImageLayout(cmd_buffer, vk_image, image_format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1);
 	copy_buffer_to_image(cmd_buffer, allocator.staging.buffer, vk_image, image.width, image.height, offset);
-	transition_ImageLayout(cmd_buffer, vk_image, image_format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, staging_queue.queue_family, staging_queue.dst_queue_family);
+	transition_ImageLayout(cmd_buffer, vk_image, image_format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, staging_queue.queue_family, staging_queue.dst_queue_family);
 	
 	Texture result;
 	result.desc = image;
@@ -567,7 +540,7 @@ void transfer_image_ownership(TextureAllocator& allocator, VkCommandBuffer cmd_b
 		printf("TRANSFERRING OWNERSHIP OF IMAGE : 0x%p %ix%i\n", transfer_ownership->image, transfer_ownership->width, transfer_ownership->height);
 
 		transition_ImageLayout(cmd_buffer, transfer_ownership->image, transfer_ownership->format, 
-			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, queue.queue_family, queue.dst_queue_family);
+			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, queue.queue_family, queue.dst_queue_family);
 		//transition_ImageLayout(cmd_buffer, allocator.staging_queue, transfer_ownership->image, transfer_ownership->format,
 		//	VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
@@ -586,7 +559,7 @@ void transition_layout(CommandBuffer& cmd_buffer, texture_handle handle, Texture
 	Texture* texture = get_Texture(handle);
 	VkFormat format = to_vk_image_format(texture->desc);
 
-	transition_ImageLayout(cmd_buffer, texture->image, format, to_vk_layout[(uint)from], to_vk_layout[(uint)to]);
+	transition_ImageLayout(cmd_buffer, texture->image, format, to_vk_layout[(uint)from], to_vk_layout[(uint)to], texture->desc.num_mips);
 }
 
 void destroy_TextureImage(TextureAllocator& allocator, Texture& texture) {

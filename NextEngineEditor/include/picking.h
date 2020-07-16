@@ -13,12 +13,14 @@ struct Input;
 struct Camera;
 struct Assets;
 
-#define MAX_PICKING_NODES 100
-#define MAX_PICKING_INSTANCES 1000
+const uint GIZMO_TAG = 1 << 0;
+const uint MAX_PICKING_NODES = 100;
+const uint MAX_PICKING_INSTANCES = 1000;
 
 struct PickingScenePartition : Partition {
 	AABB aabbs[MAX_PICKING_INSTANCES];
 	ID ids[MAX_PICKING_INSTANCES];
+	uint tags[MAX_PICKING_INSTANCES];
 };
 
 struct Ray {

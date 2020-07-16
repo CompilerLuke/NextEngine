@@ -23,6 +23,13 @@ struct TextureLoadJob {
 	sstring path;
 };
 
+struct DefaultTextures {
+	texture_handle white;
+	texture_handle black;
+	texture_handle normal;
+};
+
+ENGINE_API extern DefaultTextures default_textures;
 
 void make_AssetManager(string_view path);
 void destroy_AssetManager();

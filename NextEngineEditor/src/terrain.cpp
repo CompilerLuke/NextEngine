@@ -1,78 +1,49 @@
-#include "core/reflection.h"
-#include "core/handle.h"
 #include "core/container/vector.h"
-#include "graphics/renderer/renderer.h"
 #include "components/transform.h"
 #include "components/terrain.h"
 #include "ecs/ecs.h"
 #include "terrain.h"
 #include "core/io/input.h"
 #include "editor.h"
-#include "core/container/string_buffer.h"
-#include "graphics/assets/assets.h"
 
-void edit_Terrain(Editor& editor, Assets& assets, World& world, UpdateCtx& params) {
-	if (!(params.layermask & EDITOR_LAYER)) return;
+struct TerrainSplatWeight {
+	glm::vec2 position;
+	uint material;
+};
 
-	for (auto [e, trans, terrain] : world.filter<Transform, Terrain>(params.layermask | GAME_LAYER)) {
-		auto width_quads = 32 * terrain.width;
-		auto height_quads = 32 * terrain.height;
+float easeInOutCubic(float x) {
+	return x < 0.5 ? 4 * x * x * x : 1 - powf(-2 * x + 2, 3) / 2;
+}
 
-		if (params.input.key_pressed('I')) { 
-			auto[e,trans,control] = world.make<Transform, TerrainControlPoint>();
-			e.layermask = EDITOR_LAYER | PICKING_LAYER;
 
-			trans.scale = glm::vec3(0.1);
-			trans.position = editor.place_at_cursor();
+void edit_Terrain(Editor& editor, World& world, UpdateCtx& params) {
+	if (params.input.key_pressed('I')) {
+		auto[e, trans, control] = world.make<Transform, TerrainControlPoint>();
+		e.layermask = EDITOR_LAYER | PICKING_LAYER;
 
-			editor.create_new_object("Control Point", e.id);
-		}
+		trans.scale = glm::vec3(0.1);
+		trans.position = editor.place_at_cursor();
 
-		if (!params.input.key_pressed('B')) continue;
+		editor.create_new_object("Control Point", e.id);
+	}
 
-		//auto texture_id = gl_id_of(assets.textures, self->heightmap);
-		
-		if (!terrain.show_control_points) continue;
+	if (params.input.key_pressed('O')) {
+		auto[e, trans, control] = world.make<Transform, TerrainSplat>();
+		e.layermask = EDITOR_LAYER | PICKING_LAYER;
 
-		auto control_points_filtered = world.filter<TerrainControlPoint, Transform>(EDITOR_LAYER);
+		trans.scale = glm::vec3(1.0);
+		trans.position = editor.place_at_cursor();
 
-		auto& heightmap = terrain.displacement_map;
-		heightmap.clear();
+		editor.create_new_object("Splat", e.id);
+	}
 
-		heightmap.reserve(width_quads * height_quads);
+	auto terrains = world.first<Transform, Terrain>();
+	if (!terrains) return;
 
-		auto size_per_quad = terrain.size_of_block / 32.0f;
+	auto[_, terrain_trans, terrain] = *terrains;
 
-		glm::vec3 terrain_position = trans.position;
-
-		//todo optimize this loop
-		for (unsigned int h = 0; h < height_quads; h++) {
-			for (unsigned int w = 0; w < width_quads; w++) {
-				float height = 0.0f;
-				float total_weight = 0.1f;
-
-				for (auto [e,control_point,control_point_trans] : control_points_filtered) {
-					auto pos = glm::vec2(w, h);
-					auto p = glm::vec2(control_point_trans.position.x - terrain_position.x, control_point_trans.position.z - terrain_position.z);
-					p /= size_per_quad;
-
-					float radius = 50.0f;
-					float dist = glm::length(p - pos);
-
-					float weight = std::powf(glm::max(radius - dist, 0.0f) / radius, 1.3f);
-					total_weight += weight;
-
-					height += weight * (control_point_trans.position.y);				
-				}
-
-				height = height / total_weight / terrain.max_height;
-				heightmap.append(height);
-			}
-		}
-	
-		//glBindTexture(GL_TEXTURE_2D, texture_id);
-		//glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width_quads, height_quads, GL_RED, GL_FLOAT, heightmap.data);
-		//glGenerateMipmap(GL_TEXTURE_2D);
+	for (auto [e, trans, splat] : world.filter<Transform, TerrainSplat>(EDITOR_LAYER)) {
+		trans.position.y = sample_terrain_height(terrain, terrain_trans, glm::vec2(trans.position.x, trans.position.z));
 	}
 }
 

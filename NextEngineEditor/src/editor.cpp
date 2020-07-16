@@ -217,6 +217,7 @@ void on_load(Editor& editor) {
 	World& world = get_World(editor);
 
 	default_scene(editor);
+	editor.picking.rebuild_acceleration_structure(world);
 	return;
 
 	//on_load_world(editor);
@@ -349,8 +350,8 @@ Editor::Editor(Modules& modules, const char* game_code) :
 	build_framegraph(renderer, { dependencies, 2});
 
 	init_imgui();
-	editor_viewport.input.init(window);
 	register_callbacks(*this, modules);
+	editor_viewport.input.init(window);
 
 	game.init();
 
@@ -455,7 +456,7 @@ void default_scene(Editor& editor) {
 	{
 		auto[e, trans, terrain] = world.make<Transform, Terrain>();
 
-		
+		gen_terrain(terrain);
 		update_terrain_material(editor.renderer.terrain_render_resources, terrain);
 
 		register_entity(editor.lister, "Terrain", e.id);
@@ -521,7 +522,7 @@ void render_view(Editor& editor, World& world, RenderPass& ctx) {
 }
 
 void render_overlay(Editor& editor, RenderPass& ctx) {
-	editor.picking.visualize(editor.world, editor.input, ctx);
+	editor.picking.visualize(editor.world, editor.editor_viewport.input, ctx);
 }
 
 void render_Editor(Editor& editor, RenderPass& ctx, RenderPass& scene);
@@ -540,7 +541,7 @@ void render_frame(Editor& editor, World& world) {
 	GPUSubmission gpu_submission = build_command_buffers(renderer, frame_data);
 
 	render_Editor(editor, gpu_submission.render_passes[RenderPass::Screen], gpu_submission.render_passes[RenderPass::Scene]);
-	
+	render_overlay(editor, gpu_submission.render_passes[RenderPass::Scene]);
 
 	submit_frame(renderer, gpu_submission);
 
@@ -581,7 +582,7 @@ void on_set_play_mode(Editor& editor, bool playing) {
 glm::vec3 Editor::place_at_cursor() {
 	RayHit hit;
 	hit.position = glm::vec3();
-	picking.ray_cast(world, input, hit);
+	picking.ray_cast(world, editor_viewport.input, hit);
 
 	return hit.position;
 }
@@ -783,6 +784,7 @@ void render_Editor(Editor& editor, RenderPass& ctx, RenderPass& scene) {
 void Editor::create_new_object(string_view name, ID id) {
 	entity_create_action(actions, id);
 	register_entity(lister, name, id);
+	select(id);
 }
 
 Editor::~Editor() {
@@ -829,13 +831,16 @@ void respond_to_shortcut(Editor& editor) {
 	editor.gizmo.update(world, editor, ctx);
 }
 
-//Slightly wierd ---> frame diff --> render update (rebuild material), next frame --> update 
-
 void respond_to_framediffs(Editor& editor) {
+	World& world = editor.world;
 	ActionStack& stack = editor.actions.frame_diffs;
+
+	Archetype terrain_control_point = to_archetype<TerrainControlPoint, TerrainSplat>();
+
 
 	for (EditorActionHeader header : stack.stack) {
 		bool rebuild_acceleration = false;
+		bool update_terrain = false;
 		
 		switch (header.type) {
 		case EditorActionHeader::Diff: {
@@ -845,18 +850,41 @@ void respond_to_framediffs(Editor& editor) {
 				rebuild_acceleration = true;
 			}
 
+			if (diff->type->name == "MaterialDesc") {
+				MaterialDesc* material_desc = (MaterialDesc*)diff->real_ptr;
+				replace_Material({diff->id}, *material_desc);
+				// update material
+			}
+
+			Archetype arch = world.arch_of_id(diff->id);
+
+			if (arch & terrain_control_point) update_terrain = true;
+
 			break;
 		}
 
-		case EditorActionHeader::Create_Entity:
+		case EditorActionHeader::Create_Entity: {
+			EntityCopy* copy = (EntityCopy*)header.ptr;
 			rebuild_acceleration = true;
-			break;
 
-		case EditorActionHeader::Destroy_Entity:
-			rebuild_acceleration = true;
+			//it shouldn't be necessary to check both from and to, since when creating a framediff the header could be set accordingly
+			if (copy->from & terrain_control_point || copy->to & terrain_control_point) update_terrain = true;
+
 			break;
+		}
+
+		case EditorActionHeader::Destroy_Entity: {
+			EntityCopy* copy = (EntityCopy*)header.ptr;
+			rebuild_acceleration = true;
+
+			//it shouldn't be necessary to check both from and to, since when creating a framediff the header could be set accordingly
+			if (copy->from & terrain_control_point || copy->to & terrain_control_point) update_terrain = true;
+
+			break;
+		}
 
 		case EditorActionHeader::Create_Component:
+			//todo handle updating terrain
 			break;
 
 		case EditorActionHeader::Destroy_Component:
@@ -868,8 +896,16 @@ void respond_to_framediffs(Editor& editor) {
 			bool is_static = true;
 
 			renderer.scene_partition.node_count = 0;
+			editor.picking.partition.node_count = 0;
 			renderer.scene_partition.count = 0;
+			editor.picking.partition.count = 0;
+
+			editor.picking.rebuild_acceleration_structure(editor.world);
 			build_acceleration_structure(renderer.scene_partition, renderer.mesh_buckets, editor.world);
+		}
+
+		if (update_terrain) {
+			regenerate_terrain(editor.world, editor.renderer.terrain_render_resources, EDITOR_LAYER);
 		}
 	}
 
@@ -898,10 +934,8 @@ APPLICATION_API bool is_running(Editor* editor, Modules& engine) {
 APPLICATION_API void update(Editor& editor, Modules& modules) {
 	respond_to_shortcut(editor);
 
-	UpdateCtx update_ctx(editor.time, editor.input);
+	UpdateCtx update_ctx(editor.time, editor.editor_viewport.input);
 	update_ctx.layermask = editor.playing_game ? GAME_LAYER : EDITOR_LAYER;
-
-	editor.editor_viewport.input.clear();
 
 	if (editor.playing_game) {
 		if (update_ctx.input.key_down('R')) editor.game.reload();
@@ -909,6 +943,7 @@ APPLICATION_API void update(Editor& editor, Modules& modules) {
 	}
 	else {
 		update_flyover(editor.world, update_ctx);
+		edit_Terrain(editor, editor.world, update_ctx);
 		//FlyOverSystem::update(engine.world, update_ctx);
 	}
 
@@ -928,6 +963,7 @@ APPLICATION_API void render(Editor& editor, Modules& engine) {
 	Layermask layermask = editor.playing_game ? GAME_LAYER : GAME_LAYER | EDITOR_LAYER;
 
 	render_frame(editor, world);
+	editor.editor_viewport.input.clear();
 }
 
 APPLICATION_API void deinit(Editor* editor) {

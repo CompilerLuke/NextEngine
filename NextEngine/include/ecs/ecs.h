@@ -1,7 +1,5 @@
 #pragma once
 
-#include "layermask.h"
-
 #include "core/container/vector.h"
 #include <assert.h>
 #include <memory>

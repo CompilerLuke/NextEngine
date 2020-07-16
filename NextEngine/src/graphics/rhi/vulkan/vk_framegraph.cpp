@@ -142,7 +142,7 @@ void register_wsi_pass(VkRenderPass render_pass, uint width, uint height) {
 	framegraph.render_pass[RenderPass::Screen] = render_pass;
 }
 
-RenderPass begin_render_pass(RenderPass::ID id) {
+RenderPass begin_render_pass(RenderPass::ID id, glm::vec4 clear_color) {
 	const RenderPassInfo& view = framegraph.info[id];
 
 	Viewport viewport = {};
@@ -164,7 +164,7 @@ RenderPass begin_render_pass(RenderPass::ID id) {
 
 	//todo add customization
 	VkClearValue clear_colors[2] = {};
-	clear_colors[0].color = { 0.1f, 0.1f, 0.1f, 1.0f };
+	clear_colors[0].color = { clear_color.x, clear_color.y, clear_color.z, clear_color.w };
 	clear_colors[1].depthStencil = { 1, 0 };
 
 	render_pass_info.clearValueCount = 2;
@@ -205,11 +205,104 @@ RenderPass begin_render_pass(RenderPass::ID id) {
 	return { id, view.type, {(u64)vk_render_pass}, viewport, cmd_buffer };
 }
 
+void generate_mips_after_render_pass(VkCommandBuffer cmd_buffer, RenderPassInfo& info, Attachment& attachment) {
+	int mip_width = info.width;
+	int mip_height = info.height;
+
+	VkImageLayout final_layout = attachment.final_layout; 
+
+	VkImageMemoryBarrier barrier = {};
+	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	barrier.image = attachment.image;
+	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.layerCount = 1;
+
+	vkCmdPipelineBarrier(cmd_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, 0, 1, &barrier);
+
+	barrier.srcAccessMask = 0;
+	barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	barrier.subresourceRange.baseMipLevel = 1;
+	barrier.subresourceRange.levelCount = attachment.mips - 1;
+
+	vkCmdPipelineBarrier(cmd_buffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, 0, 1, &barrier);
+
+	for (uint i = 1; i < attachment.mips; i++) {
+		if (i != 1) {
+			barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+			barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			barrier.subresourceRange.baseMipLevel = i - 1;
+			barrier.subresourceRange.levelCount = 1;
+
+			vkCmdPipelineBarrier(cmd_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, 0, 1, &barrier);
+		}
+
+		VkImageBlit blit = {};
+		blit.srcOffsets[0] = { 0,0,0 };
+		blit.srcOffsets[1] = { mip_width, mip_height, 1 };
+		blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		blit.srcSubresource.baseArrayLayer = 0;
+		blit.srcSubresource.layerCount = 1;
+		blit.srcSubresource.mipLevel = i - 1;
+
+		if (mip_width > 1) mip_width /= 2;
+		if (mip_height > 1) mip_height /= 2;
+
+		blit.dstOffsets[0] = { 0,0,0 };
+		blit.dstOffsets[1] = { mip_width, mip_height, 1 };
+		blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		blit.dstSubresource.baseArrayLayer = 0;
+		blit.dstSubresource.layerCount = 1;
+		blit.dstSubresource.mipLevel = i;
+
+		vkCmdBlitImage(cmd_buffer, attachment.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, attachment.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
+	}
+
+
+	barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+	barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT; 
+	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	barrier.newLayout = final_layout;
+	barrier.subresourceRange.baseMipLevel = 0;
+	barrier.subresourceRange.levelCount = attachment.mips - 1;
+
+	if (final_layout != VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
+		vkCmdPipelineBarrier(cmd_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, 0, 0, nullptr, 0, 0, 1, &barrier); //todo when compiling the framegraph we need to figure out the image dependencies
+	}
+
+	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	barrier.subresourceRange.baseMipLevel = attachment.mips - 1;
+	barrier.subresourceRange.levelCount = 1;
+
+	if (final_layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+		vkCmdPipelineBarrier(cmd_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, 0, 0, nullptr, 0, 0, 1, &barrier); //todo when compiling the framegraph we need to figure out the image dependencies
+	}
+}
+
 void end_render_pass(RenderPass& render_pass) {
 	vkCmdEndRenderPass(render_pass.cmd_buffer);
 
 	VkEvent event = framegraph.render_pass_complete[rhi.frame_index][render_pass.id];
 	if (event) vkCmdSetEvent(render_pass.cmd_buffer, event, render_pass.type == RenderPass::Color ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT : VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
+
+	{
+		RenderPassInfo& info = framegraph.info[render_pass.id];
+		Attachment& attachment = info.attachments[0];
+
+		if (attachment.mips > 1) generate_mips_after_render_pass(render_pass.cmd_buffer, info, attachment);
+	}
 
 	assert(render_pass.cmd_buffer.cmd_buffer != VK_NULL_HANDLE);
 	framegraph.submitted_cmd_buffer[render_pass.id] = &render_pass.cmd_buffer;
@@ -282,8 +375,10 @@ void end_render_frame(RenderPass& render_pass) {
 	//end_draw_cmds(render_pass.cmd_buffer);
 	framegraph.submitted_cmd_buffer[RenderPass::Screen] = &render_pass.cmd_buffer;
 
+	uint current_frame = rhi.frame_index;
+
 	QueueSubmitInfo submit_info = {};
-	submit_info.completion_fence = swapchain.in_flight_fences[swapchain.current_frame];
+	submit_info.completion_fence = swapchain.in_flight_fences[current_frame];
 
 
 	//todo HACK!, I need the wait on transfer to occur before everything else!
@@ -291,8 +386,6 @@ void end_render_frame(RenderPass& render_pass) {
 
 	submit_framegraph(submit_info);
 	submit_all_cmds(graphics_cmd_pool, submit_info);
-
-	uint current_frame = rhi.frame_index;
 
 	transfer_queue_dependencies(rhi.staging_queue, submit_info, rhi.waiting_on_transfer_frame);
 	queue_wait_semaphore(submit_info, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, swapchain.image_available_semaphore[current_frame]);
@@ -329,7 +422,7 @@ VkFormat find_depth_format(VkPhysicalDevice physical_device) {
 }
 
 VkFormat find_color_format(VkPhysicalDevice device, AttachmentDesc& desc) {
-	return VK_FORMAT_R8G8B8A8_UNORM;
+	return to_vk_image_format(desc.format, desc.num_channels);
 }
 
 VkRenderPass make_RenderPass(VkDevice device, VkPhysicalDevice physical_device, FramebufferDesc& desc) {
@@ -353,7 +446,9 @@ VkRenderPass make_RenderPass(VkDevice device, VkPhysicalDevice physical_device, 
 		color_attachment_desc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		color_attachment_desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 		color_attachment_desc.initialLayout = to_vk_layout[(uint)attach.initial_layout]; //todo not sure this is correct
-		color_attachment_desc.finalLayout = to_vk_layout[(uint)attach.final_layout];
+		
+		if (attach.num_mips > 1) color_attachment_desc.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		else color_attachment_desc.finalLayout = to_vk_layout[(uint)attach.final_layout];
 
 		attachments_desc.append(color_attachment_desc);
 		color_attachment_ref.append(ref);
@@ -461,24 +556,47 @@ VkFramebuffer make_Framebuffer(VkDevice device, VkPhysicalDevice physical_device
 		VkImageUsageFlags usage = to_vk_usage_flags(attach.usage);
 		VkFormat format = find_color_format(physical_device, attach); //  VK_FORMAT_R8G8B8_UINT;
 
+
+		//todo add support for mip-mapping
+		VkImageCreateInfo create_info = image_create_default;
+		create_info.format = format;
+		create_info.mipLevels = attach.num_mips;
+		create_info.extent.width = desc.width;
+		create_info.extent.height = desc.height;
+		create_info.usage = to_vk_usage_flags(attach.usage);
+		
+		if (attach.num_mips > 1) create_info.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+
 		Attachment attachment = {};
-		make_alloc_Image(device, physical_device, desc.width, desc.height, format, VK_IMAGE_TILING_OPTIMAL, usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &attachment.image, &attachment.memory);
+		VK_CHECK(vkCreateImage(device, &create_info, nullptr, &attachment.image));
+		alloc_and_bind_memory(rhi.texture_allocator, attachment.image);
+				
 		attachment.view = make_ImageView(device, attachment.image, format, VK_IMAGE_ASPECT_COLOR_BIT);
+		attachment.format = format;
+		attachment.mips = attach.num_mips;
+		attachment.final_layout = to_vk_layout[(int)attach.final_layout];
 
 		attachments_view.append(attachment.view);
 
 		info.attachments.append(attachment);
 		
 		{
+			VkImageViewCreateInfo info = image_view_create_default;
+			info.image = attachment.image;
+			info.format = format;
+			info.subresourceRange.levelCount = attach.num_mips;
+
 			Texture texture;
 			texture.alloc_info = nullptr;
-			//texture.desc.format = depth_format;
-			texture.view = attachment.view;
+			texture.desc.format = attach.format;
 			texture.image = attachment.image;
 			texture.desc.width = desc.width;
 			texture.desc.height = desc.height;
-			texture.desc.num_channels = 1;
-			texture.desc.format = TextureFormat::UNORM;
+			texture.desc.num_channels = attach.num_channels;
+			texture.desc.num_mips = attach.num_mips;
+			texture.desc.format = attach.format;
+
+			VK_CHECK(vkCreateImageView(device, &info, nullptr, &texture.view));
 
 			*attach.tex_id = assets.textures.assign_handle(std::move(texture));
 		}

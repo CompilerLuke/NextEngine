@@ -1,10 +1,6 @@
 #pragma once
 
 #include "id.h"
-#include <glm/mat4x4.hpp>
-#include "core/handle.h"
-#include "core/core.h"
-#include "graphics/culling/culling.h"
 
 struct ENGINE_API UpdateCtx {
 	Layermask layermask;
@@ -19,16 +15,19 @@ struct ENGINE_API System {
 	virtual ~System() {}
 };
 
-void ENGINE_API register_default_systems_and_components(World& world);
+void ENGINE_API register_default_components(World& world);
+
+template<typename T>
+constexpr int type_id();
 
 #define DEFINE_COMPONENT_ID(type, id) \
 template<> \
-int constexpr type_id<struct type>() { return id; } \
+inline int type_id<struct type>() { return id; } \
 template<> \
-int constexpr type_id<const struct type>() { return id; }
+inline int type_id<const struct type>() { return id; }
 
 #define DEFINE_APP_COMPONENT_ID(type, id) \
 template<> \
-int constexpr type_id<type>() { return 50 + id; }
+inline int type_id<type>() { return 50 + id; }
 
 //TODO MOVE ALL INTO ENGINE

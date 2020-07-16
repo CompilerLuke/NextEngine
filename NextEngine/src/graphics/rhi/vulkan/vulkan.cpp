@@ -456,9 +456,9 @@ void make_RHI(const VulkanDesc& desc, Window& window) {
 	make_CommandPool(rhi.background_graphics, device, Queue_Graphics, 3);
 
 	DescriptorCount max_descriptor = {};
-	max_descriptor.max_samplers = 40;
-	max_descriptor.max_ubos = 40;
-	max_descriptor.max_sets = 20;
+	max_descriptor.max_samplers = 50;
+	max_descriptor.max_ubos = 50;
+	max_descriptor.max_sets = 30;
 
 	make_DescriptorPool(rhi.descriptor_pool, device, device, max_descriptor);
 
@@ -719,6 +719,8 @@ void end_gpu_upload() {
 
 	queue_wait_timeline_semaphore(info, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, rhi.staging_queue.wait_on_transfer, rhi.waiting_on_transfer_frame);
 	queue_signal_timeline_semaphore(info, rhi.staging_queue.wait_on_transfer, ++rhi.waiting_on_transfer_frame);
+
+	rhi.staging_queue.value_wait_on_transfer++;
 
 	{
 		VkCommandBuffer cmd_buffer = begin_recording(rhi.background_graphics);

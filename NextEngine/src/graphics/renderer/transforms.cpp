@@ -1,5 +1,4 @@
 #include "graphics/renderer/transforms.h"
-#include "ecs/layermask.h"
 #include "components/transform.h"
 #include "core/memory/allocator.h"
 #include <glm/gtc/matrix_transform.hpp>

@@ -24,7 +24,7 @@ Modules::Modules(const char* app_name, const char* level_path) {
 	local_transforms_system = new LocalTransformSystem();
 	physics_system = new PhysicsSystem();
 
-	register_default_systems_and_components(*world);
+	register_default_components(*world);
 	physics_system->init(*world);
 
 	window->title = app_name;
@@ -57,6 +57,7 @@ Modules::Modules(const char* app_name, const char* level_path) {
 
 	vk_desc.device_features.samplerAnisotropy = VK_TRUE;
 	vk_desc.device_features.multiDrawIndirect = VK_TRUE;
+	vk_desc.device_features.fillModeNonSolid = VK_TRUE;
 
 	make_RHI(vk_desc, *window);
 	make_AssetManager(level_path);

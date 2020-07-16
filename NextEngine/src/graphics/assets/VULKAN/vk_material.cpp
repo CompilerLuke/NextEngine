@@ -47,11 +47,6 @@ void MaterialAllocator::make(MaterialDesc& desc, Material* material) {
 	shader_flags permutations[] = { SHADER_INSTANCED };
 
 	//todo allow multiple shader permutations
-
-	static texture_handle white_texture = load_Texture("solid_white.png");
-
-	static texture_handle ccc = load_Texture("wood_2/Stylized_Wood_basecolor.jpg");
-
 	//bool initialized = material->set.id != INVALID_HANDLE;
 
 	material->index = (material->index + 1) % MAX_FRAMES_IN_FLIGHT;
@@ -98,7 +93,7 @@ void MaterialAllocator::make(MaterialDesc& desc, Material* material) {
 				}
 
 				uint handle = param.image;
-				if (handle == INVALID_HANDLE) handle = white_texture.id;
+				if (handle == INVALID_HANDLE) handle = default_textures.white.id;
 
 				//todo make it platform agnostic type
 				Stage stage = from_vk_stage(binding_info.stage);

@@ -7,6 +7,7 @@
 #include "core/io/logger.h"
 #include <glm/glm.hpp>
 
+//todo all allocations for reflection objects should use one clearable allocator per dll
 namespace refl {
 	const uint REFLECT_TAG = 1 << 0;
 	const uint SERIALIZE_TAG = 1 << 1;
@@ -16,9 +17,15 @@ namespace refl {
 	const uint LAYERMASK_TAG = 1 << 5;
 
 	struct Type {
-		enum RefType { UInt, Int, Bool, Float, Char, Struct, Union, Enum, Array, StaticArray, HybridArray, StringView, StringBuffer, SString, Ptr } type;
+		enum RefType { UInt, Int, Bool, Float, Char, Struct, Union, Alias, Enum, Array, StringView, StringBuffer, SString, Ptr } type;
 		uint size;
 		string_view name;
+	};
+
+	struct Alias : Type {
+		Type* aliasing;
+
+		inline Alias(const char* name, Type* type) : Type{ Type::Alias, type->size, name }, aliasing(type) {}
 	};
 
 	struct Field {
@@ -41,8 +48,8 @@ namespace refl {
 
 		int length_offset;
 
-		inline Array(string_view name, ArrayType type, Type* element, uint size, uint num_elements = 0) 
-			: Type{ Type::Array, size, name }, arr_type(type), element(element), num(num) {}
+		inline Array(ArrayType arr_type, uint size, const char* name, Type* element, uint num = 0)
+			: Type{ Type::Array, size, name }, element(element), arr_type(arr_type), num(num) {}
 	};
 
 	struct Enum : Type {
@@ -75,51 +82,26 @@ namespace refl {
 		vector<Namespace*> namespaces;
 		vector<Struct*> structs;
 	};
-
-	template<typename T>
-	struct TypeResolver {
-		static Type* get();
-	};
-
-#define refl_type(T) refl::TypeResolver< T >::get()
-
-
-	template<typename T>
-	struct TypeResolver<vector<T>> {
-		static Type* get() {
-			static string_buffer name = format("vector<", refl_type(T)->name, ">");
-			static Array type(name, Array::Vector, refl_type(T), sizeof(vector<T>));
-			return &type;
-		}
-	};
-
-	template<int N, typename T>
-	struct TypeResolver<T[N]> {
-		static Type* get() {
-			static string_buffer name = format(refl_type(T)->name, "[", N, "]");
-			static Array type(name, Array::CArray, refl_type(T), sizeof(T[N]));
-			return &type;
-		}
-	};
-
-	template<typename T>
-	struct TypeResolver<tvector<T>> {
-		static Type* get() {
-			static string_buffer name = format("tvector<", refl_type(T)->name, ">");
-			static Array type(name, Array::TVector, refl_type(T), sizeof(tvector<T>));
-			return &type;
-		}
-	};
-
-	template<int N, typename T>
-	struct TypeResolver<array<N, T>> {
-		static Type* get() {
-			static string_buffer name = format("array<", refl_type(T)->name, ">");
-			static Array type(name, Array::StaticArray, refl_type(T), sizeof(array<N, T>), N);
-			return &type;
-		}
-	};
-
-	//template<typename T>
-	//Type* get_type();
 }
+
+//todo some of these should return Struct
+ENGINE_API refl::Type* get_char_type();
+ENGINE_API refl::Type* get_bool_type();
+ENGINE_API refl::Type* get_uint_type();
+ENGINE_API refl::Type* get_int_type();
+ENGINE_API refl::Type* get_u64_type();
+ENGINE_API refl::Type* get_i64_type();
+ENGINE_API refl::Type* get_float_type();
+ENGINE_API refl::Type* get_sstring_type();
+ENGINE_API refl::Type* get_string_view_type();
+ENGINE_API refl::Type* get_string_buffer_type();
+ENGINE_API refl::Type* get_vec2_type();
+ENGINE_API refl::Type* get_vec3_type();
+ENGINE_API refl::Type* get_vec4_type();
+ENGINE_API refl::Type* get_quat_type();
+ENGINE_API refl::Type* get_mat4_type();
+
+ENGINE_API refl::Array* make_vector_type(refl::Type* type);
+ENGINE_API refl::Array* make_tvector_type(refl::Type* type);
+ENGINE_API refl::Array* make_array_type(uint N, refl::Type* type);
+ENGINE_API refl::Array* make_carray_type(uint N, refl::Type* type);

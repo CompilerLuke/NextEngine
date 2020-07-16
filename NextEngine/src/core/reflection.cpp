@@ -15,99 +15,123 @@
 #include "core/container/string_buffer.h"
 #include <glm/gtc/quaternion.hpp>
 
-namespace refl {
-	LinearAllocator reflection_allocator(mb(10));
+using namespace refl;
 
-#define RESOLVE_PRIMITIVE_TYPE(typ, enum_name) template<> struct TypeResolver<typ> { \
-	ENGINE_API static Type* get() {\
-		static Type type{Type::enum_name, sizeof(typ) };\
-		return &type;\
-	} \
-};
+LinearAllocator reflection_allocator(mb(10));
 
-#define RESOLVE_TYPE(typ, func) template<> struct TypeResolver<typ> { \
-	ENGINE_API static Type* get() { \
-		static auto type = func(); \
-		return &type; \
-	} \
-};
+#define RESOLVE_PRIMITIVE_TYPE(typ, enum_name) Type* get_##typ##_type() { \
+	static Type type{Type::enum_name, sizeof(typ) };\
+	return &type;\
+} 
 
-	RESOLVE_PRIMITIVE_TYPE(uint, UInt)
-		RESOLVE_PRIMITIVE_TYPE(float, Float)
-		RESOLVE_PRIMITIVE_TYPE(int, Int)
-		RESOLVE_PRIMITIVE_TYPE(u64, UInt)
-		RESOLVE_PRIMITIVE_TYPE(bool, Bool)
-		RESOLVE_PRIMITIVE_TYPE(string_view, StringView)
+#define RESOLVE_TYPE(typ, name) Type* get_##name##_type() { \
+	static auto type = init_##name(); \
+	return &type; \
+} \
 
-		Struct init_vec2() {
-		Struct type("glm::vec2", sizeof(glm::vec2));
-		type.fields.append({ "x", offsetof(glm::vec2, x), refl_type(float) });
-		type.fields.append({ "y", offsetof(glm::vec2, y), refl_type(float) });
+RESOLVE_PRIMITIVE_TYPE(uint, UInt)
+	RESOLVE_PRIMITIVE_TYPE(float, Float)
+	RESOLVE_PRIMITIVE_TYPE(int, Int)
+	RESOLVE_PRIMITIVE_TYPE(u64, UInt)
+	RESOLVE_PRIMITIVE_TYPE(bool, Bool)
+	RESOLVE_PRIMITIVE_TYPE(string_view, StringView)
 
-		return type;
-	}
+	Struct init_vec2() {
+	Struct type("glm::vec2", sizeof(glm::vec2));
+	type.fields.append({ "x", offsetof(glm::vec2, x), get_float_type() });
+	type.fields.append({ "y", offsetof(glm::vec2, y), get_float_type() });
 
-	RESOLVE_TYPE(glm::vec2, init_vec2)
+	return type;
+}
 
-		Struct init_vec3() {
-		Struct type("glm::vec3", sizeof(glm::vec3));
-		type.fields.append({ "x", offsetof(glm::vec3, x), refl_type(float) });
-		type.fields.append({ "y", offsetof(glm::vec3, y), refl_type(float) });
-		type.fields.append({ "z", offsetof(glm::vec3, z), refl_type(float) });
+RESOLVE_TYPE(glm::vec2, vec2)
 
-		return type;
-	}
+	Struct init_vec3() {
+	Struct type("glm::vec3", sizeof(glm::vec3));
+	type.fields.append({ "x", offsetof(glm::vec3, x), get_float_type() });
+	type.fields.append({ "y", offsetof(glm::vec3, y), get_float_type() });
+	type.fields.append({ "z", offsetof(glm::vec3, z), get_float_type() });
 
-	RESOLVE_TYPE(glm::vec3, init_vec3)
+	return type;
+}
 
-		Struct init_vec4() {
-		Struct type("glm::vec4", sizeof(glm::vec4));
-		type.fields.append({ "x", offsetof(glm::vec4, x), refl_type(float) });
-		type.fields.append({ "y", offsetof(glm::vec4, y), refl_type(float) });
-		type.fields.append({ "z", offsetof(glm::vec4, z), refl_type(float) });
-		type.fields.append({ "w", offsetof(glm::vec4, w), refl_type(float) });
+RESOLVE_TYPE(glm::vec3, vec3)
 
-		return type;
-	}
+	Struct init_vec4() {
+	Struct type("glm::vec4", sizeof(glm::vec4));
+	type.fields.append({ "x", offsetof(glm::vec4, x), get_float_type() });
+	type.fields.append({ "y", offsetof(glm::vec4, y), get_float_type() });
+	type.fields.append({ "z", offsetof(glm::vec4, z), get_float_type() });
+	type.fields.append({ "w", offsetof(glm::vec4, w), get_float_type() });
 
-	Struct init_quat() {
-		Struct type("glm::quat", sizeof(glm::quat));
-		type.fields.append({ "x", offsetof(glm::quat, x), refl_type(float) });
-		type.fields.append({ "y", offsetof(glm::quat, y), refl_type(float) });
-		type.fields.append({ "z", offsetof(glm::quat, z), refl_type(float) });
-		type.fields.append({ "w", offsetof(glm::quat, w), refl_type(float) });
+	return type;
+}
 
-		return type;
-	}
+Struct init_quat() {
+	Struct type("glm::quat", sizeof(glm::quat));
+	type.fields.append({ "x", offsetof(glm::quat, x), get_float_type() });
+	type.fields.append({ "y", offsetof(glm::quat, y), get_float_type() });
+	type.fields.append({ "z", offsetof(glm::quat, z), get_float_type() });
+	type.fields.append({ "w", offsetof(glm::quat, w), get_float_type() });
 
-	RESOLVE_TYPE(glm::quat, init_quat)
+	return type;
+}
 
-		Struct init_ivec2() {
-		Struct type("glm::ivec2", sizeof(glm::ivec2));
-		type.fields.append({ "x", offsetof(glm::ivec2, x), refl_type(int) });
-		type.fields.append({ "y", offsetof(glm::ivec2, y), refl_type(int) });
+RESOLVE_TYPE(glm::quat, quat)
 
-		return type;
-	}
+Struct init_ivec2() {
+	Struct type("glm::ivec2", sizeof(glm::ivec2));
+	type.fields.append({ "x", offsetof(glm::ivec2, x), get_int_type() });
+	type.fields.append({ "y", offsetof(glm::ivec2, y), get_int_type() });
 
-	RESOLVE_TYPE(glm::ivec2, init_ivec2)
+	return type;
+}
 
-	Struct init_mat4() {
-		Struct type("glm::mat4", sizeof(glm::mat4));
-		return type;
-	}
+RESOLVE_TYPE(glm::ivec2, ivec2)
 
-	RESOLVE_TYPE(glm::mat4, init_mat4)
+Struct init_mat4() {
+	Struct type("glm::mat4", sizeof(glm::mat4));
+	return type;
+}
 
-	Type init_sstring() {
-		return Type{Type::SString, sizeof(sstring)};
-	}
+RESOLVE_TYPE(glm::mat4, mat4)
 
-	RESOLVE_TYPE(sstring, init_sstring)
+Type init_sstring() {
+	return Type{Type::SString, sizeof(sstring)};
+}
 
-	Type init_string_buffer() {
-		return Type{ Type::StringBuffer, sizeof(string_buffer) };
-	}
+RESOLVE_TYPE(sstring, sstring)
 
-	RESOLVE_TYPE(string_buffer, init_string_buffer)
+Type init_string_buffer() {
+	return Type{ Type::StringBuffer, sizeof(string_buffer) };
+}
+
+RESOLVE_TYPE(string_buffer, string_buffer)
+
+Array* make_vector_type(Type* type) {
+	char* name = PERMANENT_ARRAY(char, 100);
+	sprintf_s(name, 100, "vector<%s>", type->name.c_str());
+
+	return PERMANENT_ALLOC(Array, Array::Vector, sizeof(vector<char>), name, type);
+}
+
+Array* make_tvector_type(Type* type) {
+	char* name = PERMANENT_ARRAY(char, 100);
+	sprintf_s(name, 100, "tvector<%s>", type->name.c_str());
+
+	return PERMANENT_ALLOC(Array, Array::TVector, sizeof(tvector<char>), name, type);
+}
+
+Array* make_array_type(uint N, Type* type) {
+	char* name = PERMANENT_ARRAY(char, 100);
+	sprintf_s(name, 100, "array<%i, %s>", N, type->name.c_str());
+
+	return PERMANENT_ALLOC(Array, Array::StaticArray, sizeof(void*) + type->size * N, name, type);
+}
+
+Array* make_carray_type(uint N, Type* type) {
+	char* name = PERMANENT_ARRAY(char, 100);
+	sprintf_s(name, 100, "%s[%i]", type->name.c_str(), N);
+
+	return PERMANENT_ALLOC(Array, Array::CArray, sizeof(void*) + type->size * N, name, type);
 }

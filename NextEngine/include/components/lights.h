@@ -2,22 +2,22 @@
 
 #include <glm/vec3.hpp>
 #include "ecs/id.h"
-#include "core/reflection.h"
+#include "core/handle.h"
 #include "ecs/system.h"
 
-REFL
+COMP
 struct DirLight {
-	glm::vec3 direction = glm::vec3(0,1.0,0);
+	glm::vec3 direction = glm::vec3(0,-1.0,0);
 	glm::vec3 color = glm::vec3(1.0);
 };
 
-REFL
+COMP
 struct PointLight {
 	glm::vec3 color;
 	float radius;
 };
 
-REFL
+COMP
 struct SkyLight {
 	bool capture_scene = true;
 	cubemap_handle cubemap;

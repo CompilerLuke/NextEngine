@@ -25,7 +25,7 @@ struct Cubemap {
 };
 
 #define MAX_IMAGE_UPLOAD gb(1)
-#define MAX_IMAGE_DATA gb(1)
+#define MAX_IMAGE_DATA gb(1.5)
 #define MAX_TEXTURES 200
 #define MAX_MIP 14 //MAX TEXTURE SIZE is 8k
 
@@ -93,7 +93,8 @@ const VkImageCreateInfo image_create_default = {
 };
 
 VkImageUsageFlags to_vk_usage_flags(TextureUsage usage);
-
+VkFormat to_vk_image_format(TextureFormat format, uint num_channels);
+VkFormat to_vk_image_format(const TextureDesc&);
 const VkImageLayout to_vk_layout[4] = { VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
 
 void make_TextureAllocator(TextureAllocator&);

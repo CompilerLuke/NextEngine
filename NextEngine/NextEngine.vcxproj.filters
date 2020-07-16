@@ -241,6 +241,7 @@
     <ClCompile Include="src\ecs\ecs20.cpp" />
     <ClCompile Include="vendor\imgui\imgui_impl_vulkan.cpp" />
     <ClCompile Include="src\generated.cpp" />
+    <ClCompile Include="src\terrain\kriging.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="vendor\imgui\imconfig.h">
@@ -271,9 +272,6 @@
       <Filter>include\ecs</Filter>
     </ClInclude>
     <ClInclude Include="include\ecs\id.h">
-      <Filter>include\ecs</Filter>
-    </ClInclude>
-    <ClInclude Include="include\ecs\layermask.h">
       <Filter>include\ecs</Filter>
     </ClInclude>
     <ClInclude Include="include\ecs\new_ecs.h">
@@ -480,6 +478,10 @@
     <ClInclude Include="include\core\reflection2.h" />
     <ClInclude Include="include\core\container\string.h" />
     <ClInclude Include="src\generated.h" />
+    <ClInclude Include="include\graphics\culling\build_bvh.h" />
+    <ClInclude Include="include\terrain\kriging.h" />
+    <ClInclude Include="include\graphics\rhi\forward.h" />
+    <ClInclude Include="include\component_ids.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="src\refl_filepaths.refl" />

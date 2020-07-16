@@ -149,6 +149,8 @@ struct Descriptors {
 	uint count;
 	VkDescriptorSetLayout layouts[100];
 	VkDescriptorSet sets[100];
+
+	array<100, descriptor_set_handle> free_handles;
 };
 
 static Descriptors descriptors;
@@ -228,12 +230,18 @@ void update_descriptor_set(descriptor_set_handle& handle, DescriptorDesc& desc) 
 	VkDescriptorSet descriptor_set;
 
 	if (handle.id == INVALID_HANDLE) {
-		layout = make_descriptor_set_layout(desc);
+		layout = make_descriptor_set_layout(desc); 
+		//todo layouts should either be cached or created seperately
+		
+		uint offset = descriptors.free_handles.length > 0 ? 
+			descriptors.free_handles.pop().id - 1 
+			: descriptors.count++;
+		
 		descriptor_set = make_set(rhi.descriptor_pool, layout);
 
-		uint offset = descriptors.count++;
 		descriptors.layouts[offset] = layout;
 		descriptors.sets[offset] = descriptor_set;
+
 		handle.id = offset + 1;
 	}
 	else {
@@ -248,6 +256,18 @@ void update_descriptor_set(descriptor_set_handle& handle, DescriptorDesc& desc) 
 	update_descriptor_set(rhi.device, descriptor_set, binding);
 
 
+}
+
+void destroy_descriptor_set(descriptor_set_handle handle) {
+	if (handle.id == INVALID_HANDLE) return;
+
+	VkDescriptorSetLayout layout = get_descriptor_set_layout(handle);
+	VkDescriptorSet set = get_descriptor_set(handle);
+
+	vkDestroyDescriptorSetLayout(rhi.device, layout, nullptr);
+	vkFreeDescriptorSets(rhi.device, rhi.descriptor_pool, 1, &set);
+	
+	descriptors.free_handles.append(handle);
 }
 
 VkDescriptorSet get_descriptor_set(descriptor_set_handle set) {
@@ -311,6 +331,9 @@ void make_DescriptorPool(DescriptorPool& pool, VkDevice device, VkPhysicalDevice
 	poolInfo.poolSizeCount = 2;
 	poolInfo.pPoolSizes = poolSizes;
 	poolInfo.maxSets = count.max_sets;
+	poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT; 
+	//todo it might be worth creating several pools
+	//since this flag may be expensive, as it can no longer be linearly allocated!
 
 	if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &pool.pool) != VK_SUCCESS) {
 		throw "Failed to make descriptor pool!";
@@ -352,6 +375,36 @@ VkDescriptorSet make_set(DescriptorPool& pool, slice<VkDescriptorSetLayout> set_
 
 	return descriptor_set;
 }
+
+
+
+void recycle_descriptor_set(periodically_updated_descriptor& set) {
+	//printf("CURRENT DESCRIPTOR %i\n", set.current.id);
+	uint frame = rhi.frame_index;
+
+
+	descriptor_set_handle& handle = set.modified_in_frame[frame];
+	assert(handle.id != set.current.id);
+	//printf("RECYCLING DESCRIPTOR %i\n", handle.id);
+	destroy_descriptor_set(handle);
+
+
+	handle = { INVALID_HANDLE };
+}
+
+void update_descriptor_set(periodically_updated_descriptor& set, DescriptorDesc& desc) {
+	uint frame = rhi.frame_index;
+
+	set.modified_in_frame[set.updated_in_frame] = set.current;
+	
+	set.current = { INVALID_HANDLE };
+	update_descriptor_set(set.current, desc);
+
+	set.updated_in_frame = frame;
+}
+
+
+
 /*
 void make_ShaderAcess() {
 	ShaderModules* module = get_shader_config(assets, desc.shader, permutations[perm]);

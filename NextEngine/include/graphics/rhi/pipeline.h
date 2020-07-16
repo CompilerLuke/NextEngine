@@ -5,8 +5,7 @@
 #include "draw.h"
 #include "graphics/pass/pass.h"
 #include "graphics/rhi/shader_access.h"
-
-using DrawCommandState = u64;
+#include "forward.h"
 
 //todo establish naming convention for constants and enums
 
@@ -21,7 +20,8 @@ enum DepthFunc : DrawCommandState {
 	DepthFunc_Offset = 2,
 	DepthFunc_Lequal = 0 << DepthFunc_Offset,
 	DepthFunc_Less = 1 << DepthFunc_Offset,
-	DepthFunc_None = 2 << DepthFunc_Offset
+	DepthFunc_None = 2 << DepthFunc_Offset,
+	DepthFunc_Always = 3 << DepthFunc_Offset,
 };
 
 enum StencilFunc : DrawCommandState {

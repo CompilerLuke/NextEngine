@@ -51,6 +51,7 @@ struct EntityFilter {
 
 bool filter_hierarchy(EntityNode* result, EntityNode& top, World& world, EntityFilter& filter) {
 	Archetype arch = world.arch_of_id(top.id);
+	if (arch == 0) return false;
 
 	bool has_archetype = (arch & filter.archetype) == filter.archetype;
 	bool name_meets_filter = string_view(top.name).starts_with(filter.filter);
@@ -207,7 +208,7 @@ void Lister::render(World& world, Editor& editor, RenderPass& params) {
 
 		EntityNode result;
 		if (filter_hierarchy(&result, *filter_root, world, entity_filter)) {
-			for (EntityNode& node : filter_root->children) {
+			for (EntityNode& node : result.children) {
 				render_hierarchy(node, editor);
 			}
 		}

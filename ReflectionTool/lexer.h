@@ -27,7 +27,7 @@ namespace pixc {
             Open_Paren, Close_Paren, DoubleColon, Colon, Open_Bracket, Close_Bracket, Comma, SemiColon, Open_SquareBracket, Close_SquareBracket, GreaterThan, LessThan,
             Identifier,
             Newline, EndOfFile, Open_Indent, Close_Indent,
-            Struct, Enum, Class, Namespace, Pragma, Static, Constexpr
+            Struct, Enum, Class, Using, Namespace, Pragma, Static, Constexpr
         };
         
         struct Token {

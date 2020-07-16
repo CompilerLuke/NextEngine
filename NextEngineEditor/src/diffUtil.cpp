@@ -23,25 +23,34 @@ void init_actions(EditorActions& actions) {
 }
 
 void destroy_action(ActionStack& stack, EditorActionHeader& header) {
-	if (header.type == EditorActionHeader::Destroy_Entity) {
-
+	switch (header.type) {
+	case EditorActionHeader::Create_Entity:
+	case EditorActionHeader::Destroy_Entity:
+	case EditorActionHeader::Create_Component:
+	case EditorActionHeader::Destroy_Component:
+		EntityCopy* copy = (EntityCopy*)(header.ptr);
+		/* todo call destructors and free ids! */
 	}
+}
+
+bool enough_space_in_stack(ActionStack& stack, uint size) {
+	if (stack.head >= stack.tail) return stack.head + size < stack.capacity;
+	else stack.head + size < stack.tail;
 }
 
 char* stack_push_action(ActionStack& stack, EditorActionHeader& header) {
 	uint size = header.size;
 	assert(size <= stack.capacity);
-	
-	//todo extra check, if wrapping!!!!
-	if (stack.head + size > stack.capacity) {
-		stack.head = 0;
+
+	if (stack.stack.length == MAX_SAVED_UNDOS || !enough_space_in_stack(stack, size)) {
+		if (stack.head > stack.tail) stack.head = 0;
 
 		uint i;
 		for (i = 0; i < stack.stack.length; i++) {
 			EditorActionHeader header = stack.stack[i];
 			stack.tail = (header.ptr - stack.block) + header.size;
 
-			if (stack.tail >= size) break;
+			if (enough_space_in_stack(stack, size)) break;
 		}
 
 		uint shift = i + 1;
@@ -51,6 +60,8 @@ char* stack_push_action(ActionStack& stack, EditorActionHeader& header) {
 		}
 
 		stack.stack.shift(shift);
+
+		printf("Current head %i\n", stack.head);
 	}
 	
 	char* ptr = stack.block + stack.head;

@@ -181,7 +181,7 @@ struct AssetTab {
 };
 
 const char* drop_types[AssetNode::Count] = {
-	"DRAG_AND_DROP_TEXTURE",
+	"DRAG_AND_DROP_IMAGE",
 	"DRAG_AND_DROP_MATERIAL",
 	"DRAG_AND_DROP_SHADER",
 	"DRAG_AND_DROP_MODEL",

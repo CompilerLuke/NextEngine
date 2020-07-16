@@ -24,7 +24,7 @@ VkCullModeFlags vk_cull_mode(DrawCommandState state) {
 }
 
 VkCompareOp vk_depth_compare_op(DrawCommandState state) {
-	VkCompareOp depth_funcs[3] = { VK_COMPARE_OP_LESS_OR_EQUAL, VK_COMPARE_OP_LESS, VK_COMPARE_OP_NEVER };
+	VkCompareOp depth_funcs[4] = { VK_COMPARE_OP_LESS_OR_EQUAL, VK_COMPARE_OP_LESS, VK_COMPARE_OP_NEVER, VK_COMPARE_OP_ALWAYS };
 	return depth_funcs[decode_DrawState(DepthFunc_Offset, state, 2)];
 }
 
@@ -59,7 +59,7 @@ bool vk_depth_write(DrawCommandState state) {
 }
 
 bool vk_depth_test(DrawCommandState state) {
-	bool depth_test[3] = { true, true, false };
+	bool depth_test[4] = { true, true, false, true };
 	return depth_test[decode_DrawState(DepthFunc_Offset, state, 2)];
 }
 
@@ -193,10 +193,10 @@ void make_GraphicsPipeline(VkDevice device, VkPipelineDesc& desc, VkPipelineLayo
 	colorBlending.logicOpEnable = VK_FALSE;
 	colorBlending.attachmentCount = 1;
 	colorBlending.pAttachments = &colorBlendAttachment;
-	//colorBlending.blendConstants[0] = 1.0f;
-	//colorBlending.blendConstants[1] = 1.0f;
-	//colorBlending.blendConstants[2] = 1.0f;
-	//colorBlending.blendConstants[3] = 1.0f;
+	colorBlending.blendConstants[0] = 1.0f;
+	colorBlending.blendConstants[1] = 1.0f;
+	colorBlending.blendConstants[2] = 1.0f;
+	colorBlending.blendConstants[3] = 1.0f;
 
 	VkPipelineDepthStencilStateCreateInfo depthStencil = {};
 	depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;

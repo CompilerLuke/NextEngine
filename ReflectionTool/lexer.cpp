@@ -189,6 +189,7 @@ namespace pixc {
 			//add_keyword("string_", Keyword, );
             add_keyword("static", Keyword, Static);
             add_keyword("constexpr", Keyword, Constexpr);
+			add_keyword("using", Keyword, Using);
         }
         
         void match_delimitter(Lexer& lexer, Delimitter& d) {

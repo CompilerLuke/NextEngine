@@ -3,8 +3,7 @@
 #include <glm/vec3.hpp>
 #include <glm/vec2.hpp>
 #include <glm/mat4x4.hpp>
-#include "core/reflection.h"
-#include "graphics/rhi/pipeline.h"
+#include "graphics/rhi/forward.h"
 #include "core/container/array.h"
 #include "core/container/vector.h"
 #include "core/container/string_buffer.h"
@@ -67,12 +66,16 @@ ENGINE_API material_handle make_Material(MaterialDesc&);
 ENGINE_API MaterialDesc* material_desc(material_handle);
 ENGINE_API void replace_Material(material_handle, MaterialDesc&);
 
-REFL
+COMP
 struct Materials {
 	vector<material_handle> materials;
 };
 
 material_handle make_SubstanceMaterial(string_view folder, string_view);
 
-void write_to_buffer(struct SerializerBuffer& buffer, ParamDesc& data);
-void read_to_buffer(struct SerializerBuffer& buffer, ParamDesc* data);
+namespace refl { struct Union; }
+
+//todo make this inlineable, as it will improve serialization performance significantly
+void write_ParamDesc_to_buffer(struct SerializerBuffer& buffer, ParamDesc& param);
+void read_ParamDesc_from_buffer(struct DeserializerBuffer& buffer, ParamDesc* param);
+refl::Union* get_ParamDesc_type();

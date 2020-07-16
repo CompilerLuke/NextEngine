@@ -111,6 +111,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glfw3.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glad.o;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\assimp-vc140-mt.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\BulletCollision_Debug.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\BulletDynamics_Debug.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\LinearMath_Debug.lib;C:\VulkanSDK\1.2.131.2\shaderc\build\libshaderc\Debug\shaderc_combined.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) -d components -d graphics/assets ecs/ecs20.h graphics\rhi\forward.h ecs/id.h core/handle.h physics/physics.h -h core/types -o src/generated -l ENGINE_API</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -138,6 +141,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glfw3.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glad.o;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\assimp-vc140-mt.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\BulletCollision_Debug.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\BulletDynamics_Debug.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\LinearMath_Debug.lib;C:\VulkanSDK\1.2.131.2\shaderc\build\libshaderc\Debug\shaderc_combined.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) -d components -d graphics/assets ecs/ecs20.h graphics\rhi\forward.h ecs/id.h core/handle.h physics/physics.h -h core/types -o src/generated -l ENGINE_API</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -166,6 +172,9 @@
       <AdditionalDependencies>C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glfw3.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\assimp-vc140-mt.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\BulletCollision.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\BulletDynamics.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\LinearMath.lib;C:\VulkanSDK\1.2.131.2\shaderc\build\libshaderc\Release\shaderc_combined.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
     </Link>
+    <PreBuildEvent>
+      <Command>$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) -d components -d graphics/assets ecs/ecs20.h graphics\rhi\forward.h ecs/id.h core/handle.h physics/physics.h -h core/types -o src/generated -l ENGINE_API</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -194,6 +203,9 @@
       <AdditionalDependencies>C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glfw3.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\assimp-vc140-mt.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\BulletCollision.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\BulletDynamics.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\LinearMath.lib;C:\VulkanSDK\1.2.131.2\shaderc\build\libshaderc\Release\shaderc_combined.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
     </Link>
+    <PreBuildEvent>
+      <Command>$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) -d components -d graphics/assets ecs/ecs20.h graphics\rhi\forward.h ecs/id.h core/handle.h physics/physics.h -h core/types -o src/generated -l ENGINE_API</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="include\components\camera.h" />
@@ -202,6 +214,7 @@
     <ClInclude Include="include\components\lights.h" />
     <ClInclude Include="include\components\terrain.h" />
     <ClInclude Include="include\components\transform.h" />
+    <ClInclude Include="include\component_ids.h" />
     <ClInclude Include="include\core\container.h" />
     <ClInclude Include="include\core\container\bitset.h" />
     <ClInclude Include="include\core\container\array.h" />
@@ -234,7 +247,6 @@
     <ClInclude Include="include\ecs\ecs.h" />
     <ClInclude Include="include\ecs\ecs20.h" />
     <ClInclude Include="include\ecs\id.h" />
-    <ClInclude Include="include\ecs\layermask.h" />
     <ClInclude Include="include\ecs\new_ecs.h" />
     <ClInclude Include="include\ecs\system.h" />
     <ClInclude Include="include\engine\application.h" />
@@ -242,12 +254,14 @@
     <ClInclude Include="include\graphics\assets\assets.h" />
     <ClInclude Include="include\graphics\assets\assets_store.h" />
     <ClInclude Include="include\graphics\culling\aabb.h" />
+    <ClInclude Include="include\graphics\culling\build_bvh.h" />
     <ClInclude Include="include\graphics\pass\render_graph.h" />
     <ClInclude Include="include\graphics\renderer\lighting_system.h" />
     <ClInclude Include="include\graphics\renderer\terrain.h" />
     <ClInclude Include="include\graphics\rhi\buffer.h" />
     <ClInclude Include="include\graphics\culling\culling.h" />
     <ClInclude Include="include\graphics\rhi\draw.h" />
+    <ClInclude Include="include\graphics\rhi\forward.h" />
     <ClInclude Include="include\graphics\rhi\frame_buffer.h" />
     <ClInclude Include="include\graphics\renderer\grass.h" />
     <ClInclude Include="include\graphics\renderer\ibl.h" />
@@ -290,6 +304,7 @@
     <ClInclude Include="include\physics\physics.h" />
     <ClInclude Include="include\core\reflection.h" />
     <ClInclude Include="include\core\reflection2.h" />
+    <ClInclude Include="include\terrain\kriging.h" />
     <ClInclude Include="src\generated.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
@@ -401,6 +416,7 @@
       <OrderInUnityFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">100</OrderInUnityFile>
       <OrderInUnityFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">100</OrderInUnityFile>
     </ClCompile>
+    <ClCompile Include="src\terrain\kriging.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

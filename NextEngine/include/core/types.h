@@ -7,7 +7,22 @@
 #include "core/container/array.h"
 
 ENGINE_API refl::Enum* get_MaterialDesc_Mode_type();
-ENGINE_API refl::Alias* get_DrawCommandState_type();ENGINE_API refl::Alias* get_ID_type();ENGINE_API refl::Alias* get_Layermask_type();ENGINE_API refl::Alias* get_Flags_type();ENGINE_API refl::Alias* get_Archetype_type();ENGINE_API void write_Entity_to_buffer(struct SerializerBuffer& buffer, struct Entity& data); 
+ENGINE_API refl::Alias* get_DrawCommandState_type();
+ENGINE_API void write_DrawCommandState_to_buffer(SerializerBuffer& buffer, u64& data);
+ENGINE_API void read_DrawCommandState_from_buffer(DeserializerBuffer& buffer, u64& data);
+ENGINE_API refl::Alias* get_ID_type();
+ENGINE_API void write_ID_to_buffer(SerializerBuffer& buffer, uint& data);
+ENGINE_API void read_ID_from_buffer(DeserializerBuffer& buffer, uint& data);
+ENGINE_API refl::Alias* get_Layermask_type();
+ENGINE_API void write_Layermask_to_buffer(SerializerBuffer& buffer, uint& data);
+ENGINE_API void read_Layermask_from_buffer(DeserializerBuffer& buffer, uint& data);
+ENGINE_API refl::Alias* get_Flags_type();
+ENGINE_API void write_Flags_to_buffer(SerializerBuffer& buffer, uint& data);
+ENGINE_API void read_Flags_from_buffer(DeserializerBuffer& buffer, uint& data);
+ENGINE_API refl::Alias* get_Archetype_type();
+ENGINE_API void write_Archetype_to_buffer(SerializerBuffer& buffer, u64& data);
+ENGINE_API void read_Archetype_from_buffer(DeserializerBuffer& buffer, u64& data);
+ENGINE_API void write_Entity_to_buffer(struct SerializerBuffer& buffer, struct Entity& data); 
 ENGINE_API void read_Entity_from_buffer(struct DeserializerBuffer& buffer, struct Entity& data); 
 ENGINE_API refl::Struct* get_Entity_type();
 ENGINE_API void write_model_handle_to_buffer(struct SerializerBuffer& buffer, struct model_handle& data); 

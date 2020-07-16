@@ -10,8 +10,8 @@ struct Grass {
 
 	float width = 5.0f;
 	float height = 5.0f;
-	float max_height = 5.0f;
-	float density = 10.0f;
+	float max_height = 20.0f;
+	float density = 0.5f;
 
 	float random_rotation = 1.0f;
 	float random_scale = 1.0f;

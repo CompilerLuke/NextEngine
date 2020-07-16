@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <EnableUnitySupport>true</EnableUnitySupport>
@@ -96,7 +96,7 @@
       <PreprocessorDefinitions>
       </PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor;C:\Users\User\source\repos\NextEngine\NextEngineEditor\vendor;C:\Users\User\source\repos\NextEngine\NextEngineEditor\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\VulkanSDK\1.2.131.2\Include;C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor;C:\Users\User\source\repos\NextEngine\NextEngineEditor\vendor;C:\Users\User\source\repos\NextEngine\NextEngineEditor\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <IncludeInUnityFile>true</IncludeInUnityFile>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -109,7 +109,15 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>C:\Users\User\source\repos\NextEngine\x64\Release\NextEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
+      <ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
     </Link>
+    <PreLinkEvent>
+      <Command>
+      </Command>
+    </PreLinkEvent>
+    <PreBuildEvent>
+      <Command>$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) lister.h -o src\generated</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -120,7 +128,7 @@
       <PreprocessorDefinitions>
       </PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor;C:\Users\User\source\repos\NextEngine\NextEngineEditor\vendor;C:\Users\User\source\repos\NextEngine\NextEngineEditor\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\VulkanSDK\1.2.131.2\Include;C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor;C:\Users\User\source\repos\NextEngine\NextEngineEditor\vendor;C:\Users\User\source\repos\NextEngine\NextEngineEditor\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <IncludeInUnityFile>true</IncludeInUnityFile>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -131,8 +139,7 @@
       <AdditionalDependencies>C:\Users\User\source\repos\NextEngine\x64\Debug\NextEngine.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glad.o;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
-      <Command>$(SolutionDir)x64\Release\ReflectionTool.exe $(ProjectDir)include\lister.h -o $(ProjectDir)src\generated
-</Command>
+      <Command>$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) lister.h -o src\generated</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -144,7 +151,7 @@
       <PreprocessorDefinitions>
       </PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor;C:\Users\User\source\repos\NextEngine\NextEngineEditor\vendor;C:\Users\User\source\repos\NextEngine\NextEngineEditor\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\VulkanSDK\1.2.131.2\Include;C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor;C:\Users\User\source\repos\NextEngine\NextEngineEditor\vendor;C:\Users\User\source\repos\NextEngine\NextEngineEditor\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <IncludeInUnityFile>true</IncludeInUnityFile>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -155,8 +162,7 @@
       <AdditionalDependencies>C:\Users\User\source\repos\NextEngine\x64\Debug\NextEngine.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glad.o;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
-      <Command>$(SolutionDir)x64\Release\ReflectionTool.exe $(ProjectDir)include\lister.h -o $(ProjectDir)src\generated
-</Command>
+      <Command>$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) lister.h -o src\generated</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -170,7 +176,7 @@
       <PreprocessorDefinitions>
       </PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor;C:\Users\User\source\repos\NextEngine\NextEngineEditor\vendor;C:\Users\User\source\repos\NextEngine\NextEngineEditor\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\VulkanSDK\1.2.131.2\Include;C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor;C:\Users\User\source\repos\NextEngine\NextEngineEditor\vendor;C:\Users\User\source\repos\NextEngine\NextEngineEditor\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <IncludeInUnityFile>true</IncludeInUnityFile>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -183,7 +189,15 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>C:\Users\User\source\repos\NextEngine\x64\Release\NextEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
+      <ProgramDatabaseFile>$(OutDir)$(TargetName).pdb</ProgramDatabaseFile>
     </Link>
+    <PreLinkEvent>
+      <Command>
+      </Command>
+    </PreLinkEvent>
+    <PreBuildEvent>
+      <Command>$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) lister.h -o src\generated</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="include\assetTab.h" />

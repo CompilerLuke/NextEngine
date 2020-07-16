@@ -7,12 +7,9 @@
 #pragma once
 
 #include "core/core.h"
+#include "../component_ids.h"
 #include "core/container/hash_map.h"
 #include "core/container/tuple.h"
-#include "ecs/id.h"
-
-template<typename T>
-constexpr int type_id();
 
 COMP
 struct Entity {
@@ -66,6 +63,9 @@ struct maybe {
 	operator bool() { return some; }
 };
 
+struct SerializerBuffer;
+struct DeserializerBuffer;
+
 namespace refl {
 	struct Struct;
 }
@@ -74,10 +74,14 @@ struct ComponentLifetimeFunc {
 	using ConstructorFunc = void(*)(void*);
 	using DestructorFunc = void(*)(void*);
 	using CopyFunc = void(*)(void*,void*);
+	using SerializeFunc = void(*)(SerializerBuffer&, void*, uint count);
+	using DeserializeFunc = void(*)(DeserializerBuffer&, void*, uint count);
 
 	ConstructorFunc constructor;
 	DestructorFunc destructor;
 	CopyFunc copy;
+	SerializeFunc serialize;
+	DeserializeFunc deserialize;
 };
 
 struct World {
@@ -109,7 +113,7 @@ struct World {
 		return component_type[ptr.component_id];
 	}
 
-	template<typename T>
+	/*template<typename T>
 	void add_component() {
 		int component_id = type_id<T>();
 
@@ -122,7 +126,21 @@ struct World {
 			component_lifetime_funcs[component_id].copy = [](void* dst, void* src) { new (dst) T(*(T*)src); };
 			component_lifetime_funcs[component_id].destructor = [](void* ptr) { ((T*)ptr)->~T(); };
 		}
-	}
+
+		component_lifetime_funcs[component_id].serialize = [](SerializerBuffer& buffer, void* data, uint count) {
+			for (uint i = 0; i < count; i++) {
+				write_to_buffer<T>(buffer, ((T*)data)[i]);
+			}
+		};
+
+		component_lifetime_funcs[component_id].deserialize = [](DeserializerBuffer& buffer, void* data, uint count) {
+			for (uint i = 0; i < count; i++) {
+
+				read_from_buffer<T>(buffer, &((T*)data)[i]);
+			}
+		};
+	}*/
+
 
 	BlockHeader* alloc_block() {
 		BlockHeader* block = (BlockHeader*)(world_memory + world_memory_offset);
@@ -575,6 +593,7 @@ struct World {
 	}
 };
 
+/*
 // COMPONENT ID!
 
 #include "system.h"
@@ -600,3 +619,5 @@ DEFINE_COMPONENT_ID(Grass, 18)
 DEFINE_COMPONENT_ID(CharacterController, 19)
 DEFINE_COMPONENT_ID(PointLight, 20)
 DEFINE_COMPONENT_ID(SkyLight, 21)
+DEFINE_COMPONENT_ID(TerrainSplat, 22)
+*/

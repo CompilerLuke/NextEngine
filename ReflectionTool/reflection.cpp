@@ -21,12 +21,14 @@
 
 using string = string_view;
 
+const uint MAX_FILEPATH = 200;
+
 //todo eliminate namespaces!
 namespace pixc {
     namespace reflection {
         namespace compiler {
             struct Type {
-                enum {Int,Uint,I64,U64,Bool,Float,Char,StringView,SString,StringBuffer,Struct,Enum,StructRef,Array,Ptr,IntArg} type;
+                enum {Int,Uint,I64,U64,Bool,Float,Char,StringView,SString,StringBuffer,Struct,Enum,StructRef,Array,Alias,Ptr,IntArg} type;
             };
 
             struct Field {
@@ -71,17 +73,24 @@ namespace pixc {
 				int value;
 			};
 
+			struct AliasType : Type {
+				Name name;
+				Type* aliasing;
+				uint flags;
+			};
+
 			struct EnumType : Type {
 				Name name;
 				tvector<Constant> values;
 				bool is_class;
+				uint flags; //todo make is class a flag
 			};
 
             struct StructType : Type {
 				Name name;
                 tvector<Field> fields;
                 tvector<Type*> template_args;
-                unsigned int flags;
+                uint flags;
             };
 
             struct Namespace {
@@ -89,7 +98,10 @@ namespace pixc {
                 tvector<Namespace*> namespaces;
                 tvector<StructType*> structs;
 				tvector<EnumType*> enums;
-            };
+				tvector<AliasType*> alias;
+			};
+
+
 
             struct Reflector {
                 error::Error* err;
@@ -97,8 +109,11 @@ namespace pixc {
                 int i = 0;
                 tvector<Namespace*> namespaces;
                 tvector<const char*> header_files;
-                const char* output;
+				const char* h_output;
+				const char* output;
 				const char* linking;
+				const char* base;
+				const char* include;
                 int component_id;
 				LinearAllocator* allocator;
             };
@@ -331,6 +346,17 @@ namespace pixc {
                 }
                 return type;
             }
+
+			AliasType* make_AliasType(Reflector& ref, const char* name, Type* type, uint flags) {
+				AliasType* alias_type = alloc<AliasType>(ref.allocator);
+				alias_type->type = Type::Alias;
+				alias_type->name = make_Name(ref, name);
+				alias_type->aliasing = type;
+				alias_type->flags = flags;
+				ref.namespaces.last()->alias.append(alias_type);
+				return alias_type;
+			}
+
             StructType* make_StructType(Reflector& ref, const char* name) {
                 StructType* struct_type = alloc<StructType>(ref.allocator);
                 struct_type->type = Type::Struct;
@@ -425,6 +451,16 @@ namespace pixc {
 					unexpected(ref, token);
 					return false;
 				}
+			}
+
+			void parse_alias(Reflector& ref, uint flags) {
+				const char* name = parse_name(ref);
+				assert_next(ref, lexer::AssignOp);
+				next_token(ref);
+				Type* aliasing = parse_type(ref);
+				assert_next(ref, lexer::SemiColon);
+
+				make_AliasType(ref, name, aliasing, flags);
 			}
 
             void parse_struct(Reflector& ref, uint flags) {
@@ -590,22 +626,46 @@ namespace pixc {
 					}
 
 					if (reflect_struct) {
-						if (ref.tokens[ref.i].type == lexer::Struct) {
-							parse_struct(ref, flags);
-						}
-						else if (ref.tokens[ref.i].type == lexer::Enum) {
-							parse_enum(ref, flags);
-						}
-						else {
-							unexpected(ref, ref.tokens[ref.i]);
-							return;
+						lexer::Token token = curr_token(ref);
+
+						switch (token.type) {
+						case lexer::Struct: parse_struct(ref, flags); break;
+						case lexer::Enum: parse_enum(ref, flags); break;
+						case lexer::Using: parse_alias(ref, flags); break;
+						default: unexpected(ref, token); break;
 						}
 					}
                 }
             }
             
             const char* indent_buffer = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
+
+			//todo implement hash based lookup
+			Type* find_type(Namespace& space, string_view full_name) {
+				for (Namespace* child : space.namespaces) {
+					Type* result = find_type(*child, full_name);
+					if (result) return result;
+				}
+				
+				for (StructType* type : space.structs) {
+					if (full_name == type->name.full) return type;
+				}
+
+				for (EnumType* type : space.enums) {
+					if (full_name == type->name.full) return type;
+				}
+
+				for (AliasType* type : space.alias) {
+					if (full_name == type->name.full) return type;
+				}
+				
+				return NULL;
+			}
             
+			Type* find_type(Reflector& reflector, string_view full_name) {
+				return find_type(*reflector.namespaces[0], full_name);
+			}
+
             void dump_type(FILE* f, Type* type) {
                 char buffer[100];
                 
@@ -620,10 +680,12 @@ namespace pixc {
 					to_cstr(enum_type->name.type, buffer, 100);
 					fprintf(f, "%s", buffer);
 				}
-                if (type->type == Type::StructRef) {
-                    StructRef* ref = (StructRef*)type;
-                    fprintf(f, "%s", ref->name.type);
+				if (type->type == Type::StructRef) {
+					StructRef* ref = (StructRef*)type;
+
+					fprintf(f, "struct %s", ref->name.type);
                 
+					//this can likely be removed, template structs are rare
                     if (ref->template_args.length > 0) {
                         fprintf(f, "<");
                         for (int i = 0; i < ref->template_args.length; i++) {
@@ -663,18 +725,64 @@ namespace pixc {
 				}
             }
 
+
+			//todo cache result
+			bool is_trivially_copyable(Reflector& reflector, Type* type) {
+				switch (type->type) {
+				case Type::Struct: {
+					StructType* struct_type = (StructType*)type;
+
+					for (Field& field : struct_type->fields) {
+						if (!is_trivially_copyable(reflector, field.type)) return false;
+					}
+
+					return true;
+				}
+				case Type::Array: {
+					Array* array_type = (Array*)type;
+
+					switch (array_type->arr_type) {
+					case Array::Vector: return false;
+					case Array::TVector: return false; //a bit strange to serialize a tvector
+					case Array::CArray: 
+					case Array::StaticArray: return is_trivially_copyable(reflector, array_type->element);
+					}
+				}
+				case Type::Alias: return is_trivially_copyable(reflector, ((AliasType*)type)->aliasing); 
+				case Type::StructRef: {
+					StructRef* struct_ref = (StructRef*)type;
+
+					Type* found = find_type(reflector, struct_ref->name.full);
+					if (!found) return true; //todo this is not necessarily always true
+					else return is_trivially_copyable(reflector, found);
+				}
+
+				default: return true;
+				}				
+			}
+
+			void write_trivial_to_buffer(FILE* f, const char* type, const char* name) {
+				fprintf(f, "    write_n_to_buffer(buffer, &%s, sizeof(%s));\n", name, type);
+			}
+
+			//todo optimization, if the struct is trivially copyable simply write_n_to_buffer
 			void serialize_type(FILE* f, Type* type, const char* name) {
 				//fprintf(f, "    write_to_buffer(buffer, %s);\n", name);
 
 				switch (type->type) {
-				case Type::Enum:
-				case Type::Int: 
-				case Type::Uint:  
-				case Type::Float: 
-				case Type::Bool: 
+				case Type::Enum: write_trivial_to_buffer(f, "int", name); break;
+				case Type::Int: write_trivial_to_buffer(f, "int", name); break;
+				case Type::Uint:  write_trivial_to_buffer(f, "uint", name); break;
+				case Type::I64:  write_trivial_to_buffer(f, "i64", name); break;
+				case Type::U64:  write_trivial_to_buffer(f, "u64", name); break;
+				case Type::Float: write_trivial_to_buffer(f, "float", name); break;
+				case Type::Bool: write_trivial_to_buffer(f, "bool", name); break;
+				case Type::Char: write_trivial_to_buffer(f, "char", name); break;
 				case Type::StructRef: {
 					StructType* struct_type = (StructType*)type;
-					fprintf(f, "    write_to_buffer(buffer, %s);\n", name);
+					//Type* type = find_type();
+					
+					fprintf(f, "    write_%s_to_buffer(buffer, %s);\n", struct_type->name.full, name);
 					//dump_type(f, type);
 					//fprintf(f, ">::serialize(buffer, %s);\n", name);
 					break;
@@ -692,6 +800,7 @@ namespace pixc {
 					case Array::Slice:
 					case Array::StaticArray:
 					case Array::Vector:
+						fprintf(f, "    write_uint_to_buffer(buffer, %s.length);\n", name);
 						sprintf_s(length_str, "%s.length", name);
 					}
 
@@ -701,8 +810,64 @@ namespace pixc {
 				}
 				}
 			}
+			
+			void read_trivial_from_buffer(FILE* f, const char* type, const char* name) {
+				fprintf(f, "    read_n_from_buffer(buffer, &%s, sizeof(%s));\n", name, type);
+			}
+
+			//todo optimization, if the struct is trivially copyable simply write_n_to_buffer
+			void deserialize_type(FILE* f, Type* type, const char* name) {
+				//fprintf(f, "    write_to_buffer(buffer, %s);\n", name);
+
+				switch (type->type) {
+				case Type::Enum: read_trivial_from_buffer(f, "int", name); break;
+				case Type::Int: read_trivial_from_buffer(f, "int", name); break;
+				case Type::Uint:  read_trivial_from_buffer(f, "uint", name); break;
+				case Type::I64:  read_trivial_from_buffer(f, "i64", name); break;
+				case Type::U64:  read_trivial_from_buffer(f, "u64", name); break;
+				case Type::Float: read_trivial_from_buffer(f, "float", name); break;
+				case Type::Bool: read_trivial_from_buffer(f, "bool", name); break;
+				case Type::Char: read_trivial_from_buffer(f, "char", name); break;
+				case Type::StructRef: {
+					StructType* struct_type = (StructType*)type;
+					//Type* type = find_type();
+
+					fprintf(f, "    read_%s_from_buffer(buffer, %s);\n", struct_type->name.full, name);
+					//dump_type(f, type);
+					//fprintf(f, ">::serialize(buffer, %s);\n", name);
+					break;
+				}
+				case Type::Array: {
+					Array* array_type = (Array*)type;
+					char write_to[100];
+					char length_str[100];
+					sprintf_s(write_to, "%s[i]", name, array_type->num);
+
+					switch (array_type->arr_type) {
+					case Array::CArray:
+						sprintf_s(length_str, "%i", array_type->num);
+						break;
+					case Array::Slice:
+					case Array::StaticArray: 
+						
+					case Array::Vector:
+						fprintf(f, "    read_uint_from_buffer(buffer, %s.length);\n", name);
+						fprintf(f, "    %s.resize(%s.length);\n", name, name);
+						sprintf_s(length_str, "%s.length", name);
+
+					}
+
+					fprintf(f, "	for (uint i = 0; i < %s; i++) {\n     ", length_str);
+					deserialize_type(f,  array_type->element, write_to);
+					fprintf(f, "    }\n");
+				}
+				}
+			}
+
 
 			void dump_enum_reflector(FILE* f, FILE* h, EnumType* type, const char* linking) {
+				Name& name = type->name;
+				
 				fprintf(f, "refl::Enum init_%s() {\n", type->name.full);
 				fprintf(f, "	refl::Enum type(\"%s\", sizeof(%s));\n", type->name.iden, type->name.type);
 
@@ -726,59 +891,162 @@ namespace pixc {
 				}
 				fprintf(f, "}\n\n");*/
 
-				fprintf(f, "%s refl::Type* refl::TypeResolver<%s>::get() {\n", linking, type->name.type);
+				if (type->is_class) {
+					fprintf(f, "void write_%s_to_buffer(SerializerBuffer& buffer, %s data) {\n", name.full, name.type);
+					fprintf(f, "    write_uint_to_buffer(buffer, (uint)data);\n");
+					fprintf(f, "}\n\n");
+
+					fprintf(f, "void read_%s_from_buffer(DeserializerBuffer& buffer, %s data) {\n", name.full, name.type);
+					fprintf(f, "    read_uint_from_buffer(buffer, (uint)data);\n");
+					fprintf(f, "}\n\n");
+				}
+
+				fprintf(f, "refl::Enum* get_%s_type() {\n", type->name.full);
 				fprintf(f, "	static refl::Enum type = init_%s();\n", type->name.full);
 				fprintf(f, "	return &type;\n");
 				fprintf(f, "}\n");
 
-				fprintf(h, "template<>\nstruct refl::TypeResolver<%s> {\n", type->name.type);
-				fprintf(h, "	%s static refl::Type* get();\n", linking);
-				fprintf(h, "};\n\n");
+				fprintf(h, "%s refl::Enum* get_%s_type();\n", linking, type->name.full);
 			}
 
-            void dump_struct_reflector(FILE* f, FILE* h, StructType* type, string prefix, const char* linking, int indent = 0) {				
+			Type* find_type() {
+				return NULL;
+			}
+
+			void dump_type_ref(FILE* f, Type* type) {
+				switch (type->type) {
+				case Type::Bool: fprintf(f, "get_bool_type()"); break;
+				case Type::Uint: fprintf(f, "get_uint_type()"); break;
+				case Type::Int: fprintf(f, "get_int_type()"); break;
+				case Type::U64: fprintf(f, "get_u64_type()"); break;
+				case Type::I64: fprintf(f, "get_i64_type()"); break;
+				case Type::Float: fprintf(f, "get_float_type()"); break;
+				case Type::Array: {
+					Array* array = (Array*)type;
+
+					switch (array->arr_type) {
+					case Array::Vector:  fprintf(f, "make_vector_type("); break;
+					case Array::TVector: fprintf(f, "make_tvector_type("); break;
+					case Array::StaticArray: fprintf(f, "make_array_type(%i, ", array->num); break;
+					case Array::CArray: fprintf(f, "make_carray_type(%i, ", array->num); break;
+					}
+
+					dump_type_ref(f, array->element);
+					fprintf(f, ")");
+					break;
+				}
+
+				case Type::StructRef: {
+					StructRef* ref = (StructRef*)type;
+					fprintf(f, "get_%s_type()", ref->name.full);
+					break;
+				}
+
+				case Type::Enum: {
+					EnumType* ref = (EnumType*)type;
+					fprintf(f, "get_%s_type()", ref->name.full);
+					break;
+				}
+				}
+			}
+
+            void dump_struct_reflector(FILE* f, FILE* h, StructType* type, string prefix, Reflector& reflector, int indent = 0) {				
 				Name& name = type->name;
+				const char* linking = reflector.linking;
 				
 				fprintf(f, "refl::Struct init_%s() {\n", name.full);
 				fprintf(f, "	refl::Struct type(\"%s\", sizeof(%s));\n", name.full, name.type);
 
 				//bool is_tagged_union = type->flags & TAGGED_UNION_TAG;
 
-
+				//Support tags
 				for (Field& field : type->fields) {
 					fprintf(f, "	type.fields.append({");
-					fprintf(f, "\"%s\", offsetof(%s, %s), refl::TypeResolver<", field.name, name.type, field.name);
-
-					dump_type(f, field.type);
-
-					fprintf(f, ">::get() });\n");
+					fprintf(f, "\"%s\", offsetof(%s, %s), ", field.name, name.type, field.name);
+					dump_type_ref(f, field.type);
+					
+					fprintf(f, "});\n");
 				}
 
 				fprintf(f, "	return type;\n");
 				fprintf(f, "}\n\n");
 
-				fprintf(h, "void write_to_buffer(struct SerializerBuffer& buffer, struct %s& data); \n", name.type);
-				fprintf(f, "void write_to_buffer(SerializerBuffer& buffer, %s& data) {\n", name.type); 
-				for (Field& field : type->fields) {
-					char write_to[100];
-					sprintf_s(write_to, "data.%s", field.name);
+				bool trivial = is_trivially_copyable(reflector, type);
 
-					serialize_type(f, field.type, write_to);
+				fprintf(h, "%s void write_%s_to_buffer(struct SerializerBuffer& buffer, struct %s& data); \n", linking, name.full, name.type);
+				fprintf(f, "void write_%s_to_buffer(SerializerBuffer& buffer, %s& data) {\n", name.full, name.type); 
+				
+				if (trivial) {
+					fprintf(f, "    write_n_to_buffer(buffer, &data, sizeof(%s));\n", name.type);
+				}
+				else {
+					for (Field& field : type->fields) {
+						char write_to[100];
+						sprintf_s(write_to, "data.%s", field.name);
+
+						serialize_type(f, field.type, write_to);
+					}
 				}
 				fprintf(f, "}\n\n");
 
-				fprintf(f, "%s refl::Type* refl::TypeResolver<%s>::get() {\n", linking, name.type);
+				fprintf(h, "%s void read_%s_from_buffer(struct DeserializerBuffer& buffer, struct %s& data); \n", linking, name.full, name.type);
+				fprintf(f, "void read_%s_from_buffer(DeserializerBuffer& buffer, %s& data) {\n", name.full, name.type);
+
+				if (trivial) {
+					read_trivial_from_buffer(f, name.type, "data");
+				}
+				else {
+					for (Field& field : type->fields) {
+						char write_to[100];
+						sprintf_s(write_to, "data.%s", field.name);
+
+						deserialize_type(f, field.type, write_to);
+					}
+				}
+				fprintf(f, "}\n\n");
+
+				fprintf(h, "%s refl::Struct* get_%s_type();\n", linking, name.full);
+
+				fprintf(f, "refl::Struct* get_%s_type() {\n", name.full);
 				fprintf(f, "	static refl::Struct type = init_%s();\n", name.full);
 				fprintf(f, "	return &type;\n");
-				fprintf(f, "}\n");
+				fprintf(f, "}\n\n");
 
-				fprintf(h, "template<>\nstruct refl::TypeResolver<%s> {\n", name.type);
-				fprintf(h, "	%s static refl::Type* get();\n", linking);
-				fprintf(h, "};\n\n");
+				
             }
 
-            void dump_reflector(FILE* f, FILE* h, Namespace* space, string prefix, const char* linking, int indent = 0) {
-                if (space->structs.length == 0 && space->namespaces.length == 0 && space->enums.length == 0) return;
+			void dump_alias_reflector(FILE* f, FILE* h, AliasType& alias, const char* linking) {
+				Name& name = alias.name;
+				fprintf(h, "%s refl::Alias* get_%s_type();\n", linking, name.full);
+				fprintf(f, "refl::Alias* get_%s_type() {\n", name.full);
+				fprintf(f, "    static refl::Alias type(\"%s\", ", name.full);
+				dump_type_ref(f, alias.aliasing);
+				fprintf(f, ");\n");
+				fprintf(f, "    return &type;\n");
+				fprintf(f, "}\n\n");
+
+
+				fprintf(h, "%s void write_%s_to_buffer(SerializerBuffer& buffer, ", linking, name.full);
+				dump_type(h, alias.aliasing);
+				fprintf(h, "& data);\n");
+
+				fprintf(f, "void write_%s_to_buffer(SerializerBuffer& buffer, %s& data) {\n", name.full, name.type);
+				serialize_type(f, alias.aliasing, "data");
+				fprintf(f, "}\n");
+
+				fprintf(h, "%s void read_%s_from_buffer(DeserializerBuffer& buffer, ", linking, name.full);
+				dump_type(h, alias.aliasing);
+				fprintf(h, "& data);\n");
+
+				fprintf(f, "void read_%s_from_buffer(DeserializerBuffer& buffer, %s& data) {\n", name.full, name.type);
+				deserialize_type(f, alias.aliasing, "data");
+				fprintf(f, "}\n");
+			}
+
+            void dump_reflector(FILE* f, FILE* h, Reflector& reflector, Namespace* space, string prefix, int indent = 0) {
+				const char* linking = reflector.linking;
+				
+				if (space->structs.length == 0 && space->namespaces.length == 0 && space->enums.length == 0) return;
                 
                 char buffer[100];
                 to_cstr(prefix, buffer, 100);
@@ -790,55 +1058,123 @@ namespace pixc {
                 }
                 
                 for (int i = 0; i < space->namespaces.length; i++) {
-                    dump_reflector(f, h, space->namespaces[i], buffer, linking,  indent);
+                    dump_reflector(f, h, reflector, space->namespaces[i], buffer, indent);
                 }
 
-				for (EnumType* type : space->enums) {
-					dump_enum_reflector(f, h, type, linking);
-				}
-            
-                for (int i = 0; i < space->structs.length; i++) {
-                    dump_struct_reflector(f, h, space->structs[i], buffer, linking, indent);
-                }
+				for (AliasType* type : space->alias) dump_alias_reflector(f, h, *type, linking);
+				for (EnumType* type : space->enums) dump_enum_reflector(f, h, type, linking);
+                for (StructType* type : space->structs) dump_struct_reflector(f, h, type, buffer, reflector, indent);
             }
+
+			void dump_register_components(Reflector& ref, FILE* f) {
+				Namespace* space = ref.namespaces.last();
+
+				char header_path[MAX_FILEPATH];
+				sprintf_s(header_path, "%s/component_ids.h", ref.include);
+
+				FILE* h = nullptr; 
+				errno_t err = fopen_s(&h, header_path, "w");
+				if (err || !h) {
+					fprintf(stderr, "Could not open %s file for writing!", header_path);
+					exit(1);
+					return;
+				}
+
+				string_view linking = ref.linking;
+				uint base_id = linking == "ENGINE_API" ? 1 : 20; //todo get real number of components
+				uint id = base_id;
+
+				fprintf(h, "#pragma once\n");
+				fprintf(h, "#include \"ecs/system.h\"\n\n");
+
+				for (StructType* type : space->structs) {
+					if (!(type->flags & COMPONENT_TAG)) continue;
+
+					if (strcmp(type->name.iden, "Entity") == 0) fprintf(h, "DEFINE_COMPONENT_ID(Entity, 0)\n");
+					else fprintf(h, "DEFINE_COMPONENT_ID(%s, %i)\n", type->name.type, id++);
+				}
+
+				id = base_id;
+
+				fprintf(f, "#include \"%s\"", header_path);
+				fprintf(f, "#include \"ecs/ecs.h\"\n");
+				fprintf(f, "#include \"engine/application.h\"\n\n");
+
+				if (linking == "ENGINE_API") fprintf(f, "\nvoid register_default_components(World& world) {\n");
+				else fprintf(f, "\nAPPLICATION_API void register_components(World& world) {\n");
+
+				for (StructType* type : space->structs) {
+					if (!(type->flags & COMPONENT_TAG)) continue;
+
+					Name& name = type->name;
+					bool trivial = is_trivially_copyable(ref, type);
+
+					fprintf(f, "    world.component_type[%i] = get_%s_type();\n", id, name.full);
+					fprintf(f, "    world.component_size[%i] = sizeof(%s);\n", id, name.type);
+					
+					if (!is_trivially_copyable(ref, type)) {
+						fprintf(f, "    world.component_lifetime_funcs[%i].copy = [](void* dst, void* src) { new (dst) %s(*(%s*)src); };\n", id, name.type, name.type);
+						fprintf(f, "    world.component_lifetime_funcs[%i].destructor = [](void* ptr) { ((%s*)ptr)->~%s(); };\n", id, name.type, name.iden);
+						fprintf(f, "    world.component_lifetime_funcs[%i].serialize = [](SerializerBuffer& buffer, void* data, uint count) {\n", id);
+						fprintf(f, "        for (uint i = 0; i < count; i++) write_%s_to_buffer(buffer, ((%s*)data)[i]);\n", name.full, name.type);
+						fprintf(f, "    };\n");
+						fprintf(f, "    world.component_lifetime_funcs[%i].deserialize = [](DeserializerBuffer& buffer, void* data, uint count) {\n", id);
+						fprintf(f, "        for (uint i = 0; i < count; i++) read_%s_from_buffer(buffer, ((%s*)data)[i]);\n", name.full, name.type);
+						fprintf(f, "    };\n");
+						fprintf(f, "\n\n");
+					}
+					
+					//fprintf(f, "     world.")
+
+
+					id++;
+				}
+
+				fprintf(f, "\n};");
+			}
 
             void dump_reflector(Reflector& ref) {
                 Namespace* space = ref.namespaces.last();
-                
-                char buffer[100];
-                to_cstr(ref.output, buffer, 100);
-				to_cstr(".cpp", buffer + strlen(ref.output), 100);
+              
+
+                char cpp_output_file[MAX_FILEPATH];
+				char h_output_file[MAX_FILEPATH];
+
+				sprintf_s(h_output_file, "%s/%s.h", ref.include, ref.h_output);
+				sprintf_s(cpp_output_file, "%s/%s.cpp", ref.base, ref.output);
                 
 				FILE* file = nullptr;
-				errno_t err_cpp = fopen_s(&file, buffer, "w");
-                
-                to_cstr(".h", buffer + strlen(ref.output), 100);
-                
+				errno_t err_cpp = fopen_s(&file, cpp_output_file, "w");
+                                
 				FILE* header_file;
-				errno_t err_h = fopen_s(&header_file, buffer, "w");
+				errno_t err_h = fopen_s(&header_file, h_output_file, "w");
                 
                 if (err_cpp) {
-                    fprintf(stderr, "Could not open cpp output file \"%s\"\n", buffer);
+                    fprintf(stderr, "Could not open cpp output file \"%s\"\n", cpp_output_file);
 					fclose(file);
 					return;
                 }
                 
                 if (err_h) {
-                    fprintf(stderr, "Could not open header output file\n");
+                    fprintf(stderr, "Could not open header output file \"%s\"\n", h_output_file);
                     fclose(file);
                     return;
                 }
                 
 				fprintf(header_file, "#pragma once\n#include \"core/core.h\"\n\n");
 
-                fprintf(file, "#include \"%s\"\n", buffer); 
+                fprintf(file, "#include \"%s.h\"\n", ref.h_output); 
+				if (strcmp(ref.linking, "ENGINE_API") != 0) { //todo allow adding includes via command line
+					fprintf(file, "#include <core/types.h>\n");
+				}
+
                 fprintf(header_file, "#include \"core/memory/linear_allocator.h\"\n");
 				fprintf(header_file, "#include \"core/serializer.h\"\n");
                 fprintf(header_file, "#include \"core/reflection.h\"\n");
                 fprintf(header_file, "#include \"core/container/array.h\"\n");
                 
 				for (int i = 0; i < ref.header_files.length; i++) {
-					fprintf(header_file, "#include \"%s\"\n", ref.header_files[i]);
+					fprintf(file, "#include \"%s\"\n", ref.header_files[i]);
 				}
 				
 				fprintf(file, "\n");
@@ -846,7 +1182,8 @@ namespace pixc {
 
                 //fprintf(file, "LinearAllocator reflection_allocator(kb(512));\n\n");
                 
-                dump_reflector(file, header_file, space, "", ref.linking, 0);
+                dump_reflector(file, header_file, ref, space, "", 0);
+				dump_register_components(ref, file);
                 
                 //fprintf(file, "\t}\n}\n");
                 //fprintf(header_file, "\t}\n}\n");
@@ -860,17 +1197,18 @@ namespace pixc {
 using namespace pixc;
 using namespace pixc::reflection::compiler;
 
-LinearAllocator temporary_allocator(mb(10));
+LinearAllocator temporary_allocator(mb(50));
 MallocAllocator default_allocator;
 
 #define WIN32_MEAN_AND_LEAN
 #include <windows.h>
 
-void listdir(const char *path, int indent, tvector<const char*>& header_paths) {
+void listdir(const char* base, const char *path, int indent, tvector<const char*>& header_paths) {
+	bool is_root = strlen(path) == 0;
 	const char* indent_str = "                           ";
 
 	char search[100];
-	sprintf_s(search, "%s/*", path);
+	sprintf_s(search, "%s/%s/*", base, path);
 
 	_WIN32_FIND_DATAA find_file_data;
 	HANDLE hFind = FindFirstFileA(search, &find_file_data);
@@ -890,11 +1228,13 @@ void listdir(const char *path, int indent, tvector<const char*>& header_paths) {
 			sprintf_s(search, "%s/%s", path, file_name.data);
 
 			printf("%.*s%s/\n", indent, indent_str, file_name.data);
-			listdir(search, indent + 4, header_paths);
+			listdir(base, search, indent + 4, header_paths);
 		}
 		else if (file_name.ends_with(".h")) {
 			char* buffer = TEMPORARY_ARRAY(char, 100);
-			sprintf_s(buffer, 100, "%s/%s", path, file_name.data);
+			
+			if (is_root) sprintf_s(buffer, 100, "%s", file_name.data);
+			else sprintf_s(buffer, 100, "%s/%s", path, file_name.data);
 			
 			header_paths.append(buffer);
 
@@ -907,6 +1247,7 @@ void listdir(const char *path, int indent, tvector<const char*>& header_paths) {
 
 //#include "core/profiler.h"
 
+
 int main(int argc, const char** c_args) {
 
 	
@@ -918,6 +1259,9 @@ int main(int argc, const char** c_args) {
     reflector.err = &err;
     reflector.allocator = &linear_allocator;
 	reflector.linking = "";
+	reflector.base = "";
+	reflector.include = "\include";
+	reflector.h_output = "generated";
     
     Namespace* root = make_Namespace(reflector, "");
 	reflector.namespaces.append(root);
@@ -929,6 +1273,8 @@ int main(int argc, const char** c_args) {
 	bool modified = false;
 
 	//Profile input_profile("INPUT PROFILE");
+
+	tvector<const char*> dirs;
 
     for (int i = 1; i < argc; i++) {
         string arg = c_args[i];
@@ -942,10 +1288,23 @@ int main(int argc, const char** c_args) {
 			modified = true;
 		}
 
+		else if (arg == "-h") {
+			const char* filename = c_args[++i];
+			reflector.h_output = filename;
+		}
+
 		else if (arg == "-d") {
 			const char* filename = c_args[++i];
 			printf("%s/\n", filename);
-			listdir(filename, 4, reflector.header_files);
+			dirs.append(filename);
+		}
+
+		else if (arg == "-b") {
+			reflector.base = c_args[++i];
+		}
+
+		else if (arg == "-i") {
+			reflector.include = c_args[++i];
 		}
 
 		else if (arg == "-l") {
@@ -959,20 +1318,40 @@ int main(int argc, const char** c_args) {
 		}
     }
 
+	//todo check for buffer overruns
+	char* full_include = TEMPORARY_ARRAY(char, MAX_FILEPATH);
+	sprintf_s(full_include, MAX_FILEPATH, "%s/%s", reflector.base, reflector.include);
+	reflector.include = full_include;
+
+	for (const char* dir : dirs) {
+		listdir(reflector.include, dir, 0, reflector.header_files);
+	}
 
 	if (!modified) {
-		char generated_cpp_filename[100];
+		char generated_cpp_filename[200];
 		sprintf_s(generated_cpp_filename, "%s.cpp", reflector.output);
 
 		struct _stat output_info;
 		_stat(generated_cpp_filename, &output_info);
 
+		//todo replace with macro generated by the build system
+		const char* OUTPUT_FILE = "C:\\Users\\User\\source\\repos\\NextEngine\\x64\\Release\\ReflectionTool.exe";
+
+		struct _stat exe_info;
+		_stat(OUTPUT_FILE, &exe_info);
+
+		if (exe_info.st_mtime > output_info.st_mtime) modified = true;
+
 		for (string_view filename : reflector.header_files) {
+			char full_path[200];
+			sprintf_s(full_path, "%s/%s", reflector.include, filename.c_str());
+			
 			struct _stat info;
-			_stat(filename.c_str(), &info);
+			_stat(full_path, &info);
 
 			if (info.st_mtime > output_info.st_mtime) {
 				modified = true;
+				break;
 			}
 		}
 
@@ -989,10 +1368,13 @@ int main(int argc, const char** c_args) {
 	//Profile parsing_profile("PARSING");
 
 	for (string_view filename : reflector.header_files) {
+		char full_path[MAX_FILEPATH];
+		sprintf_s(full_path, "%s/%s", reflector.include, filename.c_str());
+		
 		string_buffer contents;
 		contents.allocator = &temporary_allocator;
-		if (!io_readf(filename, &contents)) {
-			fprintf(stderr, "Could not open file! %s", filename.data);
+		if (!io_readf(full_path, &contents)) {
+			fprintf(stderr, "Could not open file! %s", full_path);
 			exit(1);
 		}
 

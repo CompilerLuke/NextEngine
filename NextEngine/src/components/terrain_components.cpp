@@ -25,14 +25,16 @@ float sample_terrain_height(Terrain& terrain, Transform& terrain_trans, glm::vec
 	float xCoord = fmodf(local.x, quad_size.x) / quad_size.x;
 	float zCoord = fmodf(local.y, quad_size.y) / quad_size.y;
 
+	vector<float>& displacement_map = terrain.displacement_map[0];
+
 	if (xCoord <= (1 - zCoord)) {
-		return terrain.max_height * barryCentric(glm::vec3(0, terrain.displacement_map[gridX + gridZ * width], 0), glm::vec3(1,
-			terrain.displacement_map[gridX + 1 + gridZ * width], 0), glm::vec3(0,
-				terrain.displacement_map[gridX + (gridZ + 1) * width], 1), glm::vec2(xCoord, zCoord));
+		return barryCentric(glm::vec3(0, displacement_map[gridX + gridZ * width], 0), glm::vec3(1,
+			displacement_map[gridX + 1 + gridZ * width], 0), glm::vec3(0,
+				displacement_map[gridX + (gridZ + 1) * width], 1), glm::vec2(xCoord, zCoord));
 	}
 	else {
-		return terrain.max_height * barryCentric(glm::vec3(1, terrain.displacement_map[gridX + 1 + gridZ * width], 0), glm::vec3(1,
-			terrain.displacement_map[gridX + 1 + (gridZ + 1) * width], 1), glm::vec3(0,
-				terrain.displacement_map[gridX + (gridZ + 1) * width], 1), glm::vec2(xCoord, zCoord));
+		return barryCentric(glm::vec3(1, displacement_map[gridX + 1 + gridZ * width], 0), glm::vec3(1,
+			displacement_map[gridX + 1 + (gridZ + 1) * width], 1), glm::vec3(0,
+				displacement_map[gridX + (gridZ + 1) * width], 1), glm::vec2(xCoord, zCoord));
 	}
 }

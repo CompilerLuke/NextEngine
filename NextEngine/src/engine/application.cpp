@@ -35,7 +35,15 @@ void Application::init(void* args) {
 	application_state = init_func(args, engine);
 }
 
+u64 timestamp_of(const char* path) {
+	struct _stat info;
+	_stat(path, &info);
+
+	return info.st_mtime;
+}
+
 void Application::load_functions() {
+	time_modified = timestamp_of(path.c_str());
 	dll_handle = load_DLL(path);
 
 	init_func = (InitFunction)get_Func(dll_handle, "init");
@@ -72,11 +80,12 @@ bool Application::is_running() {
 
 void Application::run() {
 	while (is_running()) {
-		if (engine.input->key_pressed('R')) {
-			reload();
-		}
-
 		engine.begin_frame();
+
+		{
+			u64 current_time_stamp = timestamp_of(path.c_str());
+			if (current_time_stamp > time_modified) reload();
+		}
 
 		{
 			Profile profile("Update");

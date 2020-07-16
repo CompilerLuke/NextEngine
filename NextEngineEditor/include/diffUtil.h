@@ -79,7 +79,7 @@ void entity_destroy_action(EditorActions& actions, ID id); //will destroy for yo
 void entity_create_component_action(EditorActions& actions, uint component_id, ID id); //will create for you
 void entity_destroy_component_action(EditorActions& actions, uint component_id, ID id);  //will destroy for you
 
-template<typename T>
+/*template<typename T>
 void begin_diff(DiffUtil& util, T* ptr, T* copy) {
 	begin_diff(util, ptr, copy, refl_type(T));
 }
@@ -87,7 +87,7 @@ void begin_diff(DiffUtil& util, T* ptr, T* copy) {
 template<typename T>
 void begin_tdiff(DiffUtil& util, T* ptr) {
 	begin_tdiff(util, ptr, refl_type(T));
-}
+}*/
 
 void undo_action(EditorActions&);
 void redo_action(EditorActions&);

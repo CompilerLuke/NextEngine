@@ -70,7 +70,7 @@ void end_staging_cmds(StagingQueue& queue) {
 	//uint64_t value;
 	//vkGetSemaphoreCounterValue(device, queue.wait_on_transfer, &value);
 
-	//printf("SEMAPHORE CURRENT VALUE %i\n", value);
+	printf("SIGNALLING SEMAPHORE WITH CURRENT VALUE %i\n", signal_value);
 
 	queue_signal_timeline_semaphore(info, queue.wait_on_transfer, signal_value);
 	
@@ -494,6 +494,8 @@ void make_Layouts(VertexLayouts& layouts) {
 	layout_desc_terrain_chunk.elem_size = sizeof(ChunkInfo);
 	layout_desc_terrain_chunk.attribs = layout_desc_mat4x4.attribs;
 	layout_desc_terrain_chunk.attribs.append({ 2, VertexAttrib::Float, offsetof(ChunkInfo, displacement_offset) });
+	layout_desc_terrain_chunk.attribs.append({ 1, VertexAttrib::Float, offsetof(ChunkInfo, lod) });
+	layout_desc_terrain_chunk.attribs.append({ 1, VertexAttrib::Float, offsetof(ChunkInfo, edge_lod) });
 
 	fill_vertex_layouts(layouts, vertex_layout_desc);
 

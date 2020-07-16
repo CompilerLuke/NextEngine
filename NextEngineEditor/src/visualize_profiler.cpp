@@ -65,8 +65,10 @@ void draw_profile(ProfileCtx& ctx, const ProfileDrawData& data) {
 	drawRectFilled(ctx.drawList, ctx.p, data.pos, data.size, data.color);
 }
 
-void draw_profile(ProfileCtx& ctx, uint frame, const ProfileData& profile) {
-	draw_profile(ctx, profile_draw_data(ctx, frame, profile));
+ProfileDrawData draw_profile(ProfileCtx& ctx, uint frame, const ProfileData& profile) {
+	ProfileDrawData data = profile_draw_data(ctx, frame, profile);
+	draw_profile(ctx, data);
+	return data;
 }
 
 void VisualizeProfiler::render(struct World& world, struct Editor& editor, struct RenderPass& ctx) {
@@ -113,7 +115,11 @@ void VisualizeProfiler::render(struct World& world, struct Editor& editor, struc
 		}
 
 		{
-			ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 600);
+			ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 1100);
+
+			ImGui::SetNextItemWidth(300);
+			ImGui::SliderFloat("Max frame time", &frame_max_time, 0, 0.1);
+			ImGui::SameLine();
 
 			int frame_sample_count = Profiler::frame_sample_count;
 			ImGui::SetNextItemWidth(300);
@@ -126,7 +132,7 @@ void VisualizeProfiler::render(struct World& world, struct Editor& editor, struc
 		ctx.width = ImGui::GetContentRegionMax().x * 0.8;
 		ctx.height = ImGui::GetContentRegionMax().y - ImGui::GetCursorPos().y;
 		ctx.frame_count = Profiler::frames.length - 1;
-		ctx.frame_max = 1.0 / 55.0f;
+		ctx.frame_max = frame_max_time;
 
 		const float slow_frame = 1.0f / 55.0f;
 		const int max_depth = 10;
@@ -135,6 +141,9 @@ void VisualizeProfiler::render(struct World& world, struct Editor& editor, struc
 
 		
 		ImGui::PushClipRect(ctx.p, ctx.p + glm::vec2(ctx.width, ctx.height), true);
+
+		glm::vec2 mouse_pos = ImGui::GetMousePos();
+		mouse_pos -= ctx.p;
 
 		uint frames_length = ctx.frame_count;
 		for (int frame_i = 0; frame_i < frames_length; frame_i++) {
@@ -156,7 +165,17 @@ void VisualizeProfiler::render(struct World& world, struct Editor& editor, struc
 
 				assert(profile.profile_depth < max_depth);
 
-				draw_profile(ctx, frame_i, profile);
+				ProfileDrawData data = draw_profile(ctx, frame_i, profile);
+
+				if (data.pos.x < mouse_pos.x && data.pos.y < mouse_pos.y && data.pos.x + data.size.x > mouse_pos.x && data.pos.y + data.size.y > mouse_pos.y) {
+					ImGui::BeginTooltip();
+					ImGui::Text("%s - [%.4fms]", profile.name, profile.duration * 1000);
+					ImGui::EndTooltip();
+				}
+
+				if (Profiler::paused && Profiler::frame_sample_count < 100) {
+
+				}
 			}
 
 		}

@@ -20,6 +20,7 @@ class Application {
 	struct Modules& engine;
 	void* application_state;
 	void* dll_handle;
+	u64 time_modified;
 	
 	InitFunction init_func;
 	UpdateFunction update_func;

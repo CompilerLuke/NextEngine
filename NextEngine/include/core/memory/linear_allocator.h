@@ -31,6 +31,7 @@ extern ENGINE_API LinearAllocator permanent_allocator;
 
 #define TEMPORARY_ALLOC(name, ...) new (temporary_allocator.allocate(sizeof(name))) name(__VA_ARGS__)
 #define TEMPORARY_ARRAY(name, num) new (temporary_allocator.allocate(sizeof(name) * num)) name[num]
+#define TEMPORARY_ZEROED_ARRAY(name, num) new (temporary_allocator.allocate(sizeof(name) * num)) name[num]{0}
 
 #define PERMANENT_ALLOC(name, ...) new (permanent_allocator.allocate(sizeof(name))) name(__VA_ARGS__)
 #define PERMANENT_ARRAY(name, num) new (permanent_allocator.allocate(sizeof(name) * num)) name[num]

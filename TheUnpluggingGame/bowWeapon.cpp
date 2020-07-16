@@ -11,9 +11,6 @@
 
 #include <ecs/system.h>
 
-DEFINE_APP_COMPONENT_ID(Bow, 2)
-DEFINE_APP_COMPONENT_ID(Arrow, 3);
-
 ID clone(World& world, ID id) {
 	return 0;
 	

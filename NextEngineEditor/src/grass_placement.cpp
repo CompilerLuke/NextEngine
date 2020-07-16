@@ -6,7 +6,7 @@
 
 void place_Grass(World& world, ID id) {
 	auto terrains = world.first<Transform, Terrain>(); //todo move this code into ecs.h
-	if (terrains.some) return;
+	if (!terrains) return;
 	
 	auto [e,terrain_transform, terrain] = *terrains;
 

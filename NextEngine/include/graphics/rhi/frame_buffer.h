@@ -12,11 +12,13 @@ enum DepthBufferFormat { Disable_Depth_Buffer, DepthComponent24 };
 enum StencilBufferFormat { Disable_Stencil_Buffer, StencilComponent8 };
 
 struct AttachmentDesc {
-	int width, height;
 	texture_handle* tex_id;
 	TextureUsage usage = TextureUsage::Sampled | TextureUsage::InputAttachment | TextureUsage::ColorAttachment;
 	TextureLayout initial_layout = TextureLayout::Undefined;
 	TextureLayout final_layout = TextureLayout::ShaderReadOptimal;
+	TextureFormat format = TextureFormat::UNORM;
+	uint num_channels = 4;
+	uint num_mips = 1;
 };
 
 struct Dependency {

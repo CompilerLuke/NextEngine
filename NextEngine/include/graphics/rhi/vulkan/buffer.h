@@ -47,7 +47,7 @@ struct VertexAttrib {
 	unsigned int offset;
 };
 
-using ArrayVertexInputs = array<10, VkVertexInputAttributeDescription>;
+using ArrayVertexInputs = array<20, VkVertexInputAttributeDescription>;
 using ArrayVertexBindings = array<2, VkVertexInputBindingDescription>;
 
 //todo tommorow optimization performing merging

@@ -10,6 +10,7 @@
 #include "components/transform.h"
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
+#include <core/types.h>
 
 void Gizmo::register_callbacks(Editor& editor) {
 	editor.selected.listen([this](ID id) {
@@ -89,7 +90,7 @@ void Gizmo::render(World& world, Editor& editor, Viewport& viewport, Input& inpu
 
 	bool is_using = ImGuizmo::IsUsing();
 
-	if (!was_using && is_using) begin_diff(diff_util, trans, &copy_transform);
+	if (!was_using && is_using) begin_diff(diff_util, trans, &copy_transform, get_Transform_type());
 
 	if (mode == GizmoMode::Translate) trans->position = translation;
 	if (mode == GizmoMode::Rotate) trans->rotation = glm::conjugate(rotation);

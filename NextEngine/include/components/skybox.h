@@ -3,7 +3,7 @@
 #pragma once
 #include "core/handle.h"
 
-REFL
+COMP
 struct Skybox {
 	cubemap_handle cubemap;
 };

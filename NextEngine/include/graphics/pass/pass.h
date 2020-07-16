@@ -14,6 +14,8 @@ struct Viewport {
 	glm::mat4 proj;
 	glm::mat4 view;
 	glm::mat4 proj_view;
+
+	glm::vec3 cam_pos;
 };
 
 struct PassUBO {
@@ -23,7 +25,7 @@ struct PassUBO {
 };
 
 struct ENGINE_API RenderPass {
-	enum ID { Scene, Shadow0, Shadow1, Shadow2, Shadow3, ScenePassCount, Screen = ScenePassCount, Volumetric, IBLCapture, PassCount };
+	enum ID { Scene, Shadow0, Shadow1, Shadow2, Shadow3, ScenePassCount, Screen = ScenePassCount, Volumetric, IBLCapture, TerrainHeightGeneration, TerrainTextureGeneration, PassCount };
 	enum Type { Color, Depth };
 
 	ID id = Scene;
@@ -38,7 +40,7 @@ struct ENGINE_API RenderPass {
 
 ENGINE_API void fill_pass_ubo(PassUBO& pass_ubo, const Viewport& viewport);
 
-ENGINE_API RenderPass begin_render_pass(RenderPass::ID id); // RenderPass::PassType type, Framebuffer&);
+ENGINE_API RenderPass begin_render_pass(RenderPass::ID id, glm::vec4 clear_color = glm::vec4(0.1, 0.1, 0.1, 1.0)); // RenderPass::PassType type, Framebuffer&);
 //void bind_pass_ubo(RenderPass&, );
 ENGINE_API void end_render_pass(RenderPass&);
 

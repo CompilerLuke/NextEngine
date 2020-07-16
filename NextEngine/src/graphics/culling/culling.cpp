@@ -1,4 +1,5 @@
 #include "graphics/culling/culling.h"
+#include "graphics/culling/build_bvh.h"
 #include <glm/vec4.hpp>
 #include <glm/glm.hpp>
 #include "graphics/renderer/renderer.h"
@@ -12,42 +13,6 @@
 #include "core/io/logger.h"
 #include "core/container/tvector.h"
 #include "core/profiler.h"
-
-void aabb_to_verts(AABB* self, glm::vec4* verts) {
-	verts[0] = glm::vec4(self->max.x, self->max.y, self->max.z, 1);
-	verts[1] = glm::vec4(self->min.x, self->max.y, self->max.z, 1);
-	verts[2] = glm::vec4(self->max.x, self->min.y, self->max.z, 1);
-	verts[3] = glm::vec4(self->min.x, self->min.y, self->max.z, 1);
-
-	verts[4] = glm::vec4(self->max.x, self->max.y, self->min.z, 1);
-	verts[5] = glm::vec4(self->min.x, self->max.y, self->min.z, 1);
-	verts[6] = glm::vec4(self->max.x, self->min.y, self->min.z, 1);
-	verts[7] = glm::vec4(self->min.x, self->min.y, self->min.z, 1);
-}
-
-AABB AABB::apply(const glm::mat4& matrix) {
-	AABB new_aabb;
-	
-	glm::vec4 verts[8];
-	aabb_to_verts(this, verts);
-
-	for (int i = 0; i < 8; i++) {
-		glm::vec4 v = matrix * verts[i];
-		new_aabb.update(v);
-	}
-	return new_aabb;
-}
-
-void AABB::update_aabb(AABB& other) {
-	this->max = glm::max(this->max, other.max);
-	this->min = glm::min(this->min, other.min);
-}
-
-
-void AABB::update(const glm::vec3& v) {
-	this->max = glm::max(this->max, v);
-	this->min = glm::min(this->min, v);
-}
 
 //could cache this result in viewport
 void extract_planes(const Viewport& viewport, glm::vec4 planes[6]) {
@@ -114,64 +79,6 @@ CullResult frustum_test(glm::vec4 planes[6], const AABB& aabb) {
 #define MAX_DEPTH 7
 //#define DEBUG_OCTREE
 
-Node& alloc_node(Partition& scene_partition) {
-	assert(scene_partition.count <= MAX_MESH_INSTANCES);
-
-	Node& node = scene_partition.nodes[scene_partition.node_count++];
-	node = {};
-	node.offset = scene_partition.count;
-
-	return node;
-}
-
-Node& alloc_leaf_node(Partition& scene_partition, AABB& node_aabb, int max, int count) {
-	Node& node = alloc_node(scene_partition);
-	node.aabb = node_aabb;
-	node.count = count;
-	
-	scene_partition.count += count;
-
-	assert(scene_partition.count <= max);
-
-	return node;
-}
-
-BranchNodeInfo alloc_branch_node(Partition& scene_partition, AABB& node_aabb) {
-	BranchNodeInfo info = { alloc_node(scene_partition) };
-	glm::vec3 size = node_aabb.size();
-
-	info.watermark = temporary_allocator.occupied;
-	info.axis = size.x > size.y ? (size.x > size.z ? 0 : 2) : (size.y > size.z ? 1 : 2);
-	info.pivot = 0.5f * node_aabb.centroid();
-	info.half_size = size[info.axis] * 0.5f;
-
-	return info;
-}
-
-int elem_offset(Partition& scene_partition, BranchNodeInfo& info, AABB& aabb) {
-	int offset = scene_partition.count++;
-	assert(scene_partition.count <= MAX_MESH_INSTANCES);
-	info.node.aabb.update_aabb(aabb);
-	info.node.count++;
-
-	return offset;
-}
-
-
-bool bigger_than_leaf(BranchNodeInfo& info, AABB& aabb) {
-	return aabb.size()[info.axis] > info.half_size;
-}
-
-int split_index(BranchNodeInfo& info, AABB& aabb) {
-	int node_index = aabb.centroid()[info.axis] > info.pivot[info.axis];
-	info.child_aabbs[node_index].update_aabb(aabb);
-	return node_index;
-}
-
-void bump_allocator(Partition& partition, BranchNodeInfo& info) {
-	temporary_allocator.occupied = info.watermark;
-	partition.count += info.node.count;
-}
 
 Node* subdivide_BVH(ScenePartition& scene_partition, AABB& node_aabb, int depth, int mesh_count, AABB* aabbs, int* meshes, glm::mat4* models_m) {
 	if (mesh_count <= MAX_MESHES_PER_NODE || depth >= MAX_DEPTH) {
@@ -294,12 +201,25 @@ void build_acceleration_structure(ScenePartition& scene_partition, hash_set<Mesh
 		for (int mesh_index = 0; mesh_index < model->meshes.length; mesh_index++) {
 			Mesh& mesh = model->meshes[mesh_index];
 			material_handle mat_handle = materials.materials[mesh.material_id];
+			MaterialDesc* mat_desc = material_desc(mat_handle);
 
 			MeshBucket bucket;
 			bucket.model_id = grass.placement_model;
 			bucket.mesh_id = mesh_index;
 			bucket.mat_id = mat_handle;
 			bucket.flags = grass.cast_shadows ? CAST_SHADOWS : 0;
+
+
+			for (uint pass = 0; pass < 1; pass++) {
+				PipelineDesc pipeline_desc;
+				pipeline_desc.shader = mat_desc->shader;
+				pipeline_desc.state = mat_desc->draw_state;
+				pipeline_desc.vertex_layout = VERTEX_LAYOUT_DEFAULT;
+				pipeline_desc.instance_layout = INSTANCE_LAYOUT_MAT4X4;
+				pipeline_desc.render_pass = render_pass_by_id((RenderPass::ID)pass);
+
+				bucket.pipeline_id[pass] = query_Pipeline(pipeline_desc);
+			}
 			
 			int bucket_id = mesh_buckets.add(bucket);
 

@@ -1,0 +1,8 @@
+#pragma once
+#include "ecs/system.h"
+
+DEFINE_COMPONENT_ID(Bow, 20)
+DEFINE_COMPONENT_ID(Arrow, 21)
+DEFINE_COMPONENT_ID(FPSController, 22)
+DEFINE_COMPONENT_ID(Player, 23)
+DEFINE_COMPONENT_ID(PlayerInput, 24)

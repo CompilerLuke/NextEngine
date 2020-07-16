@@ -4,8 +4,6 @@
 #include <core/io/input.h>
 #include <GLFW/glfw3.h>
 
-DEFINE_APP_COMPONENT_ID(PlayerInput, 0);
-
 PlayerInput* get_player_input(World& world) {
 	auto result = world.first<PlayerInput>(GAME_LAYER);
 	return result ? &result->get<1>() : nullptr;

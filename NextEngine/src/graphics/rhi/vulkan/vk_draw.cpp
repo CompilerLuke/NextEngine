@@ -41,6 +41,8 @@ void draw_mesh(CommandBuffer& cmd_buffer, model_handle model_handle, slice<mater
 }
 
 void draw_mesh(CommandBuffer& cmd_buffer, model_handle model_handle, slice<material_handle> materials, slice<glm::mat4> model_m) {
+	bind_vertex_buffer(cmd_buffer, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4);
+	
 	InstanceBuffer instance_buffer = frame_alloc_instance_buffer<glm::mat4>(INSTANCE_LAYOUT_MAT4X4, model_m);
 	
 	Model* model = get_Model(model_handle);

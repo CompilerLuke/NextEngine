@@ -14,7 +14,7 @@
 #include "components/grass.h"
 #include "graphics/assets/material.h"
 
-
+/*
 void register_default_systems_and_components(World& world) {
 	world.add_component<Entity>();
 	world.add_component<Transform>();
@@ -28,6 +28,7 @@ void register_default_systems_and_components(World& world) {
 	world.add_component<Skybox>();
 	world.add_component<Terrain>();
 	world.add_component<TerrainControlPoint>();
+	world.add_component<TerrainSplat>();
 
 	world.add_component<CapsuleCollider>();
 	world.add_component<SphereCollider>();
@@ -40,6 +41,7 @@ void register_default_systems_and_components(World& world) {
 	world.add_component<PointLight>();
 	world.add_component<SkyLight>();
 }
+*/
 
 /*
 {

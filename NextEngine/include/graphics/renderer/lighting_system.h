@@ -1,10 +1,10 @@
 #pragma once
 
-#include "ecs/layermask.h"
 #include "core/container/array.h"
-#include "core/container/handle_manager.h"
 #include "graphics/rhi/buffer.h"
 #include "graphics/rhi/shader_access.h"
+
+using Layermask = uint;
 
 struct Skybox;
 
