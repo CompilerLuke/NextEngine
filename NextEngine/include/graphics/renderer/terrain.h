@@ -11,6 +11,8 @@
 #include "graphics/rhi/vulkan/vulkan.h"
 #include "graphics/rhi/vulkan/draw.h"
 
+#include "graphics/rhi/vulkan/async_cpu_copy.h"
+
 #include "ecs/id.h"
 
 struct Assets;
@@ -24,22 +26,9 @@ struct ChunkInfo {
 	float edge_lod;
 };
 
-struct AsyncCopyResources {
-	VkDevice device;
-	VkPhysicalDevice physical_device;
-	HostVisibleBuffer host_visible;
-	VkFence fence;
-	int transfer_frame = -1;
-};
-
 struct TerrainRenderResources {	
 	shader_handle terrain_shader;
-	shader_handle flat_shader;
-
-	model_handle cube_model;
 	model_handle subdivided_plane[3];
-	material_handle control_point_material;
-	material_handle splat_material;
 
 	UBOBuffer terrain_ubo;
 	texture_handle blend_idx_map;
@@ -48,7 +37,8 @@ struct TerrainRenderResources {
 	sampler_handle blend_idx_sampler;
 	sampler_handle blend_values_sampler;
 	sampler_handle displacement_sampler;
-	pipeline_handle terrain_pipeline[RenderPass::ScenePassCount];
+	pipeline_handle color_terrain_pipeline;
+	pipeline_handle depth_terrain_pipeline;
 	periodically_updated_descriptor terrain_descriptor;
 
 	UBOBuffer kriging_ubo;
@@ -77,8 +67,6 @@ struct CulledTerrainChunk {
 
 struct TerrainRenderData {
 	TerrainUBO terrain_ubo;
-	tvector<glm::mat4> control_points;
-	tvector<glm::mat4> splat_points;
 	tvector<ChunkInfo> lod_chunks[RenderPass::ScenePassCount][MAX_TERRAIN_CHUNK_LOD];
 };
 
@@ -94,11 +82,14 @@ struct SplatPushConstant {
 struct Terrain;
 
 void init_terrain_render_resources(TerrainRenderResources&);
-ENGINE_API void gen_terrain(Terrain& terrain);
+ENGINE_API void default_terrain(Terrain& terrain);
+ENGINE_API void default_terrain_material(Terrain& terrain);
 ENGINE_API void update_terrain_material(TerrainRenderResources& resources, Terrain& terrain);
-void extract_render_data_terrain(TerrainRenderData& render_data, World& world, const Viewport [RenderPass::ScenePassCount], Layermask layermask);
+void extract_render_data_terrain(TerrainRenderData& render_data, World& world, const Viewport [RenderPass::ScenePassCount], EntityQuery layermask);
 void render_terrain(TerrainRenderResources& resources, const TerrainRenderData& data, RenderPass render_passes[RenderPass::ScenePassCount]);
 
+ENGINE_API void clear_terrain(TerrainRenderResources& resources);
 ENGINE_API void gpu_estimate_terrain_surface(TerrainRenderResources& resources, KrigingUBO& ubo);
 ENGINE_API void gpu_splat_terrain(TerrainRenderResources& resources, slice<glm::mat4> models, slice<SplatPushConstant> splats);
-ENGINE_API void regenerate_terrain(World& world, TerrainRenderResources& resources, Layermask layermask);
+ENGINE_API void regenerate_terrain(World& world, TerrainRenderResources& resources, EntityQuery layermask);
+ENGINE_API void receive_generated_heightmap(TerrainRenderResources& resources, Terrain& terrain);

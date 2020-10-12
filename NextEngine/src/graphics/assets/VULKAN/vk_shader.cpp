@@ -62,6 +62,7 @@ enum MaterialInputType {
 	Channel1,
 	Channel2,
 	Channel3,
+	Channel4,
 	Cubemap,
 	Float,
 	Int,
@@ -165,6 +166,7 @@ string_buffer preprocess_gen(slice<string_view> tokens, Stage stage, shader_flag
 					if (channel_type == "channel1") type = Channel1;
 					if (channel_type == "channel2") type = Channel2;
 					if (channel_type == "channel3") type = Channel3;
+					if (channel_type == "channel4") type = Channel4;
 					if (channel_type == "samplerCube") type = Cubemap;
 					if (channel_type == "float") type = Float;
 					if (channel_type == "int") type = Int;
@@ -191,7 +193,7 @@ string_buffer preprocess_gen(slice<string_view> tokens, Stage stage, shader_flag
 
 				for (int i = 0; i < names.length; i++) {
 					int type_index = (int)types[i];
-					string_view scalar_types[] = { "float", "vec2", "vec3", "vec3", "float", "int", "vec2", "vec3", "vec4" };
+					string_view scalar_types[] = { "float", "vec2", "vec3", "vec4", "vec3", "float", "int", "vec2", "vec3", "vec4" };
 
 					if (type_index <= Cubemap) {
 						output += tformat("\t", scalar_types[type_index], " ", names[i], "_scalar", ";\n");
@@ -206,7 +208,7 @@ string_buffer preprocess_gen(slice<string_view> tokens, Stage stage, shader_flag
 
 				for (int i = 0; i < names.length; i++) {
 					int type_index = (int)types[i];
-					if (type_index <= Channel3) output += tformat("layout (set = ", MATERIAL_SET, ", binding = ", i + 1, ") uniform sampler2D ", names[i], ";\n");
+					if (type_index <= Channel4) output += tformat("layout (set = ", MATERIAL_SET, ", binding = ", i + 1, ") uniform sampler2D ", names[i], ";\n");
 					if (type_index == Cubemap) output += tformat("layout (set = ", MATERIAL_SET, ", binding = ", i + 1, ") uniform samplerCube ", names[i], ";\n");
 				}
 			}
@@ -437,6 +439,7 @@ void gen_descriptor_layouts(ShaderModules& modules) {
 		modules.set_layouts.append(make_set_layout(rhi.device, set_info));
 	}
 }
+
 
 /*
 void gen_descriptors(ShaderModuleInfo& info) {

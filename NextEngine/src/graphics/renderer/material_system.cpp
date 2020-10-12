@@ -2,35 +2,6 @@
 #include "graphics/assets/assets.h"
 #include "core/io/logger.h"
 
-#include "core/serializer.h"
-
-/*
-REFLECT_UNION_BEGIN(ParamDesc)
-REFLECT_UNION_FIELD(name)
-REFLECT_UNION_FIELD(name)
-REFLECT_UNION_FIELD(image)
-REFLECT_UNION_CASE_BEGIN()
-REFLECT_UNION_CASE(integer)
-REFLECT_UNION_CASE(real)
-REFLECT_UNION_CASE(vec2)
-REFLECT_UNION_CASE(vec3)
-REFLECT_UNION_END()
-*/
-
-void write_ParamDesc_to_buffer(SerializerBuffer& buffer, ParamDesc& param) {
-	write_n_to_buffer(buffer, &param, sizeof(ParamDesc));
-}
-
-void read_ParamDesc_from_buffer(DeserializerBuffer& buffer, ParamDesc* param) {
-	read_n_from_buffer(buffer, param, sizeof(ParamDesc));
-}
-
-refl::Union* get_ParamDesc_type() {
-	static refl::Union type = { refl::Type::Union, sizeof(ParamDesc), "ParamDesc" };
-	return &type;
-}
-
-
 material_handle make_SubstanceMaterial(Assets& assets, string_view folder, string_view name) {
 	auto shad = load_Shader("shaders/pbr.vert", "shaders/pbr.frag");
 	
@@ -125,6 +96,17 @@ void mat_channel3(MaterialDesc& desc, string_view name, glm::vec3 value, texture
 	param.name = name;
 	param.type = Param_Channel3;
 	param.vec3 = value;
+	param.image = tex.id;
+
+	desc.params.append(param);
+}
+
+
+void mat_channel4(MaterialDesc& desc, string_view name, glm::vec4 value, texture_handle tex) {
+	ParamDesc param;
+	param.name = name;
+	param.type = Param_Channel4;
+	param.vec4 = value;
 	param.image = tex.id;
 
 	desc.params.append(param);

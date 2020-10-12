@@ -42,7 +42,7 @@ Stage from_vk_stage(VkShaderStageFlags flags) {
 }
 
 void MaterialAllocator::make(MaterialDesc& desc, Material* material) {	
-	material->desc = desc;
+	material->info = { desc.shader, desc.draw_state };
 
 	shader_flags permutations[] = { SHADER_INSTANCED };
 
@@ -79,7 +79,7 @@ void MaterialAllocator::make(MaterialDesc& desc, Material* material) {
 		for (ParamDesc& param : desc.params) {
 			bool is_ubo_field = param.type != Param_Image;
 			bool is_cubemap = param.type == Param_Cubemap;
-			bool is_channel = param.type == Param_Channel1 || param.type == Param_Channel2 || param.type == Param_Channel3 || is_cubemap;
+			bool is_channel = param.type == Param_Channel1 || param.type == Param_Channel2 || param.type == Param_Channel3 || param.type == Param_Channel4 || is_cubemap;
 			bool is_sampler = param.type == Param_Image || is_channel || is_cubemap;
 			
 			if (is_sampler) {
@@ -130,6 +130,7 @@ void MaterialAllocator::make(MaterialDesc& desc, Material* material) {
 				if (param.type == Param_Float || param.type == Param_Channel1) *(float*)field_ptr = param.real;
 				if (param.type == Param_Vec2 || param.type == Param_Channel2) *(glm::vec2*)field_ptr = param.vec2;
 				if (param.type == Param_Vec3 || param.type == Param_Channel3 || param.type == Param_Cubemap) *(glm::vec3*)field_ptr = param.vec3;
+				if (param.type == Param_Vec3 || param.type == Param_Channel4 || param.type == Param_Cubemap) *(glm::vec4*)field_ptr = param.vec4;
 			}
 		}
 
@@ -154,4 +155,12 @@ void MaterialAllocator::make(MaterialDesc& desc, Material* material) {
 		update_descriptor_set(material->sets[material->index], descriptor_desc);
 		printf("DESCRIPTOR %p\n", get_descriptor_set(material->sets[material->index]));
 	}
+}
+
+void MaterialAllocator::update(MaterialDesc& from, MaterialDesc& to, Material* material) {
+	if (from.shader.id != to.shader.id) {
+		memset(material->sets, 0, sizeof(material->sets)); //todo unnecesarilly reallocates UBO Buffer
+	}
+	
+	make(to, material);
 }

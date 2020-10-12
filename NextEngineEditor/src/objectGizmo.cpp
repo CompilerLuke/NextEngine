@@ -27,15 +27,15 @@ void render_gizmo(model_handle model, slice<material_handle> gizmo_materials, Re
 }
 
 void ObjectGizmoSystem::render(World& world, RenderPass& ctx) {
-	for (auto [e,trans,grass] : world.filter<Transform, Grass>(GAME_LAYER)) {
+	for (auto [e,trans,grass] : world.filter<Transform, Grass>()) {
 		render_gizmo(grass_model, gizmo_materials, ctx, trans);
 	}
 
-	for (auto [e,trans,camera] : world.filter<Transform,Camera>(GAME_LAYER)) {
+	for (auto [e,trans,camera] : world.filter<Transform,Camera>()) {
 		render_gizmo(camera_model, gizmo_materials, ctx, trans);
 	}
 
-	for (auto [e,trans,dir_light] : world.filter<Transform, DirLight>(GAME_LAYER)) {
+	for (auto [e,trans,dir_light] : world.filter<Transform, DirLight>()) {
 		dir_light.direction = trans.rotation * glm::vec3(0, 1, 0);
 		dir_light.direction = glm::normalize(dir_light.direction);
 

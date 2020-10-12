@@ -57,5 +57,5 @@ texture_handle compute_brdf_lut(uint resolution);
 
 ENGINE_API void extract_lighting_from_cubemap(LightingSystem&, struct SkyLight& skylight);
 
-void extract_skybox(SkyboxRenderData& data, World& world, Layermask layermask);
+void extract_skybox(SkyboxRenderData& data, World& world, EntityQuery layermask);
 void render_skybox(const SkyboxRenderData& data, RenderPass& ctx);

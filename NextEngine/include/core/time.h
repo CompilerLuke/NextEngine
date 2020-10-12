@@ -9,4 +9,6 @@ struct Time {
 	float delta_time;
 
 	void ENGINE_API tick();
+
+	ENGINE_API static double now();
 };

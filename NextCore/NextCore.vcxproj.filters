@@ -30,6 +30,7 @@
     <ClInclude Include="include\core\reflection2.h" />
     <ClInclude Include="include\core\serializer.h" />
     <ClInclude Include="include\core\time.h" />
+    <ClInclude Include="include\core\container\offset_slice.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\core\container\string_view.cpp" />

@@ -93,7 +93,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NEXTENGINE_EXPORTS;RENDER_API_VULKAN;</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\VulkanSDK\1.2.131.2\Include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\VulkanSDK\1.2.154.1\Include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>
       </DisableSpecificWarnings>
       <ExceptionHandling>false</ExceptionHandling>
@@ -112,7 +112,7 @@
       <AdditionalDependencies>C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glfw3.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glad.o;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\assimp-vc140-mt.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\BulletCollision_Debug.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\BulletDynamics_Debug.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\LinearMath_Debug.lib;C:\VulkanSDK\1.2.131.2\shaderc\build\libshaderc\Debug\shaderc_combined.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
-      <Command>$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) -d components -d graphics/assets ecs/ecs20.h graphics\rhi\forward.h ecs/id.h core/handle.h physics/physics.h -h core/types -o src/generated -l ENGINE_API</Command>
+      <Command>$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) -d graphics/assets -d ecs components/transform.h components/camera.h components/flyover.h components/skybox.h components/terrain.h components/lights.h components/grass.h graphics\rhi\forward.h core/handle.h physics/physics.h -h core/types -c ecs/component_ids.h -o src/generated -l ENGINE_API</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -123,7 +123,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NEXTENGINE_EXPORTS;RENDER_API_VULKAN;</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\VulkanSDK\1.2.131.2\Include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\VulkanSDK\1.2.154.1\Include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>
       </DisableSpecificWarnings>
       <ExceptionHandling>false</ExceptionHandling>
@@ -142,7 +142,7 @@
       <AdditionalDependencies>C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glfw3.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glad.o;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\assimp-vc140-mt.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\BulletCollision_Debug.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\BulletDynamics_Debug.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\LinearMath_Debug.lib;C:\VulkanSDK\1.2.131.2\shaderc\build\libshaderc\Debug\shaderc_combined.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
-      <Command>$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) -d components -d graphics/assets ecs/ecs20.h graphics\rhi\forward.h ecs/id.h core/handle.h physics/physics.h -h core/types -o src/generated -l ENGINE_API</Command>
+      <Command>$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) -d graphics/assets -d ecs components/transform.h components/camera.h components/flyover.h components/skybox.h components/terrain.h components/lights.h components/grass.h graphics\rhi\forward.h core/handle.h physics/physics.h -h core/types -c ecs/component_ids.h -o src/generated -l ENGINE_API</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -155,7 +155,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NEXTENGINE_EXPORTS;RENDER_API_VULKAN</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\VulkanSDK\1.2.131.2\Include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\VulkanSDK\1.2.154.1\Include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <TreatSpecificWarningsAsErrors>4716;4715</TreatSpecificWarningsAsErrors>
       <IncludeInUnityFile>true</IncludeInUnityFile>
@@ -173,7 +173,7 @@
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
     </Link>
     <PreBuildEvent>
-      <Command>$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) -d components -d graphics/assets ecs/ecs20.h graphics\rhi\forward.h ecs/id.h core/handle.h physics/physics.h -h core/types -o src/generated -l ENGINE_API</Command>
+      <Command>$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) -d graphics/assets -d ecs components/transform.h components/camera.h components/flyover.h components/skybox.h components/terrain.h components/lights.h components/grass.h graphics\rhi\forward.h core/handle.h physics/physics.h -h core/types -c ecs/component_ids.h -o src/generated -l ENGINE_API</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -186,7 +186,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NEXTENGINE_EXPORTS;RENDER_API_VULKAN</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\VulkanSDK\1.2.131.2\Include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\VulkanSDK\1.2.154.1\Include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\imgui;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\ImGuizmo;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\Users\User\Desktop\Game Engine\bullet3\src;C:\Users\User\source\repos\NextEngine\NextEngine\vendor\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <TreatSpecificWarningsAsErrors>4716;4715</TreatSpecificWarningsAsErrors>
       <IncludeInUnityFile>true</IncludeInUnityFile>
@@ -204,7 +204,7 @@
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
     </Link>
     <PreBuildEvent>
-      <Command>$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) -d components -d graphics/assets ecs/ecs20.h graphics\rhi\forward.h ecs/id.h core/handle.h physics/physics.h -h core/types -o src/generated -l ENGINE_API</Command>
+      <Command>$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) -d graphics/assets -d ecs components/transform.h components/camera.h components/flyover.h components/skybox.h components/terrain.h components/lights.h components/grass.h graphics\rhi\forward.h core/handle.h physics/physics.h -h core/types -c ecs/component_ids.h -o src/generated -l ENGINE_API</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -218,6 +218,7 @@
     <ClInclude Include="include\core\container.h" />
     <ClInclude Include="include\core\container\bitset.h" />
     <ClInclude Include="include\core\container\array.h" />
+    <ClInclude Include="include\core\container\offset_slice.h" />
     <ClInclude Include="include\core\container\queue.h" />
     <ClInclude Include="include\components\skybox.h" />
     <ClInclude Include="include\core\container\string.h" />
@@ -245,9 +246,8 @@
     <ClInclude Include="include\core\container\vector.h" />
     <ClInclude Include="include\core\io\vfs.h" />
     <ClInclude Include="include\ecs\ecs.h" />
-    <ClInclude Include="include\ecs\ecs20.h" />
+    <ClInclude Include="include\ecs\flags.h" />
     <ClInclude Include="include\ecs\id.h" />
-    <ClInclude Include="include\ecs\new_ecs.h" />
     <ClInclude Include="include\ecs\system.h" />
     <ClInclude Include="include\engine\application.h" />
     <ClInclude Include="include\engine\engine.h" />
@@ -282,6 +282,7 @@
     <ClInclude Include="include\graphics\rhi\render_passh.h" />
     <ClInclude Include="include\graphics\rhi\rhi.h" />
     <ClInclude Include="include\graphics\rhi\shader_access.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\async_cpu_copy.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\buffer.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\command_buffer.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\device.h" />
@@ -321,7 +322,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
-    <ClCompile Include="src\ecs\ecs20.cpp" />
     <ClCompile Include="src\generated.cpp" />
     <ClCompile Include="src\graphics\assets\assimp_model_loader.cpp" />
     <ClCompile Include="src\core\container\string_view.cpp" />
@@ -350,15 +350,19 @@
     </ClCompile>
     <ClCompile Include="src\core\time.cpp" />
     <ClCompile Include="src\core\io\vfs.cpp" />
-    <ClCompile Include="src\ecs\ecs.cpp" />
-    <ClCompile Include="src\ecs\new_ecs.cpp" />
     <ClCompile Include="src\ecs\system.cpp" />
     <ClCompile Include="src\ecs\update_params.cpp" />
     <ClCompile Include="src\engine\application.cpp" />
     <ClCompile Include="src\engine\engine.cpp" />
+    <ClCompile Include="src\graphics\assets\VULKAN\vk_async_cpu_copy.cpp" />
     <ClCompile Include="src\graphics\assets\VULKAN\vk_model.cpp" />
     <ClCompile Include="src\graphics\assets\VULKAN\vk_shader.cpp" />
-    <ClCompile Include="src\graphics\assets\VULKAN\vk_texture.cpp" />
+    <ClCompile Include="src\graphics\assets\VULKAN\vk_texture.cpp">
+      <OrderInUnityFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">100</OrderInUnityFile>
+      <OrderInUnityFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">100</OrderInUnityFile>
+      <OrderInUnityFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">100</OrderInUnityFile>
+      <OrderInUnityFile Condition="'$(Configuration)|$(Platform)'=='Release|x64'">100</OrderInUnityFile>
+    </ClCompile>
     <ClCompile Include="src\graphics\renderer\grass_rendering.cpp" />
     <ClCompile Include="src\graphics\renderer\lighting_system.cpp" />
     <ClCompile Include="src\graphics\renderer\terrain.cpp" />

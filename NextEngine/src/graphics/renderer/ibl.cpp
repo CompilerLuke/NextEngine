@@ -29,13 +29,35 @@ VkRenderPass make_color_and_depth_render_pass(VkDevice device, VkAttachmentDescr
 	VkAttachmentReference color_attachment = { 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
 	VkAttachmentReference depth_attachment = { 1, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
 
-	VkSubpassDependency dependency = {};
-	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	dependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	dependency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-	dependency.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	dependency.srcSubpass = 0;
-	dependency.dstSubpass = VK_SUBPASS_EXTERNAL;
+	VkSubpassDependency next_dependency = {};
+	next_dependency.srcSubpass = 0;
+	next_dependency.dstSubpass = VK_SUBPASS_EXTERNAL;
+	next_dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	next_dependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	next_dependency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	next_dependency.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	next_dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+	//todo copied from vk_framegraph, extract into function
+	VkSubpassDependency write_depth_dependency = {};
+	write_depth_dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+	write_depth_dependency.dstSubpass = 0;
+	write_depth_dependency.srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+	write_depth_dependency.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	write_depth_dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	write_depth_dependency.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	write_depth_dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+	VkSubpassDependency write_color_dependency = {};
+	write_color_dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+	write_color_dependency.dstSubpass = 0;
+	write_color_dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	write_color_dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	write_color_dependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	write_color_dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	write_color_dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+	VkSubpassDependency dependencies[3] = { write_depth_dependency, write_color_dependency, next_dependency };
 
 	VkSubpassDescription subpass = {};
 	subpass.colorAttachmentCount = 1;
@@ -49,8 +71,8 @@ VkRenderPass make_color_and_depth_render_pass(VkDevice device, VkAttachmentDescr
 	render_pass_info.pAttachments = attachments;
 	render_pass_info.subpassCount = 1;
 	render_pass_info.pSubpasses = &subpass;
-	render_pass_info.dependencyCount = wait_after;
-	render_pass_info.pDependencies = &dependency;
+	render_pass_info.dependencyCount = wait_after ? 3 : 2;
+	render_pass_info.pDependencies = dependencies;
 
 	VkRenderPass render_pass;
 	VK_CHECK(vkCreateRenderPass(device, &render_pass_info, nullptr, &render_pass));
@@ -339,11 +361,15 @@ texture_handle compute_brdf_lut(uint resolution) {
 	texture_handle brdf;
 
 	FramebufferDesc framebuffer_desc = {resolution, resolution};
-	framebuffer_desc.depth_buffer = DepthBufferFormat::Disable_Depth_Buffer;
+	framebuffer_desc.depth_buffer = DepthBufferFormat::None;
 	add_color_attachment(framebuffer_desc, &brdf);
 
+	SubpassDesc subpass = {};
+	subpass.color_attachments.append(0);
+	subpass.depth_attachment = false;
+
 	RenderPassInfo info = {};
-	VkRenderPass render_pass = make_RenderPass(rhi.device, rhi.device, framebuffer_desc);
+	VkRenderPass render_pass = make_RenderPass(rhi.device, rhi.device, framebuffer_desc, subpass);
 	VkFramebuffer framebuffer = make_Framebuffer(rhi.device, rhi.device, render_pass, framebuffer_desc, info);
 
 	pipeline_handle pipeline = make_no_cull_pipeline(render_pass, load_Shader("shaders/brdf_convultion.vert", "shaders/brdf_convultion.frag"), {});
@@ -388,7 +414,6 @@ void recompute_lighting_from_cubemap(LightingSystem& lighting_system, SkyLight& 
 	update_descriptor_set(lighting_system.pbr_descriptor, desc);
 }
 
-
 ID make_default_Skybox(World& world, string_view filename) {
 	cubemap_handle env_map = load_HDR(filename);
 
@@ -416,17 +441,19 @@ ID make_default_Skybox(World& world, string_view filename) {
 	MaterialDesc mat{ skybox_shader };
 	mat.draw_state = Cull_None | DepthFunc_Lequal;
 	
-	mat_cubemap(mat, "environmentMap", sky.cubemap);
+	//mat_cubemap(mat, "environmentMap", sky.cubemap);
 
-	//mat_vec3(mat, "skyhorizon", glm::vec3(66, 135, 245) / 400.0f);
-	//mat_vec3(mat, "skytop", glm::vec3(66, 188, 245) / 200.0f);
+	mat_vec3(mat, "skyhorizon", glm::vec3(66, 188, 245) / 200.0f);
+	mat_vec3(mat, "skytop", glm::vec3(66, 135, 245) / 300.0f);
 
 	materials.materials.append(make_Material(mat));
 
 	return e.id;
 }
 
-void extract_skybox(SkyboxRenderData& data, World& world, Layermask layermask) {
+void extract_skybox(SkyboxRenderData& data, World& world, EntityQuery layermask) {
+	data.material = { INVALID_HANDLE };
+	
 	for (auto [e, trans, skybox, materials] : world.filter<Transform, Skybox, Materials>(layermask)) {
 		data.position = trans.position;
 		data.material = materials.materials[0];
@@ -436,10 +463,15 @@ void extract_skybox(SkyboxRenderData& data, World& world, Layermask layermask) {
 }
 
 void render_skybox(const SkyboxRenderData& data, RenderPass& ctx) {	
+	if (data.material.id == INVALID_HANDLE) return;
+	
 	Transform trans{ data.position };
 	material_handle material_handle = data.material;
 	draw_mesh(ctx.cmd_buffer, primitives.cube, material_handle, trans);
 }
+
+
+
 
 //======================== DELETE CODE =====================================
 
@@ -827,7 +859,7 @@ struct CubemapCapture {
 
 		World& world = *this->world;
 
-		ID main_camera = get_camera(world, GAME_LAYER);
+		ID main_camera = get_camera(world, EntityQuery());
 
 		RenderPass new_params = *params;
 		new_params.viewport.width = width;
@@ -844,7 +876,7 @@ struct CubemapCapture {
 
 		/* world.by_id<Entity>(main_camera)->enabled = false; */
 
-		update_camera_matrices(world, e.id, new_params.viewport);
+		update_camera_matrices(new_trans, camera, new_params.viewport);
 
 		//((MainPass*)new_params.pass)->render_to_buffer(world, new_params, [this, i]() {
 			//glViewport(0, 0, width, width); // don't forget to configure the viewport to the capture dimensions.

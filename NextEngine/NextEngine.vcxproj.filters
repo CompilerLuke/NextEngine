@@ -75,12 +75,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\ecs\ecs.cpp">
-      <Filter>src\ecs</Filter>
-    </ClCompile>
-    <ClCompile Include="src\ecs\new_ecs.cpp">
-      <Filter>src\ecs</Filter>
-    </ClCompile>
     <ClCompile Include="src\ecs\system.cpp">
       <Filter>src\ecs</Filter>
     </ClCompile>
@@ -238,10 +232,10 @@
     <ClCompile Include="src\graphics\renderer\lighting_system.cpp" />
     <ClCompile Include="src\graphics\rhi\vulkan\vk_ubo.cpp" />
     <ClCompile Include="src\graphics\rhi\vulkan\vk_framegraph.cpp" />
-    <ClCompile Include="src\ecs\ecs20.cpp" />
     <ClCompile Include="vendor\imgui\imgui_impl_vulkan.cpp" />
     <ClCompile Include="src\generated.cpp" />
     <ClCompile Include="src\terrain\kriging.cpp" />
+    <ClCompile Include="src\graphics\assets\VULKAN\vk_async_cpu_copy.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="vendor\imgui\imconfig.h">
@@ -272,9 +266,6 @@
       <Filter>include\ecs</Filter>
     </ClInclude>
     <ClInclude Include="include\ecs\id.h">
-      <Filter>include\ecs</Filter>
-    </ClInclude>
-    <ClInclude Include="include\ecs\new_ecs.h">
       <Filter>include\ecs</Filter>
     </ClInclude>
     <ClInclude Include="include\ecs\system.h">
@@ -472,7 +463,6 @@
     <ClInclude Include="include\graphics\rhi\vulkan\frame_buffer.h" />
     <ClInclude Include="include\graphics\rhi\shader_access.h" />
     <ClInclude Include="include\core\event.h" />
-    <ClInclude Include="include\ecs\ecs20.h" />
     <ClInclude Include="include\core\container\tuple.h" />
     <ClInclude Include="vendor\imgui\imgui_impl_vulkan.h" />
     <ClInclude Include="include\core\reflection2.h" />
@@ -482,6 +472,9 @@
     <ClInclude Include="include\terrain\kriging.h" />
     <ClInclude Include="include\graphics\rhi\forward.h" />
     <ClInclude Include="include\component_ids.h" />
+    <ClInclude Include="include\core\container\offset_slice.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\async_cpu_copy.h" />
+    <ClInclude Include="include\ecs\flags.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="src\refl_filepaths.refl" />

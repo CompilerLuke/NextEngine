@@ -21,7 +21,6 @@ Modules::Modules(const char* app_name, const char* level_path) {
 	input = new Input();
 	time = new Time();
 	world = new World(WORLD_SIZE);	
-	local_transforms_system = new LocalTransformSystem();
 	physics_system = new PhysicsSystem();
 
 	register_default_components(*world);
@@ -29,7 +28,7 @@ Modules::Modules(const char* app_name, const char* level_path) {
 
 	window->title = app_name;
 	window->full_screen = false;
-	window->vSync = true;
+	window->vSync = false;
 
 	window->init();
 	input->init(*window);
@@ -52,8 +51,6 @@ Modules::Modules(const char* app_name, const char* level_path) {
 #else
 	vk_desc.num_validation_layers = 0;
 #endif
-
-	vk_desc.num_validation_layers = 1;
 
 	vk_desc.device_features.samplerAnisotropy = VK_TRUE;
 	vk_desc.device_features.multiDrawIndirect = VK_TRUE;
@@ -105,7 +102,6 @@ void Modules::begin_frame() {
 	input->clear();
 	window->poll_inputs();
 	time->tick();
-	temporary_allocator.clear();
 }
 
 void Modules::end_frame() {
@@ -114,5 +110,6 @@ void Modules::end_frame() {
 	profile.end();
 
 	Profiler::end_frame();
+	temporary_allocator.clear();
 }
 

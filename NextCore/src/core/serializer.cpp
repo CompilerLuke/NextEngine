@@ -1,3 +1,4 @@
+/*
 #include "core/serializer.h"
 #include "core/io/vfs.h"
 
@@ -73,6 +74,7 @@ void DeserializerBuffer::read_union(reflect::TypeDescriptor_Union* type, void* p
 	read(union_case.type, (char*)ptr + union_case.offset);
 }*/
 
+/*
 void SerializerBuffer::write_byte(uint8_t byte) {
 	*(uint8_t*)pointer_to_n_bytes(1) = byte;
 }
@@ -226,3 +228,4 @@ DeserializerBuffer::DeserializerBuffer(const char* data, unsigned int length) : 
 }
 
 DeserializerBuffer::DeserializerBuffer() {}
+*/

@@ -4,7 +4,6 @@
 #include "core/container/tvector.h"
 #include "core/handle.h"
 #include "graphics/rhi/frame_buffer.h"
-#include "ecs/ecs.h"
 #include <glm/gtc/quaternion.hpp>
 #include "components/transform.h"
 #include "core/container/string_buffer.h"
@@ -21,28 +20,6 @@ struct Material;
 struct Renderer;
 struct Window;
 
-/*
-struct asset_folder_handle {
-	uint id = INVALID_HANDLE;
-};
-
-struct texture_asset_handle {
-	uint id = INVALID_HANDLE;
-};
-
-struct model_asset_handle {
-	uint id = INVALID_HANDLE;
-};
-
-struct shader_asset_handle {
-	uint id = INVALID_HANDLE;
-};
-
-struct material_asset_handle {
-	uint id = INVALID_HANDLE;
-};
-*/
-
 struct AssetNode;
 
 struct NamedAsset {
@@ -54,8 +31,10 @@ REFL
 struct TextureAsset {
 	texture_handle handle;
 	sstring name;
+	sstring path;
 };
 
+REFL
 struct RotatablePreview {
 	glm::vec2 preview_tex_coord;
 	glm::vec2 current;
@@ -69,16 +48,21 @@ struct ModelAsset {
 	model_handle handle = { INVALID_HANDLE };
 	sstring name;
 	RotatablePreview rot_preview;
+	sstring path;
 	
-	vector<material_handle> materials;
+	array<8, material_handle> materials;
 	
 	Transform trans;
+
+	array<10, float> lod_distance;
 };
+
 
 REFL 
 struct ShaderAsset {
 	shader_handle handle = { INVALID_HANDLE };
 	sstring name;
+	sstring path;
 
 	vector<ParamDesc> shader_arguments;
 
@@ -90,11 +74,13 @@ struct MaterialAsset {
 	material_handle handle = { INVALID_HANDLE };
 	sstring name;
 	RotatablePreview rot_preview;
+	MaterialDesc desc;
 };
 
 REFL struct asset_handle {
 	uint id;
 };
+
 
 REFL
 struct AssetFolder {
@@ -103,33 +89,36 @@ struct AssetFolder {
 	asset_handle owner;
 };
 
+
+REFL
 struct AssetNode {
 	enum Type { Texture, Material, Shader, Model, Folder, Count } type;
 	asset_handle handle;
 
 	union {
-		NamedAsset asset;
 		TextureAsset texture;
 		MaterialAsset material;
 		ShaderAsset shader;
 		ModelAsset model;
 		AssetFolder folder;
+		NamedAsset asset;
 	};
 
-	AssetNode();
-	~AssetNode();
-	AssetNode(AssetNode::Type type);
-	void operator=(AssetNode&&);
+	REFL_FALSE AssetNode();
+	REFL_FALSE ~AssetNode();
+	REFL_FALSE AssetNode(AssetNode::Type type);
+	REFL_FALSE void operator=(AssetNode&&);
 };
 
 const uint MAX_ASSETS = 1000;
-const uint MAX_PER_ASSET_TYPE = 200;
+const uint MAX_PER_ASSET_TYPE = 1024;
 
 struct AssetPreviewResources {
 	pipeline_layout_handle pipeline_layout;
-	descriptor_set_handle pass_descriptor;
+	descriptor_set_handle pass_descriptor[MAX_FRAMES_IN_FLIGHT];
 	descriptor_set_handle pbr_descriptor;
-	UBOBuffer pass_ubo;
+	UBOBuffer pass_ubo[MAX_FRAMES_IN_FLIGHT];
+	UBOBuffer simulation_ubo[MAX_FRAMES_IN_FLIGHT];
 	Framebuffer preview_fbo;
 	Framebuffer preview_tonemapped_fbo;
 	texture_handle preview_map;
@@ -137,13 +126,15 @@ struct AssetPreviewResources {
 	texture_handle preview_atlas;
 	bool atlas_layout_undefined = true;
 	array<MAX_ASSETS, glm::vec2> free_atlas_slot;
+	vector<asset_handle> render_preview_for; 
 };
 
 struct AssetInfo {
-	uint id_counter = 0;
+	array<MAX_ASSETS, asset_handle> free_ids = 0;
 	AssetNode* asset_handle_to_node[MAX_ASSETS];
 	AssetNode* asset_type_handle_to_node[AssetNode::Count][MAX_ASSETS];
 	AssetNode toplevel;
+	material_handle default_material;
 };
 
 struct AssetExplorer {
@@ -168,16 +159,10 @@ struct AssetTab {
 
 	AssetPreviewResources preview_resources;
 
-	vector<asset_handle> render_preview_for;
-	material_handle default_material;
-
 	AssetTab(Renderer&, AssetInfo&, Window& window);
 
 	//void register_callbacks(struct Window&, struct Editor&);
 	void render(struct World&, struct Editor&, struct RenderPass&);
-
-	void on_save();
-	void on_load(struct World& world);
 };
 
 const char* drop_types[AssetNode::Count] = {
@@ -188,10 +173,15 @@ const char* drop_types[AssetNode::Count] = {
 	"DRAG_AND_DROP_FOLDER",
 };
 
+refl::Struct* get_AssetNode_type();
+
+bool save_asset_info(AssetPreviewResources& resources, AssetInfo& info, struct SerializerBuffer&, const char** err);
+bool load_asset_info(AssetPreviewResources& resources, AssetInfo& info, struct DeserializerBuffer&, const char** err);
+
 const RenderPass::ID PreviewPass = (RenderPass::ID)(RenderPass::PassCount + 0);
 const RenderPass::ID PreviewPassTonemap = (RenderPass::ID)(RenderPass::PassCount + 1);
 
-material_handle create_new_material(struct AssetTab& self, struct Editor& editor);
+material_handle make_new_material(struct AssetTab& self, struct Editor& editor);
 model_handle import_model(AssetTab& self, string_view filename);
 
 AssetNode* get_asset(AssetInfo& self, asset_handle handle);

@@ -61,15 +61,13 @@ bool render_fields_primitive(bool* ptr, string_view prefix) {
 
 namespace ImGui {
 	bool ImageButton(texture_handle handle, glm::vec2 size, glm::vec2 uv0, glm::vec2 uv1) {
-		static texture_handle white = load_Texture("solid_white.png");
-		if (handle.id == INVALID_HANDLE) handle = white;
+		if (handle.id == INVALID_HANDLE) handle = default_textures.white;
 
 		return ImageButton((ImTextureID)handle.id, size, uv0, uv1); 
 	}
 
 	void Image(texture_handle handle, glm::vec2 size, glm::vec2 uv0, glm::vec2 uv1) {
-		static texture_handle white = load_Texture("solid_white.png");
-		if (handle.id == INVALID_HANDLE) handle = white;
+		if (handle.id == INVALID_HANDLE) handle = default_textures.white;
 
 		Image( (ImTextureID)handle.id, size, uv0, uv1); 
 	}
@@ -114,10 +112,7 @@ bool render_fields_struct(refl::Struct* self, void* data, string_view prefix, Ed
 		for (auto field : self->fields) {
 			auto offset_ptr = (char*)data + field.offset;
 			
-			if (field.flags & refl::LAYERMASK_TAG) {
-				override_inspect["Layermask"](offset_ptr, prefix, editor);
-			}
-			else if (field.flags == refl::HIDE_IN_EDITOR_TAG) {}
+			if (field.flags == refl::HIDE_IN_EDITOR_TAG) {}
 			else {
 				render_fields(field.type, offset_ptr, field.name, editor);
 			}
@@ -245,12 +240,15 @@ void DisplayComponents::render(World& world, RenderPass& params, Editor& editor)
 			bool uncollapse = ImGui::Button("uncollapse all");
 
 			for (uint component_id = 0; component_id < MAX_COMPONENTS; component_id++) {
-				if (((1ull << component_id) & arch) == 0) continue;
+				if (!has_component(arch, component_id)) continue;
 
 				refl::Struct* type = world.component_type[component_id];
+				if (type == nullptr) continue; //ENTITY FLAGS DONT HAVE TYPES
+
 				void* data = world.id_to_ptr[component_id][selected_id];
 
 				ImGui::BeginGroup();
+				
 				if (uncollapse)
 					ImGui::SetNextTreeNodeOpen(true);
 

@@ -1,0 +1,28 @@
+#pragma once
+#include "ecs/system.h"
+
+DEFINE_COMPONENT_ID(Transform, 1)
+DEFINE_COMPONENT_ID(StaticTransform, 2)
+DEFINE_COMPONENT_ID(LocalTransform, 3)
+DEFINE_COMPONENT_ID(Camera, 4)
+DEFINE_COMPONENT_ID(Flyover, 5)
+DEFINE_COMPONENT_ID(Skybox, 6)
+DEFINE_COMPONENT_ID(TerrainControlPoint, 7)
+DEFINE_COMPONENT_ID(TerrainSplat, 8)
+DEFINE_COMPONENT_ID(Terrain, 9)
+DEFINE_COMPONENT_ID(DirLight, 10)
+DEFINE_COMPONENT_ID(PointLight, 11)
+DEFINE_COMPONENT_ID(SkyLight, 12)
+DEFINE_COMPONENT_ID(Grass, 13)
+DEFINE_COMPONENT_ID(CapsuleCollider, 14)
+DEFINE_COMPONENT_ID(SphereCollider, 15)
+DEFINE_COMPONENT_ID(BoxCollider, 16)
+DEFINE_COMPONENT_ID(PlaneCollider, 17)
+DEFINE_COMPONENT_ID(RigidBody, 18)
+DEFINE_COMPONENT_ID(CharacterController, 19)
+DEFINE_COMPONENT_ID(Materials, 20)
+DEFINE_COMPONENT_ID(ModelRenderer, 21)
+DEFINE_COMPONENT_ID(Entity, 0)
+constexpr EntityFlags STATIC = 4194304;
+constexpr EntityFlags EDITOR_ONLY = 8388608;
+constexpr EntityFlags MAIN_CAMERA = 16777216;

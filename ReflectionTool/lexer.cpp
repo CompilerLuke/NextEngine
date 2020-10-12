@@ -48,14 +48,14 @@ namespace pixc {
         }
         
         bool is_character(char c) {
-            return 'A' <= c && c <= 'z';
+            return ('A' <= c && c <= 'z') || c == '_';
         }
         
         bool is_identifier(string tok) {
             if (!is_character(tok[0])) return false;
             
             for (int i = 1; i < tok.length; i++) {
-                if (!(is_character(tok[i]) || is_digit(tok[i]))) return false;
+                if (!(is_character(tok[i])|| is_digit(tok[i]))) return false;
             }
             
             return true;
@@ -174,9 +174,11 @@ namespace pixc {
             add_delimitter('=', Operator, AssignOp, 5);
             
             add_keyword("#pragma", Keyword, Pragma);
+            add_keyword("#define", Keyword, Define);
             add_keyword("namespace", Keyword, Namespace);
             add_keyword("struct", Keyword, Struct);
             add_keyword("enum", Keyword, Enum);
+			add_keyword("union", Keyword, Union);
             add_keyword("int", Keyword, IntType);
             add_keyword("uint", Keyword, UintType);
 			add_keyword("i64", Keyword, I64Type);

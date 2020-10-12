@@ -243,8 +243,7 @@ PhysicsSystem::~PhysicsSystem() {
 }
 
 void PhysicsSystem::update(World& world, UpdateCtx& params) {
-	if (params.layermask & GAME_LAYER) 
-		step_BulletWrapper(bt_wrapper, params.delta_time);
+	step_BulletWrapper(bt_wrapper, params.delta_time);
 
 	for (auto [e,rb,trans]: world.filter<RigidBody, Transform>(params.layermask)) {
 		ID id = e.id;
@@ -332,7 +331,7 @@ void PhysicsSystem::update(World& world, UpdateCtx& params) {
 			}
 		}
 
-		if (rb.mass == 0) continue;
+		if (rb.mass == 0 || rb.bt_rigid_body == nullptr) continue;
 
 		BulletWrapperTransform trans_of_rb;
 
@@ -361,7 +360,7 @@ void PhysicsSystem::update(World& world, UpdateCtx& params) {
 		set_transform_of_RigidBody(rb.bt_rigid_body, &trans_of_rb);
 	}
 
-	auto terrains = world.first<Terrain, Transform>(ANY_LAYER);
+	auto terrains = world.first<Terrain, Transform>();
 	if (terrains.some) return;
 
 	auto [terrain_e, terrain, terrain_trans] = *terrains;

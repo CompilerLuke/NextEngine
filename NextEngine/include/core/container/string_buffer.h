@@ -117,7 +117,7 @@ struct string_buffer {
 		return *this;
 	}
 
-	inline string_view view() {
+	inline string_view view() const {
 		return { data, length };
 	}
 
@@ -165,11 +165,11 @@ struct string_buffer {
 		return view().find(c);
 	}
 
-	inline int operator==(string_view other) {
+	inline int operator==(string_view other) const {
 		return view() == other;
 	}
 
-	inline int operator!=(string_view other) {
+	inline int operator!=(string_view other) const {
 		return view() != other;
 	}
 

@@ -30,17 +30,17 @@ void end_draw_cmds(CommandBuffer& cmd_buffer) {
 	cmd_buffer.cmd_buffer = VK_NULL_HANDLE;
 }
 
-void draw_mesh(CommandBuffer& cmd_buffer, model_handle model_handle, slice<material_handle> materials, Transform& trans) {
+void draw_mesh(CommandBuffer& cmd_buffer, model_handle model_handle, slice<material_handle> materials, Transform& trans, uint lod) {
 	glm::mat4 model_m = compute_model_matrix(trans);
-	draw_mesh(cmd_buffer, model_handle, materials, model_m);
+	draw_mesh(cmd_buffer, model_handle, materials, model_m, lod);
 }
 
-void draw_mesh(CommandBuffer& cmd_buffer, model_handle model_handle, slice<material_handle> materials, glm::mat4 trans) {
+void draw_mesh(CommandBuffer& cmd_buffer, model_handle model_handle, slice<material_handle> materials, glm::mat4 trans, uint lod) {
 	slice<glm::mat4> model_m = trans;
-	draw_mesh(cmd_buffer, model_handle, materials, model_m);
+	draw_mesh(cmd_buffer, model_handle, materials, model_m, lod);
 }
 
-void draw_mesh(CommandBuffer& cmd_buffer, model_handle model_handle, slice<material_handle> materials, slice<glm::mat4> model_m) {
+void draw_mesh(CommandBuffer& cmd_buffer, model_handle model_handle, slice<material_handle> materials, slice<glm::mat4> model_m, uint lod) {
 	bind_vertex_buffer(cmd_buffer, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4);
 	
 	InstanceBuffer instance_buffer = frame_alloc_instance_buffer<glm::mat4>(INSTANCE_LAYOUT_MAT4X4, model_m);
@@ -49,21 +49,11 @@ void draw_mesh(CommandBuffer& cmd_buffer, model_handle model_handle, slice<mater
 
 	for (Mesh& mesh : model->meshes) {
 		material_handle mat_handle = materials[mesh.material_id];
-
-		MaterialDesc* mat_desc = material_desc(mat_handle);
-		
-		PipelineDesc desc = {};
-		desc.render_pass = render_pass_by_id(cmd_buffer.render_pass);
-		desc.shader = mat_desc->shader;
-		desc.vertex_layout = VERTEX_LAYOUT_DEFAULT;
-		desc.instance_layout = INSTANCE_LAYOUT_MAT4X4;
-		desc.state = mat_desc->draw_state;
-		
-		pipeline_handle pipeline_handle = query_Pipeline(rhi.pipeline_cache, desc); 
+		pipeline_handle pipeline_handle = query_pipeline(mat_handle, cmd_buffer.render_pass, cmd_buffer.subpass); 
 
 		bind_pipeline(cmd_buffer, pipeline_handle);
 		bind_material(cmd_buffer, mat_handle);
-		draw_mesh(cmd_buffer, mesh.buffer, instance_buffer);
+		draw_mesh(cmd_buffer, mesh.buffer[lod], instance_buffer);
 	}
 }
 
@@ -92,6 +82,7 @@ void bind_vertex_buffer(CommandBuffer& cmd_buffer, VertexLayout vertex_layout, I
 
 void bind_pipeline_layout(CommandBuffer& cmd_buffer, pipeline_layout_handle pipeline_layout_handle) {
 	cmd_buffer.bound_pipeline_layout = pipeline_layout_handle;
+	cmd_buffer.bound_pipeline = { INVALID_HANDLE };
 }
 
 void bind_pipeline(CommandBuffer& cmd_buffer, pipeline_handle pipeline_handle) {	
@@ -102,6 +93,7 @@ void bind_pipeline(CommandBuffer& cmd_buffer, pipeline_handle pipeline_handle) {
 	
 	cmd_buffer.bound_pipeline = pipeline_handle;
 	cmd_buffer.bound_pipeline_layout = { (u64)get_pipeline_layout(rhi.pipeline_cache, pipeline_handle) };
+	cmd_buffer.bound_material = { INVALID_HANDLE };
 }
 
 void bind_material(CommandBuffer& cmd_buffer, material_handle mat_handle) {

@@ -16,32 +16,69 @@ string_buffer name_with_id(ID id, string_view name) {
 	else return tformat("#", id);
 }
 
+struct AddChild {
+	ID parent;
+	ID child;
+};
 
-void render_hierarchy(EntityNode& node, Editor& editor, int indent = 0) {
+void render_hierarchy(tvector<AddChild>& defer_add_child, EntityNode& node, Editor& editor, int indent = 0) {
 	EntityNode* real = editor.lister.by_id[node.id];
-	
+
 	ID id = node.id;
 	bool selected = editor.selected_id == node.id;
-		
+
 	ImGuiStyle* style = &ImGui::GetStyle();
 
-	ImGui::Dummy(ImVec2(indent, 0));
-	ImGui::SameLine();
-
-	if (selected) ImGui::PushStyleColor(ImGuiCol_Button, style->Colors[ImGuiCol_ButtonActive]);
-
 	ImGui::PushID(id);
-	if (ImGui::Button(node.name.data)) editor.select(id); // 	if (ImGui::CollapsingHeader()
-	 
-	ImGui::PopID();
 
-	if (selected) ImGui::PopStyleColor();
+	ImVec4 bg_color = selected ? style->Colors[ImGuiCol_ButtonActive] : style->Colors[ImGuiCol_WindowBg];
+	bool has_children = node.children.length > 0;
 
-	if (real->expanded) {
-		for (EntityNode& child : node.children) {
-			render_hierarchy(child, editor, indent + 30);
+	if (!has_children) {
+		ImGui::PushStyleColor(ImGuiCol_Button, bg_color);
+		ImGui::Button(node.name.data);
+	} else {
+		ImGui::PushStyleColor(ImGuiCol_Header, bg_color);
+		ImGui::PushStyleColor(ImGuiCol_HeaderActive, bg_color);
+		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, style->Colors[ImGuiCol_ButtonHovered]);
+
+		ImGui::SetNextTreeNodeOpen(node.expanded);
+		bool expanded = ImGui::TreeNodeEx(node.name.data, (selected ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick);
+		if (expanded != node.expanded) { 
+			//not sure what behaviour we want here, filter scene hierarchy should expand the node
+			//so that the relevant search result is visible
+			//however should it remain open after changing the search result 
+			node.expanded = expanded;
+			real->expanded = expanded;
 		}
 	}
+
+	if (ImGui::IsItemClicked()) editor.select(id);
+
+	if (ImGui::BeginDragDropSource()) {
+		ImGui::Text(node.name.data);
+		//Could also cast u64 to a pointer
+		ImGui::SetDragDropPayload("DRAG_AND_DROP_ENTITY", real, sizeof(EntityNode));
+		ImGui::EndDragDropSource();
+	}
+	if (ImGui::BeginDragDropTarget()) {
+		if (ImGui::AcceptDragDropPayload("DRAG_AND_DROP_ENTITY")) {
+			EntityNode* child = (EntityNode*)ImGui::GetDragDropPayload()->Data; 
+			defer_add_child.append(AddChild{ id, child->id });
+		}
+		ImGui::EndDragDropTarget();
+	}
+
+
+	if (node.expanded && has_children) {
+		for (EntityNode& child : node.children) {
+			render_hierarchy(defer_add_child, child, editor, indent + 30);
+		}
+		ImGui::TreePop();
+	}
+
+	ImGui::PopStyleColor(has_children ? 3 : 1);
+	ImGui::PopID();
 }
 
 struct EntityFilter {
@@ -54,26 +91,42 @@ bool filter_hierarchy(EntityNode* result, EntityNode& top, World& world, EntityF
 	if (arch == 0) return false;
 
 	bool has_archetype = (arch & filter.archetype) == filter.archetype;
-	bool name_meets_filter = string_view(top.name).starts_with(filter.filter);
+	bool name_meets_filter = string_view(top.name).starts_with_ignore_case(filter.filter);
+	bool empty_filter = filter.filter.length == 0;
 	
 	*result = {};
 	result->id = top.id;
 	result->name = top.name;
+	result->expanded = top.expanded;
 	result->children.allocator = &temporary_allocator;
 
 	for (EntityNode& child : top.children) {
 		EntityNode node;
 		if (filter_hierarchy(&node, child, world, filter)) {
 			result->children.append(node);
+			if (!empty_filter) result->expanded = true;
 		}
 	}
 
 	return result->children.length > 0 || (has_archetype && name_meets_filter);
 }
 
+void remove_child(Lister& lister, EntityNode* child) {
+	EntityNode* parent = lister.by_id[child->parent];
+
+	uint index = child - parent->children.data; //todo merge this function with remove folder
+	for (uint i = index; i < parent->children.length - 1; i++) {
+		parent->children[i] = std::move(parent->children[i + 1]);
+		lister.by_id[parent->children[i].id] = parent->children.data + i;
+	}
+
+	parent->children.length--;
+}
+
 void add_child(Lister& lister, EntityNode& parent, EntityNode&& child) {
 	uint capacity = parent.children.capacity;
-	
+	child.parent = parent.id;
+	parent.expanded = true;
 	parent.children.append(std::move(child));
 
 	if (capacity == parent.children.capacity) { //NO RESIZE
@@ -84,6 +137,34 @@ void add_child(Lister& lister, EntityNode& parent, EntityNode&& child) {
 			lister.by_id[children.id] = &children;
 		}
 	}
+}
+
+void add_child(Lister& lister, World& world, AddChild add) {
+	const Transform* transform = world.by_id<Transform>(add.parent);
+	if (transform) {
+		const Transform* child_transform = world.by_id<Transform>(add.child);
+		LocalTransform* child_local = world.m_by_id<LocalTransform>(add.child);
+
+		if (child_transform) {
+			if (!child_local) child_local = world.add<LocalTransform>(add.child);
+			
+			//todo move function into transforms_components
+			child_local->scale = child_transform->scale / transform->scale;
+			child_local->rotation = child_transform->rotation * glm::inverse(transform->rotation);
+
+			auto position = child_transform->position - transform->position; 
+			child_local->position = position * glm::inverse(transform->rotation);
+
+			child_local->owner = add.parent;
+		}
+	}
+
+	EntityNode* child_ptr = lister.by_id[add.child];
+	EntityNode child = std::move(*child_ptr);
+	remove_child(lister, child_ptr);
+
+	EntityNode* new_parent = lister.by_id[add.parent];
+	add_child(lister, *new_parent, std::move(child));
 }
 
 EntityNode remove_child(Lister& lister, EntityNode& parent, ID id) {
@@ -108,31 +189,6 @@ EntityNode remove_child(Lister& lister, EntityNode& parent, ID id) {
 void register_entity(Lister& lister, string_view name, ID id) {
 	add_child(lister, lister.root_node, { name, id });
 }
-
-/*
-void get_hierarchy(vector<EntityEditor*>& active_named, World& world, vector<NameHierarchy*>& top, std::unordered_map<ID, NameHierarchy*> names) {
-	for (auto name : world.filter<EntityEditor>()) {
-		names[world.id_of(name)] = TEMPORARY_ALLOC(NameHierarchy, name->name );
-		names[world.id_of(name)]->children.allocator = &temporary_allocator;
-	}
-
-	for (auto name : active_named) {
-		ID id = world.id_of(name);
-		NameHierarchy* hierarchy = names[id];
-		hierarchy->id = id;
-	
-		auto local = world.by_id<LocalTransform>(id);
-		if (local) {
-			auto owner_named = names[local->owner];
-			if (local->owner != 0 && owner_named)
-				owner_named->children.append(hierarchy);
-			else
-				top.append(hierarchy);
-		}
-		else
-			top.append(hierarchy);
-	}
-}*/
 
 void create_object_popup(Lister& lister, World& world, material_handle default_material) {
 	if (ImGui::IsWindowHovered()) {
@@ -164,7 +220,6 @@ void create_object_popup(Lister& lister, World& world, material_handle default_m
 	}
 }
 
-
 void Lister::render(World& world, Editor& editor, RenderPass& params) {
 	if (ImGui::Begin("Lister")) {
 		ImGui::InputText("filter", filter);
@@ -173,7 +228,7 @@ void Lister::render(World& world, Editor& editor, RenderPass& params) {
 		EntityFilter entity_filter;
 		entity_filter.filter = filter;
 
-		create_object_popup(*this, world, editor.asset_tab.default_material);
+		create_object_popup(*this, world, editor.asset_info.default_material);
 
 		if (filter.starts_with("#")) {
 			auto splice = filter.sub(1, filter.size());
@@ -206,13 +261,18 @@ void Lister::render(World& world, Editor& editor, RenderPass& params) {
 			}
 		}
 
+		tvector<AddChild> deferred_add_child; //is it even necessary to defer movement of nodes
+
 		EntityNode result;
 		if (filter_hierarchy(&result, *filter_root, world, entity_filter)) {
 			for (EntityNode& node : result.children) {
-				render_hierarchy(node, editor);
+				render_hierarchy(deferred_add_child, node, editor);
 			}
 		}
 
+		for (AddChild& add : deferred_add_child) {
+			add_child(*this, world, add);
+		}
 	}
 
 	ImGui::End();

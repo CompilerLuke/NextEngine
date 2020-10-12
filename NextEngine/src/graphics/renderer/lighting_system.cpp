@@ -4,6 +4,7 @@
 #include "components/transform.h"
 #include <core/container/array.h>
 #include <ecs/ecs.h>
+#include "graphics/pass/pass.h"
 
 #include "components/camera.h"
 
@@ -14,7 +15,7 @@
 //	return assets.env_probes.assign_handle(std::move(env_probe));
 //}
 
-void bake_scene_lighting(LightingSystem& lighting_system, World& world, Layermask layermask) {
+void bake_scene_lighting(LightingSystem& lighting_system, World& world, EntityQuery layermask) {
 	//for (SkyLight* skylight : world.filter<SkyLight>(layermask)) {
 	//	cubemap_handle cubemap_handle = skylight->cubemap;
 	//	extract_lighting_from_cubemap(lighting_system, world.component_id(skylight), cubemap_handle);
@@ -45,12 +46,9 @@ void make_lighting_system(LightingSystem& system, SkyLight& skylight) {
 	update_descriptor_set(system.pbr_descriptor, desc);
 }
 
-void fill_light_ubo(LightUBO& light_ubo, World& world, Layermask mask) {
-	ID id = get_camera(world, mask);
-	Transform* camera_trans = world.by_id<Transform>(id);
-
+void fill_light_ubo(LightUBO& light_ubo, World& world, Viewport& viewport, EntityQuery mask) {
 	light_ubo = {};
-	light_ubo.viewpos = camera_trans->position;
+	light_ubo.viewpos = viewport.cam_pos;
 
 	for (auto [e, trans, point_light] : world.filter<Transform, PointLight>(mask)) {
 		PointLightUBO& ubo = light_ubo.point_lights[light_ubo.num_point_lights++];

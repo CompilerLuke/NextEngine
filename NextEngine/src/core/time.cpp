@@ -1,5 +1,10 @@
 #include "core/time.h"
 #include "ecs/system.h"
+#include <GLFW/glfw3.h>
+
+double Time::now() {
+	return glfwGetTime();
+}
 
 std::chrono::steady_clock::time_point get_time() {
 	return std::chrono::high_resolution_clock::now();

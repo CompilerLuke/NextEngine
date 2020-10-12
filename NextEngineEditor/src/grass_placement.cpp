@@ -12,13 +12,15 @@ void place_Grass(World& world, ID id) {
 
 	auto [transform, grass] = *world.get_by_id<Transform, Grass>(id);
 
-	glm::vec2 step = (1.0f / grass.density) / glm::vec2(grass.width, grass.height);
-	grass.transforms.clear();
+	float step = 1.0f / grass.density;
+	grass.positions.clear();
+	grass.model_m.clear();
 
-	for (float a = -.5f * grass.width; a < .5f * grass.width; a += step.x) {
-		for (float b = -.5f * grass.height; b < .5f * grass.height; b += step.x) {
-			float x = step.x * ((float)rand() / RAND_MAX);
-			float y = step.y * ((float)rand() / RAND_MAX);
+	//todo fade out edges
+	for (float a = -.5f * grass.width; a < .5f * grass.width; a += step) {
+		for (float b = -.5f * grass.height; b < .5f * grass.height; b += step) {
+			float x = step * ((float)rand() / RAND_MAX - 0.5);
+			float y = step * ((float)rand() / RAND_MAX - 0.5);
 
 			Transform trans = {
 				glm::vec3(a + x, 0, b + y),
@@ -30,7 +32,9 @@ void place_Grass(World& world, ID id) {
 			trans.position.y = sample_terrain_height(terrain, terrain_transform, glm::vec2(trans.position.x, trans.position.z));
 			
 			if (trans.position.y > grass.max_height) continue;
-			grass.transforms.append(trans);
+			
+			grass.positions.append(trans.position);
+			grass.model_m.append(compute_model_matrix(trans));
 		}
 	}
 

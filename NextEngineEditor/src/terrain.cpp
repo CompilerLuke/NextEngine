@@ -18,8 +18,7 @@ float easeInOutCubic(float x) {
 
 void edit_Terrain(Editor& editor, World& world, UpdateCtx& params) {
 	if (params.input.key_pressed('I')) {
-		auto[e, trans, control] = world.make<Transform, TerrainControlPoint>();
-		e.layermask = EDITOR_LAYER | PICKING_LAYER;
+		auto[e, trans, control] = world.make<Transform, TerrainControlPoint>(EDITOR_ONLY);
 
 		trans.scale = glm::vec3(0.1);
 		trans.position = editor.place_at_cursor();
@@ -28,8 +27,7 @@ void edit_Terrain(Editor& editor, World& world, UpdateCtx& params) {
 	}
 
 	if (params.input.key_pressed('O')) {
-		auto[e, trans, control] = world.make<Transform, TerrainSplat>();
-		e.layermask = EDITOR_LAYER | PICKING_LAYER;
+		auto[e, trans, control] = world.make<Transform, TerrainSplat>(EDITOR_ONLY);
 
 		trans.scale = glm::vec3(1.0);
 		trans.position = editor.place_at_cursor();
@@ -42,7 +40,7 @@ void edit_Terrain(Editor& editor, World& world, UpdateCtx& params) {
 
 	auto[_, terrain_trans, terrain] = *terrains;
 
-	for (auto [e, trans, splat] : world.filter<Transform, TerrainSplat>(EDITOR_LAYER)) {
+	for (auto[e, trans, splat] : world.filter<Transform, TerrainSplat>({ EDITOR_ONLY })) {
 		trans.position.y = sample_terrain_height(terrain, terrain_trans, glm::vec2(trans.position.x, trans.position.z));
 	}
 }

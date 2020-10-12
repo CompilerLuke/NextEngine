@@ -16,18 +16,19 @@
 #include "graphics/renderer/renderer.h"
 #include "core/container/tvector.h"
 #include "graphics/culling/build_bvh.h"
+#include "core/profiler.h"
 
 #define MAX_ENTITIES_PER_NODE 10
 #define MAX_PICKING_DEPTH 6
 
-Node* subdivide_BVH(PickingScenePartition& scene_partition, AABB& node_aabb, int depth, int mesh_count, AABB* aabbs, ID* ids, uint* tags) {
+uint subdivide_BVH(PickingScenePartition& scene_partition, AABB& node_aabb, int depth, int mesh_count, AABB* aabbs, ID* ids, uint* tags) {
+	uint node_id = scene_partition.node_count;
+	
 	if (mesh_count <= MAX_ENTITIES_PER_NODE || depth >= MAX_PICKING_DEPTH) {
 		Node& node = alloc_leaf_node(scene_partition, node_aabb, MAX_PICKING_INSTANCES, mesh_count);
 		
 		copy_into_node(node, scene_partition.ids, ids);
 		copy_into_node(node, scene_partition.aabbs, aabbs);
-
-		return &node;
 	}
 	else {
 		BranchNodeInfo info = alloc_branch_node(scene_partition, node_aabb);
@@ -54,16 +55,19 @@ Node* subdivide_BVH(PickingScenePartition& scene_partition, AABB& node_aabb, int
 
 		for (int i = 0; i < 2; i++) {
 			if (subdivided_aabbs[i].length == 0) continue;
-			info.node.child[i] = subdivide_BVH(scene_partition, info.child_aabbs[i], depth + 1, subdivided_aabbs[i].length, subdivided_aabbs[i].data, subdivided_ids[i].data, subdivided_tags[i].data);
-			info.node.aabb.update_aabb(info.node.child[i]->aabb);
+			info.node.child[info.node.child_count++] = subdivide_BVH(scene_partition, info.child_aabbs[i], depth + 1, subdivided_aabbs[i].length, subdivided_aabbs[i].data, subdivided_ids[i].data, subdivided_tags[i].data);
+			info.node.aabb.update_aabb(scene_partition.nodes[info.node.child[i]].aabb);
 		}
 
 		bump_allocator(scene_partition, info);
-		return &info.node;
 	}
+
+	return node_id;
 }
 
 void build_acceleration_structure(PickingScenePartition& scene_partition, World& world) { 
+	Profile profile("rebuild picking acceleration");
+	
 	AABB world_bounds;
 
 	int occupied = temporary_allocator.occupied;
@@ -72,7 +76,8 @@ void build_acceleration_structure(PickingScenePartition& scene_partition, World&
 	tvector<ID> ids;
 	tvector<uint> tags;
 
-	for (auto [e, trans, model_renderer] : world.filter<Transform, ModelRenderer>(ANY_LAYER)) {
+	//todo only generate bvh for static elements
+	for (auto [e, trans, model_renderer] : world.filter<Transform, ModelRenderer>()) {
 		auto model_m = compute_model_matrix(trans);
 
 		Model* model = get_Model(model_renderer.model_id);		
@@ -85,7 +90,7 @@ void build_acceleration_structure(PickingScenePartition& scene_partition, World&
 		tags.append(0);
 	}
 
-	for (auto[e, trans, control] : world.filter<Transform, TerrainControlPoint>(EDITOR_LAYER)) {
+	for (auto[e, trans, control] : world.filter<Transform, TerrainControlPoint>()) {
 		AABB aabb;
 		aabb.min = trans.position + glm::vec3(-0.5, -0.5, -0.5);
 		aabb.max = trans.position + glm::vec3(0.5, 0.5, 0.5);
@@ -96,7 +101,7 @@ void build_acceleration_structure(PickingScenePartition& scene_partition, World&
 		tags.append(GIZMO_TAG);
 	}
 
-	for (auto[e, trans, control] : world.filter<Transform, TerrainSplat>(EDITOR_LAYER)) {
+	for (auto[e, trans, control] : world.filter<Transform, TerrainSplat>()) {
 		AABB aabb;
 		aabb.min = trans.position + glm::vec3(-0.5, -0.5, -0.5);
 		aabb.max = trans.position + glm::vec3(0.5, 0.5, 0.5);
@@ -106,7 +111,7 @@ void build_acceleration_structure(PickingScenePartition& scene_partition, World&
 		ids.append(e.id);
 		tags.append(GIZMO_TAG);
 	}
-	for (auto[e, trans, terrain] : world.filter<Transform, Terrain>(ANY_LAYER)) {
+	for (auto[e, trans, terrain] : world.filter<Transform, Terrain>()) {
 		auto model_m = compute_model_matrix(trans);
 
 		uint width = terrain.width;
@@ -122,7 +127,7 @@ void build_acceleration_structure(PickingScenePartition& scene_partition, World&
 
 		for (uint block_y = 0; block_y < height; block_y++) {
 			for (uint block_x = 0; block_x < width; block_x++) {
-				float heighest = 0.0f;
+				float heighest = FLT_MAX; //todo add support for ray traced heightmap
 
 				uint offset_y = block_y * 32;
 				uint offset_x = block_x * 32;
@@ -131,13 +136,13 @@ void build_acceleration_structure(PickingScenePartition& scene_partition, World&
 					uint offset = y1 * width_quads;
 
 					for (uint x1 = offset_x; x1 < offset_x + 32; x1 += 4) {
-						heighest = fmaxf(heighest, displacement_map[x1 + offset]);
+						heighest = fminf(heighest, displacement_map[x1 + offset]);
 					}
 				}
 
 				AABB aabb;
 				aabb.min = terrain_aabb.min + glm::vec3(block_x * terrain.size_of_block, 0, block_y * terrain.size_of_block);
-				aabb.max = aabb.min + glm::vec3(terrain.size_of_block, heighest * 10.0f, terrain.size_of_block);
+				aabb.max = aabb.min + glm::vec3(terrain.size_of_block, heighest, terrain.size_of_block);
 
 
 				world_bounds.update_aabb(aabb);
@@ -155,25 +160,21 @@ void build_acceleration_structure(PickingScenePartition& scene_partition, World&
 	temporary_allocator.occupied = occupied;
 }
 
-Ray ray_from_mouse(World& world, ID camera_id, Input& input) {
-	glm::vec2 viewport_size = input.region_max - input.region_min;
-
-	Viewport viewport = {};
-	viewport.width = viewport_size.x;
-	viewport.height = viewport_size.y;
-
-	update_camera_matrices(world, camera_id, viewport);
-
+Ray ray_from_mouse(Viewport& viewport, glm::vec2 mouse_position) {
 	glm::mat4 inv_proj_view = glm::inverse(viewport.proj * viewport.view);
 
-	glm::vec2 mouse_position = input.mouse_position; 
-	glm::vec2 mouse_position_clip = mouse_position / viewport_size;
+	glm::vec2 mouse_position_clip = mouse_position / glm::vec2(viewport.width, viewport.height);
 	mouse_position_clip.y = 1.0 - mouse_position_clip.y;
 	mouse_position_clip = mouse_position_clip * 2.0f - 1.0f;
 
 	glm::vec4 end = inv_proj_view * glm::vec4(mouse_position_clip, 1, 1.0);
-	glm::vec4 start = inv_proj_view * glm::vec4(mouse_position_clip, -1, 1.0);
 	
+#ifdef GLM_FORCE_DEPTH_ZERO_TO_ONE
+	glm::vec4 start = inv_proj_view * glm::vec4(mouse_position_clip, 0.0f, 1.0);
+#else 
+	glm::vec4 start = inv_proj_view * glm::vec4(mouse_position_clip, -1, 1.0);
+#endif
+
 	start /= start.w;
 	end /= end.w;
 
@@ -213,22 +214,20 @@ float intersect(const AABB& bounds, const Ray &r) {
 	return tmin;
 }
 
-void ray_cast_node(PickingScenePartition& partition, Node* node, const Ray& ray, RayHit& hit) {
-	for (int i = 0; i < 2; i++) {
-		Node* child = node->child[i];
-		if (child && intersect(child->aabb, ray)) ray_cast_node(partition, child, ray, hit);
+void ray_cast_node(PickingScenePartition& partition, Node& node, const Ray& ray, RayHit& hit) {
+	for (int i = 0; i < node.child_count; i++) { //could use count instead
+		Node& child = partition.nodes[node.child[i]];
+		if (intersect(child.aabb, ray) < ray.t) ray_cast_node(partition, child, ray, hit);
 	}
 
-	float closest_t = hit.t;
-
-	for (int i = node->offset; i < node->offset + node->count; i++) {
+	for (int i = node.offset; i < node.offset + node.count; i++) {
 		AABB& aabb = partition.aabbs[i];
 
 		glm::vec3 new_hit;
 		float t = intersect(aabb, ray);
 		bool always_visible = partition.tags[i] & GIZMO_TAG;
 
-		if (t < closest_t && t < ray.t) {
+		if (0 < t && t < hit.t && t < ray.t) {
 			hit.id = partition.ids[i];
 			hit.t = t;
 		}
@@ -245,7 +244,7 @@ void PickingSystem::rebuild_acceleration_structure(World& world) {
 
 bool PickingSystem::ray_cast(const Ray& ray, RayHit& hit_result) {
 	if (partition.count == 0) return false;
-	ray_cast_node(partition, &partition.nodes[0], ray, hit_result);
+	ray_cast_node(partition, partition.nodes[0], ray, hit_result);
 
 	bool hit = hit_result.t < FLT_MAX;
 	if (hit) hit_result.position = ray.orig + ray.dir * hit_result.t;
@@ -253,13 +252,13 @@ bool PickingSystem::ray_cast(const Ray& ray, RayHit& hit_result) {
 	return hit;
 }
 
-bool PickingSystem::ray_cast(World& world, Input& input, RayHit& hit) {
-	Ray ray = ray_from_mouse(world, get_camera(world, EDITOR_LAYER), input);
+bool PickingSystem::ray_cast(Viewport& viewport, glm::vec2 position, RayHit& hit) {
+	Ray ray = ray_from_mouse(viewport, position);
 	return ray_cast(ray, hit);
 }
 
-int PickingSystem::pick(World& world, Input& input) {
-	Ray ray = ray_from_mouse(world, get_camera(world, EDITOR_LAYER), input);
+int PickingSystem::pick(Viewport& viewport, glm::vec2 position) {
+	Ray ray = ray_from_mouse(viewport, position);
 	RayHit hit;
 
 	if (ray_cast(ray, hit)) return hit.id;
@@ -279,11 +278,10 @@ struct Material;
 void render_node(RenderPass& ctx, material_handle mat, PickingScenePartition& partition, Node& node, Ray& ray) {
 	render_cube(ctx, mat, (node.aabb.max + node.aabb.min) * 0.5f, node.aabb.max - node.aabb.min);
 
-	for (int i = 0; i < 2; i++) {
-		Node* child = node.child[i];
-		if (child && intersect(child->aabb, ray) < FLT_MAX) render_node(ctx, mat, partition, *child, ray);
+	for (int i = 0; i < node.child_count; i++) {
+		Node& child = partition.nodes[node.child[i]];
+		if (intersect(child.aabb, ray) < FLT_MAX) render_node(ctx, mat, partition, child, ray);
 	}
-
 
 	for (int i = node.offset; i < node.offset + node.count; i++) {
 		AABB& aabb = partition.aabbs[i];
@@ -294,20 +292,29 @@ void render_node(RenderPass& ctx, material_handle mat, PickingScenePartition& pa
 
 #include "graphics/assets/material.h"
 
-void PickingSystem::visualize(World& world, Input& input, RenderPass& ctx) {
-	return;
-	
-	Ray ray = ray_from_mouse(world, get_camera(world, EDITOR_LAYER), input);
 
-	static material_handle material;
+void PickingSystem::visualize(Viewport& viewport, glm::vec2 position, RenderPass& ctx) {
+	//return;
+	if (partition.count == 0) return;
+	
+	Ray ray = ray_from_mouse(viewport, position);
+
+	static material_handle material = {};
 
 	if (material.id == INVALID_HANDLE) {
-		MaterialDesc mat_desc{ load_Shader("shaders/gizmo.vert", "shaders/gizmo.frag") };
+		MaterialDesc mat_desc{ load_Shader("shaders/pbr.vert", "shaders/gizmo.frag") };
 		mat_vec3(mat_desc, "color", glm::vec3(1.0f, 0.0f, 0.0f));
 		mat_desc.draw_state = Cull_None | PolyMode_Wireframe | (5 << WireframeLineWidth_Offset);
 
 		material = make_Material(mat_desc);
 	}
+
+	//return;
+
+	RayHit hit_result;
+	ray_cast(ray, hit_result);
+
+	render_cube(ctx, material, hit_result.position, glm::vec3(0.1));
 
 	render_node(ctx, material, partition, partition.nodes[0], ray);
 
@@ -328,28 +335,27 @@ void make_render_outline_state(OutlineRenderState& self) {
 	MaterialDesc outline_material{ self.outline_shader };
 	outline_material.draw_state = StencilFunc_NotEqual | (0x00 << StencilMask_Offset) | DepthFunc_None | PolyMode_Wireframe | (outline_width << WireframeLineWidth_Offset);
 
-	//this->outline_material = Material(outline_shader);
-	//this->outline_material.state = &outline_state;
+	self.outline_material = make_Material(outline_material);
 }
 
 void render_object_selected_outline(OutlineRenderState& outline, World& world, slice<ID> highlighted, RenderPass& ctx) {
 	for (ID id : highlighted) {
-		Transform* trans = world.by_id<Transform>(id);
-		ModelRenderer* model_renderer = world.by_id<ModelRenderer>(id);
-		Materials* materials = world.by_id<Materials>(id);
+		auto has_components = world.get_by_id<Transform, ModelRenderer, Materials>(id);
 
-		if (trans && model_renderer && materials) {
-			glm::mat4 model_m = compute_model_matrix(*trans);
+		if (has_components) {
+			auto[trans, model_renderer, materials] = *has_components;
+			glm::mat4 model_m = compute_model_matrix(trans);
 
-			draw_mesh(ctx.cmd_buffer, model_renderer->model_id, outline.object_material, model_m);
-			draw_mesh(ctx.cmd_buffer, model_renderer->model_id, outline.outline_material, model_m);
+			draw_mesh(ctx.cmd_buffer, model_renderer.model_id, outline.object_material, model_m);
+			draw_mesh(ctx.cmd_buffer, model_renderer.model_id, outline.outline_material, model_m);
 
-			Model* model = get_Model(model_renderer->model_id);
+			//Model* model = get_Model(model_renderer.model_id);
 
-			for (Mesh& mesh : model->meshes) {
-				material_handle should_be_handle = materials->materials[mesh.material_id];
-				//MaterialDesc* should_be = material_desc(should_be_handle);
+			/*for (Mesh& mesh : model->meshes) {
+				material_handle should_be_handle = materials.materials[mesh.material_id];
+				MaterialPipelineInfo info = material_pipeline_info(should_be_handle);
 
+				
 
 				//Material* mat = TEMPORARY_ALLOC(Material);
 				//mat->params.allocator = &temporary_allocator;
@@ -360,7 +366,7 @@ void render_object_selected_outline(OutlineRenderState& outline, World& world, s
 				//ctx.command_buffer.draw(model_m, &mesh.buffer, mat);
 				//ctx.command_buffer.draw(model_m, &mesh.buffer, TEMPORARY_ALLOC(Material, outline_material)); //this might be leaking memory!
 				//*/
-			}
+			//}
 		}
 	}
 }

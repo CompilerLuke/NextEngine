@@ -51,9 +51,9 @@ struct PickingSystem {
 	PickingSystem();
 	void rebuild_acceleration_structure(World& world);
 	bool ray_cast(const Ray&, RayHit&);
-	bool ray_cast(World& world, Input& input, RayHit& hit);
-	void visualize(World& world, Input& input, RenderPass& ctx);
-	int pick(World& world, Input&);
+	bool ray_cast(Viewport&, glm::vec2 position, RayHit& hit);
+	void visualize(Viewport&, glm::vec2, RenderPass& ctx);
+	int pick(Viewport&, glm::vec2);
 };
 
 //void build_acceleration_structure(PickingScenePartition& scene_partition, World& world);

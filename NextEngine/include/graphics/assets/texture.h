@@ -16,7 +16,7 @@ using TextureID = uint;
 enum class TextureFormat { UNORM, SRGB, HDR, U8 };
 enum class Filter { Nearest, Linear };
 enum class Wrap { ClampToBorder, Repeat };
-enum class TextureLayout { Undefined, TransferSrcOptimal, TransferDstOptimal, ShaderReadOptimal };
+enum class TextureLayout { Undefined, ColorAttachmentOptimal, TransferSrcOptimal, TransferDstOptimal, ShaderReadOptimal };
 enum class TextureUsage { 
 	TransferSrc     = 1 << 0, 
 	TransferDst     = 1 << 1, 
@@ -34,7 +34,7 @@ inline bool operator&(TextureUsage a, TextureUsage b) {return (uint)a & (uint)b;
 
 //todo potentially move into rhi folder
 struct TextureDesc {
-	TextureFormat format;
+	TextureFormat format = TextureFormat::UNORM;
 	int width, height, num_channels;
 	TextureUsage usage = TextureUsage::Sampled | TextureUsage::TransferDst;
 	uint num_mips = 1;
@@ -52,8 +52,19 @@ struct SamplerDesc {
 	Wrap wrap_v = Wrap::ClampToBorder;
 	uint max_anisotropy = 0;
 
-	bool operator==(const SamplerDesc& other) { return memcmp(this, &other, sizeof(SamplerDesc)) == 0; }
-	bool operator!=(const SamplerDesc& other) { return memcmp(this, &other, sizeof(SamplerDesc)) != 0; }
+	//Could write meta program to generate POD equality
+	bool operator==(const SamplerDesc& other) const {
+		return min_filter == other.min_filter
+			&& mag_filter == other.mag_filter
+			&& mip_mode == other.mip_mode
+			&& wrap_u == other.wrap_u
+			&& wrap_v == other.wrap_v
+			&& max_anisotropy == other.max_anisotropy;
+	}
+	
+	bool operator!=(const SamplerDesc& other) const {
+		return !(*this == other);
+	}
 };
 
 struct sampler_handle {
@@ -70,7 +81,7 @@ ENGINE_API void transition_layout(struct CommandBuffer& cmd_buffer, texture_hand
 
 ENGINE_API Image load_Image(string_view, bool reverse=false);
 ENGINE_API void free_Image(Image& image);
-ENGINE_API texture_handle upload_Texture(const Image& image);
+ENGINE_API texture_handle upload_Texture(const Image& image, bool serialized=false);
 ENGINE_API u64 underlying_texture(texture_handle handle);
 
 ENGINE_API sampler_handle query_Sampler(const SamplerDesc&);

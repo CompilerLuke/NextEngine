@@ -167,7 +167,7 @@ void update_bows(World& world, UpdateCtx& params) {
 			local.rotation = glm::angleAxis(glm::radians(-87.0f), glm::vec3(0,0,1));
 
 			if (input->holding_mouse_left) {
-				LocalTransform* arrow_trans = world.by_id<LocalTransform>(bow.attached);
+				LocalTransform* arrow_trans = world.m_by_id<LocalTransform>(bow.attached);
 
 				if (bow.duration <= 1.5) {
 					arrow_trans->position.z += params.delta_time * 0.15;
@@ -183,10 +183,10 @@ void update_bows(World& world, UpdateCtx& params) {
 		case Bow::Firing: {
 			float speed = bow.duration * bow.arrow_speed;
 
-			Arrow* arrow = world.by_id<Arrow>(bow.attached);
+			Arrow* arrow = world.m_by_id<Arrow>(bow.attached);
 			if (!arrow) continue;
 
-			LocalTransform* arrow_local = world.by_id<LocalTransform>(bow.attached);
+			LocalTransform* arrow_local = world.m_by_id<LocalTransform>(bow.attached);
 			if (!arrow_local) continue;
 
 			if (true) { //arrow_local->position.z <= -0.8) {

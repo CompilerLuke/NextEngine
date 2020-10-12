@@ -2,6 +2,9 @@
 
 #include "core/core.h"
 #include "core/handle.h"
+#include "core/container/sstring.h"
+#include "core/container/vector.h"
+#include <glm/glm.hpp>
 
 COMP
 struct TerrainControlPoint {};
@@ -48,9 +51,9 @@ struct Terrain {
 	bool show_control_points = true;
 	texture_handle heightmap;
 
-	vector<float> displacement_map[3];
-	vector<uint> blend_idx_map;
-	vector<uint> blend_values_map;
+	REFL_FALSE vector<float> displacement_map[3];
+	REFL_FALSE vector<uint> blend_idx_map;
+	REFL_FALSE vector<uint> blend_values_map;
 
 	float max_height = 50.0f;
 

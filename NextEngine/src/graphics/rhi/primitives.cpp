@@ -33,7 +33,7 @@ void init_primitives() {
 		vertices[i].tex_coord = tex_coords[i];
 	}
 
-	Model model;
+	Model& model = *PERMANENT_ALLOC(Model);
 	model.materials.data = PERMANENT_ALLOC(sstring);
 	model.materials.length = 1;
 	model.materials[0] = "default_material";
@@ -43,15 +43,15 @@ void init_primitives() {
 
 	model.meshes.data = PERMANENT_ALLOC(Mesh);
 	model.meshes.length = 1;
-	model.meshes[0].buffer = alloc_vertex_buffer(VERTEX_LAYOUT_DEFAULT, 4, vertices, 6, indices);
+	model.meshes[0].buffer[0] = alloc_vertex_buffer(VERTEX_LAYOUT_DEFAULT, 4, vertices, 6, indices);
 
 	primitives.quad = assets.models.assign_handle(std::move(model), true);
-	primitives.cube = load_Model("cube.fbx");
-	primitives.sphere = load_Model("sphere.fbx");
+	primitives.cube = load_Model("engine/cube.fbx");
+	primitives.sphere = load_Model("engine/sphere.fbx");
 
-	primitives.quad_buffer   = get_Model(primitives.quad)->meshes[0].buffer;
-	primitives.cube_buffer   = get_Model(primitives.cube)->meshes[0].buffer;
-	primitives.sphere_buffer = get_Model(primitives.sphere)->meshes[0].buffer;
+	primitives.quad_buffer   = get_Model(primitives.quad)->meshes[0].buffer[0];
+	primitives.cube_buffer   = get_Model(primitives.cube)->meshes[0].buffer[0];
+	primitives.sphere_buffer = get_Model(primitives.sphere)->meshes[0].buffer[0];
 	//first_quad = false;
 }
 

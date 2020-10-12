@@ -89,7 +89,7 @@ tvector<glm::mat4> instances;
 void upload_MeshData() {
 	model_handle handle = load_Model("house.fbx");
 	Model* model = get_Model(handle);
-	
+
 	instances.reserve(10 * 10);
 	for (int x = 0; x < 10; x++) {
 		for (int y = 0; y < 10; y++) {
@@ -102,7 +102,7 @@ void upload_MeshData() {
 		}
 	}
 
-	vertex_buffer = model->meshes[0].buffer;
+	vertex_buffer = model->meshes[0].buffer[0];
 	instance_buffer = frame_alloc_instance_buffer<glm::mat4>(INSTANCE_LAYOUT_MAT4X4, instances);
 
 }
@@ -221,30 +221,42 @@ void make_RenderPass(VkDevice device, VkPhysicalDevice physical_device, VkFormat
 	subpass.pColorAttachments = &colorAttachmentRef;
 	subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
-	VkSubpassDependency dependency = {};
-	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-	dependency.dstSubpass = 0;
-	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	dependency.srcAccessMask = 0;
-	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	VkSubpassDependency write_color_dependency = {};
+	write_color_dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+	write_color_dependency.dstSubpass = 0;
+	write_color_dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	write_color_dependency.srcAccessMask = 0;
+	write_color_dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	write_color_dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+	//does this screen pass even need a depth buffer?
+	VkSubpassDependency write_depth_dependency = {};
+	write_depth_dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+	write_depth_dependency.dstSubpass = 0;
+	write_depth_dependency.srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+	write_depth_dependency.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	write_depth_dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	write_depth_dependency.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	write_depth_dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
 
 	VkAttachmentDescription attachments[2] = { colorAttachment, depthAttachment };
+	VkSubpassDependency dependencies[2] = { write_color_dependency, write_depth_dependency };
 	VkRenderPassCreateInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	renderPassInfo.attachmentCount = 2;
 	renderPassInfo.pAttachments = attachments;
 	renderPassInfo.subpassCount = 1;
 	renderPassInfo.pSubpasses = &subpass;
-	renderPassInfo.dependencyCount = 1;
-	renderPassInfo.pDependencies = &dependency;
+	renderPassInfo.dependencyCount = 2;
+	renderPassInfo.pDependencies = dependencies;
 
 	if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
 		throw "Failed to make render pass!";
 	}
 
 	renderPassInfo.dependencyCount = 1;
-	renderPassInfo.pDependencies = &dependency;
+	renderPassInfo.pDependencies = &write_color_dependency;
 }
 
 void make_Framebuffers(VkDevice device, Swapchain& swapchain) {
@@ -458,7 +470,7 @@ void make_RHI(const VulkanDesc& desc, Window& window) {
 	DescriptorCount max_descriptor = {};
 	max_descriptor.max_samplers = 50;
 	max_descriptor.max_ubos = 50;
-	max_descriptor.max_sets = 30;
+	max_descriptor.max_sets = 50;
 
 	make_DescriptorPool(rhi.descriptor_pool, device, device, max_descriptor);
 
@@ -486,37 +498,6 @@ void make_RHI(const VulkanDesc& desc, Window& window) {
 void init_RHI() {	
 	VkDevice device = get_Device(rhi);
 	VkPhysicalDevice physical_device = get_PhysicalDevice(rhi);
-
-	/*shader_handle shader = load_Shader("shaders/shader.vert", "shaders/shader.frag");
-	ShaderModules* shader_modules = get_shader_config(shader, SHADER_INSTANCED);
-
-	MaterialDesc mat_desc{ shader };
-	mat_channel3(mat_desc, "diffuse", glm::vec3(1.5), load_Texture("wood_2/Stylized_Wood_basecolor.jpg")); //"Aset_wood_log_L_rdeu3_4K_Albedo.jpg"));
-	mat_channel1(mat_desc, "metallic", 0.0f);
-	mat_channel1(mat_desc, "roughness", 0.0f);
-	mat_channel1(mat_desc, "normal", 1.0f, load_Texture("wood_2/Stylized_Wood_normal.jpg")); //"Aset_wood_log_L_rdeu3_4K_Normal_LOD0.jpg"));
-
-	material_handle mat_handle = make_Material(mat_desc);
-	descriptor_set_handle mat_set = get_Material(mat_handle)->set;
-
-	material_descriptor_set = get_descriptor_set(mat_set);
-	material_descriptor_layout = get_descriptor_set_layout(mat_set);
-
-
-	upload_MeshData();*/
-
-
-
-	//material_descriptor_set = get_Material(mat_handle)->set;
-	//material_descriptor_layout = get_Material(mat_handle)->layout;
-
-
-	//make_RenderPass(device, physical_device, rhi.swapchain.imageFormat);
-	//make_DescriptorSetLayout(device);
-	//make_UniformBuffers(device, physical_device, frames_in_flight);
-	//make_DescriptorSets(device, rhi.descriptor_pool, frames_in_flight);
-		
-	//make_GraphicsPipeline(device, renderPass, rhi.swapchain.extent, shader_modules->vert, shader_modules->frag);
 }
 
 void destroy(VkDevice device, Swapchain& swapchain) {
@@ -638,11 +619,15 @@ void acquire_swapchain_image(Swapchain& swapchain) {
 	swapchain.images_in_flight[swapchain.image_index] = swapchain.in_flight_fences[swapchain.current_frame];
 }
 
+void queue_for_destruction(void* data, void(*func)(void*)) {
+	rhi.queued_for_destruction[rhi.frame_index].append({data, func});
+}
+
 void present_swapchain_image(Swapchain& swapchain) {
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = &swapchain.render_finished_semaphore[swapchain.current_frame];
+	presentInfo.pWaitSemaphores = &swapchain.render_finished_semaphore[swapchain.current_frame]; 
 
 	VkSwapchainKHR swapChains[] = { swapchain };
 	presentInfo.swapchainCount = 1;
@@ -722,6 +707,7 @@ void end_gpu_upload() {
 
 	rhi.staging_queue.value_wait_on_transfer++;
 
+	
 	{
 		VkCommandBuffer cmd_buffer = begin_recording(rhi.background_graphics);
 		transfer_image_ownership(rhi.texture_allocator, cmd_buffer);
@@ -741,6 +727,7 @@ void end_gpu_upload() {
 	submit_all_cmds(rhi.background_graphics, info);
 
 	queue_submit(rhi.device, rhi.device.graphics_queue, info);
+	
 }
 
 RenderPass begin_render_frame() {
@@ -748,6 +735,13 @@ RenderPass begin_render_frame() {
 	rhi.frame_index = rhi.swapchain.current_frame;
 
 	acquire_swapchain_image(swapchain);
+
+	//todo: figure out why this is crashing
+	//for (Task& task : rhi.queued_for_destruction[rhi.frame_index]) {
+	//	task.func(task.data);
+	//}
+
+	rhi.queued_for_destruction[rhi.frame_index].clear();
 
 	begin_frame(render_thread.command_pool, rhi.frame_index);
 	begin_frame(render_thread.instance_allocator, rhi.frame_index);

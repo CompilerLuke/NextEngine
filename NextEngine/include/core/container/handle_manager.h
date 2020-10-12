@@ -5,7 +5,7 @@
 
 constexpr unsigned int INVALID_SLOT = 0;
 
-template<typename T, typename H, int MAX_HANDLES = 200>
+template<typename T, typename H, int MAX_HANDLES = 200, int RESERVED_HANDLES = 10>
 struct HandleManager {
 	unsigned int generation_counter = 0;
 	
@@ -82,11 +82,11 @@ struct HandleManager {
 		}
 
 		for (int i = MAX_HANDLES; i > MAX_HANDLES - 100; i--) { //todo add more flexibility
-			free_ids.append(i);
+			free_serialized_ids.append(i);
 		}
 
-		for (int i = MAX_HANDLES - 100; i > 0; i--) {
-			free_serialized_ids.append(i);
+		for (int i = MAX_HANDLES - 100; i > RESERVED_HANDLES; i--) {
+			free_ids.append(i);
 		}
 	}
 };

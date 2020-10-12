@@ -25,7 +25,8 @@ struct Swapchain {
 	size_t current_frame = 0;
 	uint32_t image_index;
 	VkSemaphore image_available_semaphore[MAX_SWAPCHAIN_IMAGES];
-	VkSemaphore render_finished_semaphore[MAX_SWAPCHAIN_IMAGES];
+	VkSemaphore render_finished_semaphore[MAX_FRAMES_IN_FLIGHT];
+	VkSemaphore render_finished_semaphore2[MAX_FRAMES_IN_FLIGHT];
 	VkFence in_flight_fences[MAX_SWAPCHAIN_IMAGES];
 	array<10, VkFence> images_in_flight;
 

@@ -13,6 +13,7 @@ struct CommandBuffer {
 	pipeline_layout_handle bound_pipeline_layout = { INVALID_HANDLE };
 	pipeline_handle bound_pipeline = { INVALID_HANDLE };
 	material_handle bound_material = { INVALID_HANDLE };
+	uint subpass = 0;
 
 	inline operator VkCommandBuffer() { return cmd_buffer; }
 };

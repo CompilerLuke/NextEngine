@@ -45,7 +45,7 @@ inline BranchNodeInfo alloc_branch_node(Partition& scene_partition, AABB& node_a
 
 	info.watermark = temporary_allocator.occupied;
 	info.axis = size.x > size.y ? (size.x > size.z ? 0 : 2) : (size.y > size.z ? 1 : 2);
-	info.pivot = 0.5f * node_aabb.centroid();
+	info.pivot = node_aabb.centroid();
 	info.half_size = size[info.axis] * 0.5f;
 
 	return info;

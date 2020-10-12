@@ -116,7 +116,7 @@
       </Command>
     </PreLinkEvent>
     <PreBuildEvent>
-      <Command>$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) lister.h -o src\generated</Command>
+      <Command>$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) lister.h assetTab.h -o src\generated</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -139,7 +139,7 @@
       <AdditionalDependencies>C:\Users\User\source\repos\NextEngine\x64\Debug\NextEngine.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glad.o;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
-      <Command>$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) lister.h -o src\generated</Command>
+      <Command>$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) lister.h assetTab.h -o src\generated</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -162,7 +162,7 @@
       <AdditionalDependencies>C:\Users\User\source\repos\NextEngine\x64\Debug\NextEngine.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glad.o;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
-      <Command>$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) lister.h -o src\generated</Command>
+      <Command>$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) lister.h assetTab.h -o src\generated</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -196,7 +196,7 @@
       </Command>
     </PreLinkEvent>
     <PreBuildEvent>
-      <Command>$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) lister.h -o src\generated</Command>
+      <Command>$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) lister.h assetTab.h -o src\generated</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

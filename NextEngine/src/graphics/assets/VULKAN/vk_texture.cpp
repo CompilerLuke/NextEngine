@@ -9,7 +9,6 @@
 #include "graphics/rhi/vulkan/draw.h"
 #include <stb_image.h>
 #include "graphics/assets/assets.h"
-#include "graphics/rhi/vulkan/texture.h"
 #include "core/memory/linear_allocator.h"
 #include "core/io/vfs.h"
 
@@ -18,7 +17,6 @@
 //REFLECT_STRUCT_END()
 
 
-struct Assets;
 
 bool has_StencilComponent(VkFormat format) {
 	return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
@@ -93,7 +91,7 @@ void transition_ImageLayout(VkCommandBuffer cmd_buffer, VkImage image, VkFormat 
 
 		sourceStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 		destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-	} else if (oldLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
+	} else if (oldLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
 		barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 		barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 
@@ -181,12 +179,13 @@ VkImageView make_ImageView(VkDevice device, VkImage image, VkFormat imageFormat,
 	makeInfo.image = image;
 	makeInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 	makeInfo.format = imageFormat;
-
 	makeInfo.subresourceRange.aspectMask = aspectFlags;
 	makeInfo.subresourceRange.baseMipLevel = 0;
 	makeInfo.subresourceRange.levelCount = 1;
 	makeInfo.subresourceRange.baseArrayLayer = 0;
 	makeInfo.subresourceRange.layerCount = 1;
+
+	//makeInfo.flags = VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
 
 	VkImageView image_view;
 	if (vkCreateImageView(device, &makeInfo, nullptr, &image_view) != VK_SUCCESS) {
@@ -229,8 +228,8 @@ VkSampler make_TextureSampler(const SamplerDesc& sampler_desc) {
 
 	VkSamplerCreateInfo samplerInfo = {};
 	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	samplerInfo.magFilter = VK_FILTER_LINEAR;
-	samplerInfo.minFilter = VK_FILTER_LINEAR;
+	samplerInfo.magFilter =  to_vk_filter[(uint)sampler_desc.mag_filter];
+	samplerInfo.minFilter = to_vk_filter[(uint)sampler_desc.min_filter];
 	samplerInfo.addressModeU = to_vk_address[(uint)sampler_desc.wrap_u];
 	samplerInfo.addressModeV = to_vk_address[(uint)sampler_desc.wrap_v];
 	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
@@ -324,7 +323,7 @@ VkImageUsageFlags to_vk_usage_flags(TextureUsage usage) {
 
 VkFormat to_vk_image_format(TextureFormat format, uint num_channels) {
 	VkFormat formats_by_channel_count[4][4] = {
-		{ VK_FORMAT_R32_UINT, VK_FORMAT_R8G8_UNORM, VK_FORMAT_R8G8B8_UNORM, VK_FORMAT_R8G8B8A8_UNORM },
+		{ VK_FORMAT_R8_UNORM, VK_FORMAT_R8G8_UNORM, VK_FORMAT_R8G8B8_UNORM, VK_FORMAT_R8G8B8A8_UNORM },
 		{VK_FORMAT_R8_SRGB, VK_FORMAT_R8G8_SRGB, VK_FORMAT_R8G8B8_SRGB, VK_FORMAT_R8G8B8A8_SRGB},
 		{VK_FORMAT_R32_SFLOAT, VK_FORMAT_R32G32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32A32_SFLOAT},
 		{VK_FORMAT_R8_UINT, VK_FORMAT_R8G8_UINT, VK_FORMAT_R8G8B8_UINT, VK_FORMAT_R8G8B8A8_UINT}

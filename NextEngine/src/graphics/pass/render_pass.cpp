@@ -27,8 +27,8 @@ MainPass::MainPass(Renderer& renderer, glm::vec2 size)
 	shadow_pass(renderer, size * 0.25f, depth_prepass.depth_map)
 {
 	FramebufferDesc desc{ size.x, size.y };
-	desc.depth_buffer = DepthComponent24;
-	desc.stencil_buffer = StencilComponent8;
+	desc.depth_buffer = DepthBufferFormat::P24;
+	desc.stencil_buffer = StencilBufferFormat::P8;
 	
 	add_color_attachment(desc, &frame_map);
 	

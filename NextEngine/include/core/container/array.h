@@ -33,21 +33,19 @@ struct array {
 		//todo call destructors
 	}
 
-	/*array(array<N, T>&& other) {
+	array(array<N, T>&& other) {
 		length = other.length;
-		memcpy(data, other.data, sizeof(T) * length);
-
+		for (uint i = 0; i < length; i++) new (data + i)  T(std::move(other.data[i]));
+		//memcpy(data, other.data, sizeof(T) * length);
 		other.length = 0;
-	}*/
+	}
 
-	/*array copy() {
-		array result;
-		result.length = length;
+	array(const array<N,T>& other) {
+		length = other.length;
 		for (int i = 0; i < length; i++) {
-			new (result.data + i) T(data[i]);
+			new (data + i) T(other.data[i]);
 		}
-		return result;
-	}*/
+	}
 
 	inline array(std::initializer_list<T> list) {
 		for (const auto& i : list) {
@@ -79,7 +77,7 @@ struct array {
 		return false;
 	}
 
-	/*array<N, T>& operator=(const array<N, T>& other) {
+	array<N, T>& operator=(const array<N, T>& other) {
 		length = other.length;
 		for (int i = 0; i < length; i++) new (data + i) T(other[i]);
 		return *this;
@@ -87,12 +85,13 @@ struct array {
 
 	array<N, T>& operator=(array<N, T>&& other) {
 		length = other.length;
-		memcpy(data, other.data, sizeof(T) * length);
+		for (uint i = 0; i < length; i++) new (data + i) T(std::move(other.data[i]));
+		//memcpy(data, other.data, sizeof(T) * length);
 
 		other.length = 0;
 
 		return *this;
-	}*/
+	}
 
 	T& operator[](uint index) { 
 		assert(index < length);
@@ -104,7 +103,8 @@ struct array {
 		return data[index]; 
 	}
 
-	/*~array() {
+	/*
+	~array() {
 		for (int i = 0; i < length; i++) {
 			data[i].~T();
 		}

@@ -75,6 +75,9 @@ bool bit_set(uint* bit_visible, int i) {
 
 
 void render_meshes(const MeshBucketCache& mesh_buckets, CulledMeshBucket* buckets, RenderPass& ctx) {
+	//return; //todo handle support for z-prepass
+	
+	bool depth_only = ctx.type == RenderPass::Depth;
 	CommandBuffer& cmd_buffer = ctx.cmd_buffer;
 
 	bind_vertex_buffer(cmd_buffer, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4);
@@ -88,35 +91,13 @@ void render_meshes(const MeshBucketCache& mesh_buckets, CulledMeshBucket* bucket
 		if (count == 0) continue;
 
 		//todo performance: this goes through three levels of indirection
-		VertexBuffer vertex_buffer = get_VertexBuffer(bucket.model_id, bucket.mesh_id);
-
+		VertexBuffer vertex_buffer = get_vertex_buffer(bucket.model_id, bucket.mesh_id);
 		InstanceBuffer instance_offset = frame_alloc_instance_buffer<glm::mat4>(INSTANCE_LAYOUT_MAT4X4, instances.model_m);
 
-		shader_handle shader = material_desc(bucket.mat_id)->shader;
-		ShaderInfo& info = *shader_info(shader);
-
-		bind_pipeline(cmd_buffer, bucket.pipeline_id[ctx.id]);
-		bind_material(cmd_buffer, bucket.mat_id);
+		bind_pipeline(cmd_buffer, depth_only ? bucket.depth_only_pipeline_id :  bucket.color_pipeline_id);
+		
+		if (!depth_only) bind_material(cmd_buffer, bucket.mat_id);
+		
 		draw_mesh(cmd_buffer, vertex_buffer, instance_offset);
 	}
-
-
-	//glm::mat4* instance_data = TEMPORARY_ARRAY(glm::mat4, MAX_MESH_INSTANCES);
-
-//GENERATE DRAW CALLS
-
-	//memcpy(instance_data + instance_count, instances.model_m.data, instances.model_m.length * sizeof(glm::mat4));
-
-
-	//Material* material = get_Material(assets, bucket.mat_id);
-
-	/*for (int j = 0; j < count; j++) {
-	instance_data[j + instance_count] = instances.model_m[j];
-
-	DrawCommand cmd(0, instances.model_m[j], vertex_buffer, material);
-	ctx.command_buffer->submit(cmd);
-	}*/
-
-	//upload_data(buffer_allocator, instance_buffer, instance_count, instance_data);
-	//flush_logger();
 }

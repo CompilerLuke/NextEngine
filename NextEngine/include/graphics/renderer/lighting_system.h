@@ -1,10 +1,9 @@
 #pragma once
 
 #include "core/container/array.h"
+#include "ecs/id.h"
 #include "graphics/rhi/buffer.h"
 #include "graphics/rhi/shader_access.h"
-
-using Layermask = uint;
 
 struct Skybox;
 
@@ -47,5 +46,5 @@ struct LightUBO;
 struct SkyLight;
 
 ENGINE_API void make_lighting_system(LightingSystem& system, SkyLight& skylight);
-void fill_light_ubo(LightUBO& ubo, World& world, Layermask mask);
+void fill_light_ubo(LightUBO& ubo, World& world, Viewport& viewport, EntityQuery mask);
 void bind_color_pass_lighting(CommandBuffer& cmd_buffer, LightingSystem& system);

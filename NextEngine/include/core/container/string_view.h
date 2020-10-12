@@ -38,7 +38,7 @@ struct string_view {
 	}
 
 	inline bool ends_with(string_view pre) {
-		return length  < pre.length ? false : strncmp(pre.data, data + (length - pre.length), pre.length) == 0;
+		return length  < pre.length ? false : strncmp(pre.data, data + length - pre.length, pre.length) == 0;
 	}
 
 	inline int find_last_of(char c) {

@@ -5,6 +5,7 @@
 #include "draw.h"
 #include "graphics/pass/pass.h"
 #include "graphics/rhi/shader_access.h"
+#include "graphics/assets/shader.h"
 #include "forward.h"
 
 //todo establish naming convention for constants and enums
@@ -118,22 +119,31 @@ struct PushConstantRange {
 
 struct PipelineDesc {
 	shader_handle shader;
+	shader_flags shader_flags = SHADER_INSTANCED;
 	render_pass_handle render_pass;
+	uint subpass = 0;
 	VertexLayout vertex_layout = VERTEX_LAYOUT_DEFAULT;
 	InstanceLayout instance_layout = INSTANCE_LAYOUT_MAT4X4;
 	DrawCommandState state = 0;
 	PushConstantRange range[2];
 
-	inline bool operator==(const PipelineDesc& other) {
-		return render_pass.id == other.render_pass.id 
-			&& shader.id == other.shader.id
+	inline bool operator==(const PipelineDesc& other) const {
+		return shader.id == other.shader.id
+			&& shader_flags == other.shader_flags
+			&& render_pass.id == other.render_pass.id
+			&& subpass == other.subpass
 			&& vertex_layout == other.vertex_layout
 			&& instance_layout == other.instance_layout
 			&& state == other.state
 			&& range[0].packed == other.range[0].packed
 			&& range[1].packed == other.range[1].packed;
 	}
+
+	inline bool operator!=(const PipelineDesc& other) const {
+		return !(*this == other);
+	}
 };
 
+ENGINE_API void reload_Pipeline(const PipelineDesc&);
 ENGINE_API pipeline_layout_handle query_Layout(slice<descriptor_set_handle> descriptors);
 ENGINE_API pipeline_handle query_Pipeline(const PipelineDesc&);

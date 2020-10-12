@@ -31,6 +31,12 @@
 #include "graphics/assets/assets.h"
 #include <imgui/imgui_internal.h>
 
+
+#include "generated.h"
+#include <core/types.h>
+
+
+
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
@@ -40,6 +46,66 @@ void set_darcula_theme() {
 	ImGuiStyle* style = &ImGui::GetStyle();
 	ImVec4* colors = style->Colors;
 
+	ImVec4 shade1 = ImColor(25, 25, 25);
+	ImVec4 shade2 = ImColor(44, 44, 44);
+	ImVec4 shade3 = ImColor(64, 64, 64);
+	ImVec4 border = shade2; // ImColor(100, 100, 100);
+	ImVec4 blue = ImColor(52, 159, 235);
+	ImVec4 white = ImColor(255,255,255,255);
+	ImVec4 none = ImColor(255, 255, 255, 0);
+
+	colors[ImGuiCol_Text] = white;
+	colors[ImGuiCol_TextDisabled] = ImVec4(0.500f, 0.500f, 0.500f, 1.000f);
+	colors[ImGuiCol_WindowBg] = shade1;
+	colors[ImGuiCol_ChildBg] = none;
+	colors[ImGuiCol_PopupBg] = shade3;
+	colors[ImGuiCol_Border] = border;
+	colors[ImGuiCol_BorderShadow] = ImVec4(0.000f, 0.000f, 0.000f, 0.000f);
+	colors[ImGuiCol_FrameBg] = shade2;
+	colors[ImGuiCol_FrameBgHovered] = blue;
+	colors[ImGuiCol_FrameBgActive] = blue;
+	colors[ImGuiCol_TitleBg] = shade1;
+	colors[ImGuiCol_TitleBgActive] = shade1;
+	colors[ImGuiCol_TitleBgCollapsed] = shade1;
+	colors[ImGuiCol_MenuBarBg] = shade1;
+	colors[ImGuiCol_ScrollbarBg] = shade2;
+	colors[ImGuiCol_ScrollbarGrab] = shade2;
+	colors[ImGuiCol_ScrollbarGrabHovered] = blue;
+	colors[ImGuiCol_ScrollbarGrabActive] = blue;
+	colors[ImGuiCol_CheckMark] = blue;
+	colors[ImGuiCol_SliderGrab] = blue;
+	colors[ImGuiCol_SliderGrabActive] = blue;
+	colors[ImGuiCol_Button] = shade2;
+	colors[ImGuiCol_ButtonHovered] = blue;
+	colors[ImGuiCol_ButtonActive] = shade2;
+	colors[ImGuiCol_Header] = shade3; //ImVec4(0.25f, 0.25f, 0.25f, 1.000f);
+	colors[ImGuiCol_HeaderHovered] = ImVec4(0.3f, 0.3f, 0.3f, 1.000f);
+	colors[ImGuiCol_HeaderActive] = ImVec4(0.3f, 0.3f, 0.3f, 1.000f);
+	colors[ImGuiCol_Separator] = colors[ImGuiCol_Border];
+	colors[ImGuiCol_SeparatorHovered] = ImVec4(0.391f, 0.391f, 0.391f, 1.000f);
+	colors[ImGuiCol_SeparatorActive] = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
+	colors[ImGuiCol_ResizeGrip] = ImVec4(1.000f, 1.000f, 1.000f, 0.250f);
+	colors[ImGuiCol_ResizeGripHovered] = ImVec4(1.000f, 1.000f, 1.000f, 0.670f);
+	colors[ImGuiCol_ResizeGripActive] = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
+	colors[ImGuiCol_Tab] = shade1;
+	colors[ImGuiCol_TabHovered] = blue;
+	colors[ImGuiCol_TabActive] = shade2;
+	colors[ImGuiCol_TabUnfocused] = shade1;
+	colors[ImGuiCol_TabUnfocusedActive] = shade1;
+	colors[ImGuiCol_DockingPreview] = blue;
+	colors[ImGuiCol_DockingEmptyBg] = ImVec4(0.160f, 0.160f, 0.160f, 1.000f);
+	colors[ImGuiCol_PlotLines] = ImVec4(0.469f, 0.469f, 0.469f, 1.000f);
+	colors[ImGuiCol_PlotLinesHovered] = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
+	colors[ImGuiCol_PlotHistogram] = ImVec4(0.586f, 0.586f, 0.586f, 1.000f);
+	colors[ImGuiCol_PlotHistogramHovered] = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
+	colors[ImGuiCol_TextSelectedBg] = ImVec4(1.000f, 1.000f, 1.000f, 0.156f);
+	colors[ImGuiCol_DragDropTarget] = blue;
+	colors[ImGuiCol_NavHighlight] = ImVec4(0, 0, 0.000f, 1.000f);
+	colors[ImGuiCol_NavWindowingHighlight] = blue;
+	colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.000f, 0.000f, 0.000f, 0.586f);
+	colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.000f, 0.000f, 0.000f, 0.586f);
+
+	/*
 	colors[ImGuiCol_Text] = ImVec4(0.9f, 0.9f, 0.9f, 1.000f);
 	colors[ImGuiCol_TextDisabled] = ImVec4(0.500f, 0.500f, 0.500f, 1.000f);
 	colors[ImGuiCol_WindowBg] = ImVec4(0.16f, 0.160f, 0.160f, 1.000f);
@@ -90,6 +156,7 @@ void set_darcula_theme() {
 	colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.000f, 0.391f, 0.000f, 1.000f);
 	colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.000f, 0.000f, 0.000f, 0.586f);
 	colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.000f, 0.000f, 0.000f, 0.586f);
+	*/
 
 	style->ChildRounding = 4.0f;
 	style->FrameBorderSize = 1.0f;
@@ -163,109 +230,235 @@ World& get_World(Editor& editor) {
 //	return string_buffer("data/") + store->get_component_type()->name + ".ne";
 //}
 
-/*
-void on_load_world(Editor& editor) {
+const char* scene_save_path = "data/world_save_file.ne";
+
+void recurisively_register_id(Lister& lister, EntityNode& node) {
+	lister.by_id[node.id] = &node;
+
+	for (EntityNode& child : node.children) {
+		child.parent = node.id;
+		recurisively_register_id(lister, child);
+	}
+}
+
+bool load_world(Editor& editor, DeserializerBuffer& buffer, const char** err) {
 	World& world = get_World(editor);
+	ComponentLifetimeFunc* funcs = world.component_lifetime_funcs;
 
-	unsigned int save_files_available = 0;
+	world.clear();
 
-	for (int i = 0; i < world.components_hash_size; i++) {
-		auto store = world.components[i].get();
-		if (store != NULL) {
-			string_buffer component_path = save_component_to(store);
-			
-			string_buffer data_buffer;
-			if (!io_readfb(component_path, &data_buffer)) continue;
+	read_uint_from_buffer(buffer, world.free_ids.length);
+	read_n_from_buffer(buffer, world.free_ids.data, world.free_ids.length * sizeof(ID));
 
-			DeserializerBuffer buffer{ data_buffer.data, data_buffer.length };
-			refl::Type* component_type = store->get_component_type();
+	uint num_archetypes;
+	read_uint_from_buffer(buffer, num_archetypes);
 
-			uint num_components;
-			read_from_buffer(buffer, &num_components); //.read_int();
-			
-			for (unsigned int i = 0; i < num_components; i++) {
-				unsigned int id = buffer.read_int();
+	for (uint i = 0; i < num_archetypes; i++) {
+		Archetype arch;
+		ArchetypeStore store;
 
-				if (id == 0 && false) {
-					id = world.make_ID();
-					void* ptr = store->make_by_id(id);
+		read_u64_from_buffer(buffer, arch);
+		read_ArchetypeStore_from_buffer(buffer, store);
 
+		uint entities = store.entity_count_last_block;
 
+		BlockHeader** next_block_chain = &store.blocks;
 
-					buffer.read(component_type, ptr);
+		printf("Loading archetype %i\n", arch);
 
-					store->free_by_id(id);
-				}
-				else {
-					void* ptr = store->make_by_id(id);
+		for (uint i = 0; i < store.block_count; i++) {
+			BlockHeader* block_header = world.alloc_block();
+			*next_block_chain = block_header;
 
-					buffer.read(component_type, ptr);
-					world.skipped_ids.append(id);
+			u8* data = (u8*)(block_header + 1);
+
+			for (uint component_id = 0; component_id < MAX_COMPONENTS; component_id++) {
+				if (has_component(arch, component_id)) {
+					u8* base_component = data + store.offsets[component_id];
+					uint size = world.component_size[component_id];
+
+					if (auto constructor = funcs[component_id].constructor) constructor(base_component, entities); 
+
+					if (auto deserialize_non_trivial = funcs[component_id].deserialize) deserialize_non_trivial(buffer, base_component, entities);
+					else read_n_from_buffer(buffer, base_component, world.component_size[component_id] * entities);
+
+					for (uint i = 0; i < entities; i++) {
+						ID id = ((Entity*)(data + sizeof(Entity) * i))->id;
+						world.id_to_ptr[component_id][id] = base_component + size * i;
+					}
 				}
 			}
 
-			save_files_available++;
+			for (uint i = 0; i < entities; i++) {
+				ID id = ((Entity*)(data + sizeof(Entity) * i))->id;
+				world.id_to_arch[id] = arch;
+			}
+
+			next_block_chain = &block_header->next;
+			entities = store.max_per_block;
 		}
+
+		world.arches.set(arch, store);
 	}
 
-	//if (save_files_available == 0) default_scene(editor);
-}*/
+	return true;
+}
+
+bool load_scene_hierarchy(Lister& lister, DeserializerBuffer& buffer, const char** err) {
+	read_EntityNode_from_buffer(buffer, lister.root_node);
+
+	memset(lister.by_id, 0, sizeof(lister.by_id));
+	recurisively_register_id(lister, lister.root_node);
+
+	return true;
+}
+
+bool load_scene_partition(Renderer& renderer, ScenePartition& partition, DeserializerBuffer& buffer, const char** err) {
+	read_n_from_buffer(buffer, &partition, sizeof(ScenePartition));
+
+	//todo this also has to save mesh buckets
+	//and generate the various pipelines
+
+	return true;
+}
+
+bool load_picking_scene_partition(PickingScenePartition& partition, DeserializerBuffer& buffer, const char** err) {
+	read_n_from_buffer(buffer, &partition, sizeof(PickingScenePartition));
+	return true;
+}
 
 void default_scene(Editor& editor);
 
-void on_load(Editor& editor) {
+bool load_scene(Editor& editor, const char** err) {
 	World& world = get_World(editor);
+	Renderer& renderer = editor.renderer;
 
-	default_scene(editor);
-	editor.picking.rebuild_acceleration_structure(world);
-	return;
+	string_buffer contents;
+	if (!io_readf(scene_save_path, &contents)) {
+		*err = "Could not read world save path"; 
+		return false;
+	}
 
-	//on_load_world(editor);
+	DeserializerBuffer buffer = {};
+	buffer.length = contents.length;
+	buffer.data = contents.data;
 
-	//todo call callbacks
-	//world.get<Skybox>()->fire_callbacks();
+	if (!load_world(editor, buffer, err)) return false;
+	if (!load_scene_hierarchy(editor.lister, buffer, err)) return false;
+	if (!load_asset_info(editor.asset_tab.preview_resources, editor.asset_info, buffer, err)) return false;
+	//if (!load_scene_partition(editor.renderer.scene_partition, buffer, err)) return false;
+	if (!load_picking_scene_partition(editor.picking.partition, buffer, err)) return false;
 
-	editor.asset_tab.on_load(world);
+	auto [_,terrain] = *world.first<Terrain>();
 
-	editor.picking.rebuild_acceleration_structure(world);
+	//todo remove adhoc initialization
+	default_terrain(terrain); //generate terrain from height points
+	update_terrain_material(renderer.terrain_render_resources, terrain);
+	regenerate_terrain(world, renderer.terrain_render_resources, {EDITOR_ONLY});
+	
+	update_acceleration_structure(renderer.scene_partition, renderer.mesh_buckets, world);
+
+
+	//submit_framegraph();
 }
 
-void on_save_world(Editor& editor) {
+void on_load(Editor& editor) {
+	const char* err = "";
+	if (load_scene(editor, &err)) printf("Sucesfully loaded scene!");
+	else {
+		fprintf(stderr, err);
+		default_scene(editor);
+	}
+}
+
+//todo move into ecs
+bool save_world(Editor& editor, SerializerBuffer& buffer, const char** err) {
 	World& world = get_World(editor);
+	ComponentLifetimeFunc* funcs = world.component_lifetime_funcs;
 
-	/*
-	for (int i = 0; i < world.components_hash_size; i++) {
-		auto store = world.components[i].get();
-		if (store != NULL) {
-			SerializerBuffer buffer;
+	write_uint_to_buffer(buffer, world.free_ids.length);
+	write_n_to_buffer(buffer, world.free_ids.data, world.free_ids.length * sizeof(ID));
 
-			vector<Component> filtered;
-			for (Component& comp : store->filter_untyped()) {
-				if (world.by_id<EntityEditor>(comp.id))
-					filtered.append(comp);
+	uint num_archetypes = 0;
+	for (int i = 0; i < ARCHETYPE_HASH; i++) {
+		if (world.arches.keys.is_full(i)) num_archetypes++;
+	}
+
+	write_uint_to_buffer(buffer, num_archetypes);
+
+	//SAVE ECS
+	for (int i = 0; i < ARCHETYPE_HASH; i++) {
+		if (!world.arches.keys.is_full(i)) continue;
+
+		Archetype arch = world.arches.keys.keys[i];
+		ArchetypeStore& store = world.arches.values[i];
+
+		printf("Saving archetype %i\n", arch);
+
+		write_u64_to_buffer(buffer, arch);
+		write_ArchetypeStore_to_buffer(buffer, store);
+
+		uint entities = store.entity_count_last_block;
+		BlockHeader* block_header = store.blocks;
+		
+		while (block_header) {
+			u8* data = (u8*)(block_header + 1);
+
+			for (uint i = 0; i < MAX_COMPONENTS; i++) {
+				if (arch & 1ul << i) {
+					u8* base_component = data + store.offsets[i];
+
+					if (auto serialize_non_trivial = funcs[i].serialize) serialize_non_trivial(buffer, base_component, entities);
+					else write_n_to_buffer(buffer, base_component, world.component_size[i] * entities);
+				}
 			}
 
-			write_to_buffer(buffer, filtered.length);
-
-			log("Serialized ", filtered.length, " ", store->get_component_type()->name);
-
-			for (Component& comp : filtered) {
-				write_to_buffer(buffer, comp.id);
-				//buffer.write_int(comp.id);
-				//buffer.write(comp.type, comp.data);
-			}
-
-			string_buffer component_save_path = save_component_to(store);
-			if (!io_writef(component_save_path, { buffer.data, buffer.index })) {
-				throw "Could not save data";
-			}
+			block_header = block_header->next;
+			entities = store.max_per_block;
 		}
-	}*/
+	}
+
+	return true;
+}
+
+bool save_scene_hierarchy(Lister& lister, SerializerBuffer& buffer, const char** err) {
+	write_EntityNode_to_buffer(buffer, lister.root_node);
+	return true;
+}
+
+bool save_scene_paritition(ScenePartition& partition, SerializerBuffer& buffer, const char** err) {
+	write_n_to_buffer(buffer, &partition, sizeof(ScenePartition));
+	return true;
+}
+
+bool save_picking_scene_partition(PickingScenePartition& partition, SerializerBuffer& buffer, const char** err) {
+	write_n_to_buffer(buffer, &partition, sizeof(PickingScenePartition));
+	return true;
+}
+
+bool save_scene(Editor& editor, const char** err) {
+	SerializerBuffer buffer = {};
+	buffer.capacity = mb(10);
+	buffer.data = TEMPORARY_ARRAY(char, buffer.capacity);
+
+	if (!save_world(editor, buffer, err)) return false;
+	if (!save_scene_hierarchy(editor.lister, buffer, err)) return false;
+	if (!save_asset_info(editor.asset_tab.preview_resources, editor.asset_info, buffer, err)) return false;
+	//if (!save_scene_paritition(editor.renderer.scene_partition, buffer, err)) return false;
+	if (!save_picking_scene_partition(editor.picking.partition, buffer, err)) return false;
+
+	if (!io_writef(scene_save_path, { buffer.data, buffer.index })) {
+		*err = "Could not write world to save file!";
+		return false;
+	}
+
+	return true;
 }
 
 void on_save(Editor& editor) {
-	on_save_world(editor);
-	editor.asset_tab.on_save();
+	const char* err = "";
+	if (!save_scene(editor, &err)) fprintf(stderr, err);
+	else printf("Saved scene");
 }
 
 void register_callbacks(Editor& editor, Modules& engine) {
@@ -280,7 +473,7 @@ void register_callbacks(Editor& editor, Modules& engine) {
 	//editor.asset_tab.register_callbacks(window, editor);
 
 	editor.selected.listen([&engine, &world](ID id) {
-		auto rb = world.by_id<RigidBody>(id);
+		auto rb = world.m_by_id<RigidBody>(id);
 		if (rb) {
 			rb->bt_rigid_body = NULL; //todo fix leak
 		}
@@ -320,21 +513,11 @@ Editor::Editor(Modules& modules, const char* game_code) :
 	//MainPass* main_pass = renderer.main_pass;
 	//main_pass->post_process.append(&picking_pass);
 
-	on_load(*this);
+
 
 	modules.input->capture_mouse(false);
 
 	init_actions(actions);
-
-	//engine.asset_manager.shaders.load("shaders/pbr.vert", "shaders/paralax_pbr.frag");
-
-	//render_ctx.dir_light = get_dir_light(world, render_ctx.layermask);
-
-	/*
-	*/
-
-	//PreRenderParams pre_render_ctx(GAME_LAYER);
-	//render_ctx.dir_light = get_dir_light(world, render_ctx.layermask);
 
 	editor_viewport = {};
 	editor_viewport.input = Input();
@@ -357,7 +540,11 @@ Editor::Editor(Modules& modules, const char* game_code) :
 
 	ImGui_ImplVulkan_CreateDeviceObjects();
 
+	make_special_gizmo_resources(gizmo_resources);
 
+	Profiler::begin_frame();
+	on_load(*this);
+	Profiler::end_frame();
 }
 
 void Editor::init_imgui() {
@@ -422,8 +609,9 @@ void ImGui::InputText(const char* str, string_buffer& buffer) {
 void default_scene(Editor& editor) {
 	World& world = get_World(editor);
 
-	editor.asset_tab.default_material = create_new_material(editor.asset_tab, editor);
+	editor.asset_info.default_material = make_new_material(editor.asset_tab, editor);
 
+	/*
 	{
 		auto [e, trans, model_renderer, materials] = world.make<Transform, ModelRenderer, Materials>();
 		trans.position.z = -4;
@@ -435,10 +623,10 @@ void default_scene(Editor& editor) {
 		editor.select(e.id);
 
 		model_renderer.model_id = import_model(editor.asset_tab, "HOVERTANK.fbx");
-		materials.materials.append(editor.asset_tab.default_material);
+		materials.materials.append(editor.asset_info.default_material);
 
 		register_entity(editor.lister, "Plane", e.id);
-	}
+	}*/
 
 
 	//Ground Plane
@@ -456,8 +644,9 @@ void default_scene(Editor& editor) {
 	{
 		auto[e, trans, terrain] = world.make<Transform, Terrain>();
 
-		gen_terrain(terrain);
+		default_terrain(terrain);
 		update_terrain_material(editor.renderer.terrain_render_resources, terrain);
+		clear_terrain(editor.renderer.terrain_render_resources);
 
 		register_entity(editor.lister, "Terrain", e.id);
 	}
@@ -469,9 +658,7 @@ void default_scene(Editor& editor) {
 	}
 
 	{
-		auto[e, trans, flyover, camera] = world.make<Transform, Flyover, Camera>();
-		e.layermask |= EDITOR_LAYER;
-
+		auto[e, trans, flyover, camera] = world.make<Transform, Flyover, Camera>(EDITOR_ONLY);
 		register_entity(editor.lister, "Camera", e.id);
 	}
 
@@ -522,7 +709,7 @@ void render_view(Editor& editor, World& world, RenderPass& ctx) {
 }
 
 void render_overlay(Editor& editor, RenderPass& ctx) {
-	editor.picking.visualize(editor.world, editor.editor_viewport.input, ctx);
+	editor.picking.visualize(editor.editor_viewport.viewport, editor.editor_viewport.input.mouse_position, ctx);
 }
 
 void render_Editor(Editor& editor, RenderPass& ctx, RenderPass& scene);
@@ -532,16 +719,48 @@ void render_frame(Editor& editor, World& world) {
 	FrameData frame_data;
 
 	Viewport viewport = editor.editor_viewport.viewport; 
-	Layermask mask = editor.playing_game ? GAME_LAYER : GAME_LAYER | EDITOR_LAYER;
+	EntityQuery mask = editor.playing_game ? EntityQuery().with_none(EDITOR_ONLY) : EntityQuery();
+
+	GizmoRenderData gizmo_render_data = {};
 
 	{
+		update_camera_matrices(world, editor.playing_game ? mask : EntityQuery{EDITOR_ONLY}, viewport);
 		extract_render_data(renderer, viewport, frame_data, world, mask);
+		extract_render_data_special_gizmo(gizmo_render_data, world, mask);
 	}
 
+	//SYNC WITH FRAMES IN FLIGHT
 	GPUSubmission gpu_submission = build_command_buffers(renderer, frame_data);
+	
+	//TEMPORARY SOLUTION TO TERRAIN INITIALIZATION PROBLEM
+	{
+		static uint receive_terrain = 0;
+		uint frame_index = get_frame_index();
+		if (receive_terrain == 0 && frame_index == 0) {
+			receive_terrain = 1;
+		}
+		else if (receive_terrain == 1 && frame_index == 0) {
+			auto[_, terrain] = *world.first<Terrain>();
+			receive_generated_heightmap(renderer.terrain_render_resources, terrain);
+			regenerate_terrain(world, renderer.terrain_render_resources, EntityQuery{ EDITOR_ONLY }); //this should not be necessary 
+			receive_terrain = 2;
+		}
+	}
 
-	render_Editor(editor, gpu_submission.render_passes[RenderPass::Screen], gpu_submission.render_passes[RenderPass::Scene]);
-	render_overlay(editor, gpu_submission.render_passes[RenderPass::Scene]);
+	RenderPass& scene_pass = gpu_submission.render_passes[RenderPass::Scene];
+
+	if (!editor.playing_game) {
+		material_handle mat_handle = editor.gizmo_resources.camera_material; //FRANKLY THIS SHOULD NOT BE NECESSARY
+		bind_descriptor(scene_pass.cmd_buffer, 0, editor.renderer.scene_pass_descriptor[get_frame_index()]);
+
+		bind_pipeline(scene_pass.cmd_buffer, query_pipeline(mat_handle, scene_pass.cmd_buffer.render_pass, 1.0));
+		bind_descriptor(scene_pass.cmd_buffer, 1, editor.renderer.lighting_system.pbr_descriptor);
+
+		render_special_gizmos(editor.gizmo_resources, gizmo_render_data, scene_pass);
+		render_overlay(editor, scene_pass);
+	}
+	render_Editor(editor, gpu_submission.render_passes[RenderPass::Screen], scene_pass);
+
 
 	submit_frame(renderer, gpu_submission);
 
@@ -582,7 +801,7 @@ void on_set_play_mode(Editor& editor, bool playing) {
 glm::vec3 Editor::place_at_cursor() {
 	RayHit hit;
 	hit.position = glm::vec3();
-	picking.ray_cast(world, editor_viewport.input, hit);
+	picking.ray_cast(editor_viewport.viewport, editor_viewport.input.mouse_position, hit);
 
 	return hit.position;
 }
@@ -593,7 +812,7 @@ void spawn_Model(World& world, Editor& editor, model_handle model_handle) { //to
 		
 	if (model_asset) {
 		auto[e, trans, model_renderer, materials] = world.make<Transform, ModelRenderer, Materials>();
-		materials.materials = model_asset->materials;
+		materials.materials = slice<material_handle>(model_asset->materials);
 		model_renderer.model_id = model_asset->handle;
 
 		trans.position = editor.place_at_cursor();
@@ -669,8 +888,7 @@ void render_Viewport(Editor& editor, EditorViewport& editor_viewport) {
 		editor_viewport.viewport.width = width;
 		editor_viewport.viewport.height = height;
 
-		ID cam = get_camera(world, EDITOR_LAYER);
-		update_camera_matrices(world, cam, editor_viewport.viewport);
+		update_camera_matrices(world, EntityQuery{ EDITOR_ONLY }, editor_viewport.viewport);
 
 
 		ImGui::Image(editor_viewport.contents, ImVec2(width, height));
@@ -685,7 +903,9 @@ void render_Viewport(Editor& editor, EditorViewport& editor_viewport) {
 
 		bool is_scene_hovered = ImGui::IsItemHovered();
 
-		editor.gizmo.render(world, editor, editor.editor_viewport.viewport, input);
+		if (!editor.playing_game) {
+			editor.gizmo.render(world, editor, editor.editor_viewport.viewport, input);
+		}
 	}
 	
 
@@ -696,7 +916,7 @@ void render_Editor(Editor& editor, RenderPass& ctx, RenderPass& scene) {
 	Input& input = editor.input;
 	
 	editor.begin_imgui(input);
-	
+
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
 	ImGui::SetNextWindowPos(viewport->Pos);
 	ImGui::SetNextWindowSize(viewport->Size);
@@ -805,15 +1025,20 @@ void delete_object(Editor& editor) {
 
 void mouse_click_select(Editor& editor) {
 	World& world = get_World(editor);
-	Input& input = editor.editor_viewport.input;
+	EditorViewport& viewport = editor.editor_viewport;
 	
-	int selected = editor.picking.pick(world, input);
+	int selected = editor.picking.pick(viewport.viewport, viewport.input.mouse_position);
 	editor.select(selected);
 }
 
 void respond_to_shortcut(Editor& editor) {
 	Input& input = editor.editor_viewport.input;
 	World& world = get_World(editor);
+
+	if (ImGui::GetIO().WantCaptureKeyboard) {
+		input.active = false;
+		input.clear();
+	}
 
 	if (input.key_pressed(GLFW_KEY_P)) {
 		on_set_play_mode(editor, !editor.playing_game);
@@ -835,13 +1060,11 @@ void respond_to_framediffs(Editor& editor) {
 	World& world = editor.world;
 	ActionStack& stack = editor.actions.frame_diffs;
 
-	Archetype terrain_control_point = to_archetype<TerrainControlPoint, TerrainSplat>();
-
+	Archetype terrain_control_point = (1ull << type_id<TerrainControlPoint>()) | (1ull << type_id<TerrainSplat>());
+	bool rebuild_acceleration = false;
+	bool update_terrain = false;
 
 	for (EditorActionHeader header : stack.stack) {
-		bool rebuild_acceleration = false;
-		bool update_terrain = false;
-		
 		switch (header.type) {
 		case EditorActionHeader::Diff: {
 			Diff* diff = (Diff*)header.ptr;
@@ -851,9 +1074,8 @@ void respond_to_framediffs(Editor& editor) {
 			}
 
 			if (diff->type->name == "MaterialDesc") {
-				MaterialDesc* material_desc = (MaterialDesc*)diff->real_ptr;
-				replace_Material({diff->id}, *material_desc);
-				// update material
+				assert(diff->id != INVALID_HANDLE);
+				editor.renderer.update_materials.append({ diff->id, *(MaterialDesc*)diff->copy_ptr.data(), *(MaterialDesc*)diff->real_ptr });
 			}
 
 			Archetype arch = world.arch_of_id(diff->id);
@@ -890,23 +1112,23 @@ void respond_to_framediffs(Editor& editor) {
 		case EditorActionHeader::Destroy_Component:
 			break;
 		}
+	}
 
-		if (rebuild_acceleration) {
-			Renderer& renderer = editor.renderer;
-			bool is_static = true;
+	if (rebuild_acceleration) {
+		Renderer& renderer = editor.renderer;
+		bool is_static = true;
 
-			renderer.scene_partition.node_count = 0;
-			editor.picking.partition.node_count = 0;
-			renderer.scene_partition.count = 0;
-			editor.picking.partition.count = 0;
+		renderer.scene_partition.node_count = 0;
+		editor.picking.partition.node_count = 0;
+		renderer.scene_partition.count = 0;
+		editor.picking.partition.count = 0;
 
-			editor.picking.rebuild_acceleration_structure(editor.world);
-			build_acceleration_structure(renderer.scene_partition, renderer.mesh_buckets, editor.world);
-		}
+		editor.picking.rebuild_acceleration_structure(editor.world);
+		build_acceleration_structure(renderer.scene_partition, renderer.mesh_buckets, editor.world);
+	}
 
-		if (update_terrain) {
-			regenerate_terrain(editor.world, editor.renderer.terrain_render_resources, EDITOR_LAYER);
-		}
+	if (update_terrain) {
+		regenerate_terrain(editor.world, editor.renderer.terrain_render_resources, EntityQuery{EDITOR_ONLY});
 	}
 
 	clear_stack(editor.actions.frame_diffs);
@@ -935,14 +1157,18 @@ APPLICATION_API void update(Editor& editor, Modules& modules) {
 	respond_to_shortcut(editor);
 
 	UpdateCtx update_ctx(editor.time, editor.editor_viewport.input);
-	update_ctx.layermask = editor.playing_game ? GAME_LAYER : EDITOR_LAYER;
+	UpdateCtx update_ctx_editor_only = update_ctx;
+	update_ctx_editor_only.layermask = EntityQuery{ EDITOR_ONLY };
 
 	if (editor.playing_game) {
 		if (update_ctx.input.key_down('R')) editor.game.reload();
+		
+		editor.game.engine.input = &update_ctx.input;
 		editor.game.update();
 	}
 	else {
-		update_flyover(editor.world, update_ctx);
+		update_local_transforms(editor.world, update_ctx);
+		update_flyover(editor.world, update_ctx_editor_only);
 		edit_Terrain(editor, editor.world, update_ctx);
 		//FlyOverSystem::update(engine.world, update_ctx);
 	}
@@ -959,8 +1185,6 @@ APPLICATION_API void reload(Editor& editor, Modules& modules) {
 
 APPLICATION_API void render(Editor& editor, Modules& engine) {
 	World& world = get_World(editor);
-
-	Layermask layermask = editor.playing_game ? GAME_LAYER : GAME_LAYER | EDITOR_LAYER;
 
 	render_frame(editor, world);
 	editor.editor_viewport.input.clear();

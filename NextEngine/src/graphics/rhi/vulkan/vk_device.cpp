@@ -200,6 +200,7 @@ array<20, const char*> get_required_extensions(const VulkanDesc& desc) {
 	return extensions;
 }
 
+
 VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
 	VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 	VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -261,6 +262,8 @@ VkInstance make_Instance(const VulkanDesc& desc) {
 
 	//Enable validation layers
 	VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo = {};
+	VkValidationFeaturesEXT validationFeaturesCreateInfo = {};
+	array<5, VkValidationFeatureEnableEXT> validation_feature_enable = {};
 
 	makeInfo.enabledLayerCount = desc.num_validation_layers;
 	makeInfo.pNext = NULL;
@@ -270,6 +273,14 @@ VkInstance make_Instance(const VulkanDesc& desc) {
 
 		populate_debug_messenger_create_info(debugCreateInfo, desc);
 		makeInfo.pNext = &debugCreateInfo;
+
+		validation_feature_enable.append(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
+	
+		validationFeaturesCreateInfo.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+		validationFeaturesCreateInfo.enabledValidationFeatureCount = validation_feature_enable.length;
+		validationFeaturesCreateInfo.pEnabledValidationFeatures = validation_feature_enable.data;
+
+		debugCreateInfo.pNext = &validationFeaturesCreateInfo;
 	}
 
 	VkInstance result;

@@ -1,5 +1,6 @@
 #include "components/camera.h"
 #include "components/transform.h"
+#include "ecs/ecs.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include "graphics/renderer/renderer.h"
 
@@ -32,13 +33,14 @@ void update_camera_matrices(Transform& trans, Camera& camera, Viewport& viewport
 	//ctx.view_pos = world.by_id<Transform>(id)->position;
 }
 
-void update_camera_matrices(World& world, ID id, Viewport& viewport) {
-	update_camera_matrices(*world.by_id<Transform>(id), *world.by_id<Camera>(id), viewport);
+void update_camera_matrices(World& world, EntityQuery flags, Viewport& viewport) {
+	auto[e, trans, camera] = *world.first<Transform, Camera>(flags);
+	update_camera_matrices(trans, camera, viewport);
 	//viewport.cam = world.by_id<Camera>(id);
 	//ctx.view_pos = world.by_id<Transform>(id)->position;
 }
 
-ID get_camera(World& world, Layermask layermask) {
+ID get_camera(World& world, EntityQuery layermask) {
 	auto [e,_] = *world.first<Camera>(layermask);
 	return e.id;
 }

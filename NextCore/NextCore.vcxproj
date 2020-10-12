@@ -25,6 +25,7 @@
     <ClInclude Include="include\core\container\event_dispatcher.h" />
     <ClInclude Include="include\core\container\handle_manager.h" />
     <ClInclude Include="include\core\container\hash_map.h" />
+    <ClInclude Include="include\core\container\offset_slice.h" />
     <ClInclude Include="include\core\container\pool.h" />
     <ClInclude Include="include\core\container\queue.h" />
     <ClInclude Include="include\core\container\slice.h" />

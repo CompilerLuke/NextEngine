@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/stat.h>
+#include "core/serializer.h"
 
 using string = string_view;
 
@@ -28,12 +29,13 @@ namespace pixc {
     namespace reflection {
         namespace compiler {
             struct Type {
-                enum {Int,Uint,I64,U64,Bool,Float,Char,StringView,SString,StringBuffer,Struct,Enum,StructRef,Array,Alias,Ptr,IntArg} type;
+                enum Kind {Int,Uint,I64,U64,Bool,Float,Double,Char,StringView,SString,StringBuffer,Struct,Enum,Union,StructRef,Array,Alias,Ptr,IntArg} type;
             };
 
             struct Field {
                 const char* name;
                 Type* type;
+				uint flags;
             };
 
 			struct Name {
@@ -59,15 +61,18 @@ namespace pixc {
             struct Array : Type {
 				enum ArrayType { Vector, TVector, Slice, CArray, StaticArray } arr_type;
 				Type* element;
-                int num;
+                uint num;
             };
 
 			const uint REFLECT_TAG = 1 << 0;
 			const uint SERIALIZE_TAG = 1 << 1;
 			const uint PRINTABLE_TAG = 1 << 2;
 			const uint COMPONENT_TAG = (1 << 3) | REFLECT_TAG | SERIALIZE_TAG;
-			const uint TAGGED_UNION_TAG = 1 << 4;
-            
+			const uint ENTITY_FLAG_TAG = 1 << 4;
+			const uint TAGGED_UNION_TAG = 1 << 5;
+			const uint TRIVIAL_TAG = 1 << 6;
+			const uint NON_TRIVIAL_TAG = 1 << 7;
+
 			struct Constant {
 				const char* name;
 				int value;
@@ -89,9 +94,15 @@ namespace pixc {
             struct StructType : Type {
 				Name name;
                 tvector<Field> fields;
+				uint flags;
                 tvector<Type*> template_args;
-                uint flags;
             };
+
+			struct UnionType : Type {
+				Name name;
+				tvector<Field> fields;
+				uint flags;
+			};
 
             struct Namespace {
                 string name;
@@ -99,6 +110,7 @@ namespace pixc {
                 tvector<StructType*> structs;
 				tvector<EnumType*> enums;
 				tvector<AliasType*> alias;
+				tvector<UnionType*> unions;
 			};
 
 
@@ -114,6 +126,7 @@ namespace pixc {
 				const char* linking;
 				const char* base;
 				const char* include;
+				const char* component;
                 int component_id;
 				LinearAllocator* allocator;
             };
@@ -131,6 +144,7 @@ namespace pixc {
 			}
 
             void unexpected(Reflector& ref, lexer::Token token) {
+				lexer::print_token(token);
                 raise_error(ref, error::SyntaxError, "Came across unexpected token whilst parsing syntax!", token);
             };
 
@@ -163,6 +177,7 @@ namespace pixc {
 			Type i64_type = {Type::I64};
 			Type u64_type = {Type::U64};
             Type float_type = {Type::Float};
+            Type double_type = {Type::Double};
             Type bool_type = {Type::Bool};
             Type char_type = {Type::Char};
 			Type string_view_type = {Type::StringView};
@@ -374,9 +389,18 @@ namespace pixc {
 				return enum_type;
 			}
 
+			UnionType* make_UnionType(Reflector& ref, const char* name, uint flags) {
+				UnionType* union_type = alloc<UnionType>(ref.allocator);
+				union_type->type = Type::Union;
+				union_type->name = make_Name(ref, name);
+				union_type->flags = flags;
+				ref.namespaces.last()->unions.append(union_type);
+				return union_type;
+			}
+
             Namespace* make_Namespace(Reflector& ref, string name) {
                 Namespace* space = alloc<Namespace>(ref.allocator);
-                space->name = name;
+                space->name = as_null_terminated(ref, name);
                 return space;
             }
 
@@ -395,7 +419,7 @@ namespace pixc {
 
 			const uint IN_STRUCT = 1 << 3;
 
-			bool parse_enum(Reflector& ref, uint flags) {
+			EnumType* parse_enum(Reflector& ref, uint flags) {
 				bool is_enum_class = false;
 				if (look_ahead(ref).type == lexer::Class) {
 					ref.i++;
@@ -415,7 +439,7 @@ namespace pixc {
 					lexer::Token token = curr_token(ref);
 					if (token.type != lexer::Identifier) {
 						unexpected(ref, token);
-						return false;
+						return nullptr;
 					}
 
 					Constant constant = {};
@@ -445,11 +469,11 @@ namespace pixc {
 
 				lexer::Token token = next_token(ref);
 				if (flags & IN_STRUCT && token.type == lexer::Identifier) {
-					return true;
+					return enum_type;
 				}
 				else if (token.type != lexer::SemiColon) {
 					unexpected(ref, token);
-					return false;
+					return nullptr;
 				}
 			}
 
@@ -461,6 +485,52 @@ namespace pixc {
 				assert_next(ref, lexer::SemiColon);
 
 				make_AliasType(ref, name, aliasing, flags);
+			}
+
+			UnionType* parse_union(Reflector& ref, uint flags) {
+				const char* name = "";
+				
+				lexer::Token token = look_ahead(ref);
+				if (token.type != lexer::Open_Bracket) {
+					name = parse_name(ref);
+					assert_next(ref, lexer::Open_Bracket);
+				}
+				else if (!(flags & IN_STRUCT)) {
+					raise_error(ref, error::SyntaxError, "Expecting name", token);
+					return nullptr;
+				}
+				else {
+					ref.i++;
+				}
+				
+				UnionType* union_type = make_UnionType(ref, name, flags);
+
+				ref.i++;
+
+				uint last_enum_value = 0;
+
+				for (; ref.tokens[ref.i].type != lexer::Close_Bracket && ref.i < ref.tokens.length; ref.i++) {
+					Field field = {};
+					
+					field.type = parse_type(ref);
+					field.name = parse_name(ref);
+				
+					union_type->fields.append(field);
+
+					assert_next(ref, lexer::SemiColon);
+				}
+
+				token = next_token(ref);
+				if (flags & IN_STRUCT && token.type == lexer::Identifier) {
+					return union_type;
+				}
+				else if (token.type != lexer::SemiColon) {
+					unexpected(ref, token);
+					return nullptr;
+				}
+				else {
+					return strlen(name) == 0 ? union_type : nullptr;
+				}
 			}
 
             void parse_struct(Reflector& ref, uint flags) {
@@ -479,24 +549,43 @@ namespace pixc {
                 
                 ref.i++;
                 
+
                 for (; ref.tokens[ref.i].type != lexer::Close_Bracket && ref.i < ref.tokens.length; ref.i++) {
                     lexer::Token token = ref.tokens[ref.i];
 					Type* type = nullptr;
 					
 					if (token.type == lexer::Static || token.value == "REFL_FALSE") {
-                        while (ref.tokens[++ref.i].type != lexer::SemiColon) {};
+						//struct_type->flags |= NON_TRIVIAL_TAG; //in some cases it may be the correct decision to not keep around the ignored fields in serialization data
+						uint bracket_count = 0;
+						while (ref.tokens[++ref.i].type != lexer::SemiColon || bracket_count > 0) {
+							if (ref.tokens[ref.i].type == lexer::Open_Bracket) bracket_count++;
+							else if (ref.tokens[ref.i].type == lexer::Close_Bracket) {
+								if (--bracket_count == 0) break;
+							}
+						};
 						continue;
                     }
                     else if (token.type == lexer::Struct) {
                         parse_struct(ref, 0); 
 						continue;
-                    }
+                    } 
 					else if (token.type == lexer::Enum) {
-						bool is_identifier = parse_enum(ref, IN_STRUCT);
-						type = space->enums.last();
+						type = parse_enum(ref, IN_STRUCT);
 						ref.i--;
 
-						if (!is_identifier) continue;
+						if (!type) continue;
+					} 
+					else if (token.type == lexer::Union) {
+						UnionType* union_type = parse_union(ref, IN_STRUCT);
+						if (!union_type) continue;
+						else if (strlen(union_type->name.iden) == 0) {
+							struct_type->fields.append({"", union_type});
+							continue;
+						}
+						else {
+							ref.i--;
+							type = union_type;
+						}
 					}
 					else {
 						type = parse_type(ref);
@@ -605,6 +694,17 @@ namespace pixc {
                 //}
             }*/
 
+			void parse_entity_flag(Reflector& ref) {
+				assert_next(ref, lexer::Open_Paren);
+				const char* name = parse_name(ref);
+
+				StructType* type = make_StructType(ref, name);
+				type->flags |= ENTITY_FLAG_TAG;
+
+
+				assert_next(ref, lexer::Close_Paren);
+			}
+
             void parse(Reflector& ref) {
                 
 				
@@ -623,6 +723,7 @@ namespace pixc {
 						}
 
 						if (token == "REFL") reflect_struct = true;
+						if (token == "ENTITY_FLAG" && ref.tokens[ref.i - 1].type != lexer::Define) parse_entity_flag(ref); 
 					}
 
 					if (reflect_struct) {
@@ -631,6 +732,7 @@ namespace pixc {
 						switch (token.type) {
 						case lexer::Struct: parse_struct(ref, flags); break;
 						case lexer::Enum: parse_enum(ref, flags); break;
+						case lexer::Union: parse_union(ref, flags); break;
 						case lexer::Using: parse_alias(ref, flags); break;
 						default: unexpected(ref, token); break;
 						}
@@ -729,12 +831,21 @@ namespace pixc {
 			//todo cache result
 			bool is_trivially_copyable(Reflector& reflector, Type* type) {
 				switch (type->type) {
+				case Type::Union: 
 				case Type::Struct: {
 					StructType* struct_type = (StructType*)type;
+					if (struct_type->flags & TRIVIAL_TAG) return true;
+					if (struct_type->flags & NON_TRIVIAL_TAG) return false;
 
 					for (Field& field : struct_type->fields) {
-						if (!is_trivially_copyable(reflector, field.type)) return false;
+						if (!is_trivially_copyable(reflector, field.type)) {
+							struct_type->flags |= NON_TRIVIAL_TAG;
+							return false;
+						}
 					}
+
+
+					struct_type->flags |= TRIVIAL_TAG;
 
 					return true;
 				}
@@ -778,6 +889,7 @@ namespace pixc {
 				case Type::Float: write_trivial_to_buffer(f, "float", name); break;
 				case Type::Bool: write_trivial_to_buffer(f, "bool", name); break;
 				case Type::Char: write_trivial_to_buffer(f, "char", name); break;
+				case Type::Union:
 				case Type::StructRef: {
 					StructType* struct_type = (StructType*)type;
 					//Type* type = find_type();
@@ -851,10 +963,8 @@ namespace pixc {
 					case Array::StaticArray: 
 						
 					case Array::Vector:
-						fprintf(f, "    read_uint_from_buffer(buffer, %s.length);\n", name);
-						fprintf(f, "    %s.resize(%s.length);\n", name, name);
+						fprintf(f, "    %s.resize(read_uint_from_buffer(buffer));\n", name);
 						sprintf_s(length_str, "%s.length", name);
-
 					}
 
 					fprintf(f, "	for (uint i = 0; i < %s; i++) {\n     ", length_str);
@@ -871,25 +981,12 @@ namespace pixc {
 				fprintf(f, "refl::Enum init_%s() {\n", type->name.full);
 				fprintf(f, "	refl::Enum type(\"%s\", sizeof(%s));\n", type->name.iden, type->name.type);
 
-				//bool is_tagged_union = type->flags & TAGGED_UNION_TAG;
-
-
 				for (Constant& constant : type->values) {
 					fprintf(f, "	type.values.append({ \"%s\", %s::%s });\n", constant.name, type->name.type, constant.name);
 				}
 
 				fprintf(f, "	return type;\n");
 				fprintf(f, "}\n\n");
-
-				/*fprintf(h, "void write_to_buffer(struct SerializerBuffer& buffer, struct %s& data); \n", full_type_name_buffer);
-				fprintf(f, "void write_to_buffer(SerializerBuffer& buffer, %s& data) {\n", full_type_name_buffer);
-				for (Field& field : type->fields) {
-					char write_to[100];
-					sprintf_s(write_to, "data.%s", field.name.data);
-
-					serialize_type(f, field.type, write_to);
-				}
-				fprintf(f, "}\n\n");*/
 
 				if (type->is_class) {
 					fprintf(f, "void write_%s_to_buffer(SerializerBuffer& buffer, %s data) {\n", name.full, name.type);
@@ -927,7 +1024,13 @@ namespace pixc {
 					switch (array->arr_type) {
 					case Array::Vector:  fprintf(f, "make_vector_type("); break;
 					case Array::TVector: fprintf(f, "make_tvector_type("); break;
-					case Array::StaticArray: fprintf(f, "make_array_type(%i, ", array->num); break;
+					case Array::StaticArray: 
+						fprintf(f, "make_array_type(%i, sizeof(array<%i, ", array->num, array->num);
+						dump_type(f, array->element);
+						fprintf(f, ">), ");
+						break;
+
+
 					case Array::CArray: fprintf(f, "make_carray_type(%i, ", array->num); break;
 					}
 
@@ -947,25 +1050,148 @@ namespace pixc {
 					fprintf(f, "get_%s_type()", ref->name.full);
 					break;
 				}
+
+
 				}
 			}
 
+			void serialize_tagged_union(FILE* f, const char* type_name, UnionType* type, EnumType* tag, const char* variable, void(*serialize_type)(FILE*, Type*, const char*)) {				
+				fprintf(f, "    switch (%stype) {\n", variable);
+
+				for (int i = 0; i < min(type->fields.length, tag->values.length); i++) {
+					Field& field = type->fields[i];
+					Constant& constant = tag->values[i];
+
+					fprintf(f, "    case %s::%s:\n", type_name, constant.name);
+
+					char write_to[100];
+					sprintf_s(write_to, "%s%s", variable, field.name);
+					serialize_type(f, field.type, write_to);
+
+					fprintf(f, "    break;\n\n");
+				}
+
+				fprintf(f, "    }\n");
+			}
+
+			/*
+			void dump_union_reflector(FILE* f, FILE* h, UnionType* type, string prefix, Reflector& reflector, int indent = 0) {
+				Name& name = type->name;
+				const char* linking = reflector.linking;
+
+				fprintf(f, "refl::Union init_%s() {\n", name.full);
+				fprintf(f, "	refl::Union type(\"%s\", sizeof(%s));\n", name.full, name.type);
+
+				for (Field& field : type->fields) {
+					fprintf(f, "	type.fields.append({");
+					fprintf(f, "\"%s\", 0, ", field.name);
+					dump_type_ref(f, field.type);
+
+					fprintf(f, "});\n");
+				}
+
+				fprintf(f, "	return type;\n");
+				fprintf(f, "}\n\n");
+
+				bool trivial = is_trivially_copyable(reflector, type);
+				EnumType* tag = type->tag;
+
+				if (!tag) {
+					fprintf(h, "%s void write_%s_to_buffer(struct SerializerBuffer& buffer, union %s& data, %s tag);\n", linking, name.full, name.type, type->tag->type);
+					fprintf(f, "void write_%s_to_buffer(SerializerBuffer& buffer, %s& data, %s tag) {\n", name.full, name.type, type->tag->type);
+				}
+				else {
+					fprintf(h, "%s void write_%s_to_buffer(struct SerializerBuffer& buffer, union %s& data);\n", linking, name.full, name.type);
+					fprintf(f, "void write_%s_to_buffer(SerializerBuffer& buffer, %s& data) {\n", name.full, name.type);
+				}
+
+				if (trivial) {
+					fprintf(f, "    write_n_to_buffer(buffer, &data, sizeof(%s));\n", name.type);
+				}
+				else if (!tag) {
+					fprintf(stderr, "Non tagged union %s must be trivially copyable", name.iden);
+					abort();
+				}
+				else {
+					serialize_tagged_union(f, type, tag, serialize_type);
+				}
+				fprintf(f, "}\n\n");
+
+				if (!tag) {
+					fprintf(h, "%s void read_%s_from_buffer(struct SerializerBuffer& buffer, union %s& data, %s tag);\n", linking, name.full, name.type, type->tag->type);
+					fprintf(f, "void read_%s_from_buffer(SerializerBuffer& buffer, %s& data, %s tag) {\n", name.full, name.type, type->tag->type);
+				}
+				else {
+					fprintf(h, "%s void read_%s_from_buffer(struct SerializerBuffer& buffer, union %s& data);\n", linking, name.full, name.type);
+					fprintf(f, "void read_%s_from_buffer(SerializerBuffer& buffer, %s& data) {\n", name.full, name.type);
+				}
+
+				if (trivial) {
+					fprintf(f, "    read_n_to_buffer(buffer, &data, sizeof(%s));\n", name.type);
+				}
+				else {
+					fprintf(f, "switch (tag) {");
+
+					for (int i = 0; i < min(type->fields.length, tag->values.length); i++) {
+						Field& field = type->fields[i];
+						Constant& constant = tag->values[i];
+
+						fprintf(f, "case %s:\n", constant.name);
+
+						char write_to[100];
+						sprintf_s(write_to, "data.%s", field.name);
+						deserialize_type(f, field.type, write_to);
+					}
+
+					fprintf(f, "}");
+				}
+				fprintf(f, "}\n\n");
+
+
+				fprintf(h, "%s refl::Union* get_%s_type();\n", linking, name.full);
+
+				fprintf(f, "refl::Union* get_%s_type() {\n", name.full);
+				fprintf(f, "	static refl::Union type = init_%s();\n", name.full);
+				fprintf(f, "	return &type;\n");
+				fprintf(f, "}\n\n");
+
+
+			}*/
+
+
             void dump_struct_reflector(FILE* f, FILE* h, StructType* type, string prefix, Reflector& reflector, int indent = 0) {				
+				if (type->flags & ENTITY_FLAG_TAG) return;
+				
 				Name& name = type->name;
 				const char* linking = reflector.linking;
 				
 				fprintf(f, "refl::Struct init_%s() {\n", name.full);
 				fprintf(f, "	refl::Struct type(\"%s\", sizeof(%s));\n", name.full, name.type);
 
-				//bool is_tagged_union = type->flags & TAGGED_UNION_TAG;
+				EnumType* tag_type = nullptr;
+				bool is_tagged_union = false;
 
 				//Support tags
 				for (Field& field : type->fields) {
-					fprintf(f, "	type.fields.append({");
-					fprintf(f, "\"%s\", offsetof(%s, %s), ", field.name, name.type, field.name);
-					dump_type_ref(f, field.type);
-					
-					fprintf(f, "});\n");
+					if (field.name == "" && field.type->type == Type::Union) {
+						UnionType* union_type = (UnionType*)type;
+
+						//todo generate correct reflection data
+						fprintf(f, "    static refl::Union inline_union = { refl::Type::Union, 0, \"%s\" };\n", union_type->name.full); //no clue what the size 
+						//todo reflect fields
+						fprintf(f, "    type.fields.append({ \"\", offsetof(%s, %s), &inline_union });\n", name.type, union_type->fields[0].name);
+						is_tagged_union = true;
+					}
+					else if (strcmp(field.name, "type") == 0 && field.type->type == Type::Enum) {
+						tag_type = (EnumType*)field.type;
+					}
+					else {
+						fprintf(f, "	type.fields.append({");
+						fprintf(f, "\"%s\", offsetof(%s, %s), ", field.name, name.type, field.name);
+						dump_type_ref(f, field.type);
+
+						fprintf(f, "});\n");
+					}
 				}
 
 				fprintf(f, "	return type;\n");
@@ -984,7 +1210,12 @@ namespace pixc {
 						char write_to[100];
 						sprintf_s(write_to, "data.%s", field.name);
 
-						serialize_type(f, field.type, write_to);
+						if (field.type->type == Type::Union && field.name == "") {
+							serialize_tagged_union(f, name.type, (UnionType*)field.type, tag_type, write_to, serialize_type);
+						}
+						else {
+							serialize_type(f, field.type, write_to);
+						}
 					}
 				}
 				fprintf(f, "}\n\n");
@@ -1000,7 +1231,20 @@ namespace pixc {
 						char write_to[100];
 						sprintf_s(write_to, "data.%s", field.name);
 
-						deserialize_type(f, field.type, write_to);
+						if (field.type->type == Type::Union && field.name == "") {
+							serialize_tagged_union(f, name.type, (UnionType*)field.type, tag_type, write_to, deserialize_type);
+						}
+						else if (is_tagged_union && strcmp(field.name, "type") == 0) {
+							fprintf(f, "    ");
+							dump_type(f, tag_type);
+							fprintf(f, " type;\n");
+							deserialize_type(f, field.type, "type");
+							fprintf(f, "    new (&data) %s(type);\n", name.type);
+
+						}
+						else {
+							deserialize_type(f, field.type, write_to);
+						}
 					}
 				}
 				fprintf(f, "}\n\n");
@@ -1070,7 +1314,7 @@ namespace pixc {
 				Namespace* space = ref.namespaces.last();
 
 				char header_path[MAX_FILEPATH];
-				sprintf_s(header_path, "%s/component_ids.h", ref.include);
+				sprintf_s(header_path, "%s/%s", ref.include, ref.component);
 
 				FILE* h = nullptr; 
 				errno_t err = fopen_s(&h, header_path, "w");
@@ -1082,21 +1326,26 @@ namespace pixc {
 
 				string_view linking = ref.linking;
 				uint base_id = linking == "ENGINE_API" ? 1 : 20; //todo get real number of components
-				uint id = base_id;
+				uint id_counter = base_id;
 
 				fprintf(h, "#pragma once\n");
 				fprintf(h, "#include \"ecs/system.h\"\n\n");
 
 				for (StructType* type : space->structs) {
-					if (!(type->flags & COMPONENT_TAG)) continue;
+					if (type->flags & COMPONENT_TAG) {
 
-					if (strcmp(type->name.iden, "Entity") == 0) fprintf(h, "DEFINE_COMPONENT_ID(Entity, 0)\n");
-					else fprintf(h, "DEFINE_COMPONENT_ID(%s, %i)\n", type->name.type, id++);
+						if (strcmp(type->name.iden, "Entity") == 0) fprintf(h, "DEFINE_COMPONENT_ID(Entity, 0)\n");
+						else fprintf(h, "DEFINE_COMPONENT_ID(%s, %i)\n", type->name.type, id_counter++);
+					}
+					else if (type->flags & ENTITY_FLAG_TAG) {
+						fprintf(h, "constexpr EntityFlags %s = %llu;\n", type->name.type, 1ull << id_counter++);
+					}
 				}
 
-				id = base_id;
+				id_counter = base_id;
 
-				fprintf(f, "#include \"%s\"", header_path);
+
+				fprintf(f, "#include \"%s\"\n", header_path);
 				fprintf(f, "#include \"ecs/ecs.h\"\n");
 				fprintf(f, "#include \"engine/application.h\"\n\n");
 
@@ -1106,15 +1355,23 @@ namespace pixc {
 				for (StructType* type : space->structs) {
 					if (!(type->flags & COMPONENT_TAG)) continue;
 
+					uint id;
+					if (strcmp(type->name.iden, "Entity") == 0) id = 0;
+					else id = id_counter++;
+
 					Name& name = type->name;
 					bool trivial = is_trivially_copyable(ref, type);
 
 					fprintf(f, "    world.component_type[%i] = get_%s_type();\n", id, name.full);
-					fprintf(f, "    world.component_size[%i] = sizeof(%s);\n", id, name.type);
+					if (type->flags & ENTITY_FLAG_TAG) continue;
 					
+					fprintf(f, "    world.component_size[%i] = sizeof(%s);\n", id, name.type);
+					fprintf(f, "    world.component_lifetime_funcs[%i].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((%s*)data + i) %s(); };\n", id, name.type, name.type);
+
 					if (!is_trivially_copyable(ref, type)) {
-						fprintf(f, "    world.component_lifetime_funcs[%i].copy = [](void* dst, void* src) { new (dst) %s(*(%s*)src); };\n", id, name.type, name.type);
-						fprintf(f, "    world.component_lifetime_funcs[%i].destructor = [](void* ptr) { ((%s*)ptr)->~%s(); };\n", id, name.type, name.iden);
+						
+						fprintf(f, "    world.component_lifetime_funcs[%i].copy = [](void* dst, void* src, uint count) { for (uint i=0; i<count; i++) new ((%s*)dst + i) %s(((%s*)src)[i]); };\n", id, name.type, name.type, name.type);
+						fprintf(f, "    world.component_lifetime_funcs[%i].destructor = [](void* ptr, uint count) { for (uint i=0; i<count; i++) ((%s*)ptr)[i].~%s(); };\n", id, name.type, name.iden);
 						fprintf(f, "    world.component_lifetime_funcs[%i].serialize = [](SerializerBuffer& buffer, void* data, uint count) {\n", id);
 						fprintf(f, "        for (uint i = 0; i < count; i++) write_%s_to_buffer(buffer, ((%s*)data)[i]);\n", name.full, name.type);
 						fprintf(f, "    };\n");
@@ -1125,71 +1382,446 @@ namespace pixc {
 					}
 					
 					//fprintf(f, "     world.")
-
-
-					id++;
 				}
 
 				fprintf(f, "\n};");
 			}
 
-            void dump_reflector(Reflector& ref) {
-                Namespace* space = ref.namespaces.last();
-              
+			//DESERIALIZE FROM BUFFER
+			const char* read_cstring_from_buffer(DeserializerBuffer& buffer) {
+				uint length = 0;
+				read_uint_from_buffer(buffer, length);
+				
+				char* str = TEMPORARY_ARRAY(char, length + 1);
+				read_n_from_buffer(buffer, str, length);
+				str[length] = '\0';
 
-                char cpp_output_file[MAX_FILEPATH];
+				return str;
+			}
+
+			void read_name_from_buffer(DeserializerBuffer& buffer, Name& name) {
+				name.full = read_cstring_from_buffer(buffer);
+				name.iden = read_cstring_from_buffer(buffer);
+				name.type = read_cstring_from_buffer(buffer);
+			}
+
+			Type* read_type_from_buffer(DeserializerBuffer& buffer) {
+				uint kind;
+				read_uint_from_buffer(buffer, kind);
+
+				switch (kind) {
+				case Type::Char: return &char_type;
+				case Type::Bool: return &bool_type;
+				case Type::Uint: return &uint_type;
+				case Type::Int: return &int_type;
+				case Type::Float: return &float_type;
+				case Type::Double: return &double_type;
+				case Type::I64: return &i64_type;
+				case Type::U64: return &u64_type;
+				case Type::SString: return &sstring_type;
+				case Type::StringBuffer: return &string_buffer_type;
+				case Type::StringView: return &string_view_type;
+				case Type::Array: {
+					Array* type = TEMPORARY_ALLOC(Array);
+					type->type = Type::Array;
+					uint kind;
+					read_uint_from_buffer(buffer, kind);
+
+					type->arr_type = (Array::ArrayType)kind;
+					read_uint_from_buffer(buffer, type->num);
+					type->element = read_type_from_buffer(buffer);
+					return type;
+				}
+				case Type::Ptr: {
+					Ptr* ptr = TEMPORARY_ALLOC(Ptr);
+					ptr->type = Type::Ptr;
+					ptr->element = read_type_from_buffer(buffer);
+					return ptr;
+				}
+
+				case Type::Union: 
+				case Type::Alias:
+				case Type::Struct:
+				case Type::Enum:
+				case Type::StructRef: {
+					StructRef* type = TEMPORARY_ALLOC(StructRef);
+					type->type = Type::StructRef;
+					read_name_from_buffer(buffer, type->name);
+					return type;
+				}
+				}
+			}
+
+			void read_fields_from_buffer(DeserializerBuffer& buffer, tvector<Field>& fields) {
+				read_uint_from_buffer(buffer, fields.length);
+				fields.reserve(fields.length);
+
+				for (Field& type : fields) {
+					type.name = read_cstring_from_buffer(buffer);
+					read_uint_from_buffer(buffer, type.flags);
+					type.type = read_type_from_buffer(buffer);
+				}
+			}
+
+			void read_constant_from_buffer(DeserializerBuffer& buffer, Constant& constant) {
+				constant.name = read_cstring_from_buffer(buffer);
+				read_int_from_buffer(buffer, constant.value);
+			}
+
+			void read_enum_from_buffer(DeserializerBuffer& buffer, EnumType* type) {
+				read_name_from_buffer(buffer, type->name);
+				read_uint_from_buffer(buffer, type->flags);
+				read_n_from_buffer(buffer, &type->is_class, 1);
+
+				read_uint_from_buffer(buffer, type->values.length);
+				type->values.reserve(type->values.length);
+
+				for (Constant& constant : type->values) {
+					read_constant_from_buffer(buffer, constant);
+				}
+			}
+
+			void read_union_from_buffer(DeserializerBuffer& buffer, UnionType* type) {
+				read_name_from_buffer(buffer, type->name);
+				read_uint_from_buffer(buffer, type->flags);
+
+				read_fields_from_buffer(buffer, type->fields);
+			}
+
+			void read_alias_from_buffer(DeserializerBuffer& buffer, AliasType* type) {
+				read_name_from_buffer(buffer, type->name);
+				read_uint_from_buffer(buffer, type->flags);
+				type->aliasing = read_type_from_buffer(buffer);
+			}
+
+			void read_struct_from_buffer(DeserializerBuffer& buffer, StructType* type) {
+				read_name_from_buffer(buffer, type->name);
+				read_uint_from_buffer(buffer, type->flags);
+				read_fields_from_buffer(buffer, type->fields);
+			}
+
+			void read_type_info_from_buffer(DeserializerBuffer& buffer, Namespace* space) {
+				space->name = read_cstring_from_buffer(buffer);
+				read_uint_from_buffer(buffer, space->namespaces.length);
+				space->namespaces.reserve(space->namespaces.length);
+				for (uint i = 0; i < space->namespaces.length; i++) {
+					Namespace* sub = TEMPORARY_ALLOC(Namespace);
+					read_type_info_from_buffer(buffer, sub);
+
+					space->namespaces[i] = sub;
+				}
+
+				read_uint_from_buffer(buffer, space->structs.length);
+				space->structs.reserve(space->structs.length);
+				
+				for (uint i = 0; i < space->structs.length; i++) {
+					StructType* type = TEMPORARY_ALLOC(StructType);
+					type->type = Type::Struct;
+					read_struct_from_buffer(buffer, type);
+
+					space->structs[i] = type;
+				}
+
+				read_uint_from_buffer(buffer, space->enums.length);
+				space->enums.reserve(space->enums.length);
+				for (uint i = 0; i < space->enums.length; i++) {
+					EnumType* type = TEMPORARY_ALLOC(EnumType);
+					type->type = Type::Enum;
+					read_enum_from_buffer(buffer, type);
+
+					space->enums[i] = type;
+				}
+
+				read_uint_from_buffer(buffer, space->alias.length);
+				space->alias.reserve(space->alias.length);
+
+				for (uint i = 0; i < space->alias.length; i++) {
+					AliasType* type = TEMPORARY_ALLOC(AliasType);
+					type->type = Type::Alias;
+					read_alias_from_buffer(buffer, type);
+
+					space->alias[i] = type;
+				}
+
+				read_uint_from_buffer(buffer, space->unions.length);
+				space->unions.reserve(space->unions.length);
+				
+				for (uint i = 0; i < space->unions.length; i++) {
+					UnionType* type = TEMPORARY_ALLOC(UnionType);
+					type->type = Type::Union;
+					read_union_from_buffer(buffer, type);
+
+					space->unions[i] = type;
+				}
+			}
+
+			//SERIALIZE TO BUFFER
+
+			void write_cstring_to_buffer(SerializerBuffer& buffer, const char* str) {
+				uint length = strlen(str);
+				write_uint_to_buffer(buffer, length);
+				write_n_to_buffer(buffer, (void*)str, length);
+			}
+
+			void write_name_to_buffer(SerializerBuffer& buffer, Name& name) {
+				write_cstring_to_buffer(buffer, name.full);
+				write_cstring_to_buffer(buffer, name.iden);
+				write_cstring_to_buffer(buffer, name.type);
+			}
+
+			void write_type_to_buffer(SerializerBuffer& buffer, Type* type) {
+				write_uint_to_buffer(buffer, type->type);
+				
+				switch (type->type) {
+				case Type::Array: {
+					Array* array = (Array*)type;
+
+					write_uint_to_buffer(buffer, array->arr_type);
+					write_uint_to_buffer(buffer, array->num);
+					write_type_to_buffer(buffer, array->element);
+					
+					break;
+				}
+				case Type::Union:
+				case Type::Alias:
+				case Type::Struct:
+				case Type::Enum:
+				case Type::StructRef:
+					write_name_to_buffer(buffer, ((StructRef*)type)->name);
+				}
+			}
+
+			void write_fields_to_buffer(SerializerBuffer& buffer, tvector<Field>& fields) {
+				write_uint_to_buffer(buffer, fields.length);
+				
+				for (Field& type : fields) {
+					write_cstring_to_buffer(buffer, type.name);
+					write_uint_to_buffer(buffer, type.flags);
+					write_type_to_buffer(buffer, type.type);
+				}
+			}
+
+			void write_constant_to_buffer(SerializerBuffer& buffer, Constant& constant) {
+				write_cstring_to_buffer(buffer, constant.name);
+				write_int_to_buffer(buffer, constant.value);
+			}
+
+			void write_enum_to_buffer(SerializerBuffer& buffer, EnumType* type) {
+				write_name_to_buffer(buffer, type->name);
+				write_uint_to_buffer(buffer, type->flags);
+				write_char_to_buffer(buffer, type->is_class);
+				
+				write_uint_to_buffer(buffer, type->values.length);
+				for (Constant& constant : type->values) {
+					write_constant_to_buffer(buffer, constant);
+				}
+			}
+
+			void write_union_to_buffer(SerializerBuffer& buffer, UnionType* type) {
+				write_name_to_buffer(buffer, type->name);
+				write_uint_to_buffer(buffer, type->flags);
+				write_fields_to_buffer(buffer, type->fields);
+			}
+
+			void write_alias_to_buffer(SerializerBuffer& buffer, AliasType* type) {
+				write_name_to_buffer(buffer, type->name);
+				write_uint_to_buffer(buffer, type->flags);
+				write_type_to_buffer(buffer, type->aliasing);
+			}
+
+			void write_struct_to_buffer(SerializerBuffer& buffer, StructType* type) {
+				write_name_to_buffer(buffer, type->name);
+				write_uint_to_buffer(buffer, type->flags);
+				write_fields_to_buffer(buffer, type->fields);
+			}
+
+			void write_type_info_to_buffer(SerializerBuffer& buffer, Namespace* space) {
+				write_uint_to_buffer(buffer, space->name.length);
+				write_n_to_buffer(buffer, (void*)space->name.data, space->name.length);
+
+				write_uint_to_buffer(buffer, space->namespaces.length);
+				for (Namespace* sub : space->namespaces) {
+					write_type_info_to_buffer(buffer, sub);
+				}
+
+				write_uint_to_buffer(buffer, space->structs.length);
+				for (StructType* type : space->structs) {
+					write_struct_to_buffer(buffer, type);
+				}
+
+				write_uint_to_buffer(buffer, space->enums.length);
+				for (EnumType* type : space->enums) {
+					write_enum_to_buffer(buffer, type);
+				}
+
+				write_uint_to_buffer(buffer, space->alias.length);
+				for (AliasType* type : space->alias) {
+					write_alias_to_buffer(buffer, type);
+				}
+
+				write_uint_to_buffer(buffer, space->unions.length);
+				for (UnionType* type : space->unions) {
+					write_union_to_buffer(buffer, type);
+				}
+			}
+
+			struct FieldDiff {
+				enum Mode { None };
+			};
+
+			void diff_fields(tvector<Field>& past, tvector<Field>& current) {
+				for (uint i = 0; i < current.length; i++) {
+					Field& field = current[i];
+					Field* other = nullptr;
+
+					if (i < past.length && !strcmp(past[i].name, field.name)) other = &past[i];
+					else {
+						for (Field& c : past) {
+							if (!strcmp(c.name, field.name)) {
+								other = &past[i];
+								break;
+							}
+						}
+					}
+
+					if (other == nullptr) {
+
+					}
+				}
+			}
+
+			void diff_namespace(Namespace* past_space, Namespace* current) {
+				for (Namespace* inner : current->namespaces) {
+
+				}
+				
+				for (StructType* type : current->structs) {
+					Type* past = find_type(*past_space, type->name.full);
+					
+					if (past->type != Type::Struct) { 
+						fprintf(stderr, "Changing the underlying type of %s ", past, " will break all save files");
+					}
+
+
+				}
+
+				for (EnumType* type : current->enums) {
+
+				}
+
+				for (UnionType* type : current->unions) {
+
+				}
+
+				for (AliasType* type : current->alias) {
+
+				}
+			}
+
+			void dump_reflector(Reflector& ref) {
+				Namespace* space = ref.namespaces.last();
+
+
+				char cpp_output_file[MAX_FILEPATH];
 				char h_output_file[MAX_FILEPATH];
+				char type_output_path[MAX_FILEPATH];
 
 				sprintf_s(h_output_file, "%s/%s.h", ref.include, ref.h_output);
 				sprintf_s(cpp_output_file, "%s/%s.cpp", ref.base, ref.output);
-                
+				sprintf_s(type_output_path, "%s/%s", ref.base, "type_info.refl");
+
 				FILE* file = nullptr;
 				errno_t err_cpp = fopen_s(&file, cpp_output_file, "w");
-                                
+
 				FILE* header_file;
 				errno_t err_h = fopen_s(&header_file, h_output_file, "w");
-                
-                if (err_cpp) {
-                    fprintf(stderr, "Could not open cpp output file \"%s\"\n", cpp_output_file);
+
+				FILE* type_info_file;
+				errno_t err_info = fopen_s(&type_info_file, type_output_path, "r");
+
+				if (err_cpp) {
+					fprintf(stderr, "Could not open cpp output file \"%s\"\n", cpp_output_file);
 					fclose(file);
 					return;
-                }
-                
-                if (err_h) {
-                    fprintf(stderr, "Could not open header output file \"%s\"\n", h_output_file);
-                    fclose(file);
-                    return;
-                }
-                
+				}
+
+				if (err_h) {
+					fprintf(stderr, "Could not open header output file \"%s\"\n", h_output_file);
+					fclose(file);
+					return;
+				}
+
+				if (err_info) type_info_file = nullptr;
+
 				fprintf(header_file, "#pragma once\n#include \"core/core.h\"\n\n");
 
-                fprintf(file, "#include \"%s.h\"\n", ref.h_output); 
+				fprintf(file, "#include \"%s.h\"\n", ref.h_output);
 				if (strcmp(ref.linking, "ENGINE_API") != 0) { //todo allow adding includes via command line
 					fprintf(file, "#include <core/types.h>\n");
 				}
 
-                fprintf(header_file, "#include \"core/memory/linear_allocator.h\"\n");
+				fprintf(header_file, "#include \"core/memory/linear_allocator.h\"\n");
 				fprintf(header_file, "#include \"core/serializer.h\"\n");
-                fprintf(header_file, "#include \"core/reflection.h\"\n");
-                fprintf(header_file, "#include \"core/container/array.h\"\n");
-                
+				fprintf(header_file, "#include \"core/reflection.h\"\n");
+				fprintf(header_file, "#include \"core/container/array.h\"\n");
+
 				for (int i = 0; i < ref.header_files.length; i++) {
 					fprintf(file, "#include \"%s\"\n", ref.header_files[i]);
 				}
-				
+
 				fprintf(file, "\n");
 				fprintf(header_file, "\n");
 
-                //fprintf(file, "LinearAllocator reflection_allocator(kb(512));\n\n");
-                
+				//fprintf(file, "LinearAllocator reflection_allocator(kb(512));\n\n");
+				
+				//todo turn into function
+				//todo free allocated buffer memory, requires two pools
+				if (type_info_file){
+					struct _stat info;
+					_stat(type_output_path, &info);
+				
+					uint capacity = info.st_size;
+
+					DeserializerBuffer buffer = {};
+					buffer.data = TEMPORARY_ARRAY(char, capacity);
+					buffer.length = fread_s(buffer.data, capacity, sizeof(char), capacity, type_info_file);
+
+					Namespace past_space;
+					read_type_info_from_buffer(buffer, &past_space);
+
+					diff_namespace(&past_space, space);
+
+					fclose(type_info_file);
+				}
+
                 dump_reflector(file, header_file, ref, space, "", 0);
+
 				dump_register_components(ref, file);
                 
                 //fprintf(file, "\t}\n}\n");
                 //fprintf(header_file, "\t}\n}\n");
                 fclose(file);
                 fclose(header_file);
-            }
+				
+
+				//todo move into a function
+				{
+					SerializerBuffer buffer = {};
+					buffer.capacity = mb(5);
+					buffer.data = TEMPORARY_ARRAY(char, buffer.capacity);
+
+					write_type_info_to_buffer(buffer, space);
+
+					FILE* type_info_file;
+					if (!fopen_s(&type_info_file, type_output_path, "w")) {
+						printf("Could not open type_info file");
+					}
+
+					fwrite(buffer.data, sizeof(char), buffer.index, type_info_file);
+					fclose(type_info_file);
+				}
+
+			}
         };
     }
 }
@@ -1262,6 +1894,7 @@ int main(int argc, const char** c_args) {
 	reflector.base = "";
 	reflector.include = "\include";
 	reflector.h_output = "generated";
+	reflector.component = "component_ids.h";
     
     Namespace* root = make_Namespace(reflector, "");
 	reflector.namespaces.append(root);
@@ -1310,6 +1943,10 @@ int main(int argc, const char** c_args) {
 		else if (arg == "-l") {
 			reflector.linking = c_args[++i];
 			printf("%s\n", reflector.linking);
+		}
+
+		else if (arg == "-c") {
+			reflector.component = c_args[++i];
 		}
         
 		else {

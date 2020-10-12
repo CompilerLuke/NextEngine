@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/core.h"
 #include "graphics/assets/model.h"
 #include "graphics/renderer/render_feature.h"
 #include "graphics/rhi/buffer.h"
@@ -12,13 +13,23 @@ constexpr RenderFlags CAST_SHADOWS = 1 << 0;
 
 struct MeshBucket {
 	material_handle mat_id;
-	pipeline_handle pipeline_id[RenderPass::ScenePassCount];
+	pipeline_handle depth_only_pipeline_id;
+	pipeline_handle color_pipeline_id;
 	model_handle model_id;
 	uint mesh_id;
 	uint flags;
 
-	inline bool operator==(const MeshBucket& other) {
-		return mat_id.id == other.mat_id.id && model_id.id == other.model_id.id && mesh_id == other.mesh_id && flags == other.flags;
+	inline bool operator==(const MeshBucket& other) const {
+		return mat_id.id == other.mat_id.id
+			&& depth_only_pipeline_id.id == other.depth_only_pipeline_id.id
+			&& color_pipeline_id.id == other.color_pipeline_id.id
+			&& model_id.id == other.model_id.id
+			&& mesh_id == other.mesh_id
+			&& flags == other.flags;
+	}
+	
+	inline bool operator!=(const MeshBucket& other) const {
+		return !(*this == other);
 	}
 };
 

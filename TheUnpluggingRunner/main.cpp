@@ -5,7 +5,7 @@
 #include <engine/engine.h>
 
 int main() {
-	const char* level = "C:\\Users\\User\\Desktop\\TopCCompiler\\TopCompiler\\Fernix\\assets\\level2\\";
+	const char* level = "C:\\Users\\User\\source\\repos\\NextEngine\\TheUnpluggingGame\\data\\level1\\";
 	const char* app_name = "The Unplugging";
 
 	Modules modules(app_name, level);

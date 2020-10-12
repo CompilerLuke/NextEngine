@@ -31,6 +31,8 @@
 #include "graphics/rhi/draw.h"
 #include "graphics/rhi/pipeline.h"
 
+#include "core/time.h"
+
 //todo move this to the platform code
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3.h>
@@ -48,16 +50,15 @@ const uint ATLAS_PREVIEWS_HEIGHT = 10;
 
 const uint ATLAS_PREVIEW_RESOLUTION = 128;
 
-
-
+//todo make reflection generate call to constructor
 AssetNode::AssetNode() {}
+
 AssetNode::AssetNode(Type type) {
 	memset(this, 0, sizeof(AssetNode));
 	this->type = type;
 
 	if (type == Shader) shader.shader_arguments.allocator = &default_allocator;
 	if (type == Model) {
-		model.materials.allocator = &default_allocator;
 		model.trans.scale = glm::vec3(1.0);
 	}
 	if (type == Folder) folder.contents.allocator = &default_allocator;
@@ -70,7 +71,7 @@ void AssetNode::operator=(AssetNode&& other) {
 
 AssetNode::~AssetNode() {
 	if (type == Shader) shader.shader_arguments.~vector();
-	if (type == Model) model.materials.~vector();
+	if (type == Folder) folder.contents.~vector();
 }
 
 void register_asset_ptr(AssetInfo& tab, AssetNode* node) {
@@ -94,28 +95,29 @@ void add_to_folder(AssetInfo& self, asset_handle folder_handle, AssetNode&& asse
 	}
 }
 
-void remove_from_folder(AssetInfo& self, asset_handle folder_handle, AssetNode& asset) {
+void remove_from_folder(AssetInfo& self, asset_handle folder_handle, AssetNode* asset) {
 	//todo assert for folder
 	AssetFolder& folder = get_asset(self, folder_handle)->folder;
 
-	uint index = &asset - folder.contents.data;
+	uint index = asset - folder.contents.data;
 	assert(index < folder.contents.length);
 
 	for (uint i = index; i < folder.contents.length - 1; i++) {
 		folder.contents[i] = std::move(folder.contents[i + 1]);
+		register_asset_ptr(self, folder.contents.data + i);
 	}
 
 	folder.contents.length--;
 }
 
 asset_handle make_asset_handle(AssetInfo& info) {
-	return {++info.id_counter};
+	return info.free_ids.pop();
 }
 
 asset_handle add_asset_to_current_folder(AssetTab& tab, AssetNode&& asset) {
 	asset_handle handle = make_asset_handle(tab.info);
 	asset.handle = handle;
-	tab.render_preview_for.append(handle);
+	tab.preview_resources.render_preview_for.append(handle);
 
 	if (asset.type == AssetNode::Material) asset.material.rot_preview.preview_tex_coord = tab.preview_resources.free_atlas_slot.pop();
 	if (asset.type == AssetNode::Model)  asset.model.rot_preview.preview_tex_coord = tab.preview_resources.free_atlas_slot.pop();
@@ -126,6 +128,8 @@ asset_handle add_asset_to_current_folder(AssetTab& tab, AssetNode&& asset) {
 }
 
 void render_name(sstring& name, ImFont* font) {
+	ImGui::SetNextItemWidth(128);
+	ImGui::PushStyleColor(ImGuiCol_FrameBg, ImGui::GetStyle().Colors[ImGuiCol_WindowBg]);
 	ImGui::PushItemWidth(-1);
 	ImGui::PushID((void*)&name);
 	if (font) ImGui::PushFont(font);
@@ -133,6 +137,7 @@ void render_name(sstring& name, ImFont* font) {
 	ImGui::PopItemWidth();
 	if (font) ImGui::PopFont();
 	ImGui::PopID();
+	ImGui::PopStyleColor();
 }
 
 wchar_t* to_wide_char(const char* orig);
@@ -200,8 +205,9 @@ void render_asset(AssetExplorer& tab, AssetNode& node, RotatablePreview& preview
 
 
 void move_to_folder(AssetInfo& self, asset_handle src_folder, asset_handle dst_folder, AssetNode&& asset) {
+	AssetNode* asset_folder_ptr = &asset;
 	add_to_folder(self, dst_folder, std::move(asset));
-	remove_from_folder(self, src_folder, asset);
+	remove_from_folder(self, src_folder, asset_folder_ptr);
 }
 
 void accept_move_to_folder(AssetInfo& tab, AssetNode** ptr) {
@@ -222,8 +228,10 @@ struct MoveToFolder {
 void folder_move_drop_target(AssetInfo& tab, MoveToFolder& move_to_folder, asset_handle src_folder, asset_handle dst_folder) {
 	if (ImGui::BeginDragDropTarget()) {
 		accept_move_to_folder(tab, &move_to_folder.asset);
-		move_to_folder.src_folder = src_folder;
-		move_to_folder.dst_folder = dst_folder;
+		if (move_to_folder.asset != nullptr) {
+			move_to_folder.src_folder = src_folder;
+			move_to_folder.dst_folder = dst_folder;
+		}
 		ImGui::EndDragDropTarget();
 	}
 }
@@ -263,7 +271,7 @@ void render_assets(Editor& editor, AssetExplorer& asset_tab, string_view filter,
 				ImGui::EndDragDropSource();
 			}
 
-			folder_move_drop_target(asset_tab.info, move_to_folder, asset_tab.current_folder, folder_handle);
+			folder_move_drop_target(asset_tab.info, move_to_folder, asset_tab.current_folder, node.handle);
 
 			render_name(node.folder.name, asset_tab.filename_font);
 			ImGui::NextColumn();
@@ -313,25 +321,22 @@ MaterialDesc base_shader_desc(shader_handle shader) {
 	MaterialDesc desc{ shader };
 	desc.draw_state = Cull_None;
 
-	mat_channel3(desc, "diffuse", glm::vec3(1.0f), load_Texture("wood_2/Stylized_Wood_basecolor.jpg"));
-	mat_channel1(desc, "metallic", 1.0f, load_Texture("wood_2/Stylized_Wood_metallic.jpg"));
-	mat_channel1(desc, "roughness", 0.2f, load_Texture("wood_2/Stylized_Wood_roughness.jpg"));
-	mat_channel1(desc, "normal", 1.0f, load_Texture("wood_2/Stylized_Wood_normal.jpg"));
+	mat_channel3(desc, "diffuse", glm::vec3(1.0f));
+	mat_channel1(desc, "metallic", 0.0f);
+	mat_channel1(desc, "roughness", 0.5f);
+	mat_channel1(desc, "normal", 1.0f, default_textures.normal);
 	mat_vec2(desc, "tiling", glm::vec2(5.0f));
 	//mat_vec2(desc, "tiling", glm::vec2(1, 1));
 
 	return desc;
 }
 
-material_handle create_default_material() { //todo move to materialSystem
+material_handle make_new_material(AssetTab& self, Editor& editor) {
 	MaterialDesc desc = base_shader_desc(load_Shader("shaders/pbr.vert", "shaders/pbr.frag"));
-	return make_Material(desc);
-}
+	material_handle handle = make_Material(desc, true);
 
-material_handle create_new_material(AssetTab& self, Editor& editor) {
-	material_handle handle = create_default_material();
-	
 	AssetNode asset(AssetNode::Material);
+	asset.material.desc = desc;
 	asset.material.handle = handle;
 	asset.material.name = "Empty";
 
@@ -341,17 +346,25 @@ material_handle create_new_material(AssetTab& self, Editor& editor) {
 }
 
 RenderPass begin_preview_pass(AssetPreviewResources& self, Camera& camera, Transform& trans) {
-	RenderPass render_pass = begin_render_pass(PreviewPass);
+	RenderPass render_pass = begin_render_pass(PreviewPass, glm::vec4(0.2, 0.2, 0.2, 1.0));
+	
+	uint frame_index = get_frame_index();
+
 	bind_vertex_buffer(render_pass.cmd_buffer, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4);
 	bind_pipeline_layout(render_pass.cmd_buffer, self.pipeline_layout);
-	bind_descriptor(render_pass.cmd_buffer, 0, self.pass_descriptor);
+	bind_descriptor(render_pass.cmd_buffer, 0, self.pass_descriptor[frame_index]);
 	bind_descriptor(render_pass.cmd_buffer, 1, self.pbr_descriptor);
 
 	update_camera_matrices(trans, camera, render_pass.viewport);
 
+	//todo create function
+	SimulationUBO simulation_ubo;
+	simulation_ubo.time = Time::now();
+	memcpy_ubo_buffer(self.simulation_ubo[frame_index], &simulation_ubo);
+
 	PassUBO pass_ubo;
 	fill_pass_ubo(pass_ubo, render_pass.viewport);
-	memcpy_ubo_buffer(self.pass_ubo, &pass_ubo);
+	memcpy_ubo_buffer(self.pass_ubo[frame_index], &pass_ubo);
 
 	return render_pass;
 }
@@ -374,7 +387,7 @@ void end_preview_pass(AssetPreviewResources& self, RenderPass& render_pass, glm:
 		transition_layout(render_pass.cmd_buffer, self.preview_atlas, TextureLayout::ShaderReadOptimal, TextureLayout::TransferDstOptimal);
 	}
 
-	transition_layout(render_pass.cmd_buffer, self.preview_map, TextureLayout::ShaderReadOptimal, TextureLayout::TransferSrcOptimal);
+	transition_layout(render_pass.cmd_buffer, self.preview_map, TextureLayout::ColorAttachmentOptimal, TextureLayout::TransferSrcOptimal);
 	blit_image(render_pass.cmd_buffer, Filter::Linear, self.preview_map, src_region, self.preview_atlas, dst_region);
 	transition_layout(render_pass.cmd_buffer, self.preview_atlas, TextureLayout::TransferDstOptimal, TextureLayout::ShaderReadOptimal);
 	transition_layout(render_pass.cmd_buffer, self.preview_map, TextureLayout::TransferSrcOptimal, TextureLayout::ShaderReadOptimal);
@@ -566,12 +579,12 @@ void asset_properties(MaterialAsset* mat_asset, Editor& editor, AssetTab& self, 
 	ImGui::SetNextTreeNodeOpen(true);
 	ImGui::CollapsingHeader("Material");
 
-	MaterialDesc* desc = material_desc(mat_asset->handle);
-	if (desc == NULL) {
+	MaterialDesc& desc = mat_asset->desc;
+	if (false) { //todo check if handle becomes invalid, then again this should never happen 
 		ImGui::Text("Material Handle is INVALID");
 	}
 
-	ShaderInfo* info = shader_info(desc->shader);
+	ShaderInfo* info = shader_info(desc.shader);
 	if (info == NULL) {
 		ImGui::Text("Shader Handle is INVALID!");
 	}
@@ -581,15 +594,15 @@ void asset_properties(MaterialAsset* mat_asset, Editor& editor, AssetTab& self, 
 	}
 
 
-	if (accept_drop("DRAG_AND_DROP_SHADER", &desc->shader, sizeof(shader_handle))) {
-		set_params_for_shader_graph(self, desc->shader);
+	if (accept_drop("DRAG_AND_DROP_SHADER", &desc.shader, sizeof(shader_handle))) {
+		set_params_for_shader_graph(self, desc.shader);
 	}
 
 	
 	if (ImGui::BeginPopup("StandardShaders")) {
 		if (ImGui::Button("shaders/pbr.frag")) {
 			shader_handle new_shad = load_Shader("shaders/pbr.vert", "shaders/pbr.frag");
-			if (new_shad.id != desc->shader.id) {
+			if (new_shad.id != desc.shader.id) {
 				//set_base_shader_params(assets, desc, new_shad);
 				//material->set_vec2(shader_manager, "transformUVs", glm::vec2(1, 1));
 			}
@@ -597,21 +610,25 @@ void asset_properties(MaterialAsset* mat_asset, Editor& editor, AssetTab& self, 
 
 		if (ImGui::Button("shaders/tree.frag")) {
 			shader_handle new_shad = load_Shader("shaders/tree.vert", "shaders/tree.frag");
-			if (new_shad.id != desc->shader.id) {
+			if (new_shad.id != desc.shader.id) {
 				//todo enable undo/redo for switching shaders
-				//DiffUtil util;
-				//begin_tdiff(util, &desc);
-				
-				*desc = {};
-				desc->shader = new_shad;
-				desc->draw_state = Cull_None;
-				mat_channel3(*desc, "diffuse", glm::vec3(1.0f));
-				mat_channel3(*desc, "metallic", glm::vec3(0.0f));
-				mat_channel1(*desc, "roughness", 0.9f);
-				mat_channel1(*desc, "normal", 1.0f, default_textures.normal);
-				mat_float(*desc, "cutoff", 0.5f);
 
-				replace_Material(mat_asset->handle, *desc);
+				desc = {};
+				desc.shader = new_shad;
+				desc.draw_state = Cull_None;
+				mat_channel3(desc, "diffuse", glm::vec3(1.0f));
+				mat_channel3(desc, "metallic", glm::vec3(0.0f));
+				mat_channel1(desc, "roughness", 0.9f);
+				mat_channel1(desc, "normal", 1.0f, default_textures.normal);
+				mat_float(desc, "cutoff", 0.5f);
+
+				//update_Material(mat_asset->handle, desc, desc);
+
+				//DiffUtil util;
+				//util.id = 
+				//begin_tdiff(util, &desc, get_MaterialDesc_type());
+				
+				//desc = new_desc;
 
 				//end_diff(editor.actions, util, "Switch to tree shader");
 
@@ -624,7 +641,7 @@ void asset_properties(MaterialAsset* mat_asset, Editor& editor, AssetTab& self, 
 		if (ImGui::Button("shaders/paralax_pbr.frag")) {
 			shader_handle new_shad = load_Shader("shaders/pbr.vert", "shaders/paralax_pbr.frag");
 
-			if (new_shad.id != desc->shader.id) {
+			if (new_shad.id != desc.shader.id) {
 				//set_base_shader_params(texture_manager, shader_manager, material, new_shad);
 				//material->set_image(shader_manager, "material.height", texture_manager.load("black.png"));
 				//material->set_image(shader_manager, "material.ao", texture_manager.load("solid_white.png")),
@@ -637,7 +654,7 @@ void asset_properties(MaterialAsset* mat_asset, Editor& editor, AssetTab& self, 
 		ImGui::EndPopup();
 	}
 
-	inspect_material_params(editor, mat_asset->handle, desc);
+	inspect_material_params(editor, mat_asset->handle, &desc);
 	
 	rot_preview(self.preview_resources, mat_asset->rot_preview);
 	render_preview_for(self.preview_resources, *mat_asset);
@@ -661,13 +678,90 @@ void asset_properties(ModelAsset* mod_asset, Editor& editor, AssetTab& self, Ren
 
 	if (ImGui::Button("Apply")) {
 		begin_gpu_upload();
-		load_Model(mod_asset->handle, compute_model_matrix(mod_asset->trans));
+		load_Model(mod_asset->handle, mod_asset->path, compute_model_matrix(mod_asset->trans));
 		end_gpu_upload();
 
 		mod_asset->rot_preview.rot_deg = glm::vec2();
 		mod_asset->rot_preview.current = glm::vec2();
 		mod_asset->rot_preview.previous = glm::vec2();
 		mod_asset->rot_preview.rot = glm::quat();
+	}
+
+	if (ImGui::CollapsingHeader("LOD")) {
+		float height = 200.0f;
+		float padding = 10.0f;
+		float cull_distance = model->lod_distance.last();
+		float avail_width = ImGui::GetContentRegionAvail().x - padding * 4;
+
+		float last_dist = 0;
+
+		auto draw_list = ImGui::GetForegroundDrawList();
+
+		glm::vec2 cursor_pos = glm::vec2(ImGui::GetCursorScreenPos()) + glm::vec2(padding);
+
+		ImGui::SetCursorPos(glm::vec2(ImGui::GetCursorPos()) + glm::vec2(0, height + padding * 2));
+
+		ImU32 colors[MAX_MESH_LOD] = { 
+			ImColor(245, 66, 66),
+			ImColor(245, 144, 66),
+			ImColor(245, 194, 66),
+			ImColor(170, 245, 66),
+			ImColor(66, 245, 111),
+			ImColor(66, 245, 212),
+			ImColor(66, 126, 245),
+			ImColor(66, 69, 245),
+		};
+
+		//todo logic could be simplified
+		static int dragging = -1;
+		static glm::vec2 last_drag_delta;
+		glm::vec2 drag_delta = glm::vec2(ImGui::GetMouseDragDelta()) - last_drag_delta;
+
+		uint lod_count = model->lod_distance.length;
+
+		if (!ImGui::IsMouseDragging()) {
+			dragging = -1;
+			last_drag_delta = glm::vec2();
+			drag_delta = glm::vec2();
+		}
+
+		for (uint i = 0; i < lod_count; i++) {
+			float dist = model->lod_distance[i];
+			float offset = last_dist / cull_distance * avail_width;
+			float width = avail_width * (dist - last_dist) / cull_distance;
+
+			draw_list->AddRectFilled(cursor_pos + glm::vec2(offset, 0), cursor_pos + glm::vec2(offset + width, height), colors[i]);
+
+			char buffer[100];
+			sprintf_s(buffer, "LOD %i - %.1fm", i, dist);
+
+			draw_list->AddText(cursor_pos + glm::vec2(offset + padding, padding), ImColor(255,255,255), buffer);
+
+			last_dist = dist;
+
+			bool last = i + 1 == lod_count;
+			bool is_dragged = i == dragging;
+			if (!last && (is_dragged || ImGui::IsMouseHoveringRect(cursor_pos + glm::vec2(offset + width - padding, 0), cursor_pos + glm::vec2(offset + width + padding, height)))) {
+				draw_list->AddRectFilled(cursor_pos + glm::vec2(offset + width - padding, 0), cursor_pos + glm::vec2(offset + width + padding, height), ImColor(255,255,255));
+
+				model->lod_distance[i] += drag_delta.x * cull_distance / avail_width;
+				dragging = i;
+			}
+		}
+
+		float last_cull_distance = cull_distance;
+		ImGui::InputFloat("Culling distance", &cull_distance);
+		if (last_cull_distance != cull_distance) {
+			for (uint i = 0; i < lod_count - 1; i++) {
+				model->lod_distance[i] *= cull_distance / last_cull_distance;
+			}
+
+			model->lod_distance.last() = cull_distance;
+		}
+
+		last_drag_delta = ImGui::GetMouseDragDelta();
+
+		mod_asset->lod_distance = model->lod_distance;
 	}
 
 	ImGui::SetNextTreeNodeOpen(true);
@@ -690,15 +784,24 @@ sstring name_from_filename(string_view filename) {
 	return filename.sub(after_slash, filename.find_last_of('.'));
 }
 
+//todo save lods
 model_handle import_model(AssetTab& self, string_view filename) {		
 	model_handle handle = load_Model(filename, true);
 	Model* model = get_Model(handle);
 
 	AssetNode asset(AssetNode::Model); 
 	asset.model.handle = handle;
+	asset.model.path = filename;
+	asset.model.lod_distance = model->lod_distance;
+
+	//todo model without uvs will crash the importer
+	if (model->materials.length > 8) {
+		fprintf(stderr, "Maximum materials per model is 8");
+		return {INVALID_HANDLE};
+	}
 
 	for (sstring& material : model->materials) {
-		asset.model.materials.append(self.default_material);
+		asset.model.materials.append(self.info.default_material);
 	}
 
 	asset.model.name = name_from_filename(filename);
@@ -713,6 +816,7 @@ void import_texture(Editor& editor, AssetTab& self, string_view filename) {
 	AssetNode asset(AssetNode::Texture);
 	asset.texture.handle = handle;
 	asset.texture.name = name_from_filename(filename);
+	asset.texture.path = filename;
 
 	add_asset_to_current_folder(self, std::move(asset));
 }
@@ -771,8 +875,9 @@ void make_AssetPreviewRenderData(AssetPreviewResources& resources, Renderer& ren
 	{
 		FramebufferDesc desc{ 512, 512 };
 		AttachmentDesc& color_attachment = add_color_attachment(desc, &resources.preview_map);
-		//color_attachment.final_layout = TextureLayout::TransferSrcOptimal;
+		color_attachment.final_layout = TextureLayout::ColorAttachmentOptimal;
 		color_attachment.usage |= TextureUsage::TransferSrc;
+
 
 		make_Framebuffer(PreviewPass, desc);
 	}
@@ -783,17 +888,18 @@ void make_AssetPreviewRenderData(AssetPreviewResources& resources, Renderer& ren
 		make_Framebuffer(PreviewPassTonemap, desc);
 	}
 
-	{
-		resources.pass_ubo = alloc_ubo_buffer(sizeof(PassUBO), UBO_PERMANENT_MAP);
+	for (uint i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		resources.pass_ubo[i] = alloc_ubo_buffer(sizeof(PassUBO), UBO_PERMANENT_MAP);
+		resources.simulation_ubo[i] = alloc_ubo_buffer(sizeof(SimulationUBO), UBO_PERMANENT_MAP);
 
 		DescriptorDesc descriptor_desc = {};
-		add_ubo(descriptor_desc, VERTEX_STAGE, resources.pass_ubo, 0);
-		update_descriptor_set(resources.pass_descriptor, descriptor_desc);
-
-		array<2, descriptor_set_handle> descriptor_layouts = { resources.pass_descriptor, resources.pbr_descriptor };
-		resources.pipeline_layout = query_Layout(descriptor_layouts);
+		add_ubo(descriptor_desc, VERTEX_STAGE, resources.pass_ubo[i], 0);
+		add_ubo(descriptor_desc, VERTEX_STAGE, resources.simulation_ubo[i], 1);
+		update_descriptor_set(resources.pass_descriptor[i], descriptor_desc);
 	}
 
+	array<2, descriptor_set_handle> descriptor_layouts = { resources.pass_descriptor[0], resources.pbr_descriptor };
+	resources.pipeline_layout = query_Layout(descriptor_layouts);
 
 	for (uint h = 0; h < ATLAS_PREVIEWS_HEIGHT; h++) {
 		for (uint w = 0; w < ATLAS_PREVIEWS_WIDTH; w++) {
@@ -811,10 +917,16 @@ void make_AssetPreviewRenderData(AssetPreviewResources& resources, Renderer& ren
 }
 
 void make_AssetInfo(AssetInfo& info) {
+	for (uint i = MAX_ASSETS - 1; i > 0; i--) {
+		info.free_ids.append({ i });
+	}
+
 	info.toplevel = AssetNode(AssetNode::Folder);
 	info.toplevel.handle = make_asset_handle(info);
 	info.toplevel.folder.name = "Assets";
 	register_asset_ptr(info, &info.toplevel);
+
+	printf("Size of %i", sizeof(ModelAsset));
 }
 
 AssetTab::AssetTab(Renderer& renderer, AssetInfo& info, Window& window) : 
@@ -823,40 +935,27 @@ AssetTab::AssetTab(Renderer& renderer, AssetInfo& info, Window& window) :
 	renderer(renderer), 
 	explorer{ info, preview_resources }
 {
-	make_AssetPreviewRenderData(preview_resources, renderer);
-	make_AssetInfo(info);
-
+	make_AssetPreviewRenderData(preview_resources, renderer);	
+	make_AssetInfo(info); //note: this is overwritten when loading a scene
 	explorer.current_folder = info.toplevel.handle;
 }
 
 //todo although it is possible to render multiple previews in one frame
 //this would require several ubo buffers, possibly with push constants to get the right one!
 //in theory this also has a frame sychronization issue, as it's not using multiple ubo for different frames
-void render_previews(AssetTab& self) {
+void render_previews(AssetPreviewResources& self, AssetInfo& info) {
 	while (self.render_preview_for.length > 0) {
-		AssetNode* node = get_asset(self.info, self.render_preview_for.pop());
+		AssetNode* node = get_asset(info, self.render_preview_for.pop());
 
-		if (node->type == AssetNode::Material) render_preview_for(self.preview_resources, node->material);
-		if (node->type == AssetNode::Model) render_preview_for(self.preview_resources, node->model);
+		if (node->type == AssetNode::Material) render_preview_for(self, node->material);
+		if (node->type == AssetNode::Model) render_preview_for(self, node->model);
 
 		break;
 	}
-	
-	/*for (asset_handle handle : self.render_preview_for) {
-		AssetNode* node = get_asset(self.info, handle);
-
-		if (node->type == AssetNode::Material) render_preview_for(self.preview_resources, node->material);
-		//if (node->type == AssetNode::Model) render_preview_for(self.preview_resources, node->model);
-
-		//self.render_preview_for.pop();
-		break;
-	}
-
-	self.render_preview_for.clear();*/
 }
 
 void AssetTab::render(World& world, Editor& editor, RenderPass& ctx) {
-	render_previews(*this);
+	render_previews(preview_resources, info);
 	
 	if (ImGui::Begin("Assets")) {
 		bool open_create_asset = false;
@@ -888,6 +987,9 @@ void AssetTab::render(World& world, Editor& editor, RenderPass& ctx) {
 
 			MoveToFolder move_to_folder;
 
+			ImVec4 window_bg = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
+			ImGui::PushStyleColor(ImGuiCol_Button, window_bg);
+
 			for (int i = folder_file_path.length - 1; i >= 0; i--) {
 				if (ImGui::Button(folder_file_path[i].c_str())) {
 					explorer.current_folder = folder_id[i];
@@ -900,6 +1002,7 @@ void AssetTab::render(World& world, Editor& editor, RenderPass& ctx) {
 				ImGui::SameLine();
 			}
 
+			ImGui::PopStyleColor();
 			move_dropped_to_folder(info, move_to_folder);
 		}
 
@@ -925,7 +1028,7 @@ void AssetTab::render(World& world, Editor& editor, RenderPass& ctx) {
 
 			if (ImGui::MenuItem("New Material"))
 			{
-				create_new_material(*this, editor);
+				make_new_material(*this, editor);
 			}
 
 			if (ImGui::MenuItem("New Shader"))
@@ -948,7 +1051,7 @@ void AssetTab::render(World& world, Editor& editor, RenderPass& ctx) {
 		if (ImGui::BeginPopup("EditAsset"))
 		{
 			if (ImGui::MenuItem("Delete")) { //todo right clicking will not select
-				remove_from_folder(info, explorer.current_folder, *get_asset(info, explorer.selected));
+				remove_from_folder(info, explorer.current_folder, get_asset(info, explorer.selected));
 			}
 
 			ImGui::EndPopup();
@@ -982,88 +1085,113 @@ struct TaskList {
 	bool pop();
 };
 
-/*unsigned int read_save_file(string_view filename, DeserializerBuffer* serializer, string_buffer* buffer) {
-	if (!io_readfb(filename, buffer)) throw "Could not read serialization file!";
-	
-	new (serializer) DeserializerBuffer(buffer->data, buffer->length);
-	return serializer->read_int();
-}*/
+#include "generated.h"
 
 /*
-REFLECT_UNION_BEGIN(Param)
-REFLECT_UNION_FIELD(loc)
-REFLECT_UNION_CASE_BEGIN()
-REFLECT_UNION_CASE(vec3)
-REFLECT_UNION_CASE(vec2)
-REFLECT_UNION_CASE(matrix)
-REFLECT_UNION_CASE(image)
-REFLECT_UNION_CASE(cubemap)
-REFLECT_UNION_CASE(integer)
-REFLECT_UNION_CASE(real)
-REFLECT_UNION_CASE(channel3)
-REFLECT_UNION_CASE(channel2)
-REFLECT_UNION_CASE(channel1)
-REFLECT_UNION_CASE(time)
-REFLECT_UNION_END()
+void save_previews_to_image(AssetPreviewResources& resources) {
+	CommandPool& pool = rhi.background_graphics;
 
-REFLECT_STRUCT_BEGIN(Param::Channel3)
-REFLECT_STRUCT_MEMBER(image)
-REFLECT_STRUCT_MEMBER(color)
-REFLECT_STRUCT_END()
+	CommandBuffer& cmd_buffer = ;
 
-REFLECT_STRUCT_BEGIN(Param::Channel2)
-REFLECT_STRUCT_MEMBER(image)
-REFLECT_STRUCT_MEMBER(value)
-REFLECT_STRUCT_END()
-
-REFLECT_STRUCT_BEGIN(Param::Channel1)
-REFLECT_STRUCT_MEMBER(image)
-REFLECT_STRUCT_MEMBER(value)
-REFLECT_STRUCT_END()
-
-
-void convert_to_desc(Param& param, ParamDesc& param_desc) {
-	param_desc.type = param.type;
-
-	if (param_desc.type == Param_Float) {
-		param_desc.real = param.real;
-	}
-
-	if (param_desc.type == Param_Int) {
-		param_desc.integer = param.integer;
-	}
-
-	if (param_desc.type == Param_Vec2) {
-		param_desc.vec2 = param.vec2;
-	}
-
-	if (param_desc.type == Param_Vec3) {
-		param_desc.vec3 = param.vec3;
-	}
-
-	if (param_desc.type == Param_Image) {
-		param_desc.image = param.image.id;
-	}
-
-	if (param_desc.type == Param_Channel1) {
-		param_desc.image = param.channel1.image.id;
-		param_desc.real = param.channel1.value;
-	}
-
-	if (param_desc.type == Param_Channel2) {
-		param_desc.image = param.channel2.image.id;
-		param_desc.vec2 = param.channel2.value;
-	}
-
-	if (param_desc.type == Param_Channel3) {
-		param_desc.image = param.channel3.image.id;
-		param_desc.vec3 = param.channel3.color;
-	}
+	QueueSubmitInfo info = {};
+	info.cmd_buffers;
 }*/
 
-void AssetTab::on_load(World& world) {
-	string_buffer buffer;
-	buffer.allocator = &temporary_allocator;
+bool save_asset_info(AssetPreviewResources& resources, AssetInfo& info, SerializerBuffer& buffer, const char** err) {
+	write_AssetNode_to_buffer(buffer, info.toplevel);
+	write_uint_to_buffer(buffer, info.free_ids.length);
+	write_n_to_buffer(buffer, info.free_ids.data, sizeof(uint) * info.free_ids.length);
+	write_uint_to_buffer(buffer, resources.free_atlas_slot.length);
+	write_n_to_buffer(buffer, resources.free_atlas_slot.data, sizeof(glm::vec2) * resources.free_atlas_slot.length);
+
+	return true;
+}
+
+struct MaterialLoadJob {
+	material_handle handle;
+	MaterialDesc* desc = nullptr;
+};
+
+struct ModelLoadJob {
+	model_handle handle;
+	glm::mat4 model;
+	string_view path;
+};
+
+struct LoadJobs {
+	tvector<TextureLoadJob> textures;
+	tvector<MaterialLoadJob> materials;
+	tvector<ModelLoadJob> models;
+};
+
+//todo load shader graph!
+void recursively_load_asset_node(AssetPreviewResources& resources, AssetInfo& info, LoadJobs& jobs, AssetNode& node) {
+	register_asset_ptr(info, &node);
+
+	switch (node.type) {
+	case AssetNode::Texture: 
+		jobs.textures.append({node.texture.handle, node.texture.path});
+		break;
+
+	case AssetNode::Model: {
+		resources.render_preview_for.append(node.handle);
+		glm::mat4 mat4 = compute_model_matrix(node.model.trans);
+		jobs.models.append({ node.model.handle, mat4, node.model.path });
+
+		break;
+	}
+
+	case AssetNode::Material: {
+		resources.render_preview_for.append(node.handle);
+		jobs.materials.append({ node.material.handle, &node.material.desc });
+		break;
+	}
+
+	case AssetNode::Folder:
+		for (AssetNode& children : node.folder.contents) {
+			recursively_load_asset_node(resources, info, jobs, children);
+		}
+	
+		break;
+	}	
+}
+
+bool load_asset_info(AssetPreviewResources& resources, AssetInfo& info, DeserializerBuffer& buffer, const char** err) {
+	LoadJobs jobs;
+	
+	read_AssetNode_from_buffer(buffer, info.toplevel);
+	read_uint_from_buffer(buffer, info.free_ids.length);
+	info.free_ids.resize(info.free_ids.length);
+
+	read_n_from_buffer(buffer, info.free_ids.data, sizeof(asset_handle) * info.free_ids.length);
+
+	read_uint_from_buffer(buffer, resources.free_atlas_slot.length);
+	read_n_from_buffer(buffer, resources.free_atlas_slot.data, sizeof(glm::vec2) * resources.free_atlas_slot.length);
+
+	recursively_load_asset_node(resources, info, jobs, info.toplevel);
+	
+	load_TextureBatch(jobs.textures);
+
+	if (jobs.materials.length > 0) {
+		info.default_material = jobs.materials[0].handle;
+	}
+	else {
+		//todo CREATE DEFAULT MATERIAL
+	}
+
+	for (MaterialLoadJob& job : jobs.materials) {
+		make_Material(job.handle, *job.desc);
+		//render_preview_for(resources, info.asset_type_handle_to_node[AssetNode::Material][job.handle.id]->material);
+	}
+
+	for (ModelLoadJob& job : jobs.models) {
+		ModelAsset& asset = info.asset_type_handle_to_node[AssetNode::Model][job.handle.id]->model;
+
+		load_Model(job.handle, job.path, job.model, asset.lod_distance);		
+	}
+
+	return true;
+
 	
 	/*{
 		DeserializerBuffer serializer;
@@ -1198,58 +1326,6 @@ void AssetTab::on_load(World& world) {
 			load_Shader_for_graph(shad_asset);
 		}
 	}
-	*/
-}
-
-#define BEGIN_SAVE(type_name) { \
-SerializerBuffer serializer; \
-auto filtered = assets.filter<type_name>(); \
-serializer.write_int(filtered.length); \
-\
-for (type_name* asset : filtered) { \
-	serializer.write_int(assets.id_of(asset));
-
-#define END_SAVE(filename) } io_writef(filename, {serializer.data, serializer.index}); } 
-
-void AssetTab::on_save() {
-	/*
-	BEGIN_SAVE(AssetFolder)
-		serializer.write(reflect::TypeResolver<AssetFolder>::get(), asset);
-	END_SAVE("data/AssetFolder.ne")
-	
-	//todo worry about serialization afterward
-	BEGIN_SAVE(TextureAsset)
-		Texture* tex = get_Texture(asset_manager, asset->handle);
-		serializer.write_string(tex->filename);
-		serializer.write(reflect::TypeResolver<TextureAsset>::get(), asset);
-	END_SAVE("data/TextureAsset.ne")
-	
-	
-	BEGIN_SAVE(MaterialAsset)
-		MaterialDesc* mat = material_desc(asset->handle);
-		ShaderInfo* shader = shader_info(mat->shader);
-		if (shader == NULL) continue;
-
-		serializer.write_string(shader->vfilename); //it could just save the shader handle
-		serializer.write_string(shader->ffilename);
-
-		serializer.write_int(mat->params.length);
-	
-		for (ParamDesc& param : mat->params) {
-			*(ParamDesc*)serializer.pointer_to_n_bytes(sizeof(ParamDesc)) = param;
-		}
-	
-		serializer.write(reflect::TypeResolver<MaterialAsset>::get(), asset);
-	END_SAVE("data/MaterialAsset.ne")
-	
-	BEGIN_SAVE(ModelAsset)
-		serializer.write_string(get_Model(asset->handle)->path);
-		serializer.write(reflect::TypeResolver<ModelAsset>::get(), asset);
-	END_SAVE("data/ModelAsset.ne")
-
-	BEGIN_SAVE(ShaderAsset)
-			serialize_shader_asset(serializer, asset);
-	END_SAVE("data/ShaderAsset.ne")
 	*/
 }
 

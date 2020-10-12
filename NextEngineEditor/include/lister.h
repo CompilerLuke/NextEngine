@@ -11,7 +11,7 @@ REFL
 struct EntityNode {
 	sstring name = "Root";
 	ID id = 0;
-	bool expanded = true;
+	bool expanded = false;
 	vector<EntityNode> children; //todo optimization for 1-2 children
 	int parent = -1;
 };

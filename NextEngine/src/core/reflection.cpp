@@ -122,11 +122,11 @@ Array* make_tvector_type(Type* type) {
 	return PERMANENT_ALLOC(Array, Array::TVector, sizeof(tvector<char>), name, type);
 }
 
-Array* make_array_type(uint N, Type* type) {
+Array* make_array_type(uint N, uint size, Type* type) {
 	char* name = PERMANENT_ARRAY(char, 100);
 	sprintf_s(name, 100, "array<%i, %s>", N, type->name.c_str());
 
-	return PERMANENT_ALLOC(Array, Array::StaticArray, sizeof(void*) + type->size * N, name, type);
+	return PERMANENT_ALLOC(Array, Array::StaticArray, size, name, type);
 }
 
 Array* make_carray_type(uint N, Type* type) {

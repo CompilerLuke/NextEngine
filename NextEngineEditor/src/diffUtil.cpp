@@ -1,4 +1,5 @@
 #include "diffUtil.h"
+#include "core/memory/allocator.h"
 #include "core/memory/linear_allocator.h"
 #include "core/io/logger.h"
 #include <glm/gtc/epsilon.hpp>
@@ -80,6 +81,18 @@ T* push_ptr(char** block, uint count = 1) {
 	return (T*)ptr;
 }
 
+template<typename T>
+T* copy_ptr(char** block, T* from, uint count) {
+	T* to = push_ptr<T>(block, count);
+	memcpy_t(to, from, count);
+	return to;
+}
+
+template<typename T>
+slice<T> copy_slice(char** block, slice<T> slice) {
+	return {copy_ptr(block, slice.data, slice.length), slice.length};
+}
+
 void begin_tdiff(DiffUtil& util, void* ptr, refl::Type* type) {
 	util.real_ptr = ptr;
 	util.copy_ptr = temporary_allocator.allocate(type->size);
@@ -94,25 +107,6 @@ void begin_diff(DiffUtil& util, void* ptr, void* copy, refl::Type* type) {
 	util.type = type;
 
 	memcpy(util.copy_ptr, util.real_ptr, type->size);
-}
-
-Diff* copy_onto_stack(ActionStack& stack, EditorActionHeader header, const Diff& diff) {
-	char* data = stack_push_action(stack, header);
-	memset(data, 0, header.size);
-
-	Diff* copy = push_ptr<Diff>(&data);
-	copy->id = diff.id;
-	copy->copy_ptr = push_ptr<char>(&data, diff.type->size);
-
-	copy->real_ptr = diff.real_ptr;
-	copy->type = diff.type;
-	copy->fields_modified.length = diff.fields_modified.length;
-	copy->fields_modified.data = (uint*)data;
-
-	memcpy(copy->copy_ptr, diff.copy_ptr, copy->type->size);
-	memcpy(copy->fields_modified.data, diff.fields_modified.data, diff.fields_modified.length * sizeof(uint));
-
-	return copy;
 }
 
 bool submit_diff(ActionStack& stack, DiffUtil& util,  string_view string) {
@@ -147,15 +141,14 @@ bool submit_diff(ActionStack& stack, DiffUtil& util,  string_view string) {
 	header.name = string;
 	header.size = sizeof(Diff) + util.type->size + sizeof(uint) * modified_fields.length;
 
-	Diff diff = {};
-	diff.id = util.id;
-	diff.copy_ptr = util.copy_ptr;
-	diff.real_ptr = util.real_ptr;
-	diff.type = util.type;
-	diff.fields_modified = modified_fields;
+	char* buffer = stack_push_action(stack, header);
 
-
-	copy_onto_stack(stack, header, diff);
+	Diff* diff = push_ptr<Diff>(&buffer);
+	diff->id = util.id;
+	diff->copy_ptr = copy_ptr<char>(&buffer, (char*)util.copy_ptr, util.type->size);
+	diff->real_ptr = util.real_ptr;
+	diff->type = util.type;
+	diff->fields_modified = copy_slice<uint>(&buffer, modified_fields);
 
 	return true;
 }
@@ -177,7 +170,7 @@ EntityCopy* save_entity_copy(World& world, ActionStack& stack, Archetype copy_ar
 	uint size = sizeof(EntityCopy);
 	
 	for (ComponentPtr& component : components) {
-		size += world.get_type_for(component)->size;
+		size += world.component_size[component.component_id];
 		size += sizeof(EntityCopy::Component);
 	}
 
@@ -196,48 +189,33 @@ EntityCopy* save_entity_copy(World& world, ActionStack& stack, Archetype copy_ar
 
 	for (uint i = 0; i < components.length; i++) {
 		ComponentPtr& component_ptr = components[i];
-		refl::Struct* type = world.get_type_for(component_ptr);
+		uint size = world.component_size[component_ptr.component_id];
 
 		EntityCopy::Component& component = entity_copy->components[i];
 		component.component_id = component_ptr.component_id;
-		component.ptr = push_ptr<char>(&data, type->size);
-		component.size = type->size;
+		component.ptr = copy_ptr<char>(&data, (char*)component_ptr.data, size);
+		//component.size = size;
 
 		printf("Ptr of save entity copy %p\n", component.ptr);
 
-		memcpy(component.ptr, component_ptr.data, type->size);
-
 		if (component.component_id == 0) {
-			Entity* o = (Entity*)component_ptr.data;
-			Entity* e = (Entity*)(component.ptr);
-			printf("ENTITY COPY! SAVED ENTITY id: %i layermask: %i, original: %i\n", e->id, e->layermask, o->id);
+			Entity* e = (Entity*)(component.ptr.data());
+			printf("SAVED ENTITY id: %i\n", e->id);
 		}
 	}
 
 	return entity_copy;
 }
 
-void copy_to_stack(ActionStack& stack, EditorActionHeader& header, EntityCopy& master) {
-	char* data = stack_push_action(stack, header);
-	memcpy(data, &master, header.size);
-
-	//Fixup pointers
-	EntityCopy* copy = push_ptr<EntityCopy>(&data);
-	copy->components.data = push_ptr<EntityCopy::Component>(&data, master.components.length);
-
-	for (uint i = 0; i < master.components.length; i++) {
-		EntityCopy::Component& component = copy->components[i];
-		copy->components[i].ptr = push_ptr<char>(&data, component.size);
-
-		if (component.component_id == 0) {
-			Entity* e = (Entity*)(component.ptr);
-			printf("COPYING OVER DATA! SAVED ENTITY id: %i layermask: %i\n", e->id, e->layermask);
-		}
-	}
+void* copy_onto_stack(ActionStack& stack, EditorActionHeader& header) {
+	EditorActionHeader copy = header;
+	char* buffer = stack_push_action(stack, copy);
+	memcpy(buffer, header.ptr, header.size);
+	return copy.ptr;
 }
 
 void apply_diff_and_move_to(ActionStack& actions, EditorActionHeader& header, Diff* diff) {
-	Diff* copy = copy_onto_stack(actions, header, *diff);
+	Diff* copy = (Diff*)copy_onto_stack(actions, header);
 
 	memcpy(copy->copy_ptr, diff->real_ptr, diff->type->size);
 	memcpy(diff->real_ptr, diff->copy_ptr, diff->type->size);
@@ -252,13 +230,13 @@ void create_components(World& world, EntityCopy* copy) {
 	world.change_archetype(copy->id, copy->from, copy->to, false);
 	std::swap(copy->from, copy->to);
 
-	for (EntityCopy::Component component : copy->components) {
+	for (EntityCopy::Component& component : copy->components) {
 		u8* ptr = (u8*)world.id_to_ptr[component.component_id][copy->id];
-		memcpy(ptr, component.ptr, component.size);
+		memcpy(ptr, component.ptr.data(), world.component_size[component.component_id]);
 
 		if (component.component_id == 0) {
-			Entity* e = (Entity*)(component.ptr);
-			printf("SAVED ENTITY id: %i layermask: %i\n", e->id, e->layermask);
+			Entity* e = (Entity*)(component.ptr.data());
+			printf("SAVED ENTITY id: %i\n", e->id);
 		}
 	}
 }
@@ -323,112 +301,41 @@ void undo_action(EditorActions& actions) {
 	if (actions.undo.stack.length == 0) return;
 	
 	EditorActionHeader header = pop_action(actions.undo);
+	actions.frame_diffs.stack.append(header);
 
 	switch (header.type) {
-	case EditorActionHeader::Diff: apply_diff_and_move_to(actions.redo, header, (Diff*)header.ptr); break;
+	case EditorActionHeader::Diff: apply_diff_and_move_to(actions.redo, header, (Diff*)header.ptr); return;
 	case EditorActionHeader::Destroy_Component:
 	case EditorActionHeader::Destroy_Entity: 
 		create_components(actions.world, (EntityCopy*)header.ptr);
-		copy_to_stack(actions.redo, header, *(EntityCopy*)header.ptr);
 		break;
 	case EditorActionHeader::Create_Component:
 	case EditorActionHeader::Create_Entity: 
 		destroy_components(actions.world, (EntityCopy*)header.ptr);
-		copy_to_stack(actions.redo, header, *(EntityCopy*)header.ptr);
 		break;
 	}
 
-	actions.frame_diffs.stack.append(header);
+	copy_onto_stack(actions.redo, header);
 }
 
 void redo_action(EditorActions& actions) {
 	if (actions.redo.stack.length == 0) return;
 
 	EditorActionHeader header = pop_action(actions.redo);
+	actions.frame_diffs.stack.append(header);
 
 	switch (header.type) {
-	case EditorActionHeader::Diff: apply_diff_and_move_to(actions.undo, header, (Diff*)header.ptr); break;
+	case EditorActionHeader::Diff: apply_diff_and_move_to(actions.undo, header, (Diff*)header.ptr); return;
 	case EditorActionHeader::Destroy_Component:
 	case EditorActionHeader::Destroy_Entity:
 		destroy_components(actions.world, (EntityCopy*)header.ptr);
-		copy_to_stack(actions.undo, header, *(EntityCopy*)header.ptr);
 		break;
 
 	case EditorActionHeader::Create_Component:
 	case EditorActionHeader::Create_Entity:
 		create_components(actions.world, (EntityCopy*)header.ptr);
-		copy_to_stack(actions.undo, header, *(EntityCopy*)header.ptr);
 		break;
 	}
 
-	actions.frame_diffs.stack.append(header);
+	copy_onto_stack(actions.undo, header);
 }
-
-
-
-
-/*
-CreateAction::CreateAction(World& world, ID id) 
-: world(world), id(id) {
-	auto components = world.components_by_id(id);
-
-	this->components.reserve(components.length); //components by id is only temporarily valid
-	for (int i = 0; i < components.length; i++)
-		this->components.append(components[i]);
-}
-
-void CreateAction::undo() {
-	undid = true;
-	for (auto& comp : this->components) {
-		comp.store->set_enabled(comp.data, false);
-	}
-}
-
-void CreateAction::redo() {
-	undid = false;
-	for (auto& comp : this->components) {
-		comp.store->set_enabled(comp.data, true);
-	}
-}
-
-CreateAction::~CreateAction() {
-	if (undid) {
-		world.free_by_id(id);
-	}
-}
-
-DestroyAction::DestroyAction(World& w, ID id) : CreateAction(w, id) {
-	CreateAction::undo();
-}
-
-void DestroyAction::redo() {
-	CreateAction::undo();
-}
-
-void DestroyAction::undo() {
-	CreateAction::redo();
-}
-
-DestroyComponentAction::DestroyComponentAction(ComponentStore* store, ID id) {
-	this->store = store;
-	this->ptr = store->get_by_id(id).data;
-
-	redo();
-}
-
-void DestroyComponentAction::undo() {
-	undid = true;
-	store->set_enabled(ptr, true);
-}
-
-void DestroyComponentAction::redo() {
-	undid = false;
-	store->set_enabled(ptr, false);
-}
-
-DestroyComponentAction::~DestroyComponentAction() {
-	if (!undid) {
-		store->free_by_id(((Slot<char>*)ptr)->object.second);
-	}
-}
-*/

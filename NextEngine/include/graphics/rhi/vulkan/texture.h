@@ -95,7 +95,7 @@ const VkImageCreateInfo image_create_default = {
 VkImageUsageFlags to_vk_usage_flags(TextureUsage usage);
 VkFormat to_vk_image_format(TextureFormat format, uint num_channels);
 VkFormat to_vk_image_format(const TextureDesc&);
-const VkImageLayout to_vk_layout[4] = { VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+const VkImageLayout to_vk_layout[5] = { VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
 
 void make_TextureAllocator(TextureAllocator&);
 Texture alloc_TextureImage(TextureAllocator&, const TextureDesc&);

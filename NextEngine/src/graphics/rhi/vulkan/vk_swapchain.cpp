@@ -61,10 +61,10 @@ void make_SyncObjects(Swapchain& swapchain) {
 	VkSemaphoreCreateInfo semaphoreInfo = {};
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-
 	for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &swapchain.image_available_semaphore[i]) != VK_SUCCESS
 			|| vkCreateSemaphore(device, &semaphoreInfo, nullptr, &swapchain.render_finished_semaphore[i]) != VK_SUCCESS
+			|| vkCreateSemaphore(device, &semaphoreInfo, nullptr, &swapchain.render_finished_semaphore2[i]) != VK_SUCCESS
 			|| vkCreateFence(device, &fenceInfo, nullptr, &swapchain.in_flight_fences[i]) != VK_SUCCESS) {
 			throw "failed to make semaphore!";
 		}
@@ -147,6 +147,7 @@ void destroy_Swapchain(Swapchain& swapchain) {
 	for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		vkDestroySemaphore(swapchain.device, swapchain.image_available_semaphore[i], nullptr);
 		vkDestroySemaphore(swapchain.device, swapchain.render_finished_semaphore[i], nullptr);
+		vkDestroySemaphore(swapchain.device, swapchain.render_finished_semaphore2[i], nullptr);
 		vkDestroyFence(swapchain.device, swapchain.in_flight_fences[i], nullptr);
 	}
 

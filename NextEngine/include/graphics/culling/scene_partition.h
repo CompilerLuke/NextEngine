@@ -8,9 +8,10 @@
 
 struct Node {
 	AABB aabb;
-	int offset;
-	int count;
-	Node* child[2];
+	uint offset;
+	u16 count;
+	u16 child_count;
+	u16 child[8];
 };
 
 struct Partition {

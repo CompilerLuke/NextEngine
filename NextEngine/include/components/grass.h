@@ -17,5 +17,7 @@ struct Grass {
 	float random_scale = 1.0f;
 	bool align_to_terrain_normal = false;
 
-	vector<Transform> transforms;
+
+	vector<glm::vec3 > positions;
+	vector<glm::mat4> model_m;
 };

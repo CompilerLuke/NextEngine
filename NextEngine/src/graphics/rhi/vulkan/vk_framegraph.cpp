@@ -44,6 +44,10 @@ static Framegraph framegraph;
 render_pass_handle render_pass_by_id(RenderPass::ID pass_id) {
 	return { (u64)framegraph.render_pass[pass_id] };
 }
+
+RenderPass::Type render_pass_type(RenderPass::ID pass_id, uint subpass) {
+	return framegraph.info[pass_id].types[subpass];
+}
  
 Viewport render_pass_viewport_by_id(RenderPass::ID pass_id) {
 	Viewport viewport = {};
@@ -107,39 +111,59 @@ void build_framegraph() {
 	topoligical_sort_render_passes();
 }
 
-void make_Framebuffer(RenderPass::ID id, FramebufferDesc& desc) {
+void make_Framebuffer(RenderPass::ID id, FramebufferDesc& desc, slice<SubpassDesc> subpasses) {
 	VkDevice device = rhi.device.device;
 	VkPhysicalDevice physical_device = rhi.device.physical_device;
-	VkRenderPass render_pass = make_RenderPass(device, physical_device, desc);
+	VkRenderPass render_pass = make_RenderPass(device, physical_device, desc, subpasses);
 
 	framegraph.render_pass[id] = render_pass;
 	
 	RenderPassInfo& info = framegraph.info[id];
 
-	info.type   = desc.color_attachments.length == 0 ? RenderPass::Depth : RenderPass::Color;
 	info.width  = desc.width;
 	info.height = desc.height;
 	info.dependencies = (slice<Dependency>)desc.dependency;
 
 	framegraph.framebuffer[id] = make_Framebuffer(device, physical_device, render_pass, desc, info);
 
+	for (SubpassDesc& subpass : subpasses) {
+		info.types.append(subpass.color_attachments.length == 0 ? RenderPass::Depth : RenderPass::Color);
+	}
+
 	for (uint frame = 0; frame < MAX_FRAMES_IN_FLIGHT; frame++) {
 		framegraph.render_pass_complete[frame][id] = make_Event(device);
 	}
 }
 
+void make_Framebuffer(RenderPass::ID id, FramebufferDesc& desc) {
+	SubpassDesc subpass = {};
+	
+	for (uint i = 0; i < desc.color_attachments.length; i++) {
+		subpass.color_attachments.append(i);
+	}
+
+	subpass.depth_attachment = desc.depth_buffer != DepthBufferFormat::None;
+
+	make_Framebuffer(id, desc, subpass);
+}
+
 void make_wsi_pass(slice<Dependency> dependency) {
 	framegraph.info[RenderPass::Screen].dependencies = dependency;
-	framegraph.info[RenderPass::Screen].type = RenderPass::Color;
+	framegraph.info[RenderPass::Screen].types.append(RenderPass::Color);
 	//todo add support for dependencies
 
 }
 
 void register_wsi_pass(VkRenderPass render_pass, uint width, uint height) {
-	framegraph.info[RenderPass::Screen].type = RenderPass::Color;
+	framegraph.info[RenderPass::Screen].types.append(RenderPass::Color);
 	framegraph.info[RenderPass::Screen].width = width;
 	framegraph.info[RenderPass::Screen].height = height;
 	framegraph.render_pass[RenderPass::Screen] = render_pass;
+}
+
+RenderPass::Type render_pass_type_by_id(RenderPass::ID id, uint subpass) {
+	const RenderPassInfo& info = framegraph.info[id];
+	return info.types[subpass];
 }
 
 RenderPass begin_render_pass(RenderPass::ID id, glm::vec4 clear_color) {
@@ -172,6 +196,7 @@ RenderPass begin_render_pass(RenderPass::ID id, glm::vec4 clear_color) {
 
 	//todo merge into one call
 	array<10, Dependency> dependencies = framegraph.info[id].dependencies;
+	
 
 	//for (Dependency& dependency : dependencies) {
 	//	VkEvent wait_on_event = framegraph.render_pass_complete[rhi.frame_index][dependency.id];
@@ -200,9 +225,10 @@ RenderPass begin_render_pass(RenderPass::ID id, glm::vec4 clear_color) {
 	vkCmdSetViewport(cmd_buffer, 0, 1, &vk_viewport);
 	vkCmdSetScissor(cmd_buffer, 0, 1, &scissor);
 
+	cmd_buffer.render_pass = id;
 
 
-	return { id, view.type, {(u64)vk_render_pass}, viewport, cmd_buffer };
+	return { id, view.types[0], {(u64)vk_render_pass}, viewport, cmd_buffer };
 }
 
 void generate_mips_after_render_pass(VkCommandBuffer cmd_buffer, RenderPassInfo& info, Attachment& attachment) {
@@ -214,18 +240,16 @@ void generate_mips_after_render_pass(VkCommandBuffer cmd_buffer, RenderPassInfo&
 	VkImageMemoryBarrier barrier = {};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 	barrier.image = attachment.image;
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 	barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	barrier.subresourceRange.baseMipLevel = 0;
 	barrier.subresourceRange.levelCount = 1;
 	barrier.subresourceRange.layerCount = 1;
 
-	vkCmdPipelineBarrier(cmd_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, 0, 1, &barrier);
+	vkCmdPipelineBarrier(cmd_buffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_DEPENDENCY_BY_REGION_BIT, 0, 0, 0, 0, 1, &barrier);
 
 	barrier.srcAccessMask = 0;
 	barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -305,66 +329,27 @@ void end_render_pass(RenderPass& render_pass) {
 	}
 
 	assert(render_pass.cmd_buffer.cmd_buffer != VK_NULL_HANDLE);
-	framegraph.submitted_cmd_buffer[render_pass.id] = &render_pass.cmd_buffer;
+	framegraph.submitted_cmd_buffer[render_pass.id] = TEMPORARY_ALLOC(CommandBuffer, render_pass.cmd_buffer);
 
 	//end_draw_cmds(render_pass.cmd_buffer);
 }
 
-void submit_framegraph(QueueSubmitInfo& submit_info) {
+void submit_framegraph() {
 	for (RenderPass::ID id : framegraph.render_pass_order) {
 		if (!framegraph.submitted_cmd_buffer[id]) continue;
 
 		end_draw_cmds(*framegraph.submitted_cmd_buffer[id]);
-		
-		
 		framegraph.submitted_cmd_buffer[id] = nullptr;
 
 		//assert(cmd_buffer.cmd_buffer, "Never completed render pass!");
-
-
-		//VkPipelineStageFlags src_stage_flags = 0;
-		//VkPipelineStageFlags dst_stage_flags = 0;
-		//array<10, VkImageMemoryBarrier> image_barriers;
-		/*
-				CommandBuffer& cmd_buffer = *framegraph.submitted_cmd_buffer[id];
-
-		for (const Dependency& dependency : framegraph.view[id].dependencies) {
-			const RenderPassInfo& info = framegraph.view[dependency.id];
-
-			//todo be more fine grained in the future
-			//also optimize using pipeline barrier instead of event, if the two passes are directly after each other
-			
-			VkPipelineStageFlags src_stage_flags = 0;
-			VkPipelineStageFlags dst_stage_flags = 0;
-			
-			src_stage_flags |= info.type == RenderPass::Color ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT : VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-			if (dependency.stage & VERTEX_STAGE) dst_stage_flags |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
-			if (dependency.stage & FRAGMENT_STAGE) dst_stage_flags |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-
-			bool is_color = info.type == RenderPass::Color;
-
-			//todo image barrier for each attachment!
-			VkImageMemoryBarrier image_barrier = {};
-			image_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-			image_barrier.oldLayout = is_color ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-			image_barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			image_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			image_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-			image_barrier.image = info.image_attachments[0];
-			image_barrier.subresourceRange.baseMipLevel = 0;
-			image_barrier.subresourceRange.levelCount = 1;
-			image_barrier.subresourceRange.baseArrayLayer = 0;
-			image_barrier.subresourceRange.layerCount = 1;
-			image_barrier.subresourceRange.aspectMask = is_color ? VK_IMAGE_ASPECT_COLOR_BIT : VK_IMAGE_ASPECT_DEPTH_BIT;
-			image_barrier.srcAccessMask = is_color ? VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT : VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-			image_barrier.dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
-
-
-			vkCmdWaitEvents(cmd_buffer, 1, &framegraph.render_pass_complete[rhi.frame_index][dependency.id], src_stage_flags, dst_stage_flags, 0, nullptr, 0, nullptr, 1, &image_barrier);
-		}
-		*/
-
 	}	
+}
+
+void next_subpass(RenderPass& render_pass) {
+	uint subpass = ++render_pass.cmd_buffer.subpass;
+	render_pass.type = framegraph.info[render_pass.id].types[subpass];
+
+	vkCmdNextSubpass(render_pass.cmd_buffer, VK_SUBPASS_CONTENTS_INLINE); //todo somewhat strange that command buffer and render pass struct overlap
 }
 
 void end_render_frame(RenderPass& render_pass) {
@@ -376,6 +361,7 @@ void end_render_frame(RenderPass& render_pass) {
 	framegraph.submitted_cmd_buffer[RenderPass::Screen] = &render_pass.cmd_buffer;
 
 	uint current_frame = rhi.frame_index;
+	uint last_frame = current_frame == 0 ? MAX_FRAMES_IN_FLIGHT - 1 : current_frame - 1;
 
 	QueueSubmitInfo submit_info = {};
 	submit_info.completion_fence = swapchain.in_flight_fences[current_frame];
@@ -384,12 +370,22 @@ void end_render_frame(RenderPass& render_pass) {
 	//todo HACK!, I need the wait on transfer to occur before everything else!
 	//std::swap(graphics_cmd_pool.submited[rhi.frame_index][0], graphics_cmd_pool.submited[rhi.frame_index].last());
 
-	submit_framegraph(submit_info);
+	submit_framegraph();
 	submit_all_cmds(graphics_cmd_pool, submit_info);
 
+	static bool first_frame = true;
+
+	//0x83d4ee000000000b[]
+
+	//if (!first_frame) queue_wait_semaphore(submit_info, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, swapchain.render_finished_semaphore2[last_frame]); //wait for last frame, as we have a single color images
 	transfer_queue_dependencies(rhi.staging_queue, submit_info, rhi.waiting_on_transfer_frame);
 	queue_wait_semaphore(submit_info, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, swapchain.image_available_semaphore[current_frame]);
+	//queue_signal_semaphore(submit_info, swapchain.render_finished_semaphore2[current_frame]);
 	queue_signal_semaphore(submit_info, swapchain.render_finished_semaphore[current_frame]);
+
+	//printf("Last frame : %i, Current frame : %i", last_frame, current_frame);
+	//printf("Signalling semaphore %p\n", swapchain.render_finished_semaphore2[current_frame]);
+	//printf("Waiting on semaphore %p\n", swapchain.render_finished_semaphore2[last_frame]);
 
 	vkResetFences(rhi.device, 1, &swapchain.in_flight_fences[current_frame]);
 
@@ -398,6 +394,9 @@ void end_render_frame(RenderPass& render_pass) {
 	present_swapchain_image(rhi.swapchain);
 
 	swapchain.current_frame = (swapchain.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
+	first_frame = false;
+
+	rhi.frame_index = swapchain.current_frame; //todo eliminate distinction between frame and swapchain.current_frame
 }
 
 VkFormat find_supported_format(VkPhysicalDevice physical_device, slice<VkFormat> candidates, VkImageTiling tiling, VkFormatFeatureFlags features) {
@@ -425,122 +424,180 @@ VkFormat find_color_format(VkPhysicalDevice device, AttachmentDesc& desc) {
 	return to_vk_image_format(desc.format, desc.num_channels);
 }
 
-VkRenderPass make_RenderPass(VkDevice device, VkPhysicalDevice physical_device, FramebufferDesc& desc) {
+const uint MAX_SUBPASSES = 5;
+
+VkAttachmentLoadOp to_vk_load_op(LoadOp op) {
+	VkAttachmentLoadOp ops[] = {VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_LOAD_OP_DONT_CARE};
+	return ops[(uint)op];
+}
+
+VkAttachmentStoreOp to_vk_store_op(StoreOp op) {
+	VkAttachmentStoreOp ops[] = { VK_ATTACHMENT_STORE_OP_STORE, VK_ATTACHMENT_STORE_OP_DONT_CARE };
+	return ops[(uint)op];
+}
+
+/*
+			color_attachment_desc.samples = VK_SAMPLE_COUNT_1_BIT;
+			color_attachment_desc.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			color_attachment_desc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+			color_attachment_desc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+			color_attachment_desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+*/
+
+VkRenderPass make_RenderPass(VkDevice device, VkPhysicalDevice physical_device, FramebufferDesc& desc, slice<SubpassDesc> subpasses) {
+	VkSubpassDescription subpass_description[MAX_SUBPASSES] = {};
 	array<MAX_ATTACHMENT, VkAttachmentDescription> attachments_desc;
-	array<MAX_ATTACHMENT, VkAttachmentReference> color_attachment_ref;
+	tvector<VkSubpassDependency> dependencies;
 
 	for (uint i = 0; i < desc.color_attachments.length; i++) {
 		AttachmentDesc& attach = desc.color_attachments[i];
 
 		VkFormat format = find_color_format(physical_device, attach);
 
-		VkAttachmentReference ref = {};
-		ref.attachment = attachments_desc.length;
-		ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
 		VkAttachmentDescription color_attachment_desc = {};
 		color_attachment_desc.format = format;
 		color_attachment_desc.samples = VK_SAMPLE_COUNT_1_BIT;
-		color_attachment_desc.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		color_attachment_desc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+		color_attachment_desc.loadOp = to_vk_load_op(attach.load_op);
+		color_attachment_desc.storeOp = to_vk_store_op(attach.store_op);
 		color_attachment_desc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		color_attachment_desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 		color_attachment_desc.initialLayout = to_vk_layout[(uint)attach.initial_layout]; //todo not sure this is correct
-		
-		if (attach.num_mips > 1) color_attachment_desc.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+
+		if (attach.num_mips > 1) color_attachment_desc.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; //VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 		else color_attachment_desc.finalLayout = to_vk_layout[(uint)attach.final_layout];
 
 		attachments_desc.append(color_attachment_desc);
-		color_attachment_ref.append(ref);
 	}
 
+	bool depth_attachment = desc.depth_buffer != DepthBufferFormat::None;
+	bool store_depth_buffer = desc.depth_attachment;
 
 	VkAttachmentReference depth_attachment_ref = {};
 
-	bool depth_attachment = desc.depth_buffer != Disable_Depth_Buffer;
-
 	if (depth_attachment) {
 		VkFormat depth_format = find_depth_format(physical_device);
-
-		bool store_depth_buffer = desc.depth_attachment;
-		depth_attachment_ref.attachment = attachments_desc.length;
-		depth_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 		VkAttachmentDescription depth_attachment_desc = {};
 		depth_attachment_desc.format = depth_format;
 		depth_attachment_desc.samples = VK_SAMPLE_COUNT_1_BIT;
 		depth_attachment_desc.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		depth_attachment_desc.storeOp = store_depth_buffer ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		depth_attachment_desc.stencilLoadOp = desc.stencil_buffer == Disable_Stencil_Buffer ? VK_ATTACHMENT_LOAD_OP_DONT_CARE : VK_ATTACHMENT_LOAD_OP_CLEAR;
+		depth_attachment_desc.stencilLoadOp = desc.stencil_buffer == StencilBufferFormat::None ? VK_ATTACHMENT_LOAD_OP_DONT_CARE : VK_ATTACHMENT_LOAD_OP_CLEAR;
 		depth_attachment_desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 		depth_attachment_desc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		depth_attachment_desc.finalLayout = store_depth_buffer ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-		//VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+		depth_attachment_ref.attachment = attachments_desc.length;
+		depth_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 		attachments_desc.append(depth_attachment_desc);
 	}
 
-	VkAttachmentReference input_attachment_ref[10] = {};
-	VkSubpassDependency dependencies[10] = {};
-
-	for (uint i = 0; i < desc.dependency.length; i++) {
-		Dependency dependency = desc.dependency[i];
-		const RenderPassInfo& info = framegraph.info[dependency.id];
-		bool is_color = info.type == RenderPass::Color;
-
-		VkPipelineStageFlags src_stage_mask = 0;
-		VkPipelineStageFlags dst_stage_mask = 0;
-
-		src_stage_mask |= is_color ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT : VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-		if (dependency.stage & VERTEX_STAGE) dst_stage_mask |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
-		if (dependency.stage & FRAGMENT_STAGE) dst_stage_mask |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-
-		VkSubpassDependency& subpass_dependency = dependencies[i];
-		subpass_dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-		subpass_dependency.dstSubpass = 0;
-		subpass_dependency.srcStageMask = src_stage_mask;
-		subpass_dependency.dstStageMask = dst_stage_mask;
-
-		//todo add access mask!
-
-		/*
-		VkAttachmentReference& ref = input_attachment_ref[i];
-		ref.attachment = attachments_desc.length;
-		ref.layout = is_color ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-
-		AttachmentDesc dummy = {};
+	for (uint pass = 0; pass < subpasses.length; pass++) {
+		SubpassDesc& subpass_desc = subpasses[pass];
 		
-		VkAttachmentDescription desc = {};
-		desc.initialLayout = ref.layout;
-		desc.finalLayout = ref.layout;
-		desc.format = is_color ? find_color_format(physical_device, dummy) : find_depth_format(physical_device);
-		desc.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-		desc.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		desc.samples = VK_SAMPLE_COUNT_1_BIT;
-		desc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		
-		attachments_desc.append(desc);
-		*/
+		tvector<VkAttachmentReference> color_attachment_ref;
+
+		for (uint attachment : subpass_desc.color_attachments) {
+			VkAttachmentReference ref = {};
+			ref.attachment = attachment;
+			ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+			color_attachment_ref.append(ref);
+		}
+
+		if (pass == 0) {
+			if (depth_attachment) {
+				VkSubpassDependency write_depth_dependency = {};
+				write_depth_dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+				write_depth_dependency.dstSubpass = 0;
+				write_depth_dependency.srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+				write_depth_dependency.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+				write_depth_dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+				write_depth_dependency.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+				write_depth_dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+				dependencies.append(write_depth_dependency);
+			}
+			if (desc.color_attachments.length > 0) {
+				VkSubpassDependency write_color_dependency = {};
+				write_color_dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+				write_color_dependency.dstSubpass = 0;
+				write_color_dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+				write_color_dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+				write_color_dependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+				write_color_dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+				write_color_dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+				dependencies.append(write_color_dependency);
+			}
+
+			for (uint i = 0; i < desc.dependency.length; i++) {
+				Dependency dependency = desc.dependency[i];
+				const RenderPassInfo& info = framegraph.info[dependency.id];
+				bool is_color =  info.types.length == 0 ? true : info.types[0] == RenderPass::Color; //todo this is not correct for multiple subpasses, and the system is not aware of TerrainHeightGeneration, since it is created later
+
+				VkPipelineStageFlags src_stage_mask = 0;
+				VkPipelineStageFlags dst_stage_mask = 0;
+				VkAccessFlags src_access_mask = 0;
+				VkAccessFlags dst_access_mask = 0;
+
+				src_stage_mask |= is_color ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT : VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+				src_access_mask |= is_color ? VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT : VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+				dst_access_mask |= VK_ACCESS_SHADER_READ_BIT;
+				
+				if (dependency.stage & VERTEX_STAGE) dst_stage_mask |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+				if (dependency.stage & FRAGMENT_STAGE) dst_stage_mask |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+
+				VkSubpassDependency subpass_dependency = {};
+				subpass_dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+				subpass_dependency.dstSubpass = 0;
+				subpass_dependency.srcStageMask = src_stage_mask;
+				subpass_dependency.dstStageMask = dst_stage_mask;
+				subpass_dependency.srcAccessMask = src_access_mask;
+				subpass_dependency.dstAccessMask = dst_access_mask;
+				subpass_dependency.dependencyFlags = 0;
+
+				dependencies.append(subpass_dependency);
+			}
+		}
+		else {
+			//todo somewhat oversimplified
+
+
+			bool is_color = subpasses[pass - 1].color_attachments.length > 0;
+
+			VkSubpassDependency subpass_dependency = {};
+			subpass_dependency.srcSubpass = pass - 1;
+			subpass_dependency.dstSubpass = pass;
+			subpass_dependency.srcStageMask = is_color ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT : VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			subpass_dependency.dstStageMask = is_color ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT : VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+
+			subpass_dependency.srcAccessMask = is_color ? VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT : VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			subpass_dependency.dstAccessMask = is_color ? VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT : VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			subpass_dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+			dependencies.append(subpass_dependency);
+		}
+
+		if (subpass_desc.depth_attachment) assert(depth_attachment);
+
+		//todo support for input attachments
+		VkSubpassDescription& subpass = subpass_description[pass];
+		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpass.colorAttachmentCount = color_attachment_ref.length;
+		subpass.pColorAttachments = color_attachment_ref.data;
+		subpass.pDepthStencilAttachment = subpass_desc.depth_attachment ? &depth_attachment_ref : NULL;
 	}
-
-	VkSubpassDescription subpass = {};
-	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpass.colorAttachmentCount = color_attachment_ref.length;
-	subpass.pColorAttachments = color_attachment_ref.data;
-	subpass.pDepthStencilAttachment = depth_attachment ? &depth_attachment_ref : NULL;
-	//subpass.inputAttachmentCount = desc.dependency.length;
-	//subpass.pInputAttachments = input_attachment_ref;
 
 	VkRenderPassCreateInfo render_pass_info = {};
 	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	render_pass_info.attachmentCount = attachments_desc.length;
 	render_pass_info.pAttachments = attachments_desc.data;
-	render_pass_info.subpassCount = 1;
-	render_pass_info.pSubpasses = &subpass;
-	render_pass_info.dependencyCount = desc.dependency.length;
-	render_pass_info.pDependencies = dependencies;
+	render_pass_info.subpassCount = subpasses.length;
+	render_pass_info.pSubpasses = subpass_description;
+	render_pass_info.dependencyCount = dependencies.length;
+	render_pass_info.pDependencies = dependencies.data;
 
 	VkRenderPass render_pass;
 	VK_CHECK(vkCreateRenderPass(device, &render_pass_info, nullptr, &render_pass));
@@ -602,7 +659,7 @@ VkFramebuffer make_Framebuffer(VkDevice device, VkPhysicalDevice physical_device
 		}
 	}
 
-	if (desc.depth_buffer != Disable_Depth_Buffer) {
+	if (desc.depth_buffer != DepthBufferFormat::None) {
 		VkFormat depth_format = find_depth_format(physical_device);
 
 		bool store_depth = desc.depth_attachment;

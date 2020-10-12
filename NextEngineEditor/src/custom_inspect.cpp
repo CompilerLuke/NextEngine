@@ -89,31 +89,53 @@ bool Model_inspect(void* data, string_view prefix, Editor& editor) {
 	return render_asset_preview(editor.asset_tab, AssetNode::Model, (uint*)data, prefix);
 }
 
-bool Layermask_inspect(void* data, string_view prefix, Editor& editor) {
-	Layermask* mask_ptr = (Layermask*)(data);
-	Layermask mask = *mask_ptr;
-
-	if (ImGui::RadioButton("game", mask & GAME_LAYER)) {
-		mask ^= GAME_LAYER;
-	}
-
-
-
+bool toggle_button(const char* name, bool enabled) {
 	ImGui::SameLine();
 
-	if (ImGui::RadioButton("editor", mask & EDITOR_LAYER)) {
-		mask ^= EDITOR_LAYER;
-	}
+	if (enabled) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+	else ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_Button));
 
-	ImGui::SameLine();
-	ImGui::Text("layermask");
+	bool clicked = false;
+	if (ImGui::Button(name)) clicked = true;
+	
+	ImGui::PopStyleColor();
 
-	*mask_ptr = mask;
+	return clicked;
+}
+
+bool ID_inspect(void* data, string_view prefix, Editor& editor) {
+	ID* id = (ID*)data;
+	
+	ImGui::Text("%s #%i", prefix.c_str(), *id);
 	return true;
 }
 
-bool EntityEditor_inspect(void* data, string_view prefix, Editor& world) {
-	return false;
+bool Entity_inspect(void* data, string_view prefix, Editor& editor) {
+	Entity* e = (Entity*)data;
+
+	if (!ImGui::CollapsingHeader("Entity")) return false;
+
+	ID_inspect(&e->id, "", editor);
+
+	Archetype arch = editor.world.arch_of_id(e->id);
+	Archetype old_arch = arch;
+
+	bool editor_only = arch & EDITOR_ONLY;
+	if (ImGui::Checkbox("Editor only", &editor_only)) {
+		arch ^= EDITOR_ONLY;
+	}
+
+
+	ImGui::NewLine();
+	if (toggle_button("Dynamic", !(arch & STATIC))) arch &= ~STATIC;
+	if (toggle_button("Static", arch & STATIC)) arch |= STATIC;
+
+	//POTENTIALLY DANGEROUS SINCE IT INVALIDATES ALL THE POINTERS
+	if (arch != old_arch) {
+		editor.world.change_archetype(e->id, old_arch, arch, false);
+	}
+
+	return true;
 }
 
 bool accept_drop(const char* drop_type, void* ptr, unsigned int size) {
@@ -193,7 +215,7 @@ bool Grass_inspect(void* data, string_view prefix, Editor& editor) {
 
 
 	Model* model = get_Model(grass->placement_model);
-	Materials* materials = world.by_id<Materials>(id);
+	Materials* materials = world.m_by_id<Materials>(id);
 	if (materials && model) {
 		int diff = model->materials.length - materials->materials.length;
 
@@ -222,6 +244,8 @@ void terrain_material_image(const char* name, texture_handle& handle) {
 }
 
 bool TerrainMaterials_inspect(void* data, string_view prefix, Editor& editor) {
+	ImGui::Dummy(ImVec2(20, 10));
+	
 	if (ImGui::CollapsingHeader("Materials")) {
 		vector<TerrainMaterial>& materials = *(vector<TerrainMaterial>*)data;
 
@@ -264,7 +288,7 @@ bool TerrainSplat_inspect(void* data, string_view prefix, Editor& editor) {
 		ImGui::SliderFloat("max_height", &splat.max_height, 0.0f, terrain.max_height);
 
 		ImGui::CollapsingHeader("Brush");
-		ImGui::Image(load_Texture("brush_low_res.png"), ImVec2(128, 128));
+		ImGui::Image(load_Texture("editor/terrain/brush_low_res.png"), ImVec2(128, 128));
 		
 		ImGui::CollapsingHeader("Material");
 
@@ -288,8 +312,8 @@ void register_on_inspect_callbacks() {
 	register_on_inspect_gui("Materials", Materials_inspect);
 	register_on_inspect_gui("shader_handle", Shader_inspect);
 	register_on_inspect_gui("model_handle", Model_inspect);
-	register_on_inspect_gui("Layermask", Layermask_inspect);
-	register_on_inspect_gui("EntityEditor", EntityEditor_inspect);
+	register_on_inspect_gui("Entity", Entity_inspect);
+	register_on_inspect_gui("ID", ID_inspect);
 	register_on_inspect_gui("Grass", Grass_inspect);
 	register_on_inspect_gui("TerrainSplat", TerrainSplat_inspect);
 	register_on_inspect_gui("vector<TerrainMaterial>", TerrainMaterials_inspect);

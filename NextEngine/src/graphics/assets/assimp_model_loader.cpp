@@ -12,9 +12,11 @@ struct ModelLoadingScratch {
 	uint mesh_count;
 	uint vertices_count;
 	uint indices_count;
+	uint lod;
+	
 	
 	const aiScene* scene;
-	glm::mat3 apply_trans;
+	glm::mat4 apply_trans;
 	Mesh* meshes_base;
 	Vertex* vertex_base;
 	uint* indices_base;
@@ -22,6 +24,7 @@ struct ModelLoadingScratch {
 
 
  void process_Mesh(ModelLoadingScratch* scratch, aiMesh* mesh) {
+	glm::mat4 apply_trans = scratch->apply_trans;
 	glm::mat3 apply_trans3 = scratch->apply_trans;
 	 
 	//SUB ALLOCATE VERTICES
@@ -45,11 +48,11 @@ struct ModelLoadingScratch {
 		auto normals = mesh->mNormals[i];
 
 		vertices[i] = {
-			glm::vec3(position.x, position.y, position.z) * apply_trans3,
-			glm::vec3(normals.x, normals.y, normals.z) * apply_trans3,
+			apply_trans * glm::vec4(position.x, position.y, position.z, 1.0),
+			apply_trans3 * glm::vec3(normals.x, normals.y, normals.z),
 			glm::vec2(first_coords.x, first_coords.y),
-			glm::vec3(tangent.x, tangent.y, tangent.z) * apply_trans3,
-			glm::vec3(bitangent.x, bitangent.y, bitangent.z) * apply_trans3
+			apply_trans3 * glm::vec3(tangent.x, tangent.y, tangent.z),
+			apply_trans3 * glm::vec3(bitangent.x, bitangent.y, bitangent.z)
 		};
 
 		aabb.update(vertices[i].position);
@@ -58,7 +61,7 @@ struct ModelLoadingScratch {
 	//FILL INDICES
 
 	uint* indices = scratch->indices_base + scratch->indices_count;
-	int indices_count = 0;
+	uint indices_count = 0;
 
 	//TODO could assume them to always be three
 	for (int i = 0; i < mesh->mNumFaces; i++) {
@@ -70,10 +73,8 @@ struct ModelLoadingScratch {
 	scratch->indices_count += indices_count;
 
 	Mesh* new_mesh = scratch->meshes_base + scratch->mesh_count;
-	new_mesh->vertices.length = vertices_count;
-	new_mesh->indices.length = indices_count;
-	new_mesh->vertices.data = vertices;
-	new_mesh->indices.data = indices;
+	new_mesh->vertices[scratch->lod] = { vertices, vertices_count };
+	new_mesh->indices[scratch->lod] = { indices, indices_count };
 	new_mesh->aabb = aabb;
 	new_mesh->material_id = mesh->mMaterialIndex;
 
@@ -108,60 +109,113 @@ void process_Node(ModelLoadingScratch* scratch, aiNode* node) {
 }
 
 void load_assimp(Model* model, string_view real_path, const glm::mat4& apply_transform) { //TODO WHEN REIMPORTED, can reuse same memory
-	Assimp::Importer importer;
+	Assimp::Importer importer[MAX_MESH_LOD]; //todo algorithm could probably be rearranged so that keeping all the lods alive in memory at the same time is not necessary
+	array<MAX_MESH_LOD, const aiScene*> lods;
 
-	string_view path = model->path;
+	string_view pre = ".fbx";
 
-	auto scene = importer.ReadFile(real_path.c_str(), aiProcess_Triangulate | aiProcess_CalcTangentSpace);
-	if (!scene) throw string_buffer("Could not load model ") + model->path + " " + real_path;
+	if (real_path.ends_with(".fbx")) {
+		string_view trimmed = real_path.sub(0, real_path.length - 4);
+		if (trimmed.ends_with("_lod0")) {
+			trimmed = trimmed.sub(0, trimmed.length - 5);
+		}
 
-	log("Loading model ", model->path, "\n");
+		for (uint i = 0; i < MAX_MESH_LOD; i++) {
+			string_buffer path = tformat(trimmed, "_lod", i, ".fbx");
+			auto scene = importer[i].ReadFile(path.c_str(), aiProcess_Triangulate | aiProcess_CalcTangentSpace);
+			if (!scene) break;
 
+			lods.append(scene);
+		}
+	}
 
-	ModelLoadingScratch scratch = {};
-	scratch.mesh_count = scene->mNumMeshes;
+	if (lods.length == 0) {
+		auto scene = importer[0].ReadFile(real_path.c_str(), aiProcess_Triangulate | aiProcess_CalcTangentSpace);
+		if (!scene) throw string_buffer("Could not load model ") + real_path;
 	
-	process_size(scene->mRootNode, scene, &scratch);
+		lods.append(scene);
+	}
+
+	//todo validate that all lods have the same number of meshes and materials!
+	ModelLoadingScratch scratch = {};
+	scratch.mesh_count = lods[0]->mNumMeshes;
+
+	for (const aiScene* scene : lods) {
+		process_size(scene->mRootNode, scene, &scratch);
+	}
 
 	scratch.meshes_base  = PERMANENT_ARRAY(Mesh,   scratch.mesh_count);
 	scratch.vertex_base  = PERMANENT_ARRAY(Vertex, scratch.vertices_count);
 	scratch.indices_base = PERMANENT_ARRAY(uint,   scratch.indices_count);
 
 
-	printf("\nLoading model %s\n", model->path.data);
+	printf("\nLoading model %s\n", real_path.data);
 	printf("\tMeshes: %i\n", scratch.mesh_count);
 	printf("\tVertices: %i\n", scratch.vertices_count);
 	printf("\tIndices: %i\n", scratch.indices_count);
 
-	scratch.mesh_count = 0;
 	scratch.vertices_count = 0;
 	scratch.indices_count = 0;
-	scratch.scene = scene;
 	scratch.apply_trans = apply_transform;
 
-	process_Node(&scratch, scene->mRootNode);
+	for (const aiScene* scene : lods) {
+		scratch.mesh_count = 0;
+		scratch.scene = scene;
+		process_Node(&scratch, scene->mRootNode);
+		scratch.lod++;
+	}
 
 	model->meshes.length = scratch.mesh_count;
 	model->meshes.data = scratch.meshes_base;
+	model->aabb = AABB();
 	
 	//todo merge into one upload
 	for (int i = 0; i < scratch.mesh_count; i++) {
 		Mesh* mesh = scratch.meshes_base + i;
+		mesh->lod_count = lods.length;
 
 		model->aabb.update_aabb(mesh->aabb);
-		mesh->buffer = alloc_vertex_buffer(VERTEX_LAYOUT_DEFAULT, mesh->vertices, mesh->indices);
+
+		for (uint lod = 0; lod < lods.length; lod++) {
+			mesh->buffer[lod] = alloc_vertex_buffer<Vertex>(VERTEX_LAYOUT_DEFAULT, mesh->vertices[lod], mesh->indices[lod]);
+		}
 	}
 
-	model->materials.length = scene->mNumMaterials;
+	model->materials.length = lods[0]->mNumMaterials;
 	model->materials.data = PERMANENT_ARRAY(sstring, model->materials.length);
 	
+	
 	for (int i = 0; i < model->materials.length; i++) {
-		auto aMat = scene->mMaterials[i];
+		auto aMat = lods[0]->mMaterials[i];
 		aiString c_name;
 		aiGetMaterialString(aMat, AI_MATKEY_NAME, &c_name);
 
 		printf("Material name %s\n", c_name.data);
 
 		model->materials[i] = c_name.data;
+	}
+
+	float MESH_CULL_DISTANCE = 100.0f;
+
+	uint dist_per_lod = MESH_CULL_DISTANCE / lods.length;
+	
+	if (model->lod_distance.length == 0) {
+
+		//todo this is a pretty shitty distribution
+		for (int i = 0; i < lods.length; i++) {
+			model->lod_distance.append((i + 1) * dist_per_lod);
+		}
+	}
+	else {
+		int diff = lods.length - model->lod_distance.length;
+		int last_lod = model->lod_distance.last();
+
+		for (int i = 0; i < diff; i++) {
+			uint lod_dist = last_lod * 1.5;
+			model->lod_distance.append(lod_dist);
+			last_lod = lod_dist;
+		}
+
+		for (int i = 0; i < -diff; i++) lods.pop();
 	}
 }

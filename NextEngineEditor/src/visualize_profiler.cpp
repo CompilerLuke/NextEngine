@@ -3,6 +3,7 @@
 #include "core/profiler.h"
 #include "core/memory/linear_allocator.h"
 #include "core/container/hash_map.h"
+#include "core/container/sstring.h"
 #include <stdio.h>
 #include <algorithm>
 
@@ -98,14 +99,15 @@ void VisualizeProfiler::render(struct World& world, struct Editor& editor, struc
 			float frame_min = FLT_MAX;
 			float avg_duration = 0.0f;
 
-			for (Frame& frame : Profiler::frames) {
-				if (frame.frame_duration < 0) continue;
-				frame_max = fmaxf(frame_max, frame.frame_duration);
-				frame_min = fminf(frame_min, frame.frame_duration);
-				avg_duration += frame.frame_duration;
+			for (uint i = 0; i < Profiler::frames.length - 1; i++) {
+				float frame_duration = Profiler::frames[i].frame_duration;
+
+				frame_max = fmaxf(frame_max, frame_duration);
+				frame_min = fminf(frame_min, frame_duration);
+				avg_duration += frame_duration;
 			}
 
-			avg_duration /= (float)Profiler::frames.length;
+			avg_duration /= (float)Profiler::frames.length - 1;
 
 			ImGui::Text("avg [%.1f ms %.1f fps]", avg_duration * 1000.0f, 1.0f / avg_duration);
 			ImGui::SameLine();

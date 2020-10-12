@@ -2,8 +2,7 @@
 
 #include <glm/vec3.hpp>
 #include <glm/gtc/quaternion.hpp>
-#include "ecs/ecs.h"
-#include "core/reflection.h"
+#include "ecs/id.h"
 
 COMP
 struct Transform {
@@ -25,11 +24,10 @@ struct LocalTransform {
 	ID owner;
 };
 
-struct LocalTransformSystem : System {
-	void update(World&, UpdateCtx&) override;
-};
+struct World;
+struct UpdateCtx;
 
-
+ENGINE_API void update_local_transforms(World&, UpdateCtx&);
 
 ENGINE_API void calc_global_transform(World& world, ID id);
 ENGINE_API glm::mat4 compute_model_matrix(Transform&);

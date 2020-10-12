@@ -5,7 +5,7 @@
 #include <GLFW/glfw3.h>
 
 PlayerInput* get_player_input(World& world) {
-	auto result = world.first<PlayerInput>(GAME_LAYER);
+	auto result = world.first<PlayerInput>();
 	return result ? &result->get<1>() : nullptr;
 }
 

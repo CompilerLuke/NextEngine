@@ -518,9 +518,8 @@ void make_InstanceAllocator(InstanceAllocator& self, VkDevice device, VkPhysical
 			Arena& allocator = self.arenas[frame][layout];
 			allocator.capacity = capacity;
 			allocator.base_offset = instances_offset;
+			instances_offset += capacity;
 		}
-
-		instances_offset += capacity;
 	}
 
 	self.instance_memory = make_HostVisibleBuffer(device, self.physical_device, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, instances_offset * MAX_FRAMES_IN_FLIGHT);

@@ -248,7 +248,7 @@ void make_GraphicsPipeline(VkDevice device, VkPipelineDesc& desc, VkPipelineLayo
 	pipelineInfo.pDynamicState = &dynamicState;
 	pipelineInfo.layout = *pipeline_layout;
 	pipelineInfo.renderPass = desc.render_pass; 
-	pipelineInfo.subpass = 0;
+	pipelineInfo.subpass = desc.subpass;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineInfo.basePipelineIndex = -1;
 
@@ -282,10 +282,11 @@ pipeline_handle make_Pipeline(PipelineCache& cache, const PipelineDesc& desc) {
 
 	Viewport viewport{}; // = render_pass_viewport_by_id(desc.render_pass);
 	VkRenderPass render_pass = (VkRenderPass)desc.render_pass.id;
-	ShaderModules* shader_module = get_shader_config(desc.shader, SHADER_INSTANCED);
+	ShaderModules* shader_module = get_shader_config(desc.shader, desc.shader_flags);
 
 	//DESCRIBE PIPELINE
 	VkPipelineDesc pipeline_desc = {};
+	pipeline_desc.subpass = desc.subpass;
 	pipeline_desc.vert_shader = shader_module->vert;
 	pipeline_desc.frag_shader = shader_module->frag;
 	pipeline_desc.render_pass = render_pass;
@@ -316,8 +317,9 @@ pipeline_handle make_Pipeline(PipelineCache& cache, const PipelineDesc& desc) {
 		ranges.append({ VK_SHADER_STAGE_FRAGMENT_BIT, desc.range[1].offset, desc.range[1].size });
 	}
 
+	static uint count = 0;
 	//todo find strange bug!
-	printf("BINDING DESCRIPTIONS length %i\n", pipeline_desc.binding_descriptions[0].binding);
+	printf("BINDING DESCRIPTIONS #%i\n", count++);
 
 	pipeline_desc.push_constant_range = ranges;
 
@@ -350,11 +352,10 @@ VkPipeline get_Pipeline(pipeline_handle handle) {
 	return get_Pipeline(rhi.pipeline_cache, handle);
 }
 
-pipeline_handle make_Pipeline(PipelineDesc& desc) {
-	return make_Pipeline(rhi.pipeline_cache, desc);
-}
-
-
 pipeline_handle query_Pipeline(const PipelineDesc& desc) {
 	return query_Pipeline(rhi.pipeline_cache, desc);
+}
+
+void reload_Pipeline(const PipelineDesc& desc) {
+	make_Pipeline(rhi.pipeline_cache, desc);
 }

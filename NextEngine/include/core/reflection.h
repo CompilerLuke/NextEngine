@@ -14,7 +14,6 @@ namespace refl {
 	const uint PRINTABLE_TAG = 1 << 2;
 	const uint COMPONENT_TAG = (1 << 3) | REFLECT_TAG | SERIALIZE_TAG;
 	const uint HIDE_IN_EDITOR_TAG = 1 << 4;
-	const uint LAYERMASK_TAG = 1 << 5;
 
 	struct Type {
 		enum RefType { UInt, Int, Bool, Float, Char, Struct, Union, Alias, Enum, Array, StringView, StringBuffer, SString, Ptr } type;
@@ -103,5 +102,5 @@ ENGINE_API refl::Type* get_mat4_type();
 
 ENGINE_API refl::Array* make_vector_type(refl::Type* type);
 ENGINE_API refl::Array* make_tvector_type(refl::Type* type);
-ENGINE_API refl::Array* make_array_type(uint N, refl::Type* type);
+ENGINE_API refl::Array* make_array_type(uint N, uint size, refl::Type* type);
 ENGINE_API refl::Array* make_carray_type(uint N, refl::Type* type);

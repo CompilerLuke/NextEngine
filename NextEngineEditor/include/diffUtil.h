@@ -3,6 +3,7 @@
 #include "ecs/id.h"
 #include "core/reflection.h"
 #include "core/container/array.h"
+#include "core/container/offset_slice.h"
 #include "ecs/ecs.h"
 #include "core/reflection.h"
 
@@ -40,23 +41,22 @@ struct DiffUtil {
 
 struct Diff {
 	void* real_ptr;
-	void* copy_ptr;
+	offset_ptr<char> copy_ptr;
 	refl::Type* type;
-	slice<uint> fields_modified;
+	offset_slice<uint> fields_modified;
 	uint id;
 };
 
 struct EntityCopy {
 	struct Component {
-		void* ptr;
-		uint size;
+		offset_ptr<char> ptr;
 		uint component_id;
 	};
 
 	Archetype from;
 	Archetype to;
 	ID id;
-	slice<Component> components;
+	offset_slice<Component> components;
 };
 
 struct AssetCopy {

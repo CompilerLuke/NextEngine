@@ -8,8 +8,10 @@
 
 struct Assets;
 
-enum DepthBufferFormat { Disable_Depth_Buffer, DepthComponent24 };
-enum StencilBufferFormat { Disable_Stencil_Buffer, StencilComponent8 };
+enum class DepthBufferFormat { None, P24 };
+enum class StencilBufferFormat { None, P8 };
+enum class LoadOp {Load, Clear, DontCare};
+enum class StoreOp {Store, DontCare};
 
 struct AttachmentDesc {
 	texture_handle* tex_id;
@@ -17,6 +19,8 @@ struct AttachmentDesc {
 	TextureLayout initial_layout = TextureLayout::Undefined;
 	TextureLayout final_layout = TextureLayout::ShaderReadOptimal;
 	TextureFormat format = TextureFormat::UNORM;
+	LoadOp load_op = LoadOp::Clear;
+	StoreOp store_op = StoreOp::Store;
 	uint num_channels = 4;
 	uint num_mips = 1;
 };
@@ -29,11 +33,16 @@ struct Dependency {
 struct FramebufferDesc {
 	uint width = 0;
 	uint height = 0;
-	DepthBufferFormat depth_buffer = DepthComponent24;
-	StencilBufferFormat stencil_buffer = Disable_Stencil_Buffer;
+	DepthBufferFormat depth_buffer = DepthBufferFormat::P24;
+	StencilBufferFormat stencil_buffer = StencilBufferFormat::None;
 	AttachmentDesc* depth_attachment = NULL;
 	tvector<AttachmentDesc> color_attachments;
 	tvector<Dependency> dependency;
+};
+
+struct SubpassDesc {
+	tvector<uint> color_attachments;
+	bool depth_attachment;
 };
 
 struct Framebuffer {
@@ -50,10 +59,12 @@ struct Framebuffer {
 
 ENGINE_API void add_dependency(FramebufferDesc& desc, Stage, RenderPass::ID);
 ENGINE_API AttachmentDesc& add_color_attachment(FramebufferDesc& desc, texture_handle* tex = NULL);
-ENGINE_API AttachmentDesc& add_depth_attachment(FramebufferDesc& desc, texture_handle*, DepthBufferFormat format = DepthComponent24);
+ENGINE_API AttachmentDesc& add_depth_attachment(FramebufferDesc& desc, texture_handle*, DepthBufferFormat format = DepthBufferFormat::P24);
 ENGINE_API void make_Framebuffer(RenderPass::ID, FramebufferDesc&);
+ENGINE_API void make_Framebuffer(RenderPass::ID, FramebufferDesc&, slice<SubpassDesc>);
 ENGINE_API void make_wsi_pass(slice<Dependency>);
 ENGINE_API void build_framegraph();
+ENGINE_API void submit_framegraph(); //ONLY USED FOR LOADING
 
 /*
 struct Framebuffer {

@@ -8,7 +8,7 @@ struct RHI;
 struct Assets;
 
 struct Material {
-	MaterialDesc desc;
+	MaterialPipelineInfo info;
 	UBOBuffer ubos[MAX_FRAMES_IN_FLIGHT] = {};
 	descriptor_set_handle sets[MAX_FRAMES_IN_FLIGHT] = {};
 	uint index = 0;
@@ -25,6 +25,7 @@ struct MaterialAllocator {
 	~MaterialAllocator();
 
 	void make(MaterialDesc& desc, Material* material);
+	void update(MaterialDesc& from, MaterialDesc& to, Material* material);
 };
 
 //void make_MaterialAllocator(MaterialAllocator&);

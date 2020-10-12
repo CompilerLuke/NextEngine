@@ -28,6 +28,8 @@ struct VkPipelineDesc {
 	VkBlendOp blend_op;
 	VkBlendFactor src_blend_factor;
 	VkBlendFactor dst_blend_factor;
+
+	uint subpass = 0;
 };
 
 void make_GraphicsPipeline(VkDevice device, VkPipelineDesc& desc, VkPipelineLayout* pipeline_layout, VkPipeline* pipeline);

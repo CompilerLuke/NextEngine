@@ -30,7 +30,7 @@ VERSION HISTORY
 #ifndef SPIRV_REFLECT_H
 #define SPIRV_REFLECT_H
 
-#include <vulkan/spirv.h>
+#include <spirv-headers/spirv.h>
 
 #include <stdint.h>
 #include <string.h>

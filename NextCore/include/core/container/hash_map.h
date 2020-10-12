@@ -93,11 +93,11 @@ struct hash_map_it {
 		skip_empty();
 	}
 
-	bool operator==(hash_map_it<K,V>& other) {
+	bool operator==(hash_map_it<K,V>& other) const {
 		return this->i == other.i;
 	}
 
-	bool operator!=(hash_map_it<K,V>& other) {
+	bool operator!=(hash_map_it<K,V>& other) const {
 		return !(*this == other);
 	}
 

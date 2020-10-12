@@ -12,7 +12,7 @@ void update_fps_controllers(World& world, UpdateCtx& params) {
 	PlayerInput* player_input = get_player_input(world);
 	
 	for (auto [e, trans, camera, self] : world.filter<LocalTransform, Camera, FPSController>(params.layermask)) {
-		CharacterController* cc = world.by_id<CharacterController>(trans.owner);
+		CharacterController* cc = world.m_by_id<CharacterController>(trans.owner);
 		if (cc == NULL) continue;
 
 		float pitch = player_input->pitch;

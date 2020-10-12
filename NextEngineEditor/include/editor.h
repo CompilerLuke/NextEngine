@@ -95,6 +95,7 @@ struct Editor {
 	Gizmo gizmo;
 	PickingSystem picking;
 	OutlineRenderState outline_selected;
+	GizmoResources gizmo_resources;
 
 	EditorViewport editor_viewport;
 	

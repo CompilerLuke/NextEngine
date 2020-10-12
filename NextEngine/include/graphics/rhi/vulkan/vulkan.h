@@ -16,6 +16,12 @@ struct RenderThreadResources {
 	InstanceAllocator instance_allocator;
 };
 
+
+struct Task {
+	void* data;
+	void(*func)(void*);
+};
+
 struct RHI {
 	VulkanDesc desc;
 	Device device;
@@ -37,6 +43,8 @@ struct RHI {
 
 	uint waiting_on_transfer_frame;
 	uint frame_index;
+
+	vector<Task> queued_for_destruction[MAX_FRAMES_IN_FLIGHT];
 
 	RHI();
 };

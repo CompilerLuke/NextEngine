@@ -11,9 +11,9 @@ struct CommandBuffer;
 ENGINE_API CommandBuffer& begin_draw_cmds();
 ENGINE_API void end_draw_cmds(CommandBuffer&);
 
-ENGINE_API void draw_mesh(CommandBuffer&, model_handle, slice<material_handle>, struct Transform&);
-ENGINE_API void draw_mesh(CommandBuffer&, model_handle, slice<material_handle>, slice<glm::mat4>);
-ENGINE_API void draw_mesh(CommandBuffer&, model_handle, slice<material_handle>, glm::mat4);
+ENGINE_API void draw_mesh(CommandBuffer&, model_handle, slice<material_handle>, struct Transform&, uint lod = 0);
+ENGINE_API void draw_mesh(CommandBuffer&, model_handle, slice<material_handle>, slice<glm::mat4>, uint lod = 0);
+ENGINE_API void draw_mesh(CommandBuffer&, model_handle, slice<material_handle>, glm::mat4, uint lod = 0);
 
 ENGINE_API void push_constant(CommandBuffer& cmd_buffer, Stage stage, uint offset, uint size, const void* ptr);
 
@@ -29,6 +29,7 @@ ENGINE_API void bind_pipeline(CommandBuffer&, pipeline_handle);
 ENGINE_API void bind_material(CommandBuffer&, material_handle);
 ENGINE_API void draw_mesh(CommandBuffer&, VertexBuffer, InstanceBuffer);
 ENGINE_API void draw_mesh(CommandBuffer&, VertexBuffer);
+
 
 //void begin_render_pass(CommandBuffer&, render_pass_handle);
 //void end_render_pass(CommandBuffer&);

@@ -10,6 +10,8 @@
 #include <glm/vec3.hpp>
 #include <glm/vec2.hpp>
 
+const uint MAX_MESH_LOD = 8;
+
 struct Vertex {
 	glm::vec3 position;
 	glm::vec3 normal;
@@ -19,16 +21,17 @@ struct Vertex {
 };
 
 struct Mesh {
-	REFL_FALSE VertexBuffer buffer;
-	slice<Vertex> vertices;
-	slice<uint> indices;
+	uint lod_count;
+	VertexBuffer buffer[MAX_MESH_LOD];
+	slice<Vertex> vertices[MAX_MESH_LOD];
+	slice<uint> indices[MAX_MESH_LOD];
 	AABB aabb;
 	uint material_id;
 };
 
 struct Model {
-	sstring path;
 	slice<Mesh> meshes;
+	array<10, float> lod_distance;
 	slice<sstring> materials;
 	AABB aabb;
 };
@@ -43,5 +46,5 @@ struct VertexBuffer;
 struct VertexStreaming;
 struct Assets;
 
-VertexBuffer get_VertexBuffer(model_handle model, uint index);
+VertexBuffer get_vertex_buffer(model_handle model, uint index, uint lod = 0);
 void load_assimp(Model* model, string_view real_path, const glm::mat4& apply_transform);

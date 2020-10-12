@@ -23,6 +23,7 @@ using u16 = uint16_t;
 #define COMP
 #define REFL
 #define REFL_FALSE
+#define TAG(...)
 
 #undef max
 #undef min

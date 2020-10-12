@@ -17,7 +17,6 @@ using RegisterComponents = void(*)(World& world);
 
 class Application {
 	string_buffer path;
-	struct Modules& engine;
 	void* application_state;
 	void* dll_handle;
 	u64 time_modified;
@@ -33,6 +32,8 @@ class Application {
 	void load_functions();
 
 public:
+	struct Modules& engine;
+
 	ENGINE_API Application(Modules& engine, string_view);
 	ENGINE_API ~Application();
 

@@ -21,6 +21,7 @@ struct DeserializerBuffer {
 };
  
 inline void write_n_to_buffer(SerializerBuffer& buffer, void* ptr, u64 size) {
+	assert(buffer.index + size <= buffer.capacity);
 	memcpy(buffer.data + buffer.index, ptr, size);
 	buffer.index += size;
 }
@@ -46,12 +47,26 @@ inline void read_uint_from_buffer(DeserializerBuffer& buffer, uint& value) {
 	read_n_from_buffer(buffer, &value, sizeof(uint));
 }
 
+inline uint read_uint_from_buffer(DeserializerBuffer& buffer) {
+	uint value = 0;
+	read_n_from_buffer(buffer, &value, sizeof(uint));
+	return value;
+}
+
 inline void write_int_to_buffer(SerializerBuffer& buffer, int value) {
 	write_n_to_buffer(buffer, &value, sizeof(int));
 }
 
+inline void read_int_from_buffer(DeserializerBuffer& buffer, int& value) {
+	read_n_from_buffer(buffer, &value, sizeof(int));
+}
+
 inline void write_u64_to_buffer(SerializerBuffer& buffer, u64 value) {
 	write_n_to_buffer(buffer, &value, sizeof(u64));
+}
+
+inline void read_u64_from_buffer(DeserializerBuffer& buffer, u64& value) {
+	read_n_from_buffer(buffer, &value, sizeof(u64));
 }
 
 inline void write_i64_to_buffer(SerializerBuffer& buffer, i64 value) {
@@ -74,12 +89,20 @@ inline void write_vec3_to_buffer(SerializerBuffer& buffer, glm::vec3 value) {
 	write_n_to_buffer(buffer, &value, sizeof(glm::vec3));
 }
 
+inline void read_vec3_from_buffer(DeserializerBuffer& buffer, glm::vec3& value) {
+	read_n_from_buffer(buffer, &value, sizeof(glm::vec3));
+}
+
 inline void write_vec3_to_buffer(SerializerBuffer& buffer, glm::quat value) {
 	write_n_to_buffer(buffer, &value, sizeof(glm::quat));
 }
 
 inline void write_mat4_to_buffer(SerializerBuffer& buffer, glm::mat4& value) {
 	write_n_to_buffer(buffer, &value, sizeof(glm::mat4));
+}
+
+inline void read_mat4_from_buffer(DeserializerBuffer& buffer, glm::mat4& value) {
+	read_n_from_buffer(buffer, &value, sizeof(glm::mat4));
 }
 
 inline void write_sstring_to_buffer(SerializerBuffer& buffer, sstring& str) {

@@ -17,6 +17,7 @@ struct Renderer;
 struct Model;
 struct Texture;
 struct Cubemap;
+struct Shader;
 	
 struct TextureLoadJob {
 	texture_handle handle;
@@ -38,14 +39,20 @@ ENGINE_API void load_assets_in_queue();
 
 ENGINE_API model_handle load_Model(string_view filename, bool serialized = false, const glm::mat4& matrix = glm::mat4(1.0));
 ENGINE_API Model* get_Model(model_handle model);
-void ENGINE_API load_Model(model_handle handle, string_view filename, const glm::mat4& matrix);
-void ENGINE_API load_Model(model_handle handle, const glm::mat4& matrix = glm::mat4(1.0));
+void ENGINE_API load_Model(model_handle handle, string_view filename, const glm::mat4& matrix, slice<float> lod_distance = {});
 
 ENGINE_API shader_handle load_SinglePass_Shader(string_view vfilename, string_view ffilename);
 ENGINE_API shader_handle load_Shader(string_view vfilename, string_view ffilename);
 ENGINE_API shader_handle load_Shader(string_view vfilename, string_view ffilename, slice<shader_flags> permutations);
+ENGINE_API void load_Shader(shader_handle, string_view vfilename, string_view ffilename);
+ENGINE_API void load_Shader(Shader&, slice<shader_flags> permutations);
+ENGINE_API bool load_Shader(Shader&, slice<shader_flags> permutations, string_buffer&);
+ENGINE_API Shader* get_Shader(shader_handle);
+ENGINE_API void reload_Shader(shader_handle);
+ENGINE_API bool reload_modified_shaders();
 
 ENGINE_API texture_handle load_Texture(string_view filename, bool serialized = false);
+ENGINE_API void load_Texture(texture_handle handle, string_view filename);
 ENGINE_API cubemap_handle load_HDR(string_view filename);
 ENGINE_API cubemap_handle load_Cubemap(string_view filename);
 ENGINE_API Texture* get_Texture(texture_handle handle);
