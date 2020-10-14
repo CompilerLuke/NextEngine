@@ -2,7 +2,7 @@
 
 #include <glm/vec3.hpp>
 #include "ecs/id.h"
-#include "core/handle.h"
+#include "engine/handle.h"
 #include "ecs/system.h"
 
 COMP

@@ -25,13 +25,13 @@ struct hash_set {
 		keys[N] = {};
 	}
 
-	bool matches(uint hash, const K& key, uint probe_hash) {
+	bool matches(uint hash, const K& key, uint probe_hash) const {
 		uint hash_truncated = (hash << 1) >> 1;
 		uint found_hash = meta[probe_hash] >> 1;
 		return found_hash == hash_truncated && keys[probe_hash] == key;
 	}
 
-	bool is_full(uint probe_hash) {
+	bool is_full(uint probe_hash) const {
 		return meta[probe_hash] & 0x1;
 	}
 

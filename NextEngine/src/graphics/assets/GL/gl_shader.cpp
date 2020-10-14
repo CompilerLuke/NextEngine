@@ -1,7 +1,7 @@
 #ifdef RENDER_API_OPENGL
 
 #include "graphics/assets/shader.h"
-#include "core/io/vfs.h"
+#include "engine/vfs.h"
 #include "core/io/logger.h"
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>

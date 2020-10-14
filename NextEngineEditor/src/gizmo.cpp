@@ -1,9 +1,8 @@
 #include "gizmo.h"
 #include "ecs/ecs.h"
 #include "editor.h"
-#include "core/io/input.h"
+#include "engine/input.h"
 #include "graphics/renderer/renderer.h"
-#include "GLFW/glfw3.h"
 #include <imgui/imgui.h>
 #include <ImGuizmo/ImGuizmo.h>
 #include <glm/gtc/matrix_transform.hpp>
@@ -93,19 +92,19 @@ void Gizmo::update(World& world, Editor& editor, UpdateCtx& params) {
 		return;
 	}
 	
-	if (params.input.key_down(GLFW_KEY_T)) {
+	if (params.input.key_down(Key::T)) {
 		this->mode = GizmoMode::Translate;
 	}
-	else if (params.input.key_down(GLFW_KEY_E)) {
+	else if (params.input.key_down(Key::E)) {
 		this->mode = GizmoMode::Scale;
 	}
-	else if (params.input.key_down(GLFW_KEY_R)) {
+	else if (params.input.key_down(Key::R)) {
 		this->mode = GizmoMode::Rotate;
 	}
-	else if (params.input.key_down(GLFW_KEY_ESCAPE)) {
+	else if (params.input.key_down(Key::Escape)) {
 		this->mode = GizmoMode::Disabled;
 	}
-	else if (params.input.key_down(GLFW_KEY_LEFT_CONTROL, true)) {
+	else if (params.input.key_down(Key::Left_Control)) {
 		this->snap = true;
 	} 
 	else {

@@ -2,14 +2,6 @@
 #include "core/io/logger.h"
 #include "core/time.h"
 
-//TODO rewrite using custom time API
-
-//todo implement function
-double get_current_time() {
-	return 0.0;
-}
-
-
 //Profiler
 vector<Frame> Profiler::frames;
 int Profiler::profile_depth;
@@ -54,7 +46,7 @@ void Profiler::set_frame_sample_count(uint count) {
 
 void Profiler::begin_frame() {
 	if (paused) return;
-	auto current_time = get_current_time();
+	auto current_time = Time::now();
 
 	if (frames.length > 0) {
 		Frame& frame = get_current_frame();
@@ -79,26 +71,24 @@ void Profiler::end_frame() {
 	if (paused) return;
 	Frame& current_frame = get_current_frame();
 
-	double duration = glfwGetTime() - current_frame.start_of_frame;
+	double duration = Time::now() - current_frame.start_of_frame;
 	current_frame.frame_duration = duration;
 }
 
 //Profile
 Profile::Profile(const char* name) {
 	this->name = name;
-	this->start_time = glfwGetTime();
+	this->start_time = Time::now();
 	this->ended = false;
 
 	Profiler::begin_profile();
 };
 
-float Profile::end() {
-	ended = true;
-	end_time = get_current_time();
+void Profile::end() {
+	this->ended = true;
+	this->end_time = Time::now();
 
 	Profiler::record_profile(*this);
-
-	return end_time - start_time;
 }
 
 Profile::~Profile() {

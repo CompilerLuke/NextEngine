@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/handle.h"
+#include "engine/handle.h"
 #include "graphics/renderer/render_feature.h"
 #include "graphics/rhi/buffer.h"
 #include "graphics/rhi/shader_access.h"

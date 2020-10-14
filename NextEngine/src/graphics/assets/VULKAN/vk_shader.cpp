@@ -4,7 +4,7 @@
 #include "graphics/rhi/vulkan/shader.h"
 #include "graphics/assets/shader.h"
 
-#include "core/io/vfs.h"
+#include "engine/vfs.h"
 #include "core/io/logger.h"
 #include <stdio.h>
 #include "core/container/tvector.h"

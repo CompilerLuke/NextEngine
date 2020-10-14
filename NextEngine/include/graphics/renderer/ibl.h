@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/reflection.h"
-#include "core/handle.h"
+#include "engine/handle.h"
 #include "ecs/id.h"
 #include "core/container/sstring.h"
 #include "components/skybox.h"
@@ -58,4 +58,4 @@ texture_handle compute_brdf_lut(uint resolution);
 ENGINE_API void extract_lighting_from_cubemap(LightingSystem&, struct SkyLight& skylight);
 
 void extract_skybox(SkyboxRenderData& data, World& world, EntityQuery layermask);
-void render_skybox(const SkyboxRenderData& data, RenderPass& ctx);
+ENGINE_API void render_skybox(const SkyboxRenderData& data, RenderPass& ctx);

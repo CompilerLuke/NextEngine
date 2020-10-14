@@ -3,7 +3,7 @@
 #include "components/terrain.h"
 #include "ecs/ecs.h"
 #include "terrain.h"
-#include "core/io/input.h"
+#include "engine/input.h"
 #include "editor.h"
 
 struct TerrainSplatWeight {
@@ -17,7 +17,7 @@ float easeInOutCubic(float x) {
 
 
 void edit_Terrain(Editor& editor, World& world, UpdateCtx& params) {
-	if (params.input.key_pressed('I')) {
+	if (params.input.key_pressed(Key::I)) {
 		auto[e, trans, control] = world.make<Transform, TerrainControlPoint>(EDITOR_ONLY);
 
 		trans.scale = glm::vec3(0.1);
@@ -26,7 +26,7 @@ void edit_Terrain(Editor& editor, World& world, UpdateCtx& params) {
 		editor.create_new_object("Control Point", e.id);
 	}
 
-	if (params.input.key_pressed('O')) {
+	if (params.input.key_pressed(Key::O)) {
 		auto[e, trans, control] = world.make<Transform, TerrainSplat>(EDITOR_ONLY);
 
 		trans.scale = glm::vec3(1.0);

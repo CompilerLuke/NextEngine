@@ -8,7 +8,7 @@
 #include "graphics/assets/material.h"
 #include <stdio.h>
 #include <shaderc/shaderc.h>
-#include "core/io/vfs.h"
+#include "engine/vfs.h"
 #include <thread>
 #include <mutex>
 

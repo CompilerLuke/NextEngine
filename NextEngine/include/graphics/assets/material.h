@@ -8,7 +8,7 @@
 #include "core/container/vector.h"
 #include "core/container/string_buffer.h"
 #include "core/container/string_view.h"
-#include "core/handle.h"
+#include "engine/handle.h"
 #include "graphics/pass/pass.h"
 
 #define REQUIRES_TIME (1 << 0)

@@ -3,7 +3,7 @@
 #include <assimp/vector3.h>
 #include <assimp/vector2.h>
 #include <assimp/postprocess.h>
-#include "core/io/vfs.h"
+#include "engine/vfs.h"
 #include "core/io/logger.h"
 #include "graphics/assets/model.h"
 #include "core/memory/linear_allocator.h"

@@ -10,9 +10,7 @@
 #include "core/container/string_view.h"
 #include "core/memory/allocator.h"
 #include "core/memory/linear_allocator.h"
-#include "core/io/vfs.h"
 #include "lexer.h"
-#include "core/io/vfs.h"
 #include "error.h"
 #include "helper.h"
 #include <stdlib.h>
@@ -1879,6 +1877,32 @@ void listdir(const char* base, const char *path, int indent, tvector<const char*
 
 //#include "core/profiler.h"
 
+//todo move functions to read files into core, asap!
+FILE* open(string_view full_filepath, const char* mode) {
+	FILE* f = NULL;
+	errno_t errors = fopen_s(&f, full_filepath.c_str(), mode);
+	return errors ? NULL : f;
+}
+
+bool io_readf(string_view full_filepath, string_buffer* buffer, int null_terminated = true) {
+	FILE* f = open(full_filepath, "rb");
+	if (!f) return false;
+
+	struct _stat info[1];
+
+	_stat(full_filepath.c_str(), info);
+	size_t length = info->st_size;
+
+	buffer->reserve(length + null_terminated);
+	length = fread_s(buffer->data, length, sizeof(char), length, f);
+	if (null_terminated) buffer->data[length] = '\0';
+	buffer->length = length;
+
+	fclose(f);
+
+	return true;
+}
+
 
 int main(int argc, const char** c_args) {
 
@@ -2014,6 +2038,7 @@ int main(int argc, const char** c_args) {
 			fprintf(stderr, "Could not open file! %s", full_path);
 			exit(1);
 		}
+
 
 		err.filename = filename;
 		err.src = contents;

@@ -1,6 +1,6 @@
 ﻿#include "editor.h"
 #include "graphics/rhi/window.h"
-#include "core/io/input.h"
+#include "engine/input.h"
 #include "graphics/renderer/renderer.h"
 #include "core/io/logger.h"
 #include "core/reflection.h"
@@ -20,7 +20,7 @@
 #include "components/flyover.h"
 #include "custom_inspect.h"
 #include "picking.h"
-#include "core/io/vfs.h"
+#include "engine/vfs.h"
 #include "graphics/assets/material.h"
 #include "core/serializer.h"
 #include "terrain.h"
@@ -750,15 +750,17 @@ void render_frame(Editor& editor, World& world) {
 	RenderPass& scene_pass = gpu_submission.render_passes[RenderPass::Scene];
 
 	if (!editor.playing_game) {
-		material_handle mat_handle = editor.gizmo_resources.camera_material; //FRANKLY THIS SHOULD NOT BE NECESSARY
-		bind_descriptor(scene_pass.cmd_buffer, 0, editor.renderer.scene_pass_descriptor[get_frame_index()]);
+		//material_handle mat_handle = editor.gizmo_resources.camera_material; //FRANKLY THIS SHOULD NOT BE NECESSARY
+		//bind_descriptor(scene_pass.cmd_buffer, 0, editor.renderer.scene_pass_descriptor[get_frame_index()]);
 
-		bind_pipeline(scene_pass.cmd_buffer, query_pipeline(mat_handle, scene_pass.cmd_buffer.render_pass, 1.0));
-		bind_descriptor(scene_pass.cmd_buffer, 1, editor.renderer.lighting_system.pbr_descriptor);
+		//bind_pipeline(scene_pass.cmd_buffer, query_pipeline(mat_handle, scene_pass.cmd_buffer.render_pass, 1.0));
+		//bind_descriptor(scene_pass.cmd_buffer, 1, editor.renderer.lighting_system.pbr_descriptor);
 
 		render_special_gizmos(editor.gizmo_resources, gizmo_render_data, scene_pass);
 		render_overlay(editor, scene_pass);
 	}
+
+	render_skybox(frame_data.skybox_data, scene_pass);
 	render_Editor(editor, gpu_submission.render_passes[RenderPass::Screen], scene_pass);
 
 
@@ -1040,17 +1042,17 @@ void respond_to_shortcut(Editor& editor) {
 		input.clear();
 	}
 
-	if (input.key_pressed(GLFW_KEY_P)) {
+	if (input.key_pressed(Key::P)) {
 		on_set_play_mode(editor, !editor.playing_game);
 	}
 
 	if (editor.game_fullscreen && editor.playing_game) return;
 
-	if (input.key_pressed(GLFW_KEY_X)) delete_object(editor);
+	if (input.key_pressed(Key::X)) delete_object(editor);
 	if (input.mouse_button_pressed(MouseButton::Left) && !ImGuizmo::IsOver()) mouse_click_select(editor);
-	if (input.key_pressed(89, true) && input.key_down(GLFW_KEY_LEFT_CONTROL, true)) undo_action(editor.actions);
-	if (input.key_pressed('R', true) && input.key_down(GLFW_KEY_LEFT_CONTROL, true)) redo_action(editor.actions);
-	if (input.key_pressed('S', true) && input.key_down(GLFW_KEY_LEFT_CONTROL, true)) on_save(editor);
+	if (input.key_mod_pressed(Key::Y)) undo_action(editor.actions);
+	if (input.key_mod_pressed(Key::R)) redo_action(editor.actions);
+	if (input.key_mod_pressed(Key::S)) on_save(editor);
 
 	UpdateCtx ctx(editor.time, input);
 	editor.gizmo.update(world, editor, ctx);
@@ -1161,7 +1163,7 @@ APPLICATION_API void update(Editor& editor, Modules& modules) {
 	update_ctx_editor_only.layermask = EntityQuery{ EDITOR_ONLY };
 
 	if (editor.playing_game) {
-		if (update_ctx.input.key_down('R')) editor.game.reload();
+		if (update_ctx.input.key_down(Key::R)) editor.game.reload();
 		
 		editor.game.engine.input = &update_ctx.input;
 		editor.game.update();

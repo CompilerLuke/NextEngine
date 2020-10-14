@@ -1,6 +1,7 @@
 #pragma once
 
-#include "core/handle.h"
+#include "engine/core.h"
+#include "engine/handle.h"
 #include "core/container/string_buffer.h"
 #include "core/container/handle_manager.h"
 #include "core/reflection.h"

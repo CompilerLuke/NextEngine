@@ -2,11 +2,15 @@
 
 #include <stdint.h>
 
+#if 1
 #ifdef NEXTCORE_EXPORTS
-#define CORE_API 
+#define CORE_API __declspec(dllexport)
 #endif
 #ifndef NEXTCORE_EXPORTS
-#define CORE_API 
+#define CORE_API __declspec(dllimport)
+#endif
+#else 
+#define CORE_API
 #endif
 
 using uint = uint32_t;
@@ -23,10 +27,12 @@ using u16 = uint16_t;
 #define COMP
 #define REFL
 #define REFL_FALSE
-#define TAG(...)
 
 #undef max
 #undef min
+
+//PER FRAME RESOURCES HAVE TO BE DUPLICATED, OTHERWISE THE GPU CAN GRAB DATA FROM THE WRONG FRAME
+const int MAX_FRAMES_IN_FLIGHT = 3;
 
 inline constexpr uint max(uint a, uint b) {
 	return a > b ? a : b;

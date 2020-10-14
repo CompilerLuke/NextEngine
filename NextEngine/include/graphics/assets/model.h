@@ -4,7 +4,7 @@
 #include "core/container/sstring.h"
 #include "core/container/slice.h"
 #include "core/container/handle_manager.h"
-#include "core/handle.h"
+#include "engine/handle.h"
 #include "graphics/rhi/buffer.h"
 #include "graphics/culling/aabb.h"
 #include <glm/vec3.hpp>

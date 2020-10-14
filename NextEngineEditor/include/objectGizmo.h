@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/container/vector.h"
-#include "core/handle.h"
+#include "engine/handle.h"
 #include "graphics/renderer/render_feature.h"
 
 struct ModelRendererSystem;

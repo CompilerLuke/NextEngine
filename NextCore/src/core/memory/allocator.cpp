@@ -66,3 +66,10 @@ void* MallocAllocator::allocate(std::size_t size) {
 void MallocAllocator::deallocate(void* ptr) {
 	delete[] ptr;
 }
+
+
+
+//DEFINE GLOBAL ALLOCATORS
+MallocAllocator CORE_API default_allocator;
+LinearAllocator CORE_API temporary_allocator;
+LinearAllocator CORE_API permanent_allocator;

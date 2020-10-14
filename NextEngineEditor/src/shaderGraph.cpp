@@ -5,8 +5,8 @@
 #include <imgui/imgui_internal.h>
 #include "components/camera.h"
 #include "core/io/logger.h"
-#include "core/io/vfs.h"
-#include "core/io/input.h"
+#include "engine/vfs.h"
+#include "engine/input.h"
 #include "graphics/assets/assets.h"
 #include "graphics/renderer/renderer.h"
 #include <GLFW/glfw3.h>
@@ -925,21 +925,21 @@ void ShaderEditor::render(World& world, Editor& editor, RenderPass& ctx, Input& 
 			render_preview(asset, tab, ctx);
 		}
 
-		if (input.key_pressed('R', true) && input.key_down(GLFW_KEY_LEFT_CONTROL, true)) {
+		if (input.key_mod_pressed(Key::R)) {
 			compile_shader_graph(tab, asset);
 			render_preview(asset, tab, ctx);
 		}
 
-		if (input.key_pressed('S', true) && input.key_down(GLFW_KEY_LEFT_SHIFT, true)) {
+		if (input.key_mod_pressed(Key::S)) {
 			set_scale(asset->graph, input, 1.0f);
 		}
 
-		if (input.key_pressed('C', true) && input.key_down(GLFW_KEY_LEFT_SHIFT, true)) {
+		if (input.key_mod_pressed(Key::C)) {
 			asset->graph->scrolling = glm::vec2(0, 0);
 			asset->graph->scale = 1.0f;
 		}
 
-		if (input.key_pressed('X')) {
+		if (input.key_pressed(Key::X)) {
 			for (auto handle : asset->graph->selected) {
 				asset->graph->nodes_manager.free(handle);
 			}

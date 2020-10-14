@@ -3,7 +3,7 @@
 #include "string_view.h"
 
 struct sstring {
-	static constexpr int N = 50;
+	static constexpr int N = 48;
 
 	char data[N];
 	

@@ -3,7 +3,7 @@
 #include "graphics/pass/pass.h"
 #include "graphics/rhi/rhi.h"
 #include "graphics/pass/volumetric.h"
-#include "core/handle.h"
+#include "engine/handle.h"
 
 struct ShaderManager;
 struct TextureManager;

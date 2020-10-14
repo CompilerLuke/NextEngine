@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/handle.h"
+#include "engine/handle.h"
 #include "graphics/assets/material.h"
 #include "graphics/culling/culling.h"
 #include "core/container/slice.h"

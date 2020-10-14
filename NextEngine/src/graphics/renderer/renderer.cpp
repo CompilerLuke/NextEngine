@@ -190,13 +190,9 @@ GPUSubmission build_command_buffers(Renderer& renderer, const FrameData& frame) 
 
 	//todo paritition into lit, unlit, transparent passes
 	
-	bind_pipeline_layout(cmd_buffer, renderer.color_pipeline_layout);
-	bind_descriptor(cmd_buffer, 0, scene_pass_descriptor);
-	bind_descriptor(cmd_buffer, 1, renderer.lighting_system.pbr_descriptor);
-
 	render_meshes(renderer.mesh_buckets, frame.culled_mesh_bucket[RenderPass::Scene], main_pass);
 	render_grass(frame.grass_data, main_pass);
-	render_skybox(frame.skybox_data, main_pass);
+	//render_skybox(frame.skybox_data, main_pass);
 
 	return submission;
 }

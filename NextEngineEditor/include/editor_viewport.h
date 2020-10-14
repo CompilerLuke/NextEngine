@@ -1,8 +1,8 @@
 #pragma once
 
-#include "core/handle.h"
+#include "engine/handle.h"
 #include "core/container/sstring.h"
-#include "core/io/input.h"
+#include "engine/input.h"
 #include "graphics/pass/pass.h"
 
 enum EditorViewportType {

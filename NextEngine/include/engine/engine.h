@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/core.h"
+#include "core.h"
 #include "core/container/string_view.h"
 
 struct ENGINE_API Modules {

@@ -1,11 +1,8 @@
-#include "core/io/vfs.h"
+#include "engine/vfs.h"
+#include "graphics/assets/assets.h"
 #include <time.h>
 #include <sys/stat.h>
 #include <stdio.h>
-
-string_view tasset_path(string_view path) {
-	return path;
-}
 
 FILE* open(string_view full_filepath, const char* mode) {
 	FILE* f = NULL;
@@ -14,7 +11,7 @@ FILE* open(string_view full_filepath, const char* mode) {
 }
 
 FILE* open_rel(string_view filepath, const char* mode) {
-	return open(tasset_path(filepath), mode);
+	return open(tasset_path(filepath).c_str(), mode);
 }
 
 bool read_file(string_view filepath, string_buffer* buffer, int null_terminated) {
@@ -67,10 +64,7 @@ i64 io_time_modified(string_view filename) {
 wchar_t* to_wide_char(const char* orig);
 
 /*
-#include <Windows.h>
-#include "core/container/event_dispatcher.h"
-
-void WatchFileChange(string_view file, EventDispatcher<string_view> event) {
+void WatchFileChange(string_view file, std::function<void()> func) {
 	static int iCount = 0;
 	DWORD dwWaitStatus;
 	HANDLE dwChangeHandles;

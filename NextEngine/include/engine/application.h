@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/core.h"
+#include "engine/core.h"
 #include "core/container/string_buffer.h"
 #include "ecs/system.h"
 

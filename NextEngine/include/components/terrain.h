@@ -1,7 +1,7 @@
 #pragma once
 
-#include "core/core.h"
-#include "core/handle.h"
+#include "engine/core.h"
+#include "engine/handle.h"
 #include "core/container/sstring.h"
 #include "core/container/vector.h"
 #include <glm/glm.hpp>

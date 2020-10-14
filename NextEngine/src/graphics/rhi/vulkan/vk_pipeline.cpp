@@ -3,7 +3,7 @@
 #include "graphics/rhi/vulkan/shader.h"
 #include "graphics/assets/shader.h"
 #include "core/container/string_buffer.h"
-#include "core/io/vfs.h"
+#include "engine/vfs.h"
 #include "core/container/slice.h"
 #include "core/memory/linear_allocator.h"
 #include "core/container/hash_map.h"

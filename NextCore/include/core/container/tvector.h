@@ -49,4 +49,5 @@ struct tvector {
 	inline T* end() { return this->data + length; }
 
 	operator slice<T>() { return { data, length }; }
+	operator const slice<T>() const { return { data, length }; }
 };

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/core.h"
+#include "engine/core.h"
 #include "graphics/assets/model.h"
 #include "graphics/renderer/render_feature.h"
 #include "graphics/rhi/buffer.h"

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/core.h"
+#include "engine/core.h"
 #include <glm/vec2.hpp>
 
 const uint KRIGING_MAX_WEIGHTS = 12;

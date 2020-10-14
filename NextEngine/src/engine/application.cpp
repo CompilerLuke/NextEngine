@@ -1,7 +1,7 @@
 #include "engine/application.h"
 #include "engine/engine.h"
 #include "core/profiler.h"
-#include "core/io/input.h"
+#include "engine/input.h"
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>

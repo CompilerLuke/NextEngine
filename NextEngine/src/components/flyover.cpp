@@ -1,13 +1,14 @@
 #include "components/flyover.h"
-#include "core/io/input.h"
+#include "engine/input.h"
 #include "components/transform.h"
 #include "core/io/logger.h"
-#include <GLFW/glfw3.h>
+#include "ecs/system.h"
+#include "ecs/ecs.h"
 
 float get_speed(Flyover& self, UpdateCtx& ctx, float height) {
 	auto height_multiplier = 1.0f + height / 10.0f; 
 	
-	if (ctx.input.key_down(GLFW_KEY_LEFT_SHIFT))
+	if (ctx.input.key_down(Key::Left_Shift))
 		return self.movement_speed * 2.0f * height_multiplier * ctx.delta_time;
 
 	return (float)(self.movement_speed * height_multiplier * ctx.delta_time);
@@ -39,7 +40,7 @@ void update_flyover(World& world, UpdateCtx& ctx) {
 			mouse_offset += past_speed;
 		}
 		
-		if (ctx.input.mouse_button_down(Right)) {
+		if (ctx.input.mouse_button_down(MouseButton::Right)) {
 			ctx.input.capture_mouse(true);
 			mouse_offset = mouse_offset * (1.0f / self.past_movement_speed.length);
 		}

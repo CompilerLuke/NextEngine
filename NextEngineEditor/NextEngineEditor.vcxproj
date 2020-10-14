@@ -96,7 +96,7 @@
       <PreprocessorDefinitions>
       </PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\VulkanSDK\1.2.131.2\Include;C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor;C:\Users\User\source\repos\NextEngine\NextEngineEditor\vendor;C:\Users\User\source\repos\NextEngine\NextEngineEditor\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\VulkanSDK\1.2.131.2\Include;$(SolutionDir)NextEngine\include;$(SolutionDir)NextEngine\vendor;$(SolutionDir)NextEngineEditor\vendor;$(SolutionDir)NextCore\include;$(SolutionDir)NextEngineEditor\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <IncludeInUnityFile>true</IncludeInUnityFile>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -128,7 +128,7 @@
       <PreprocessorDefinitions>
       </PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\VulkanSDK\1.2.131.2\Include;C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor;C:\Users\User\source\repos\NextEngine\NextEngineEditor\vendor;C:\Users\User\source\repos\NextEngine\NextEngineEditor\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\VulkanSDK\1.2.131.2\Include;$(SolutionDir)NextEngine\include;$(SolutionDir)NextEngine\vendor;$(SolutionDir)NextEngineEditor\vendor;$(SolutionDir)NextCore\include;$(SolutionDir)NextEngineEditor\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <IncludeInUnityFile>true</IncludeInUnityFile>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -136,7 +136,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>C:\Users\User\source\repos\NextEngine\x64\Debug\NextEngine.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glad.o;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(SolutionDir)x64\Debug\NextEngine.lib;$(SolutionDir)x64\Debug\NextCore.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glad.o;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) lister.h assetTab.h -o src\generated</Command>
@@ -151,7 +151,7 @@
       <PreprocessorDefinitions>
       </PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\VulkanSDK\1.2.131.2\Include;C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor;C:\Users\User\source\repos\NextEngine\NextEngineEditor\vendor;C:\Users\User\source\repos\NextEngine\NextEngineEditor\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\VulkanSDK\1.2.131.2\Include;$(SolutionDir)NextEngine\include;$(SolutionDir)NextEngine\vendor;$(SolutionDir)NextEngineEditor\vendor;$(SolutionDir)NextCore\include;$(SolutionDir)NextEngineEditor\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <IncludeInUnityFile>true</IncludeInUnityFile>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -159,7 +159,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>C:\Users\User\source\repos\NextEngine\x64\Debug\NextEngine.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glad.o;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(SolutionDir)x64\Debug\NextEngine.lib;$(SolutionDir)x64\Debug\NextCore.lib;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glad.o;C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Libs\glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) lister.h assetTab.h -o src\generated</Command>
@@ -176,7 +176,7 @@
       <PreprocessorDefinitions>
       </PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\VulkanSDK\1.2.131.2\Include;C:\Users\User\source\repos\NextEngine\NextEngine\include;C:\Users\User\source\repos\NextEngine\NextEngine\vendor;C:\Users\User\source\repos\NextEngine\NextEngineEditor\vendor;C:\Users\User\source\repos\NextEngine\NextEngineEditor\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\User\Desktop\Game Engine\OpenGl libraries and headers\Include;C:\VulkanSDK\1.2.131.2\Include;$(SolutionDir)NextEngine\include;$(SolutionDir)NextEngine\vendor;$(SolutionDir)NextEngineEditor\vendor;$(SolutionDir)NextCore\include;$(SolutionDir)NextEngineEditor\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <IncludeInUnityFile>true</IncludeInUnityFile>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <LanguageStandard>stdcpp17</LanguageStandard>

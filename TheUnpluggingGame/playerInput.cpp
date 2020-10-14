@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "playerInput.h"
 #include <ecs/ecs.h>
-#include <core/io/input.h>
+#include <engine/input.h>
 #include <GLFW/glfw3.h>
 
 PlayerInput* get_player_input(World& world) {
@@ -31,8 +31,8 @@ void update_player_input(World& world, UpdateCtx& ctx) {
 		self.vertical_axis = input.get_vertical_axis();
 		self.horizonal_axis = input.get_horizontal_axis();
 
-		self.shift = input.key_down(GLFW_KEY_LEFT_SHIFT);
-		self.space = input.key_pressed(' ');
+		self.shift = input.key_down(Key::Left_Shift);
+		self.space = input.key_pressed(Key::Space);
 
 		self.holding_mouse_left = ctx.input.mouse_button_down(MouseButton::Left);
 	}

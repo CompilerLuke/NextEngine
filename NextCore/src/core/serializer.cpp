@@ -1,6 +1,7 @@
 /*
 #include "core/serializer.h"
-#include "core/io/vfs.h"
+#include "engine/vfs.h"
+#include <glm/gtc/quaternion.hpp>
 
 #include <WinSock2.h>
 #pragma comment(lib, "Ws2_32.lib")
@@ -72,9 +73,8 @@ void DeserializerBuffer::read_union(reflect::TypeDescriptor_Union* type, void* p
 
 	auto& union_case = type->cases[tag];
 	read(union_case.type, (char*)ptr + union_case.offset);
-}*/
+}
 
-/*
 void SerializerBuffer::write_byte(uint8_t byte) {
 	*(uint8_t*)pointer_to_n_bytes(1) = byte;
 }
@@ -84,6 +84,12 @@ uint8_t DeserializerBuffer::read_byte() {
 }
 
 void SerializerBuffer::write_int(int32_t value) {
+	auto ptr = (uint32_t*)pointer_to_n_bytes(4);
+	*ptr = u32_to_network(*(uint32_t*)&value);
+}
+
+
+void SerializerBuffer::write_uint(uint32_t value) {
 	auto ptr = (uint32_t*)pointer_to_n_bytes(4);
 	*ptr = u32_to_network(*(uint32_t*)&value);
 }
@@ -228,4 +234,33 @@ DeserializerBuffer::DeserializerBuffer(const char* data, unsigned int length) : 
 }
 
 DeserializerBuffer::DeserializerBuffer() {}
+
+
+void write_to_buffer(SerializerBuffer& buffer, uint value) {
+	memcpy(buffer.data, &value, sizeof(uint));
+	buffer.index += sizeof(uint);
+}
+
+void write_to_buffer(SerializerBuffer& buffer, glm::vec2 value) {
+	memcpy(buffer.data, &value, sizeof(glm::vec2));
+	buffer.index += sizeof(uint);
+}
+
+void write_to_buffer(SerializerBuffer& buffer, glm::vec3 value) {
+}
+
+void write_to_buffer(SerializerBuffer& buffer, glm::quat value) {
+	buffer.write_float(value.x);
+	buffer.write_float(value.y);
+	buffer.write_float(value.z);
+	buffer.write_float(value.w);
+}
+
+void write_to_buffer(SerializerBuffer& buffer, const sstring& str) {
+	buffer.write_int(str.length());
+
+	for (uint i = 0; i < str.length(); i++) {
+		buffer.write_byte(str.data[i]);
+	}
+}
 */

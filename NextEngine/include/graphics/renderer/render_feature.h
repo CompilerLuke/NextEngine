@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/core.h"
+#include "engine/core.h"
 
 struct ENGINE_API RenderFeature {
 	virtual void pre_render(struct World& world, struct PreRenderParams&) {}

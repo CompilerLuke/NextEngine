@@ -3,7 +3,6 @@
 
 #include "core/container/vector.h"
 #include "core/container/tvector.h"
-#include "core/io/vfs.h"
 #include "core/memory/linear_allocator.h"
 
 

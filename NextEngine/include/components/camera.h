@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/core.h"
+#include "engine/core.h"
 #include "ecs/id.h"
 #include <glm/mat4x4.hpp>
 

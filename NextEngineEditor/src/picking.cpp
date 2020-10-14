@@ -1,6 +1,6 @@
 #include "picking.h"
 #include "editor.h"
-#include "core/io/input.h"
+#include "engine/input.h"
 #include "graphics/rhi/draw.h"
 #include "core/memory/linear_allocator.h"
 #include <glm/mat4x4.hpp>
@@ -294,7 +294,7 @@ void render_node(RenderPass& ctx, material_handle mat, PickingScenePartition& pa
 
 
 void PickingSystem::visualize(Viewport& viewport, glm::vec2 position, RenderPass& ctx) {
-	//return;
+	return;
 	if (partition.count == 0) return;
 	
 	Ray ray = ray_from_mouse(viewport, position);

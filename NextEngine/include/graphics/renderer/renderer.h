@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/handle.h"
+#include "engine/handle.h"
 #include "ecs/id.h"
 #include "core/container/vector.h"
 #include "core/container/handle_manager.h"

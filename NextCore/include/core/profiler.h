@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/core.h"
 #include "core/container/vector.h"
 #include "core/container/string_view.h"
 
@@ -12,7 +13,7 @@ struct CORE_API Profile {
 
 	Profile(const char* name);
 
-	float end();
+	void end();
 
 	~Profile();
 };

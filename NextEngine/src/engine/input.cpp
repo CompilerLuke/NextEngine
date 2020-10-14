@@ -1,4 +1,4 @@
-#include "core/io/input.h"
+#include "engine/input.h"
 #include "core/io/logger.h"
 #include "graphics/rhi/window.h"
 #include <GLFW/glfw3.h>
@@ -33,6 +33,13 @@ void on_scroll(Input* self, glm::vec2 offset) {
 	self->scroll_offset = offset.y;
 }
 
+bool is_mod_down(Input* input, ModKeys mask) {
+	return
+		input->keys[GLFW_KEY_LEFT_CONTROL] != GLFW_RELEASE && !(mask & ModKeys::Control)
+		|| input->keys[GLFW_KEY_LEFT_SHIFT] != GLFW_RELEASE && !(mask & ModKeys::Shift)
+		|| input->keys[GLFW_KEY_LEFT_ALT] != GLFW_RELEASE && !(mask & ModKeys::Alt);
+}
+
 void on_key(Input* self, KeyData& key_data) {
 	if (!self->active) return;
 
@@ -42,13 +49,13 @@ void on_key(Input* self, KeyData& key_data) {
 void on_mouse_button(Input* self, MouseButtonData& data) {
 	if (!self->active) return;
 
-	int button;
-	if (data.button == GLFW_MOUSE_BUTTON_LEFT) button = Left;
-	else if (data.button == GLFW_MOUSE_BUTTON_RIGHT) button = Right;
-	else if (data.button == GLFW_MOUSE_BUTTON_MIDDLE) button = Middle;
+	MouseButton button;
+	if (data.button == GLFW_MOUSE_BUTTON_LEFT) button = MouseButton::Left;
+	else if (data.button == GLFW_MOUSE_BUTTON_RIGHT) button = MouseButton::Right;
+	else if (data.button == GLFW_MOUSE_BUTTON_MIDDLE) button = MouseButton::Middle;
 	else return;
 
-	self->mouse_button_state[button] = data.action;
+	self->mouse_button_state[(int)button] = data.action;
 }
 
 Input::Input() {}
@@ -65,31 +72,40 @@ void Input::init(Window& window) {
 	this->region_max = glm::vec2(window.width, window.height);
 }
 
-bool is_mod_down(Input* input) {
-	return input->keys[GLFW_KEY_LEFT_CONTROL] != GLFW_RELEASE;
+bool is_mod_key(Key key) {
+	switch (key) {
+	case Key::Left_Control: return true;
+	case Key::Left_Shift: return true;
+	case Key::Left_Alt: return true;
+	default: return false;
+	}
 }
 
-bool Input::key_down(Key key, bool allow_mod) {
-	if (!allow_mod && is_mod_down(this))
+bool Input::key_down(Key key, ModKeys allow_mod) {
+	if (!is_mod_key(key) && is_mod_down(this, allow_mod))
 		return false;
 
-	auto state = this->keys[key];
+	auto state = this->keys[(int)key];
 	return state == GLFW_PRESS || state == GLFW_REPEAT;
 }
 
-bool Input::key_pressed(Key key, bool allow_mod) {
-	if (!allow_mod && is_mod_down(this)) return false;
+bool Input::key_mod_pressed(Key key, Key mod) {
+	return key_down(mod) && keys[(int)key] == GLFW_PRESS;
+}
 
-	return this->keys[key] == GLFW_PRESS;
+bool Input::key_pressed(Key key, ModKeys allow_mod) {
+	if (!is_mod_key(key) && is_mod_down(this, allow_mod)) return false;
+
+	return this->keys[(int)key] == GLFW_PRESS;
 }
 
 bool Input::mouse_button_down(MouseButton button) {
-	auto state = this->mouse_button_state[button];
+	auto state = this->mouse_button_state[(int)button];
 	return state == GLFW_PRESS || state == GLFW_REPEAT;
 }
 
 bool Input::mouse_button_pressed(MouseButton button) {
-	auto state = this->mouse_button_state[button];
+	auto state = this->mouse_button_state[(int)button];
 	return state == GLFW_PRESS;
 }
 
@@ -99,14 +115,14 @@ void Input::capture_mouse(bool capture) {
 }
 
 float Input::get_vertical_axis() {
-	if (key_down(GLFW_KEY_W)) return 1;
-	if (key_down(GLFW_KEY_S)) return -1;
+	if (key_down(Key::W, ModKeys::Shift)) return 1;
+	if (key_down(Key::S, ModKeys::Shift)) return -1;
 	return 0;
 }
 
 float Input::get_horizontal_axis() {
-	if (key_down(GLFW_KEY_D)) return 1;
-	if (key_down(GLFW_KEY_A)) return -1;
+	if (key_down(Key::D, ModKeys::Shift)) return 1;
+	if (key_down(Key::A, ModKeys::Shift)) return -1;
 	return 0;
 }
 

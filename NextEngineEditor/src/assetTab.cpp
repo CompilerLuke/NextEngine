@@ -5,7 +5,7 @@
 #include <commdlg.h>
 #include <thread>
 #include "graphics/rhi/window.h"
-#include "core/io/vfs.h"
+#include "engine/vfs.h"
 #include "graphics/assets/assets.h"
 #include "graphics/assets/model.h"
 #include "graphics/assets/material.h"
@@ -18,7 +18,7 @@
 #include "graphics/rhi/primitives.h"
 #include "graphics/assets/material.h"
 #include "custom_inspect.h"
-#include "core/io/input.h"
+#include "engine/input.h"
 #include "components/lights.h"
 #include "core/serializer.h"
 #include <thread>

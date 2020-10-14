@@ -19,7 +19,7 @@ struct DeserializerBuffer {
 	uint index;
 	uint length;
 };
-
+ 
 inline void write_n_to_buffer(SerializerBuffer& buffer, void* ptr, u64 size) {
 	assert(buffer.index + size <= buffer.capacity);
 	memcpy(buffer.data + buffer.index, ptr, size);
@@ -45,6 +45,12 @@ inline void write_uint_to_buffer(SerializerBuffer& buffer, uint value) {
 
 inline void read_uint_from_buffer(DeserializerBuffer& buffer, uint& value) {
 	read_n_from_buffer(buffer, &value, sizeof(uint));
+}
+
+inline uint read_uint_from_buffer(DeserializerBuffer& buffer) {
+	uint value = 0;
+	read_n_from_buffer(buffer, &value, sizeof(uint));
+	return value;
 }
 
 inline void write_int_to_buffer(SerializerBuffer& buffer, int value) {
@@ -167,7 +173,7 @@ void read_from_buffer(SerializerBuffer& buffer, vector<T>& arr) {
 /*
 
 /*
-struct ENGINE_API SerializerBuffer {
+struct CORE_API SerializerBuffer {
 	Allocator* allocator = &default_allocator;
 	char* data = NULL;
 	unsigned int index = 0; //also size
@@ -190,7 +196,7 @@ struct ENGINE_API SerializerBuffer {
 	~SerializerBuffer();
 };
 
-struct ENGINE_API DeserializerBuffer {
+struct CORE_API DeserializerBuffer {
 	DeserializerBuffer();
 	DeserializerBuffer(const char* data, unsigned int length);
 

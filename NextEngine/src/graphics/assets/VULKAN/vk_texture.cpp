@@ -10,7 +10,7 @@
 #include <stb_image.h>
 #include "graphics/assets/assets.h"
 #include "core/memory/linear_allocator.h"
-#include "core/io/vfs.h"
+#include "engine/vfs.h"
 
 //REFLECT_STRUCT_BEGIN(Texture)
 //REFLECT_STRUCT_MEMBER(filename)

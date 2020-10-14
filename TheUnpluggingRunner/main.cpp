@@ -3,8 +3,12 @@
 
 #include <engine/application.h>
 #include <engine/engine.h>
+#include <core/memory/linear_allocator.h>
 
 int main() {
+	permanent_allocator = LinearAllocator(mb(100));
+	temporary_allocator = LinearAllocator(mb(100));
+
 	const char* level = "C:\\Users\\User\\source\\repos\\NextEngine\\TheUnpluggingGame\\data\\level1\\";
 	const char* app_name = "The Unplugging";
 

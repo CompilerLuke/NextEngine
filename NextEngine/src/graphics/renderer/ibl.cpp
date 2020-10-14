@@ -6,7 +6,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "components/transform.h"
 #include "core/io/logger.h"
-#include "core/io/vfs.h"
+#include "engine/vfs.h"
 #include <stb_image.h>
 #include "components/camera.h"
 #include "components/lights.h"
