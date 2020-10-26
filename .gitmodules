@@ -6,4 +6,4 @@
 	url = https://github.com/CompilerLuke/assimp.git
 [submodule "NextEngine/vendor/glfw"]
 	path = NextEngine/vendor/glfw
-	url = https://github.com/TheCherno/glfw.git
+	url = https://github.com/CompilerLuke/glfw.git
