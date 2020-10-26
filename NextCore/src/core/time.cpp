@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "core/time.h"
 
 using namespace std::chrono;

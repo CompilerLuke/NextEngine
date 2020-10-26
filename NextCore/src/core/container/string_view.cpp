@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "core/container/string_view.h"
 #include "core/container/string_buffer.h"
 #include "core/container/sstring.h"

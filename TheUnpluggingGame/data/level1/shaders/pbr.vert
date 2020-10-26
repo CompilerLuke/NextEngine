@@ -6,7 +6,6 @@ void main()
 
     gl_Position = projection * view * model * vec4(aPos, 1.0);
 
-
 	#ifndef IS_DEPTH_ONLY
 
     FragPos = vec3(model * vec4(aPos, 1.0));

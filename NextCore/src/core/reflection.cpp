@@ -1,11 +1,4 @@
-//
-//  reflection_basic_types.cpp
-//  PixC
-//
-//  Created by Lucas Goetz on 08/11/2019.
-//  Copyright © 2019 Lucas Goetz. All rights reserved.
-//
-
+#include "stdafx.h"
 #include "core/memory/linear_allocator.h"
 #include "core/reflection.h"
 #include "core/container/vector.h"

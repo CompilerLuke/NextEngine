@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/container/string_view.h"
-#include "assetTab.h"
+#include "assets/explorer.h"
 #include "core/container/handle_manager.h"
 
 enum ChannelType { Channel1, Channel2, Channel3, Channel4, ChannelNone };
@@ -95,7 +95,8 @@ struct ShaderGraph {
 	} action;
 
 	glm::vec2 scrolling;
-
+	material_handle preview_mat_handle = { INVALID_HANDLE };
+	MaterialDesc preview_mat_desc = { INVALID_HANDLE };
 	RotatablePreview rot_preview;
 
 	vector<ParamDesc> parameters;
@@ -140,16 +141,17 @@ void render_output(ShaderGraph& graph, shader_node_handle handle);
 glm::vec2 screenspace_to_position(ShaderGraph& graph, glm::vec2 position);
 string_buffer get_dependency(shader_node_handle node);
 
-ShaderAsset* create_new_shader(World& world, AssetTab& self, Editor& editor);
-void asset_properties(struct ShaderAsset* tex, struct Editor& editor, struct AssetTab& self, struct RenderPass& params);
+ShaderAsset* make_new_shader(World& world, AssetTab& self, Editor& editor);
+void shader_graph_properties(AssetNode& asset, struct Editor& editor, struct AssetTab& self);
 
 string_view get_param_name(ShaderGraph& graph, unsigned int i);
 
 struct Assets;
 struct SerializerBuffer;
+struct AssetNode;
 
 void load_Shader_for_graph(ShaderAsset* asset);
-void compile_shader_graph(AssetInfo&, ShaderAsset* asset);
+void compile_shader_graph(AssetInfo&, AssetNode& asset);
 void serialize_shader_asset(struct SerializerBuffer& buffer, ShaderAsset* asset);
 void deserialize_shader_asset(struct DeserializerBuffer& buffer, ShaderAsset* asset);
 

@@ -7,7 +7,7 @@
 #include "components/transform.h"
 #include "core/io/logger.h"
 #include "engine/vfs.h"
-#include <stb_image.h>
+#include <vendor/stb_image.h>
 #include "components/camera.h"
 #include "components/lights.h"
 #include "graphics/pass/render_pass.h"

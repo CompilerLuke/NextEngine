@@ -7,6 +7,10 @@ struct Material {
     vec3 skytop;
 };
 
+layout (std140, set = 0, binding = 1) uniform SimulationUBO {
+	float time;
+};
+
 //vec3 skyhorizon;
 //vec3 skytop;
 

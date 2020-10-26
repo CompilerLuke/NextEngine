@@ -92,36 +92,3 @@ ENGINE_API GPUSubmission build_command_buffers(Renderer& renderer, const FrameDa
 ENGINE_API void submit_frame(Renderer& renderer, GPUSubmission& submission);
 
 ENGINE_API uint get_frame_index();
-
-//void build_gpu_buffers(Renderer& renderer, FrameData& frame, Viewport viewport);
-/*
-struct RenderPass {
-	RenderExtension* extension;
-
-	Layermask layermask;
-	struct CommandBuffer& command_buffer;
-	struct Pass* pass;
-	struct Skybox* skybox;
-	struct DirLight* dir_light;
-
-	glm::vec3 view_pos;
-	glm::mat4 projection;
-	glm::mat4 view;
-	struct Camera* cam = NULL;
-
-	glm::mat4* model_m;
-
-	uint width = 0;
-	uint height = 0;
-	ENGINE_API void set_shader_scene_params(ShaderConfig&);
-
-	ENGINE_API RenderPass(struct CommandBuffer&, struct Pass*);
-	ENGINE_API RenderPass(const RenderPass&, struct CommandBuffer&, struct Pass*);
-};
-
-struct ENGINE_API PreRenderParams {
-	Layermask layermask;
-
-	PreRenderParams(Layermask layermask);
-};
-*/

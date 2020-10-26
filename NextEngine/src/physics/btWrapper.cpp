@@ -1,3 +1,4 @@
+/*
 #include "stdafx.h"
 #include "physics/btWrapper.h"
 #include <iostream>
@@ -389,3 +390,4 @@ void free_BulletWrapper(BulletWrapper* self) {
 void free_collision_shape(btCollisionShape* shape) {
 	delete shape;
 }
+*/

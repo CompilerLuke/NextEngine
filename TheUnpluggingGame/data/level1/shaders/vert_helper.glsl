@@ -24,12 +24,11 @@ layout (std140, set = 0, binding = 0) uniform PassUBO {
 	mat4 projection;
 	mat4 view;
 };
+#endif
 
 layout (std140, set = 0, binding = 1) uniform SimulationUBO {
 	float time;
 };
-
-#endif
 
 #ifdef VERTEX_SHADER
 mat3 make_TBN(mat4 model, vec3 n, vec3 t, vec3 b) {

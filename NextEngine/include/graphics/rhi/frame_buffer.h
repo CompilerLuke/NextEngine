@@ -45,6 +45,7 @@ struct SubpassDesc {
 	bool depth_attachment;
 };
 
+
 struct Framebuffer {
 	uint id;
 	uint width = 0;
@@ -56,6 +57,7 @@ struct Framebuffer {
 	void ENGINE_API clear_depth(glm::vec4);
 	void ENGINE_API unbind();
 };
+
 
 ENGINE_API void add_dependency(FramebufferDesc& desc, Stage, RenderPass::ID);
 ENGINE_API AttachmentDesc& add_color_attachment(FramebufferDesc& desc, texture_handle* tex = NULL);

@@ -1,89 +1,365 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="src\ecs">
-      <UniqueIdentifier>{9aca4323-f264-4652-86e1-eaa09055e42a}</UniqueIdentifier>
+    <Filter Include="C:">
+      <UniqueIdentifier>{22735900-0EFF-870B-77AD-880B6358880B}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src">
-      <UniqueIdentifier>{026c27de-1847-49b3-8cdc-0a029ce76e14}</UniqueIdentifier>
+    <Filter Include="C:\VulkanSDK">
+      <UniqueIdentifier>{44CD6CB3-3030-FC57-D9B5-340EC5F7C7DA}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\core">
-      <UniqueIdentifier>{9f15b076-3eb5-4ca8-b487-6b165697e49d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\model">
-      <UniqueIdentifier>{810b52d4-f26a-4e57-90a3-5173d5312d08}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\logger">
-      <UniqueIdentifier>{4086600a-42d4-4ee5-b7f8-7c49406697c5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\physics">
-      <UniqueIdentifier>{d6de6e88-b619-4ca4-b976-c3a0d416001f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\graphics">
-      <UniqueIdentifier>{0fc3574d-eab7-4cbd-8b22-46ef073331c1}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\benchmark">
-      <UniqueIdentifier>{df912fbf-0bca-4922-9ed0-c270907d5af5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\components">
-      <UniqueIdentifier>{b74c66f8-2918-4ef1-baa5-892c63aaddf4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\reflection">
-      <UniqueIdentifier>{95b9604b-622f-4268-8df0-d4da591479d4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\serialization">
-      <UniqueIdentifier>{95826ae7-eaa4-4962-82bb-22d7df8fa036}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\engine">
-      <UniqueIdentifier>{2f71093f-a61d-4e0c-a949-c90794f64e93}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="vendor\imgui">
-      <UniqueIdentifier>{d5a26b9d-2ee2-4500-9a2f-258be8800eaa}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="vendor">
-      <UniqueIdentifier>{b01e2181-260a-4b0a-9071-4662d479a73a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="include\ecs">
-      <UniqueIdentifier>{7ebde87c-f16e-4caa-a16d-3e06ee11e938}</UniqueIdentifier>
+    <Filter Include="C:\VulkanSDK\1.2.154.1">
+      <UniqueIdentifier>{AB878989-9781-B2DB-80EE-48EC6C871848}</UniqueIdentifier>
     </Filter>
     <Filter Include="include">
-      <UniqueIdentifier>{00b6ee83-6ca5-403e-b7a2-467c39da67a9}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="include\core">
-      <UniqueIdentifier>{dc44237c-e9c5-4116-984b-d654c9c3d195}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="include\model">
-      <UniqueIdentifier>{3495acb9-66de-4bb8-8eef-c700bd9ed44a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="include\logger">
-      <UniqueIdentifier>{acceb364-699e-48a6-a0ef-fdfcfa42fa5d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="include\physics">
-      <UniqueIdentifier>{f8bcec4c-00bb-493b-bbdc-07017560d145}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="include\graphics">
-      <UniqueIdentifier>{bcf19eae-c771-4636-8ab6-9e38d3571909}</UniqueIdentifier>
+      <UniqueIdentifier>{89AF369E-F58E-B539-FEA6-40106A051C9B}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\components">
-      <UniqueIdentifier>{083d4e85-c99e-4581-b5aa-f6d9cc794f1f}</UniqueIdentifier>
+      <UniqueIdentifier>{1E5107FE-0A35-C853-7395-C2A65F98B2D5}</UniqueIdentifier>
     </Filter>
-    <Filter Include="include\reflection">
-      <UniqueIdentifier>{3ca663bf-5406-4a16-a9bb-fb31111498b0}</UniqueIdentifier>
+    <Filter Include="include\ecs">
+      <UniqueIdentifier>{B3CCC031-1F82-3927-A876-33FE142B302B}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\engine">
-      <UniqueIdentifier>{dc172166-23eb-410d-8f2e-b8da1d18fcf3}</UniqueIdentifier>
+      <UniqueIdentifier>{0EBAC14A-FA87-B550-E31B-2677CF8891B5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\graphics">
+      <UniqueIdentifier>{099E0101-F596-2053-1EC9-05D80A21005F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\graphics\assets">
+      <UniqueIdentifier>{EBB42BB2-57EC-7349-60F6-D76CCCAC9A42}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\graphics\culling">
+      <UniqueIdentifier>{2619C695-123E-1516-3B89-FAA5270D1434}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\graphics\pass">
+      <UniqueIdentifier>{AF614471-1BCE-FF6B-E4C1-97C950ED21D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\graphics\renderer">
+      <UniqueIdentifier>{EF57D85A-5B1A-0CE5-A4CA-9A7110CCE4C2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\graphics\rhi">
+      <UniqueIdentifier>{1B335FC5-07C2-E88E-B0E0-FC899C4EF934}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\graphics\rhi\vulkan">
+      <UniqueIdentifier>{5B688D6A-C775-BB50-505C-B73BBC688707}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\physics">
+      <UniqueIdentifier>{1BC405E5-874F-73A9-9060-F69DFC6ACFA9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\terrain">
+      <UniqueIdentifier>{0DE46F11-796F-DDD5-8280-60CAEE8A39D6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{2DAB880B-99B4-887C-2230-9F7C8E38947C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\benchmark">
+      <UniqueIdentifier>{47627F01-B322-FB37-7C5D-44B5E8DC3F14}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\components">
+      <UniqueIdentifier>{423E2ECF-2E0C-22D5-17A0-92FB030DFE39}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ecs">
+      <UniqueIdentifier>{57FA2FA9-C3D9-AE44-CCF1-391B385015A6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\engine">
+      <UniqueIdentifier>{32B5D758-1E6D-19A6-8774-F201734BB496}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\graphics">
+      <UniqueIdentifier>{2DF282EC-1955-1291-C2DA-4A47AE1CDE13}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\graphics\assets">
+      <UniqueIdentifier>{8F78A855-FBD9-8563-8447-CC15F0A7BC22}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\graphics\assets\GL">
+      <UniqueIdentifier>{91B3C496-7DAD-EDE8-661A-84F952B35355}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\graphics\assets\VULKAN">
+      <UniqueIdentifier>{8F46F12D-7B56-9DFE-E40F-021DD03E8C97}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\graphics\culling">
+      <UniqueIdentifier>{4A51DBA8-36E0-6472-DFFE-786DCB6C7518}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\graphics\pass">
+      <UniqueIdentifier>{53ECB3FA-BF02-B290-087A-3DB274CF8218}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\graphics\renderer">
+      <UniqueIdentifier>{939494D0-FF00-50CB-C8F4-E72834207233}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\graphics\rhi">
+      <UniqueIdentifier>{3FF9F57B-2BF2-14CE-5424-FA52407CF4D9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\graphics\rhi\GL">
+      <UniqueIdentifier>{41B6827C-AD17-608A-3685-A63CA2E59649}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\graphics\rhi\vulkan">
+      <UniqueIdentifier>{FF5D4B40-6B95-93D7-749F-F7FAE055BAD0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\physics">
+      <UniqueIdentifier>{BF23DBB5-2BD9-53AB-B4CD-4D8220824AAF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\terrain">
+      <UniqueIdentifier>{B14345E2-1DF9-BDD7-A6ED-B7AE12A2B4DB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="vendor">
+      <UniqueIdentifier>{B3738122-9F15-ACF8-88D0-BF4C74113349}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="vendor\imgui">
+      <UniqueIdentifier>{5D3BD0F0-499E-5F95-F223-984BDE652B18}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="vendor\spirv-reflect">
+      <UniqueIdentifier>{E86B9917-D4FA-22E1-7D19-37DC69873387}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\ecs\system.cpp">
-      <Filter>src\ecs</Filter>
-    </ClCompile>
-    <ClCompile Include="src\ecs\update_params.cpp">
-      <Filter>src\ecs</Filter>
-    </ClCompile>
-    <ClCompile Include="src\physics\physics.cpp">
-      <Filter>src\physics</Filter>
-    </ClCompile>
+    <ClInclude Include="include\component_ids.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\components\camera.h">
+      <Filter>include\components</Filter>
+    </ClInclude>
+    <ClInclude Include="include\components\flyover.h">
+      <Filter>include\components</Filter>
+    </ClInclude>
+    <ClInclude Include="include\components\grass.h">
+      <Filter>include\components</Filter>
+    </ClInclude>
+    <ClInclude Include="include\components\lights.h">
+      <Filter>include\components</Filter>
+    </ClInclude>
+    <ClInclude Include="include\components\skybox.h">
+      <Filter>include\components</Filter>
+    </ClInclude>
+    <ClInclude Include="include\components\terrain.h">
+      <Filter>include\components</Filter>
+    </ClInclude>
+    <ClInclude Include="include\components\transform.h">
+      <Filter>include\components</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ecs\component_ids.h">
+      <Filter>include\ecs</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ecs\ecs.h">
+      <Filter>include\ecs</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ecs\flags.h">
+      <Filter>include\ecs</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ecs\id.h">
+      <Filter>include\ecs</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ecs\system.h">
+      <Filter>include\ecs</Filter>
+    </ClInclude>
+    <ClInclude Include="include\engine\application.h">
+      <Filter>include\engine</Filter>
+    </ClInclude>
+    <ClInclude Include="include\engine\core.h">
+      <Filter>include\engine</Filter>
+    </ClInclude>
+    <ClInclude Include="include\engine\engine.h">
+      <Filter>include\engine</Filter>
+    </ClInclude>
+    <ClInclude Include="include\engine\handle.h">
+      <Filter>include\engine</Filter>
+    </ClInclude>
+    <ClInclude Include="include\engine\input.h">
+      <Filter>include\engine</Filter>
+    </ClInclude>
+    <ClInclude Include="include\engine\types.h">
+      <Filter>include\engine</Filter>
+    </ClInclude>
+    <ClInclude Include="include\engine\vfs.h">
+      <Filter>include\engine</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\assets\assets.h">
+      <Filter>include\graphics\assets</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\assets\assets_store.h">
+      <Filter>include\graphics\assets</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\assets\material.h">
+      <Filter>include\graphics\assets</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\assets\model.h">
+      <Filter>include\graphics\assets</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\assets\shader.h">
+      <Filter>include\graphics\assets</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\assets\texture.h">
+      <Filter>include\graphics\assets</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\culling\aabb.h">
+      <Filter>include\graphics\culling</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\culling\build_bvh.h">
+      <Filter>include\graphics\culling</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\culling\culling.h">
+      <Filter>include\graphics\culling</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\culling\scene_partition.h">
+      <Filter>include\graphics\culling</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\pass\pass.h">
+      <Filter>include\graphics\pass</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\pass\render_graph.h">
+      <Filter>include\graphics\pass</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\pass\render_pass.h">
+      <Filter>include\graphics\pass</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\pass\shadow.h">
+      <Filter>include\graphics\pass</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\pass\volumetric.h">
+      <Filter>include\graphics\pass</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\renderer\grass.h">
+      <Filter>include\graphics\renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\renderer\ibl.h">
+      <Filter>include\graphics\renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\renderer\lighting_system.h">
+      <Filter>include\graphics\renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\renderer\model_rendering.h">
+      <Filter>include\graphics\renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\renderer\render_feature.h">
+      <Filter>include\graphics\renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\renderer\renderer.h">
+      <Filter>include\graphics\renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\renderer\terrain.h">
+      <Filter>include\graphics\renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\renderer\transforms.h">
+      <Filter>include\graphics\renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\buffer.h">
+      <Filter>include\graphics\rhi</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\device.h">
+      <Filter>include\graphics\rhi</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\draw.h">
+      <Filter>include\graphics\rhi</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\forward.h">
+      <Filter>include\graphics\rhi</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\frame_buffer.h">
+      <Filter>include\graphics\rhi</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\pipeline.h">
+      <Filter>include\graphics\rhi</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\primitives.h">
+      <Filter>include\graphics\rhi</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\render_passh.h">
+      <Filter>include\graphics\rhi</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\rhi.h">
+      <Filter>include\graphics\rhi</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\shader_access.h">
+      <Filter>include\graphics\rhi</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\vulkan\async_cpu_copy.h">
+      <Filter>include\graphics\rhi\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\vulkan\buffer.h">
+      <Filter>include\graphics\rhi\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\vulkan\command_buffer.h">
+      <Filter>include\graphics\rhi\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\vulkan\core.h">
+      <Filter>include\graphics\rhi\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\vulkan\device.h">
+      <Filter>include\graphics\rhi\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\vulkan\draw.h">
+      <Filter>include\graphics\rhi\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\vulkan\frame_buffer.h">
+      <Filter>include\graphics\rhi\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\vulkan\frame_graph.h">
+      <Filter>include\graphics\rhi\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\vulkan\material.h">
+      <Filter>include\graphics\rhi\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\vulkan\pipeline.h">
+      <Filter>include\graphics\rhi\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\vulkan\shader.h">
+      <Filter>include\graphics\rhi\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\vulkan\shader_access.h">
+      <Filter>include\graphics\rhi\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\vulkan\swapchain.h">
+      <Filter>include\graphics\rhi\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\vulkan\texture.h">
+      <Filter>include\graphics\rhi\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\vulkan\volk.h">
+      <Filter>include\graphics\rhi\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\vulkan\vulkan.h">
+      <Filter>include\graphics\rhi\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\window.h">
+      <Filter>include\graphics\rhi</Filter>
+    </ClInclude>
+    <ClInclude Include="include\physics\physics.h">
+      <Filter>include\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\terrain\kriging.h">
+      <Filter>include\terrain</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="vendor\imgui\imconfig.h">
+      <Filter>vendor\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\imgui\imgui.h">
+      <Filter>vendor\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\imgui\imgui_impl_glfw.h">
+      <Filter>vendor\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\imgui\imgui_impl_opengl3.h">
+      <Filter>vendor\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\imgui\imgui_impl_vulkan.h">
+      <Filter>vendor\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\imgui\imgui_internal.h">
+      <Filter>vendor\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\imgui\imstb_rectpack.h">
+      <Filter>vendor\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\imgui\imstb_textedit.h">
+      <Filter>vendor\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\imgui\imstb_truetype.h">
+      <Filter>vendor\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\spirv-reflect\spirv_reflect.h">
+      <Filter>vendor\spirv-reflect</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
     <ClCompile Include="src\benchmark\benchmark.cpp">
       <Filter>src\benchmark</Filter>
     </ClCompile>
@@ -105,12 +381,160 @@
     <ClCompile Include="src\components\transforms_components.cpp">
       <Filter>src\components</Filter>
     </ClCompile>
+    <ClCompile Include="src\ecs\system.cpp">
+      <Filter>src\ecs</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ecs\update_params.cpp">
+      <Filter>src\ecs</Filter>
+    </ClCompile>
     <ClCompile Include="src\engine\application.cpp">
       <Filter>src\engine</Filter>
     </ClCompile>
     <ClCompile Include="src\engine\engine.cpp">
       <Filter>src\engine</Filter>
     </ClCompile>
+    <ClCompile Include="src\engine\input.cpp">
+      <Filter>src\engine</Filter>
+    </ClCompile>
+    <ClCompile Include="src\engine\vfs.cpp">
+      <Filter>src\engine</Filter>
+    </ClCompile>
+    <ClCompile Include="src\generated.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\assets\GL\gl_model.cpp">
+      <Filter>src\graphics\assets\GL</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\assets\GL\gl_shader.cpp">
+      <Filter>src\graphics\assets\GL</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\assets\GL\gl_texture.cpp">
+      <Filter>src\graphics\assets\GL</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\assets\VULKAN\vk_async_cpu_copy.cpp">
+      <Filter>src\graphics\assets\VULKAN</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\assets\VULKAN\vk_material.cpp">
+      <Filter>src\graphics\assets\VULKAN</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\assets\VULKAN\vk_model.cpp">
+      <Filter>src\graphics\assets\VULKAN</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\assets\VULKAN\vk_shader.cpp">
+      <Filter>src\graphics\assets\VULKAN</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\assets\VULKAN\vk_texture.cpp">
+      <Filter>src\graphics\assets\VULKAN</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\assets\assets.cpp">
+      <Filter>src\graphics\assets</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\assets\assimp_model_loader.cpp">
+      <Filter>src\graphics\assets</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\culling\culling.cpp">
+      <Filter>src\graphics\culling</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\pass\render_pass.cpp">
+      <Filter>src\graphics\pass</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\pass\shadow.cpp">
+      <Filter>src\graphics\pass</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\pass\volumetric.cpp">
+      <Filter>src\graphics\pass</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\renderer\grass_rendering.cpp">
+      <Filter>src\graphics\renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\renderer\ibl.cpp">
+      <Filter>src\graphics\renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\renderer\lighting_system.cpp">
+      <Filter>src\graphics\renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\renderer\material_system.cpp">
+      <Filter>src\graphics\renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\renderer\model_rendering.cpp">
+      <Filter>src\graphics\renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\renderer\renderer.cpp">
+      <Filter>src\graphics\renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\renderer\terrain.cpp">
+      <Filter>src\graphics\renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\renderer\transforms.cpp">
+      <Filter>src\graphics\renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\rhi\GL\gl_buffer.cpp">
+      <Filter>src\graphics\rhi\GL</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\rhi\GL\gl_device.cpp">
+      <Filter>src\graphics\rhi\GL</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\rhi\GL\gl_draw.cpp">
+      <Filter>src\graphics\rhi\GL</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\rhi\GL\gl_framebuffer.cpp">
+      <Filter>src\graphics\rhi\GL</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\rhi\primitives.cpp">
+      <Filter>src\graphics\rhi</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_buffer.cpp">
+      <Filter>src\graphics\rhi\vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_cmd_buffer.cpp">
+      <Filter>src\graphics\rhi\vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_device.cpp">
+      <Filter>src\graphics\rhi\vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_draw.cpp">
+      <Filter>src\graphics\rhi\vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_framebuffer.cpp">
+      <Filter>src\graphics\rhi\vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_framegraph.cpp">
+      <Filter>src\graphics\rhi\vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_pipeline.cpp">
+      <Filter>src\graphics\rhi\vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_rhi.cpp">
+      <Filter>src\graphics\rhi\vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_shader_access.cpp">
+      <Filter>src\graphics\rhi\vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_swapchain.cpp">
+      <Filter>src\graphics\rhi\vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_ubo.cpp">
+      <Filter>src\graphics\rhi\vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\rhi\vulkan\volk.cpp">
+      <Filter>src\graphics\rhi\vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\rhi\vulkan\vulkan.cpp">
+      <Filter>src\graphics\rhi\vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="src\graphics\rhi\window.cpp">
+      <Filter>src\graphics\rhi</Filter>
+    </ClCompile>
+    <ClCompile Include="src\physics\btWrapper.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\physics\physics.cpp">
+      <Filter>src\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\terrain\kriging.cpp">
+      <Filter>src\terrain</Filter>
+    </ClCompile>
+    <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="vendor\imgui\imgui.cpp">
       <Filter>vendor\imgui</Filter>
     </ClCompile>
@@ -123,264 +547,19 @@
     <ClCompile Include="vendor\imgui\imgui_impl_opengl3.cpp">
       <Filter>vendor\imgui</Filter>
     </ClCompile>
+    <ClCompile Include="vendor\imgui\imgui_impl_vulkan.cpp">
+      <Filter>vendor\imgui</Filter>
+    </ClCompile>
     <ClCompile Include="vendor\imgui\imgui_widgets.cpp">
       <Filter>vendor\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="dllmain.cpp" />
-    <ClCompile Include="NextEngine.cpp" />
-    <ClCompile Include="stdafx.cpp" />
-    <ClCompile Include="src\graphics\culling\culling.cpp">
-      <Filter>src\graphics</Filter>
+    <ClCompile Include="vendor\spirv-reflect\spirv_reflect.cpp">
+      <Filter>vendor\spirv-reflect</Filter>
     </ClCompile>
-    <ClCompile Include="src\graphics\renderer\ibl.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\renderer\material_system.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\renderer\model_rendering.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\pass\render_pass.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\renderer\renderer.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\pass\shadow.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\renderer\transforms.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\pass\volumetric.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\renderer\terrain.cpp" />
-    <ClCompile Include="src\graphics\renderer\grass_rendering.cpp" />
-    <ClCompile Include="src\graphics\rhi\vulkan\vulkan.cpp" />
-    <ClCompile Include="src\graphics\rhi\vulkan\volk.cpp" />
-    <ClCompile Include="src\graphics\assets\assimp_model_loader.cpp" />
-    <ClCompile Include="src\graphics\assets\GL\gl_model.cpp" />
-    <ClCompile Include="src\graphics\assets\GL\gl_shader.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\assets\GL\gl_texture.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\assets\VULKAN\vk_model.cpp" />
-    <ClCompile Include="src\graphics\assets\VULKAN\vk_texture.cpp" />
-    <ClCompile Include="src\graphics\assets\VULKAN\vk_shader.cpp" />
-    <ClCompile Include="src\graphics\rhi\GL\gl_buffer.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\rhi\window.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\rhi\primitives.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\rhi\GL\gl_framebuffer.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\rhi\GL\gl_draw.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\rhi\GL\gl_device.cpp">
-      <Filter>src\graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\graphics\rhi\vulkan\vk_buffer.cpp" />
-    <ClCompile Include="src\graphics\rhi\vulkan\vk_framebuffer.cpp" />
-    <ClCompile Include="src\graphics\rhi\vulkan\vk_draw.cpp" />
-    <ClCompile Include="src\graphics\rhi\vulkan\vk_device.cpp" />
-    <ClCompile Include="src\graphics\rhi\vulkan\vk_swapchain.cpp" />
-    <ClCompile Include="src\graphics\rhi\vulkan\vk_pipeline.cpp" />
-    <ClCompile Include="src\graphics\rhi\vulkan\vk_cmd_buffer.cpp" />
-    <ClCompile Include="src\graphics\assets\VULKAN\vk_material.cpp" />
-    <ClCompile Include="vendor\spirv-reflect\spirv_reflect.cpp" />
-    <ClCompile Include="src\graphics\assets\assets.cpp" />
-    <ClCompile Include="src\graphics\rhi\vulkan\vk_shader_access.cpp" />
-    <ClCompile Include="src\graphics\rhi\vulkan\vk_rhi.cpp" />
-    <ClCompile Include="src\graphics\renderer\lighting_system.cpp" />
-    <ClCompile Include="src\graphics\rhi\vulkan\vk_ubo.cpp" />
-    <ClCompile Include="src\graphics\rhi\vulkan\vk_framegraph.cpp" />
-    <ClCompile Include="vendor\imgui\imgui_impl_vulkan.cpp" />
-    <ClCompile Include="src\generated.cpp" />
-    <ClCompile Include="src\terrain\kriging.cpp" />
-    <ClCompile Include="src\graphics\assets\VULKAN\vk_async_cpu_copy.cpp" />
-    <ClCompile Include="src\engine\vfs.cpp" />
-    <ClCompile Include="src\engine\input.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="vendor\imgui\imconfig.h">
-      <Filter>vendor\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="vendor\imgui\imgui.h">
-      <Filter>vendor\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="vendor\imgui\imgui_impl_glfw.h">
-      <Filter>vendor\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="vendor\imgui\imgui_impl_opengl3.h">
-      <Filter>vendor\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="vendor\imgui\imgui_internal.h">
-      <Filter>vendor\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="vendor\imgui\imstb_rectpack.h">
-      <Filter>vendor\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="vendor\imgui\imstb_textedit.h">
-      <Filter>vendor\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="vendor\imgui\imstb_truetype.h">
-      <Filter>vendor\imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="include\ecs\ecs.h">
-      <Filter>include\ecs</Filter>
-    </ClInclude>
-    <ClInclude Include="include\ecs\id.h">
-      <Filter>include\ecs</Filter>
-    </ClInclude>
-    <ClInclude Include="include\ecs\system.h">
-      <Filter>include\ecs</Filter>
-    </ClInclude>
-    <ClInclude Include="include\physics\btWrapper.h">
-      <Filter>include\physics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\physics\physics.h">
-      <Filter>include\physics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\components\camera.h">
-      <Filter>include\components</Filter>
-    </ClInclude>
-    <ClInclude Include="include\components\flyover.h">
-      <Filter>include\components</Filter>
-    </ClInclude>
-    <ClInclude Include="include\components\grass.h">
-      <Filter>include\components</Filter>
-    </ClInclude>
-    <ClInclude Include="include\components\lights.h">
-      <Filter>include\components</Filter>
-    </ClInclude>
-    <ClInclude Include="include\components\terrain.h">
-      <Filter>include\components</Filter>
-    </ClInclude>
-    <ClInclude Include="include\components\transform.h">
-      <Filter>include\components</Filter>
-    </ClInclude>
-    <ClInclude Include="include\engine\application.h">
-      <Filter>include\engine</Filter>
-    </ClInclude>
-    <ClInclude Include="include\engine\engine.h">
-      <Filter>include\engine</Filter>
-    </ClInclude>
-    <ClInclude Include="stdafx.h" />
-    <ClInclude Include="targetver.h" />
-    <ClInclude Include="include\graphics\culling\aabb.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\culling\culling.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\culling\scene_partition.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\assets\texture.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\assets\shader.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\pass\render_pass.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\pass\shadow.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\pass\volumetric.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\renderer\grass.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\renderer\ibl.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\renderer\model_rendering.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\pass\pass.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\renderer\render_feature.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\renderer\renderer.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\renderer\transforms.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\renderer\terrain.h" />
-    <ClInclude Include="include\graphics\assets\model.h">
-      <Filter>include\model</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\pass\render_graph.h" />
-    <ClInclude Include="include\graphics\rhi\vulkan\vulkan.h" />
-    <ClInclude Include="include\graphics\rhi\vulkan\device.h" />
-    <ClInclude Include="include\graphics\rhi\vulkan\volk.h" />
-    <ClInclude Include="include\graphics\rhi\vulkan\swapchain.h" />
-    <ClInclude Include="include\graphics\rhi\vulkan\buffer.h" />
-    <ClInclude Include="include\graphics\rhi\vulkan\pipeline.h" />
-    <ClInclude Include="include\graphics\rhi\vulkan\shader.h" />
-    <ClInclude Include="include\graphics\assets\assets.h" />
-    <ClInclude Include="include\graphics\assets\material.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\rhi\vulkan\material.h" />
-    <ClInclude Include="include\graphics\rhi\vulkan\texture.h" />
-    <ClInclude Include="vendor\spirv-reflect\spirv_reflect.h" />
-    <ClInclude Include="include\graphics\rhi\vulkan\shader_access.h" />
-    <ClInclude Include="include\graphics\rhi\vulkan\core.h" />
-    <ClInclude Include="include\graphics\rhi\vulkan\command_buffer.h" />
-    <ClInclude Include="include\graphics\rhi\vulkan\draw.h" />
-    <ClInclude Include="include\graphics\rhi\rhi.h" />
-    <ClInclude Include="include\graphics\rhi\buffer.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\rhi\frame_buffer.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\rhi\pipeline.h" />
-    <ClInclude Include="include\graphics\rhi\primitives.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\rhi\window.h">
-      <Filter>include\graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\rhi\draw.h" />
-    <ClInclude Include="include\graphics\rhi\render_passh.h" />
-    <ClInclude Include="include\graphics\renderer\lighting_system.h" />
-    <ClInclude Include="include\graphics\assets\assets_store.h" />
-    <ClInclude Include="include\components\skybox.h" />
-    <ClInclude Include="include\graphics\rhi\vulkan\frame_graph.h" />
-    <ClInclude Include="include\graphics\rhi\vulkan\frame_buffer.h" />
-    <ClInclude Include="include\graphics\rhi\shader_access.h" />
-    <ClInclude Include="vendor\imgui\imgui_impl_vulkan.h" />
-    <ClInclude Include="src\generated.h" />
-    <ClInclude Include="include\graphics\culling\build_bvh.h" />
-    <ClInclude Include="include\terrain\kriging.h" />
-    <ClInclude Include="include\graphics\rhi\forward.h" />
-    <ClInclude Include="include\component_ids.h" />
-    <ClInclude Include="include\graphics\rhi\vulkan\async_cpu_copy.h" />
-    <ClInclude Include="include\ecs\flags.h" />
-    <ClInclude Include="include\engine\core.h" />
-    <ClInclude Include="include\engine\input.h" />
-    <ClInclude Include="include\engine\vfs.h" />
-    <ClInclude Include="include\engine\handle.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="src\refl_filepaths.refl" />
+    <None Include="C:\VulkanSDK\1.2.154.1\include">
+      <Filter>C:\VulkanSDK\1.2.154.1</Filter>
+    </None>
   </ItemGroup>
 </Project>

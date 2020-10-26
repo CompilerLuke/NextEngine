@@ -17,52 +17,93 @@
 #include "core/container/tvector.h"
 #include "graphics/culling/build_bvh.h"
 #include "core/profiler.h"
+#include "core/job_system/job.h"
 
 #define MAX_ENTITIES_PER_NODE 10
 #define MAX_PICKING_DEPTH 6
 
-uint subdivide_BVH(PickingScenePartition& scene_partition, AABB& node_aabb, int depth, int mesh_count, AABB* aabbs, ID* ids, uint* tags) {
-	uint node_id = scene_partition.node_count;
+struct SubdivideBVHJob {
+	PickingScenePartition& scene_partition;
+	AABB& node_aabb;
+	uint depth;
+	uint mesh_count;
+	AABB* aabbs;
+	ID* ids;
+	uint* tags;
+	uint child_idx;
+};
+
+void subdivide_BVH(SubdivideBVHJob& job) {
+	PickingScenePartition& scene_partition = job.scene_partition;
 	
-	if (mesh_count <= MAX_ENTITIES_PER_NODE || depth >= MAX_PICKING_DEPTH) {
-		Node& node = alloc_leaf_node(scene_partition, node_aabb, MAX_PICKING_INSTANCES, mesh_count);
+	if (job.mesh_count <= MAX_ENTITIES_PER_NODE || job.depth >= MAX_PICKING_DEPTH) {
+		Node& node = alloc_leaf_node(scene_partition, job.node_aabb, MAX_PICKING_INSTANCES, job.mesh_count);
 		
-		copy_into_node(node, scene_partition.ids, ids);
-		copy_into_node(node, scene_partition.aabbs, aabbs);
+		copy_into_node(node, scene_partition.ids, job.ids);
+		copy_into_node(node, scene_partition.aabbs, job.aabbs);
 	}
 	else {
-		BranchNodeInfo info = alloc_branch_node(scene_partition, node_aabb);
+		LinearAllocator& temporary = get_thread_local_temporary_allocator();
+		BranchNodeInfo info = alloc_branch_node(scene_partition, job.node_aabb, temporary);
+
 		tvector<AABB> subdivided_aabbs[2];
 		tvector<ID> subdivided_ids[2];
 		tvector<uint> subdivided_tags[2];
 
-		for (int i = 0; i < mesh_count; i++) {
-			AABB& aabb = aabbs[i];
+		for (uint i = 0; i < 2; i++) {
+			subdivided_aabbs[i].allocator = &temporary;
+			subdivided_ids[i].allocator = &temporary;
+			subdivided_tags[i].allocator = &temporary;
+		}
+
+		for (int i = 0; i < job.mesh_count; i++) {
+			AABB& aabb = job.aabbs[i];
 
 			if (bigger_than_leaf(info, aabb)) {
 				int offset = elem_offset(scene_partition, info, aabb);
 				scene_partition.aabbs[offset] = aabb;
-				scene_partition.ids[offset] = ids[i];
-				scene_partition.tags[offset] = tags[i];
+				scene_partition.ids[offset] = job.ids[i];
+				scene_partition.tags[offset] = job.tags[i];
 			}
 			else {
 				bool node_index = split_index(info, aabb);
 				subdivided_aabbs[node_index].append(aabb);
-				subdivided_ids[node_index].append(ids[i]);
-				subdivided_tags[node_index].append(tags[i]);
+				subdivided_ids[node_index].append(job.ids[i]);
+				subdivided_tags[node_index].append(job.tags[i]);
 			}
 		}
 
+		JobDesc desc[2];
+		SubdivideBVHJob jobs[2] = {
+			{scene_partition, info.child_aabbs[0]},
+			{scene_partition, info.child_aabbs[1]}
+		};
+
+		uint count = 0;
 		for (int i = 0; i < 2; i++) {
 			if (subdivided_aabbs[i].length == 0) continue;
-			info.node.child[info.node.child_count++] = subdivide_BVH(scene_partition, info.child_aabbs[i], depth + 1, subdivided_aabbs[i].length, subdivided_aabbs[i].data, subdivided_ids[i].data, subdivided_tags[i].data);
-			info.node.aabb.update_aabb(scene_partition.nodes[info.node.child[i]].aabb);
+			
+			jobs[count].depth = job.depth + 1;
+			jobs[count].mesh_count = subdivided_aabbs[i].length;
+			jobs[count].aabbs = subdivided_aabbs[i].data;
+			jobs[count].ids = subdivided_ids[i].data;
+			jobs[count].tags = subdivided_tags[i].data;
+
+			desc[count] = JobDesc{ subdivide_BVH, jobs + i };
+			count++;
 		}
 
-		bump_allocator(scene_partition, info);
-	}
+		wait_for_jobs(PRIORITY_HIGH, { desc, count });
 
-	return node_id;
+		for (int i = 0; i < 2; i++) {
+			uint child_idx = jobs[i].child_idx;
+			info.node.child[info.node.child_count++] = child_idx;
+			info.node.aabb.update_aabb(scene_partition.nodes[child_idx].aabb);
+		}
+
+		bump_allocator(scene_partition, info, temporary);
+		job.child_idx = &info.node - scene_partition.nodes;
+	}
 }
 
 void build_acceleration_structure(PickingScenePartition& scene_partition, World& world) { 
@@ -70,7 +111,7 @@ void build_acceleration_structure(PickingScenePartition& scene_partition, World&
 	
 	AABB world_bounds;
 
-	int occupied = temporary_allocator.occupied;
+	int occupied = get_temporary_allocator().occupied;
 
 	tvector<AABB> aabbs;
 	tvector<ID> ids;
@@ -121,7 +162,7 @@ void build_acceleration_structure(PickingScenePartition& scene_partition, World&
 		terrain_aabb.min = trans.position;
 		terrain_aabb.max = trans.position + glm::vec3(width * terrain.size_of_block, terrain.max_height, height * terrain.size_of_block);
 
-		float* displacement_map = terrain.displacement_map[0].data;
+		float* displacement_map = terrain.displacement_map[1].data;
 
 		uint width_quads = width * 32;
 
@@ -129,13 +170,13 @@ void build_acceleration_structure(PickingScenePartition& scene_partition, World&
 			for (uint block_x = 0; block_x < width; block_x++) {
 				float heighest = FLT_MAX; //todo add support for ray traced heightmap
 
-				uint offset_y = block_y * 32;
-				uint offset_x = block_x * 32;
+				uint offset_y = (block_y * 32) / 4;
+				uint offset_x = (block_x * 32) / 4;
 
-				for (uint y1 = offset_y; y1 < offset_y + 32; y1 += 4) {
+				for (uint y1 = offset_y; y1 < offset_y + 8; y1++) {
 					uint offset = y1 * width_quads;
 
-					for (uint x1 = offset_x; x1 < offset_x + 32; x1 += 4) {
+					for (uint x1 = offset_x; x1 < offset_x + 8; x1++) {
 						heighest = fminf(heighest, displacement_map[x1 + offset]);
 					}
 				}
@@ -155,9 +196,16 @@ void build_acceleration_structure(PickingScenePartition& scene_partition, World&
 		}
 	}
 
-	subdivide_BVH(scene_partition, world_bounds, 0, aabbs.length, aabbs.data, ids.data, tags.data);
+	SubdivideBVHJob job = {scene_partition, world_bounds};
+	job.depth = 0;
+	job.mesh_count = aabbs.length;
+	job.aabbs = aabbs.data;
+	job.ids = ids.data;
+	job.tags = tags.data;
 
-	temporary_allocator.occupied = occupied;
+	subdivide_BVH(job);
+
+	get_temporary_allocator().occupied = occupied;
 }
 
 Ray ray_from_mouse(Viewport& viewport, glm::vec2 mouse_position) {
@@ -358,7 +406,7 @@ void render_object_selected_outline(OutlineRenderState& outline, World& world, s
 				
 
 				//Material* mat = TEMPORARY_ALLOC(Material);
-				//mat->params.allocator = &temporary_allocator;
+				//mat->params.allocator = &get_temporary_allocator();
 				//*mat = *should_be;
 
 				//mat->state = &object_state;

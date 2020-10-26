@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/core.h"
+#include "engine/core.h"
 
 constexpr uint INVALID_HANDLE = 0;
 

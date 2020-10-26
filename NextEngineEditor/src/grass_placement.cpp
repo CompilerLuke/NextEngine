@@ -38,6 +38,7 @@ void place_Grass(World& world, ID id) {
 		}
 	}
 
+	printf("Placed %i instances\n", grass.positions.length);
 
 	//ComponentEdit edit{ EDIT_GRASS_PLACEMENT };
 	//edit.id = world.id_of(grass);

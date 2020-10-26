@@ -1,7 +1,14 @@
 #include "generated.h"
 #include <core/types.h>
 #include "lister.h"
-#include "assetTab.h"
+#include "assets/dialog.h"
+#include "assets/explorer.h"
+#include "assets/handle.h"
+#include "assets/importer.h"
+#include "assets/info.h"
+#include "assets/inspect.h"
+#include "assets/node.h"
+#include "assets/preview.h"
 
 refl::Enum init_AssetNode_Type() {
 	refl::Enum type("Type", sizeof(AssetNode::Type));
@@ -54,24 +61,22 @@ refl::Struct* get_EntityNode_type() {
 	return &type;
 }
 
-refl::Struct init_TextureAsset() {
-	refl::Struct type("TextureAsset", sizeof(TextureAsset));
-	type.fields.append({"handle", offsetof(TextureAsset, handle), get_texture_handle_type()});
-	type.fields.append({"name", offsetof(TextureAsset, name), get_sstring_type()});
-	type.fields.append({"path", offsetof(TextureAsset, path), get_sstring_type()});
+refl::Struct init_asset_handle() {
+	refl::Struct type("asset_handle", sizeof(asset_handle));
+	type.fields.append({"id", offsetof(asset_handle, id), get_uint_type()});
 	return type;
 }
 
-void write_TextureAsset_to_buffer(SerializerBuffer& buffer, TextureAsset& data) {
-    write_n_to_buffer(buffer, &data, sizeof(TextureAsset));
+void write_asset_handle_to_buffer(SerializerBuffer& buffer, asset_handle& data) {
+    write_n_to_buffer(buffer, &data, sizeof(asset_handle));
 }
 
-void read_TextureAsset_from_buffer(DeserializerBuffer& buffer, TextureAsset& data) {
-    read_n_from_buffer(buffer, &data, sizeof(TextureAsset));
+void read_asset_handle_from_buffer(DeserializerBuffer& buffer, asset_handle& data) {
+    read_n_from_buffer(buffer, &data, sizeof(asset_handle));
 }
 
-refl::Struct* get_TextureAsset_type() {
-	static refl::Struct type = init_TextureAsset();
+refl::Struct* get_asset_handle_type() {
+	static refl::Struct type = init_asset_handle();
 	return &type;
 }
 
@@ -95,31 +100,6 @@ void read_RotatablePreview_from_buffer(DeserializerBuffer& buffer, RotatablePrev
 
 refl::Struct* get_RotatablePreview_type() {
 	static refl::Struct type = init_RotatablePreview();
-	return &type;
-}
-
-refl::Struct init_ModelAsset() {
-	refl::Struct type("ModelAsset", sizeof(ModelAsset));
-	type.fields.append({"handle", offsetof(ModelAsset, handle), get_model_handle_type()});
-	type.fields.append({"name", offsetof(ModelAsset, name), get_sstring_type()});
-	type.fields.append({"rot_preview", offsetof(ModelAsset, rot_preview), get_RotatablePreview_type()});
-	type.fields.append({"path", offsetof(ModelAsset, path), get_sstring_type()});
-	type.fields.append({"materials", offsetof(ModelAsset, materials), make_array_type(8, sizeof(array<8, struct material_handle>), get_material_handle_type())});
-	type.fields.append({"trans", offsetof(ModelAsset, trans), get_Transform_type()});
-	type.fields.append({"lod_distance", offsetof(ModelAsset, lod_distance), make_array_type(10, sizeof(array<10, float>), get_float_type())});
-	return type;
-}
-
-void write_ModelAsset_to_buffer(SerializerBuffer& buffer, ModelAsset& data) {
-    write_n_to_buffer(buffer, &data, sizeof(ModelAsset));
-}
-
-void read_ModelAsset_from_buffer(DeserializerBuffer& buffer, ModelAsset& data) {
-    read_n_from_buffer(buffer, &data, sizeof(ModelAsset));
-}
-
-refl::Struct* get_ModelAsset_type() {
-	static refl::Struct type = init_ModelAsset();
 	return &type;
 }
 
@@ -182,22 +162,49 @@ refl::Struct* get_MaterialAsset_type() {
 	return &type;
 }
 
-refl::Struct init_asset_handle() {
-	refl::Struct type("asset_handle", sizeof(asset_handle));
-	type.fields.append({"id", offsetof(asset_handle, id), get_uint_type()});
+refl::Struct init_TextureAsset() {
+	refl::Struct type("TextureAsset", sizeof(TextureAsset));
+	type.fields.append({"handle", offsetof(TextureAsset, handle), get_texture_handle_type()});
+	type.fields.append({"name", offsetof(TextureAsset, name), get_sstring_type()});
+	type.fields.append({"path", offsetof(TextureAsset, path), get_sstring_type()});
 	return type;
 }
 
-void write_asset_handle_to_buffer(SerializerBuffer& buffer, asset_handle& data) {
-    write_n_to_buffer(buffer, &data, sizeof(asset_handle));
+void write_TextureAsset_to_buffer(SerializerBuffer& buffer, TextureAsset& data) {
+    write_n_to_buffer(buffer, &data, sizeof(TextureAsset));
 }
 
-void read_asset_handle_from_buffer(DeserializerBuffer& buffer, asset_handle& data) {
-    read_n_from_buffer(buffer, &data, sizeof(asset_handle));
+void read_TextureAsset_from_buffer(DeserializerBuffer& buffer, TextureAsset& data) {
+    read_n_from_buffer(buffer, &data, sizeof(TextureAsset));
 }
 
-refl::Struct* get_asset_handle_type() {
-	static refl::Struct type = init_asset_handle();
+refl::Struct* get_TextureAsset_type() {
+	static refl::Struct type = init_TextureAsset();
+	return &type;
+}
+
+refl::Struct init_ModelAsset() {
+	refl::Struct type("ModelAsset", sizeof(ModelAsset));
+	type.fields.append({"handle", offsetof(ModelAsset, handle), get_model_handle_type()});
+	type.fields.append({"name", offsetof(ModelAsset, name), get_sstring_type()});
+	type.fields.append({"rot_preview", offsetof(ModelAsset, rot_preview), get_RotatablePreview_type()});
+	type.fields.append({"path", offsetof(ModelAsset, path), get_sstring_type()});
+	type.fields.append({"materials", offsetof(ModelAsset, materials), make_array_type(8, sizeof(array<8, struct material_handle>), get_material_handle_type())});
+	type.fields.append({"trans", offsetof(ModelAsset, trans), get_Transform_type()});
+	type.fields.append({"lod_distance", offsetof(ModelAsset, lod_distance), make_array_type(10, sizeof(array<10, float>), get_float_type())});
+	return type;
+}
+
+void write_ModelAsset_to_buffer(SerializerBuffer& buffer, ModelAsset& data) {
+    write_n_to_buffer(buffer, &data, sizeof(ModelAsset));
+}
+
+void read_ModelAsset_from_buffer(DeserializerBuffer& buffer, ModelAsset& data) {
+    read_n_from_buffer(buffer, &data, sizeof(ModelAsset));
+}
+
+refl::Struct* get_ModelAsset_type() {
+	static refl::Struct type = init_ModelAsset();
 	return &type;
 }
 

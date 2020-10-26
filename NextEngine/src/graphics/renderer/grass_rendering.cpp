@@ -9,6 +9,7 @@
 #include "graphics/culling/culling.h"
 
 #include <algorithm>
+#include <core/job_system/job.h>
 
 glm::mat4* compute_model_matrices(vector<Transform>& transforms) {
 	glm::mat4* result = TEMPORARY_ARRAY(glm::mat4, transforms.length);
@@ -68,37 +69,127 @@ void GrassRenderSystem::update_buffers(World& world, ID id) {
 }
 */
 
+struct CullGrassInput {
+	glm::vec3 cam_pos;
+	AABB model_aabb;
+	float culling_distance;
+	glm::vec4 planes[6];
+	uint lod_count;
+	array<MAX_MESH_LOD, float> lod_distance_sq;
+};
+
+struct CullGrassJob {
+	CullGrassInput* input;
+	slice<glm::vec3> positions;
+	slice<glm::mat4> model_m;
+	tvector<glm::mat4> output[MAX_MESH_LOD];
+};
+
+void cull_grass_particles(CullGrassJob& job) {
+	CullGrassInput input = *job.input;
+	LinearAllocator& allocator = get_thread_local_temporary_allocator();
+	for (uint i = 0; i < MAX_MESH_LOD; i++) {
+		job.output[i].allocator = &allocator;
+	}
+
+	for (uint i = 0; i < job.positions.length; i++) {
+		glm::vec3 position = job.positions[i];
+
+		glm::vec3 vec = position - input.cam_pos;
+		float dist = (vec.x*vec.x + vec.y*vec.y + vec.z*vec.z);
+
+		if (dist > input.culling_distance) continue;
+
+		AABB aabb = input.model_aabb.apply(job.model_m[i]);
+		if (frustum_test(input.planes, aabb) == OUTSIDE) continue;
+
+		//float grazing_multiplier = glm::abs(glm::dot(glm::normalize(position - cam_pos), glm::vec3(0,1,0)));
+		//grazing_multiplier = 1.0 - grazing_multiplier;
+
+		int lod = input.lod_count - 1;
+
+		for (uint i = 0; i < input.lod_count; i++) {
+			if (dist <= input.lod_distance_sq[i]) {
+				lod = i;
+				break;
+			}
+		}
+
+		job.output[lod].append(job.model_m[i]);
+	}
+}
 
 void extract_grass_render_data(GrassRenderData& data, World& world, Viewport viewports[RenderPass::ScenePassCount]) {
 	Profile profile("Extract grass render data");
 
 	glm::vec4 planes[6];
 	extract_planes(viewports[0], planes);
+
+	LinearAllocator& temporary = get_temporary_allocator();
 	
 	for (auto [e, trans, grass, materials] : world.filter<Transform, Grass, Materials>()) {
 		Model* model = get_Model(grass.placement_model);
 		if (model == NULL) continue;
 
 		InstanceBuffer instance_buffers[RenderPass::ScenePassCount][MAX_MESH_LOD] = {};
-		uint lod_count = model->lod_distance.length;
+		CullGrassInput input;
+		input.lod_count = model->lod_distance.length;
 
-		auto lod_distance_sq = model->lod_distance;
-		for (float& dist : lod_distance_sq) {
+		input.lod_distance_sq = model->lod_distance;
+		for (float& dist : input.lod_distance_sq) {
 			dist *= dist;
 		}
 
-		float culling_distance = lod_distance_sq.last();
-		AABB model_aabb = model->aabb;
+		input.culling_distance = input.lod_distance_sq.last();
+		input.model_aabb = model->aabb;
+		memcpy(input.planes, planes, sizeof(planes));
+
+		slice<CullGrassJob> job_results[RenderPass::ScenePassCount];
+		tvector<JobDesc> job_desc;
 
 		for (uint pass = 0; pass < 1; pass++) {
 			tvector<glm::mat4> model_m[MAX_MESH_LOD];
-			glm::mat4 view_m = viewports[pass].view;
-			glm::vec3 cam_pos = viewports[pass].cam_pos;
-			glm::vec2 horizontal_cam_pos(cam_pos.x, cam_pos.z);
+
+			input.cam_pos = viewports[pass].cam_pos;
+
+			//glm::mat4 view_m = viewports[pass].view;
+			//glm::vec2 horizontal_cam_pos(cam_pos.x, cam_pos.z);
 
 			//glm::vec3 viewing_dir = glm::normalize(view_m * glm::vec4(0,0,1,1) - view_m * glm::vec4(0,0,0,1));
 			//float looking_down = glm::abs(glm::dot(viewing_dir, glm::vec3(0,1,0)));
 
+			uint bucket_size = 10000;
+			uint buckets = (uint)ceilf(grass.positions.length / (float)bucket_size);
+
+			CullGrassJob* jobs = (CullGrassJob*)temporary.allocate(sizeof(CullGrassJob) * buckets);
+
+			for (uint i = 0; i < buckets; i++) {
+				jobs[i] = {};
+				jobs[i].input = &input;
+				jobs[i].model_m.data = grass.model_m.data + i * bucket_size;
+				jobs[i].positions.data = grass.positions.data + i * bucket_size;
+				jobs[i].model_m.length = i + 1 == buckets ? grass.positions.length - i * bucket_size : bucket_size;
+				jobs[i].positions.length = jobs[i].model_m.length;
+
+				job_desc.append(JobDesc{ cull_grass_particles, jobs + i });
+			}
+
+			job_results[pass] = {jobs, buckets};
+		}
+
+		wait_for_jobs(PRIORITY_HIGH, job_desc);
+
+		for (uint pass = 0; pass < 1; pass++) {
+			tvector<glm::mat4> model_m[MAX_MESH_LOD];
+
+			for (CullGrassJob& job : job_results[pass]) { //merge output of jobs
+				for (uint lod = 0; lod < input.lod_count; lod++) {
+					model_m[lod] += job.output[lod];
+				}
+			}
+
+
+			/*
 			for (uint i = 0; i < grass.positions.length; i++) {
 				glm::vec3 position = grass.positions[i];
 
@@ -123,13 +214,13 @@ void extract_grass_render_data(GrassRenderData& data, World& world, Viewport vie
 				}
 
 				model_m[lod].append(grass.model_m[i]);
-			}
+			}*/
 
 			for (int mesh_index = 0; mesh_index < model->meshes.length; mesh_index++) {
 				Mesh& mesh = model->meshes[mesh_index];
 				material_handle mat_handle = materials.materials[mesh.material_id]; //todo this is somewhat pointless indirection
 
-				for (uint lod = 0; lod < lod_count; lod++) {
+				for (uint lod = 0; lod < input.lod_count; lod++) {
 					if (model_m[lod].length == 0) continue;
 
 					VertexBuffer vertex_buffer = mesh.buffer[lod];
@@ -171,35 +262,3 @@ void render_grass(const GrassRenderData& data, RenderPass& render_pass) {
 		draw_mesh(cmd_buffer, instance.vertex_buffer, instance_buffer);
 	}
 }
-
-/*
-void GrassRenderSystem::render(World& world, RenderPass& ctx) {
-	/*
-	glm::vec4 planes[6];
-	extract_planes(ctx, planes);
-
-	for (ID id : world.filter<Grass, Transform, Materials>(ctx.layermask)) {
-	Grass* grass = world.by_id<Grass>(id);
-	Transform* trans = world.by_id<Transform>(id);
-	Materials* materials = world.by_id<Materials>(id);
-
-	if (!grass->cast_shadows && ctx.layermask & SHADOW_LAYER) continue;
-
-	AABB aabb;
-	aabb.min = trans->position - 0.5f * glm::vec3(grass->width, 0, grass->height);
-	aabb.max = trans->position + 0.5f * glm::vec3(grass->width, 0, grass->height);
-
-	if (cull(planes, aabb)) continue;
-
-	Model* model = RHI::model_manager.get(grass->placement_model);
-	GrassRenderObject* render_object = render_objects.get(grass->render_object);
-
-	for (Mesh& mesh : model->meshes) {
-	Material* mat = RHI::material_manager.get(materials->materials[mesh.material_id]);
-
-	DrawCommand cmd(id, grass->transforms.length, &mesh.buffer, &render_object->instance_buffer, mat);
-	ctx.command_buffer->submit(cmd);
-	}
-	}
-}
-*/

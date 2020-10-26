@@ -98,7 +98,7 @@ bool filter_hierarchy(EntityNode* result, EntityNode& top, World& world, EntityF
 	result->id = top.id;
 	result->name = top.name;
 	result->expanded = top.expanded;
-	result->children.allocator = &temporary_allocator;
+	result->children.allocator = &get_temporary_allocator();
 
 	for (EntityNode& child : top.children) {
 		EntityNode node;

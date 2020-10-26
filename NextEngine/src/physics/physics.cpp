@@ -5,7 +5,6 @@
 #include "components/transform.h"
 #include <glm/glm.hpp>
 
-#include "physics/btWrapper.h"
 #include <iostream>
 #include <btBulletDynamicsCommon.h>
 #include <LinearMath/btVector3.h>
@@ -22,6 +21,22 @@ struct BulletWrapper {
 	btBroadphaseInterface* overlappingPairCache;
 	btSequentialImpulseConstraintSolver* solver;
 	btDiscreteDynamicsWorld* dynamicsWorld;
+};
+
+struct RigidBodySettings {
+	glm::vec3 origin;
+	float mass;
+	btCollisionShape* shape;
+	unsigned int id;
+	float sweep_radius;
+	bool lock_rotation;
+	glm::vec3 velocity;
+};
+
+struct BulletWrapperTransform {
+	glm::vec3 position;
+	glm::quat rotation;
+	glm::vec3 velocity;
 };
 
 BulletWrapper* make_BulletWrapper() {

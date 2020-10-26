@@ -13,6 +13,8 @@
 #include "core/io/logger.h"
 #include "core/container/tvector.h"
 #include "core/profiler.h"
+#include "ecs/ecs.h"
+#include "core/job_system/job.h"
 
 //could cache this result in viewport
 void extract_planes(const Viewport& viewport, glm::vec4 planes[6]) {
@@ -78,66 +80,106 @@ CullResult frustum_test(glm::vec4 planes[6], const AABB& aabb) {
 #define MAX_DEPTH 5
 //#define DEBUG_OCTREE
 
+struct SubdivideBVHJob {
+	ScenePartition& scene_partition;
+	AABB& node_aabb;
+	int depth;
+	int mesh_count;
+	AABB* aabbs;
+	int* meshes;
+	glm::mat4* models_m;
+	uint child_idx;
+};
 
-uint subdivide_BVH(ScenePartition& scene_partition, AABB& node_aabb, int depth, int mesh_count, AABB* aabbs, int* meshes, glm::mat4* models_m) {
-	uint node_id = scene_partition.node_count;
+void subdivide_BVH(SubdivideBVHJob& job) {
+	ScenePartition& scene_partition = job.scene_partition;
 	
-	if (mesh_count <= MAX_MESHES_PER_NODE || depth >= MAX_DEPTH) {
-		Node& node = alloc_leaf_node(scene_partition, node_aabb, MAX_MESH_INSTANCES, mesh_count);
+	if (job.mesh_count <= MAX_MESHES_PER_NODE || job.depth >= MAX_DEPTH) {
+		Node& node = alloc_leaf_node(scene_partition, job.node_aabb, MAX_MESH_INSTANCES, job.mesh_count);
 
-		copy_into_node(node, scene_partition.meshes, meshes);
-		copy_into_node(node, scene_partition.aabbs, aabbs);
-		copy_into_node(node, scene_partition.model_m, models_m);
+		copy_into_node(node, scene_partition.meshes, job.meshes);
+		copy_into_node(node, scene_partition.aabbs, job.aabbs);
+		copy_into_node(node, scene_partition.model_m, job.models_m);
+
+		job.child_idx = &node - scene_partition.nodes;
 	}
 	else {
-		BranchNodeInfo info = alloc_branch_node(scene_partition, node_aabb);
+		LinearAllocator& temporary = get_thread_local_temporary_allocator();
+		BranchNodeInfo info = alloc_branch_node(scene_partition, job.node_aabb, temporary);
 
 		tvector<AABB> subdivided_aabbs[2];
 		tvector<int> subdivided_meshes[2];
 		tvector<glm::mat4> subdivided_model_m[2];
 
-		for (int i = 0; i < mesh_count; i++) {
-			AABB& aabb = aabbs[i];
+		for (uint i = 0; i < 2; i++) {
+			subdivided_aabbs[i].allocator = &temporary;
+			subdivided_meshes[i].allocator = &temporary;
+			subdivided_model_m[i].allocator = &temporary;
+		}
+
+		for (int i = 0; i < job.mesh_count; i++) {
+			AABB& aabb = job.aabbs[i];
 
 			if (bigger_than_leaf(info, aabb)) {
 				int offset = elem_offset(scene_partition, info, aabb);
 
-				scene_partition.aabbs[offset] = aabbs[i];
-				scene_partition.meshes[offset] = meshes[i];
-				scene_partition.model_m[offset] = models_m[i];
+				scene_partition.aabbs[offset] = job.aabbs[i];
+				scene_partition.meshes[offset] = job.meshes[i];
+				scene_partition.model_m[offset] = job.models_m[i];
 			}
 			else {
 				bool node_index = split_index(info, aabb);
 
 				subdivided_aabbs[node_index].append(aabb);
-				subdivided_meshes[node_index].append(meshes[i]);
-				subdivided_model_m[node_index].append(models_m[i]);
+				subdivided_meshes[node_index].append(job.meshes[i]);
+				subdivided_model_m[node_index].append(job.models_m[i]);
 			}
 		}
 
+		JobDesc desc[2];
+		SubdivideBVHJob jobs[2] = {
+			{scene_partition, info.child_aabbs[0]},
+			{scene_partition, info.child_aabbs[1]}
+		};
+
+		uint count = 0;
 		for (int i = 0; i < 2; i++) {
 			if (subdivided_aabbs[i].length == 0) continue;
-			uint child_idx = subdivide_BVH(scene_partition, info.child_aabbs[i], depth + 1, subdivided_aabbs[i].length, subdivided_aabbs[i].data, subdivided_meshes[i].data, subdivided_model_m[i].data);
+			
+			jobs[count].depth = job.depth + 1;
+			jobs[count].mesh_count = subdivided_aabbs[i].length;
+			jobs[count].aabbs = subdivided_aabbs[i].data;
+			jobs[count].meshes = subdivided_meshes[i].data;
+			jobs[count].models_m = subdivided_model_m[i].data;
+
+			desc[count] = {subdivide_BVH, jobs + i};
+			count++;
+		}
+
+		wait_for_jobs(PRIORITY_HIGH, { desc, count });
+
+		for (int i = 0; i < 2; i++) {
+			uint child_idx = jobs[i].child_idx;
 			info.node.child[info.node.child_count++] = child_idx;
 			info.node.aabb.update_aabb(scene_partition.nodes[child_idx].aabb);
 		}
 
-		bump_allocator(scene_partition, info);
+		bump_allocator(scene_partition, info, temporary);
+		job.child_idx = &info.node - scene_partition.nodes;
 	}
-
-	return node_id;
 }
 
 void build_acceleration_structure(ScenePartition& scene_partition, hash_set<MeshBucket, MAX_MESH_BUCKETS> & mesh_buckets, World& world) { //todo UGH THE CURRENT SYSTEM LIMITS HOW DATA ORIENTED THIS CAN BE
 	Profile profile("Build Acceleration");
 	
 	AABB world_bounds;	
+	LinearAllocator& temporary_allocator = get_temporary_allocator();
 	
-	int occupied = temporary_allocator.occupied;
+	int occupied = get_temporary_allocator().occupied;
 
-	vector<AABB> aabbs; 
-	vector<int> meshes; 
-	vector<glm::mat4> models_m; 
+	tvector<AABB> aabbs; 
+	tvector<int> meshes; 
+	tvector<glm::mat4> models_m; 
 	
 	aabbs.allocator = &temporary_allocator;
 	meshes.allocator = &temporary_allocator;
@@ -155,7 +197,12 @@ void build_acceleration_structure(ScenePartition& scene_partition, hash_set<Mesh
 
 		for (int mesh_index = 0; mesh_index < model->meshes.length; mesh_index++) {
 			Mesh& mesh = model->meshes[mesh_index]; //todo extend for lods
+
+			if (materials.materials.length <= mesh.material_id) { //todo add this as a preprocess pass
+				materials.materials.resize(mesh.material_id + 1);
+			}
 			material_handle mat_handle = materials.materials[mesh.material_id];
+			if (mat_handle.id == INVALID_HANDLE) mat_handle = default_materials.missing;
 
 			MeshBucket bucket;
 			bucket.model_id = model_renderer.model_id;
@@ -217,9 +264,16 @@ void build_acceleration_structure(ScenePartition& scene_partition, hash_set<Mesh
 		}
 	}*/
 
-	subdivide_BVH(scene_partition, world_bounds, 0, aabbs.length, aabbs.data, meshes.data, models_m.data);
+	SubdivideBVHJob job = {scene_partition, world_bounds};
+	job.depth = 0;
+	job.mesh_count = aabbs.length;
+	job.aabbs = aabbs.data;
+	job.meshes = meshes.data;
+	job.models_m = models_m.data;
 
-	temporary_allocator.occupied = occupied;
+	subdivide_BVH(job);
+
+	get_temporary_allocator().occupied = occupied;
 }
 
 

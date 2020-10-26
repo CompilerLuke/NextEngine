@@ -2,6 +2,7 @@
 
 #include "engine/handle.h"
 #include "transform.h"
+#include "core/container/vector.h"
 
 COMP
 struct Grass {

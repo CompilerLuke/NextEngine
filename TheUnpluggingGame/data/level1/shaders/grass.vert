@@ -1,16 +1,14 @@
 #include shaders/vert_helper.glsl
 
-invariant gl_Position;
-
 float psin(float low, float high, float x) {
 	return (0.5 + 0.5 * sin(x)) * (high - low) + low;
 }
 
 void main()
 {
-    TexCoords = vec2(-aTexCoords.x * 0.96 - 0.04 , aTexCoords.y);
+    TexCoords = aTexCoords; // vec2(-aTexCoords.x * 0.96 - 0.04 , aTexCoords.y);
 
-	vec3 ObjectCenter = vec3(model[3][0], model[3][1], model[3][2]);
+	/*vec3 ObjectCenter = vec3(model[3][0], model[3][1], model[3][2]);
 	ObjectCenter *= 5.0;
 
 	vec3 WindDir = vec3(1.0,-0.1,1.0) * 0.2;
@@ -27,7 +25,7 @@ void main()
 	//disp.x = WindDir.x * BendFactor  * (0.5 + 0.5 * sin(ObjectCenter.x + time * speed));
 	//disp.y = WindDir.y * BendFactor  * (0.5 + 0.5 * sin(2.0 + ObjectCenter.y + time * speed));
 	//disp.z = WindDir.z * BendFactor  * (0.5 + 0.5 * sin(3.0 * ObjectCenter.z + time * speed));
-
+*/
 
 	vec4 pos = model * vec4(aPos,1.0); // + vec4(disp, 0.0);
     gl_Position = projection * view * pos;

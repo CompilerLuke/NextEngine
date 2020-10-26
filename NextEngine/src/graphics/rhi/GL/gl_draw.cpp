@@ -65,7 +65,7 @@ DrawCommandState draw_draw_over = {
 
 
 CommandBuffer::CommandBuffer(AssetManager& assets) : assets(assets) {
-	commands.allocator = &temporary_allocator;
+	commands.allocator = &get_temporary_allocator();
 }
 
 void CommandBuffer::draw(glm::mat4 model, VertexBuffer* vertex_buffer, Material* material) {
@@ -363,11 +363,11 @@ void CommandBuffer::submit_to_gpu(RenderPass& ctx) {
 	AssetManager& assets = self.assets;
 	
 	vector<SpecializedDrawCommand> commands_data;
-	commands_data.allocator = &temporary_allocator;
+	commands_data.allocator = &get_temporary_allocator();
 	commands_data.reserve(self.commands.length);
 
 	vector<SortKey> commands;
-	commands.allocator = &temporary_allocator;
+	commands.allocator = &get_temporary_allocator();
 	commands.reserve(self.commands.length);
 
 	ShaderConfigDesc::ShaderType shader_type = ctx.pass->type == Pass::Standard ? ShaderConfigDesc::Standard : ShaderConfigDesc::DepthOnly;
@@ -499,7 +499,7 @@ void CommandBuffer::submit_to_gpu(RenderPass& ctx) {
 
 		/*VertexBuffer* vertex_buffer = cmd.buffer;
 		vector<DrawElementsIndirectCommand> multi;
-		multi.allocator = &temporary_allocator;
+		multi.allocator = &get_temporary_allocator();
 
 		while (i + 1 < commands.length) {
 			SpecializedDrawCommand& next_cmd = commands_data[commands[i].index];

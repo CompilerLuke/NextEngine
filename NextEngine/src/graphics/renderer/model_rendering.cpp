@@ -75,8 +75,6 @@ bool bit_set(uint* bit_visible, int i) {
 
 
 void render_meshes(const MeshBucketCache& mesh_buckets, CulledMeshBucket* buckets, RenderPass& ctx) {
-	//return; //todo handle support for z-prepass
-	
 	bool depth_only = ctx.type == RenderPass::Depth;
 	CommandBuffer& cmd_buffer = ctx.cmd_buffer;
 

@@ -66,8 +66,6 @@ struct string_buffer {
 	}
 
 	inline string_buffer& operator=(string_buffer&& other) {
-		this->~string_buffer();
-
 		this->length = other.length;
 		this->allocator = other.allocator;
 		this->capacity = other.capacity;

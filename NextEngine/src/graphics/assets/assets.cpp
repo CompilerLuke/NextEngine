@@ -1,9 +1,11 @@
 #include "graphics/assets/assets.h"
 #include "core/container/hash_map.h"
 #include "core/container/sstring.h"
+#include "core/container/string_view.h"
 #include "core/serializer.h"
 #include "core/memory/linear_allocator.h"
 #include "graphics/rhi/rhi.h"
+#include "engine/handle.h"
 
 #include "graphics/assets/material.h"
 #include <stdio.h>
@@ -13,7 +15,7 @@
 #include <mutex>
 
 #include "graphics/assets/assets_store.h"
-#include <stb_image.h>
+#include <vendor/stb_image.h>
 #include "graphics/renderer/ibl.h"
 
 #include "core/io/logger.h"
@@ -21,6 +23,7 @@
 
 Assets assets;
 DefaultTextures default_textures;
+DefaultMaterials default_materials;
 
 void make_AssetManager(string_view path) {
 	assets.asset_path = path;
@@ -31,10 +34,12 @@ void make_AssetManager(string_view path) {
 	default_textures.white = { 1 };
 	default_textures.black = { 2 };
 	default_textures.normal = { 3 };
+	default_textures.checker = { 4 };
 
 	load_Texture(default_textures.white, "engine/white.png");
 	load_Texture(default_textures.black, "engine/black.png");
 	load_Texture(default_textures.normal, "engine/normal.jpg");
+	load_Texture(default_textures.checker, "engine/checker.jpg");
 
 	global_shaders.pbr = { 1 }; 
 	global_shaders.tree = { 2 };
@@ -45,13 +50,26 @@ void make_AssetManager(string_view path) {
 	load_Shader(global_shaders.tree, "shaders/tree.vert", "shaders/tree.frag");
 	load_Shader(global_shaders.gizmo, "shaders/gizmo.vert", "shaders/gizmo.frag");
 	load_Shader(global_shaders.grass, "shaders/grass.vert", "shaders/tree.frag");
+
+	default_materials.missing = { 1 };
+	{
+		MaterialDesc desc{ global_shaders.pbr };
+
+		mat_channel3(desc, "diffuse", glm::vec3(1.0), default_textures.checker);
+		mat_channel1(desc, "metallic", 0.0f);
+		mat_channel1(desc, "roughness", 0.5f);
+		mat_channel1(desc, "normal", 1.0, default_textures.normal);
+		mat_vec2(desc, "tiling", glm::vec3(1.0));
+
+		make_Material(default_materials.missing, desc);
+	}
 }
 
 void destroy_AssetManager() {}
 
 string_buffer tasset_path(string_view filename) {
 	string_buffer buffer;
-	buffer.allocator = &temporary_allocator;
+	buffer.allocator = &get_temporary_allocator();
 	buffer.length = assets.asset_path.length + filename.length;
 	buffer.capacity = buffer.length;
 	buffer.data = TEMPORARY_ARRAY(char, buffer.capacity + 1);
@@ -97,7 +115,9 @@ Shader* get_Shader(shader_handle handle) {
 	return assets.shaders.get(handle);
 }
 
-bool load_Shader(Shader& shader, slice<shader_flags> permutations, string_buffer& err) {
+bool load_Shader(Shader& shader, string_buffer& err) {
+	//std::scoped_lock scoped_lock(shader.mutex);
+	
 	string_view vfilename = shader.info.vfilename;
 	string_view ffilename = shader.info.ffilename;
 
@@ -117,10 +137,13 @@ bool load_Shader(Shader& shader, slice<shader_flags> permutations, string_buffer
 	shader.info.ffilename = ffilename;
 	shader.info.v_time_modified = io_time_modified(vfilename);
 	shader.info.f_time_modified = io_time_modified(ffilename);
+	shader.configs.resize(shader.config_flags.length);
 
-	printf("Loading shader %s with %i permutations\n", vfilename.data, permutations.length);
+	log("Loading shader ", vfilename, "with ", shader.config_flags.length, "permutations\n");
 
-	for (shader_flags flags : permutations) {
+	for (uint i = 0; i < shader.config_flags.length; i++) {
+		shader_flags flags = shader.config_flags[i];
+
 		//todo use just the end of the filename
 		string_buffer vert_cache_file = tformat("shaders/cache/", flags, vfilename.sub(strlen("shaders/"), vfilename.length), ".spirv");
 		string_buffer frag_cache_file = tformat("shaders/cache/", flags, ffilename.sub(strlen("shaders/"), ffilename.length), ".spirv");
@@ -137,7 +160,7 @@ bool load_Shader(Shader& shader, slice<shader_flags> permutations, string_buffer
 			}
 		}
 		else {
-			printf("Recompiling vertex shader\n");
+			log("Recompiling vertex shader\n");
 			
 			spirv_vert = compile_glsl_to_spirv(rhi.shader_compiler, VERTEX_STAGE, vert_source, vfilename, flags, &err);
 			if (spirv_vert.length > 0) io_writef(vert_cache_file, spirv_vert);
@@ -155,7 +178,7 @@ bool load_Shader(Shader& shader, slice<shader_flags> permutations, string_buffer
 			}
 		}
 		else {
-			printf("Recompiling fragment shader\n");
+			log("Recompiling fragment shader\n");
 
 			spirv_frag = compile_glsl_to_spirv(rhi.shader_compiler, FRAGMENT_STAGE, frag_source, ffilename, flags, &err);
 			if (spirv_frag.length > 0) io_writef(frag_cache_file, spirv_frag);
@@ -173,20 +196,21 @@ bool load_Shader(Shader& shader, slice<shader_flags> permutations, string_buffer
 		reflect_module(modules.info, spirv_vert, spirv_frag);
 		gen_descriptor_layouts(modules);
 
-		shader.configs.append(modules);
-		shader.config_flags.append(flags);
+		if (shader.configs[i].vert) vkDestroyShaderModule(rhi.device, shader.configs[i].vert, nullptr);
+		if (shader.configs[i].frag)	vkDestroyShaderModule(rhi.device, shader.configs[i].frag, nullptr);
+		
+		shader.configs[i] = modules; 
 
-		printf("Compiled config %i\n", flags);
+		log("Compiled config %i\n", flags);
 	}
-
 
 	log("Loaded all configs for shader : ", vfilename, " ", ffilename, "\n");
 	return true;
 }
 
-void load_Shader(Shader& shader, slice <shader_flags> permutations) {
+void load_Shader(Shader& shader) {
 	string_buffer err;
-	if (!load_Shader(shader, permutations, err)) throw "Could not compile shader";
+	if (!load_Shader(shader, err)) throw "Could not compile shader";
 }
 
 ShaderModules* get_shader_config(shader_handle handle, shader_flags flags) {
@@ -203,19 +227,20 @@ void load_Shader(shader_handle handle, string_view vfilename, string_view ffilen
 	Shader shader;
 	shader.info.vfilename = vfilename;
 	shader.info.ffilename = ffilename;
+	shader.config_flags = (slice<shader_flags>)default_permutations;
 
 	string_buffer merged = tformat(vfilename.sub(8, vfilename.length), ffilename.sub(8, ffilename.length));
 
 	assets.path_to_handle.set(merged.view(), handle.id);
 
-	load_Shader(shader, default_permutations);
+	load_Shader(shader);
 	assets.shaders.assign_handle(handle, std::move(shader));
 
 }
 
 shader_handle load_Shader(string_view vfilename, string_view ffilename, slice<shader_flags> permutations) {
-	assert(vfilename.starts_with("shaders/"));
-	assert(ffilename.starts_with("shaders/"));
+	//assert(vfilename.starts_with("shaders/"));
+	//assert(ffilename.starts_with("shaders/"));
 	
 	string_buffer merged = tformat(vfilename.sub(8, vfilename.length), ffilename.sub(8, ffilename.length));
 
@@ -225,33 +250,28 @@ shader_handle load_Shader(string_view vfilename, string_view ffilename, slice<sh
 	Shader shader;
 	shader.info.vfilename = vfilename;
 	shader.info.ffilename = ffilename;
-	load_Shader(shader, permutations);
+	shader.config_flags = permutations;
+	load_Shader(shader);
 
 	return assets.shaders.assign_handle(std::move(shader));
 }
 
-void reload_Shader(shader_handle handle) {
+bool reload_Shader(shader_handle handle) {
+	Profile profile("Compile shader");
 	Shader* shader = assets.shaders.get(handle);
 
-	for (ShaderModules config : shader->configs) {
-		vkDestroyShaderModule(rhi.device, config.vert, nullptr);
-		vkDestroyShaderModule(rhi.device, config.frag, nullptr);
-	}
-
 	//todo simplify load_Shader could set configs in place
-	auto configs_flags = shader->config_flags;
-	auto configs = shader->configs;
-
-	shader->configs.clear();
-	shader->config_flags.clear();
 
 	string_buffer err;
-	if (!load_Shader(*shader, configs_flags, err)) {
-		shader->configs = configs;
-		shader->config_flags = configs_flags;
-		return;
+	if (!load_Shader(*shader, err)) {
+		return false;
 	}
+
+	profile.end();
+
 	log("recompiled shader: ", shader->info.vfilename, " ", shader->info.ffilename);
+
+	Profile reload_pipeline("Reload pipeline");
 
 	PipelineCache& cache = rhi.pipeline_cache;
 
@@ -266,6 +286,8 @@ void reload_Shader(shader_handle handle) {
 			vkDestroyPipeline(rhi.device, pipeline, nullptr);
 		});
 	}
+
+	return true;
 }
 
 bool reload_modified_shaders() {
@@ -418,7 +440,7 @@ void load_TextureBatch(slice<TextureLoadJob> batch) {
 
 	/*
 	string_buffer buffer;
-	buffer.allocator = &temporary_allocator;
+	buffer.allocator = &get_temporary_allocator();
 	DeserializerBuffer serializer;
 	constexpr int num_threads = 9;
 
@@ -561,10 +583,11 @@ void load_assets_in_queue() {
 	return;
 	begin_gpu_upload();
 
-	while (EquirectangularToCubemapJob* job = assets.equirectangular_to_cubemap_jobs.try_dequeue()) {
-		Cubemap* cubemap = assets.cubemaps.get(job->handle);
+	EquirectangularToCubemapJob job;
+	while (assets.equirectangular_to_cubemap_jobs.dequeue(&job)) {
+		Cubemap* cubemap = assets.cubemaps.get(job.handle);
 
-		*cubemap = convert_equirectangular_to_cubemap(assets.cubemap_pass_resources, job->env_map);
+		*cubemap = convert_equirectangular_to_cubemap(assets.cubemap_pass_resources, job.env_map);
 
 		printf("LOADING HDR\n");
 	}

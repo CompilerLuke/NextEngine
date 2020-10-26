@@ -4,6 +4,7 @@
 #include "ecs/id.h"
 #include "graphics/rhi/buffer.h"
 #include "graphics/rhi/shader_access.h"
+#include "graphics/pass/pass.h"
 
 struct Skybox;
 
@@ -44,6 +45,7 @@ struct LightingSystem {
 struct RenderPass;
 struct LightUBO;
 struct SkyLight;
+struct World;
 
 ENGINE_API void make_lighting_system(LightingSystem& system, SkyLight& skylight);
 void fill_light_ubo(LightUBO& ubo, World& world, Viewport& viewport, EntityQuery mask);

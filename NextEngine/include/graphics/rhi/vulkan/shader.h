@@ -5,6 +5,7 @@
 #include "graphics/assets/shader.h"
 #include "core/container/vector.h"
 #include "volk.h"
+#include <mutex>
 
 using ShaderModule = VkShaderModule;
 using shader_flags = u64;
@@ -54,8 +55,8 @@ struct ShaderModuleInfo {
 };
 
 struct ShaderModules {
-	VkShaderModule vert;
-	VkShaderModule frag;
+	VkShaderModule vert = nullptr;
+	VkShaderModule frag = nullptr;
 	ShaderModuleInfo info;
 	vector<VkDescriptorSetLayout> set_layouts;
 };
@@ -64,6 +65,11 @@ struct Shader {
 	ShaderInfo info;
 	array<10, shader_flags> config_flags;
 	array<10, ShaderModules> configs;
+	
+	//std::mutex mutex;
+	//Shader() = default;
+	//Shader(Shader&&) = default;
+	//Shader(const Shader&) = delete;
 };
 
 struct Assets;

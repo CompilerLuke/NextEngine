@@ -2,6 +2,7 @@
 
 #include "engine/core.h"
 #include "aabb.h"
+#include <atomic>
 
 #define MAX_NODES 500
 #define MAX_MESH_INSTANCES 10000
@@ -15,8 +16,8 @@ struct Node {
 };
 
 struct Partition {
-	int count = 0;
-	int node_count = 0;
+	std::atomic<int> count = 0;
+	std::atomic<int> node_count = 0;
 	Node nodes[MAX_NODES];
 };
 

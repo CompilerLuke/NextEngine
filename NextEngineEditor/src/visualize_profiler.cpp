@@ -76,7 +76,7 @@ void VisualizeProfiler::render(struct World& world, struct Editor& editor, struc
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
 	if (ImGui::Begin("Profiler", NULL)) {
 		vector<float> fps_times;
-		fps_times.allocator = &temporary_allocator;
+		fps_times.allocator = &get_temporary_allocator();
 
 
 		auto drawList = ImGui::GetWindowDrawList();
@@ -94,20 +94,23 @@ void VisualizeProfiler::render(struct World& world, struct Editor& editor, struc
 			ImGui::SameLine(500);
 		}
 
+		uint core = 0;
+		auto& frames = Profiler::frames[core];
+
 		{
 			float frame_max = 0.0f;
 			float frame_min = FLT_MAX;
 			float avg_duration = 0.0f;
 
-			for (uint i = 0; i < Profiler::frames.length - 1; i++) {
-				float frame_duration = Profiler::frames[i].frame_duration;
+			for (uint i = 0; i < frames.length - 1; i++) {
+				float frame_duration = frames[i].frame_duration;
 
 				frame_max = fmaxf(frame_max, frame_duration);
 				frame_min = fminf(frame_min, frame_duration);
 				avg_duration += frame_duration;
 			}
 
-			avg_duration /= (float)Profiler::frames.length - 1;
+			avg_duration /= (float)frames.length - 1;
 
 			ImGui::Text("avg [%.1f ms %.1f fps]", avg_duration * 1000.0f, 1.0f / avg_duration);
 			ImGui::SameLine();
@@ -133,7 +136,7 @@ void VisualizeProfiler::render(struct World& world, struct Editor& editor, struc
 		ProfileCtx ctx = {name_to_color_idx, drawList, ImGui::GetCursorScreenPos()};
 		ctx.width = ImGui::GetContentRegionMax().x * 0.8;
 		ctx.height = ImGui::GetContentRegionMax().y - ImGui::GetCursorPos().y;
-		ctx.frame_count = Profiler::frames.length - 1;
+		ctx.frame_count = frames.length - 1;
 		ctx.frame_max = frame_max_time;
 
 		const float slow_frame = 1.0f / 55.0f;
@@ -149,7 +152,7 @@ void VisualizeProfiler::render(struct World& world, struct Editor& editor, struc
 
 		uint frames_length = ctx.frame_count;
 		for (int frame_i = 0; frame_i < frames_length; frame_i++) {
-			Frame& frame = Profiler::frames[frame_i];
+			Frame& frame = frames[frame_i];
 
 			drawList->ChannelsSetCurrent(0);
 
@@ -187,7 +190,7 @@ void VisualizeProfiler::render(struct World& world, struct Editor& editor, struc
 
 
 		if (frames_length >= 1) {
-			Frame& frame = Profiler::frames[frames_length - 1];
+			Frame& frame = frames[frames_length - 1];
 
 			vector<ProfileData> sorted_profiles = frame.profiles;
 

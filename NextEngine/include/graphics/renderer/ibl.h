@@ -31,7 +31,6 @@ struct SkyboxRenderData {
 	material_handle material;
 };
 
-
 #if RENDER_API_VULKAN
 #include <vulkan/vulkan.h>
 #include "graphics/rhi/vulkan/texture.h"

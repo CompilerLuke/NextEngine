@@ -10,7 +10,7 @@
 #include "core/container/tvector.h"
 #include <glm/gtc/type_ptr.hpp>
 #include <shaderc/shaderc.h>
-#include <spirv-reflect/spirv_reflect.h>
+#include <vendor/spirv-reflect/spirv_reflect.h>
 
 VkShaderModule make_ShaderModule(string_view code) {
 	VkDevice device = rhi.device;
@@ -30,8 +30,8 @@ VkShaderModule make_ShaderModule(string_view code) {
 
 string_buffer preprocess_source(Assets&, string_view source, shader_flags flags);
 
-tvector<string_view> preprocess_lex(string_view source) {
-	tvector<string_view> tokens;
+vector<string_view> preprocess_lex(string_view source) {
+	vector<string_view> tokens;
 	string_view tok;
 	int i = 0;
 	
@@ -58,7 +58,7 @@ tvector<string_view> preprocess_lex(string_view source) {
 	return tokens;
 }
 
-enum MaterialInputType {
+enum class MaterialInputType {
 	Channel1,
 	Channel2,
 	Channel3,
@@ -68,7 +68,9 @@ enum MaterialInputType {
 	Int,
 	Vec2,
 	Vec3,
-	Vec4
+	Vec4,
+	Image,
+	None,
 };
 
 string_buffer preprocess_gen(slice<string_view> tokens, Stage stage, shader_flags flags) {
@@ -77,7 +79,7 @@ string_buffer preprocess_gen(slice<string_view> tokens, Stage stage, shader_flag
 
 	string_buffer output;
 	string_buffer in_struct_prefix;
-	output.allocator = &temporary_allocator;
+	//output.allocator = &get_temporary_allocator();
 	output = "#version 450\n#extension GL_ARB_separate_shader_objects : enable\n";
 
 	/*
@@ -108,7 +110,7 @@ string_buffer preprocess_gen(slice<string_view> tokens, Stage stage, shader_flag
 
 			if (!already_included.contains(name)) {
 				string_buffer src;
-				src.allocator = &temporary_allocator;
+				src.allocator = &get_temporary_allocator();
 
 				if (!io_readf(name, &src)) {
 					fprintf(stderr, "Could not #include source file %s\n", name.c_str());
@@ -137,7 +139,8 @@ string_buffer preprocess_gen(slice<string_view> tokens, Stage stage, shader_flag
 
 			string_view name = tokens[++i];
 
-			in_struct_prefix = tformat(name, ".");
+			in_struct_prefix += name;
+			in_struct_prefix += "."; 
 
 			if (name == "Material") {
 				while (tokens[++i] == " ");
@@ -160,25 +163,25 @@ string_buffer preprocess_gen(slice<string_view> tokens, Stage stage, shader_flag
 					while (tokens[++i] == " ");
 
 					string_view name = tokens[i];
-					string_buffer full_name = tformat(in_struct_prefix, name);
 
-					int type = -1;
-					if (channel_type == "channel1") type = Channel1;
-					if (channel_type == "channel2") type = Channel2;
-					if (channel_type == "channel3") type = Channel3;
-					if (channel_type == "channel4") type = Channel4;
-					if (channel_type == "samplerCube") type = Cubemap;
-					if (channel_type == "float") type = Float;
-					if (channel_type == "int") type = Int;
-					if (channel_type == "vec2") type = Vec2;
-					if (channel_type == "vec3") type = Vec3;
-					if (channel_type == "vec4") type = Vec4;
+					MaterialInputType type = MaterialInputType::None;
+					if (channel_type == "channel1") type = MaterialInputType::Channel1;
+					if (channel_type == "channel2") type = MaterialInputType::Channel2;
+					if (channel_type == "channel3") type = MaterialInputType::Channel3;
+					if (channel_type == "channel4") type = MaterialInputType::Channel4;
+					if (channel_type == "samplerCube") type = MaterialInputType::Cubemap;
+					if (channel_type == "sampler2D") type = MaterialInputType::Image;
+					if (channel_type == "float") type = MaterialInputType::Float;
+					if (channel_type == "int") type = MaterialInputType::Int;
+					if (channel_type == "vec2") type = MaterialInputType::Vec2;
+					if (channel_type == "vec3") type = MaterialInputType::Vec3;
+					if (channel_type == "vec4") type = MaterialInputType::Vec4;
 
-					if (type == -1) throw "Expecting channel type!";
+					if (type == MaterialInputType::None) throw "Expecting channel type!";
 
 					names.append(name);
 					types.append((MaterialInputType)type);
-					channels.append(name);
+					if (type >= MaterialInputType::Channel1 && type <= MaterialInputType::Channel4) channels.append(name);
 
 					if (tokens[++i] != ";") throw "expecting semi colon";
 
@@ -189,27 +192,36 @@ string_buffer preprocess_gen(slice<string_view> tokens, Stage stage, shader_flag
 
 				if (tokens[++i] != ";") throw "expecting semi colon";
 
-				output += tformat("layout (std140, set = ", MATERIAL_SET, ", binding = 0) uniform Material {\n");
-
+				bool contains_ubo_fields = false;
 				for (int i = 0; i < names.length; i++) {
-					int type_index = (int)types[i];
-					string_view scalar_types[] = { "float", "vec2", "vec3", "vec4", "vec3", "float", "int", "vec2", "vec3", "vec4" };
-
-					if (type_index <= Cubemap) {
-						output += tformat("\t", scalar_types[type_index], " ", names[i], "_scalar", ";\n");
-					}
-					else {
-						output += tformat("\t", scalar_types[type_index], " ", names[i], ";\n");
+					if (types[i] != MaterialInputType::Image) {
+						contains_ubo_fields = true;
+						break;
 					}
 				}
 
-				output += "};\n";
+				if (contains_ubo_fields) {
+					output += tformat("layout (std140, set = ", MATERIAL_SET, ", binding = 0) uniform Material {\n");
 
+					for (int i = 0; i < names.length; i++) {
+						uint type_index = (uint)types[i];
+						string_view scalar_types[] = { "float", "vec2", "vec3", "vec4", "vec3", "float", "int", "vec2", "vec3", "vec4" };
 
-				for (int i = 0; i < names.length; i++) {
-					int type_index = (int)types[i];
-					if (type_index <= Channel4) output += tformat("layout (set = ", MATERIAL_SET, ", binding = ", i + 1, ") uniform sampler2D ", names[i], ";\n");
-					if (type_index == Cubemap) output += tformat("layout (set = ", MATERIAL_SET, ", binding = ", i + 1, ") uniform samplerCube ", names[i], ";\n");
+						if (type_index <= (uint)MaterialInputType::Cubemap) {
+							output += tformat("\t", scalar_types[type_index], " ", names[i], "_scalar", ";\n");
+						}
+						else if (types[i] != MaterialInputType::Image) {
+							output += tformat("\t", scalar_types[type_index], " ", names[i], ";\n");
+						}
+					}
+
+					output += "};\n";
+				}
+
+				for (uint i = 0; i < names.length; i++) {
+					uint type_index = (uint)types[i];
+					if (type_index <= (uint)MaterialInputType::Channel4 || types[i] == MaterialInputType::Image) output += tformat("layout (set = ", MATERIAL_SET, ", binding = ", i + 1, ") uniform sampler2D ", names[i], ";\n");
+					if (type_index == (uint)MaterialInputType::Cubemap) output += tformat("layout (set = ", MATERIAL_SET, ", binding = ", i + 1, ") uniform samplerCube ", names[i], ";\n");
 				}
 			}
 			else {
@@ -234,7 +246,7 @@ string_buffer preprocess_gen(slice<string_view> tokens, Stage stage, shader_flag
 //shaderc_compiler_release(compiler);
 
 string_buffer preprocess_source(string_view source, Stage stage, shader_flags flags) { //todo refactor into struct
-	tvector<string_view> tokens = preprocess_lex(source);
+	vector<string_view> tokens = preprocess_lex(source);
 	return preprocess_gen(tokens, stage, flags);
 }
 
@@ -242,7 +254,7 @@ string_buffer preprocess_source(string_view source, Stage stage, shader_flags fl
 string_buffer compile_glsl_to_spirv(shaderc_compiler_t compiler, Stage stage, string_view source, string_view input_file_name, shader_flags flags, string_buffer* err) {
 	string_buffer source_assembly = preprocess_source(source, stage, flags);
 
-	printf("Source: %s", source_assembly.data);
+	//printf("Source: %s", source_assembly.data);
 
 	shaderc_shader_kind glsl_shader_kind = stage == VERTEX_STAGE ? shaderc_glsl_vertex_shader : shaderc_glsl_fragment_shader;
 
@@ -259,7 +271,7 @@ string_buffer compile_glsl_to_spirv(shaderc_compiler_t compiler, Stage stage, st
 	const char* bytes = shaderc_result_get_bytes(result);
 
 	string_buffer buffer;
-	buffer.allocator = &temporary_allocator;
+	//buffer.allocator = &get_temporary_allocator();
 	buffer.reserve(length);
 	buffer.length = length;
 
@@ -376,6 +388,8 @@ void write_joint_ref(ShaderModuleInfo* info, VkShaderStageFlagBits stage, Shader
 }
 
 void print_module(ShaderModuleInfo& info) {
+	printf("=======\n");
+
 	int set_index = 0;
 	for (int set_i = 0; set_i < info.sets.length; set_i++) {
 		DescriptorSetInfo& descriptor = info.sets[set_i];
@@ -426,9 +440,8 @@ void reflect_module(ShaderModuleInfo& info, string_view vert_spirv, string_view 
 	write_joint_ref(&info, VK_SHADER_STAGE_VERTEX_BIT, vert);
 	write_joint_ref(&info, VK_SHADER_STAGE_FRAGMENT_BIT, frag);
 
-	printf("===========\n");
-	
-	print_module(info);
+	//log("===========\n");
+	//print_module(info);
 
 	spvReflectDestroyShaderModule(&vert_module);
 	spvReflectDestroyShaderModule(&frag_module);

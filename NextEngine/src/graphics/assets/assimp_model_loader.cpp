@@ -35,22 +35,21 @@ struct ModelLoadingScratch {
 	//FILL VERTICES
 	AABB aabb;
 
+	auto coords = mesh->mTextureCoords[0];
+
 	for (int i = 0; i < mesh->mNumVertices; i++) {
 		auto position = mesh->mVertices[i];
 
 		auto tangent = mesh->mTangents[i];
 		auto bitangent = mesh->mBitangents[i];
 
-		auto coords = mesh->mTextureCoords[0];
-		if (!coords) throw "Mesh does't have uvs";
-
-		auto first_coords = coords[i];
+		auto first_coords = coords ? glm::vec2(coords[i].x, coords[i].y) : glm::vec2(0,0);
 		auto normals = mesh->mNormals[i];
 
 		vertices[i] = {
 			apply_trans * glm::vec4(position.x, position.y, position.z, 1.0),
 			apply_trans3 * glm::vec3(normals.x, normals.y, normals.z),
-			glm::vec2(first_coords.x, first_coords.y),
+			first_coords,
 			apply_trans3 * glm::vec3(tangent.x, tangent.y, tangent.z),
 			apply_trans3 * glm::vec3(bitangent.x, bitangent.y, bitangent.z)
 		};
@@ -77,6 +76,8 @@ struct ModelLoadingScratch {
 	new_mesh->indices[scratch->lod] = { indices, indices_count };
 	new_mesh->aabb = aabb;
 	new_mesh->material_id = mesh->mMaterialIndex;
+
+	if (!coords) new_mesh->flags |= MESH_WITH_NO_UVS;
 
 	scratch->mesh_count++;
 }

@@ -3,7 +3,6 @@
 #include "ecs/id.h"
 #include "ecs/system.h"
 #include <glm/vec3.hpp>
-#include "physics/btWrapper.h"
 #include "core/reflection.h"
 
 struct btRigidBody;
@@ -48,7 +47,7 @@ COMP struct CharacterController {
 };
 
 struct PhysicsSystem : System {
-	BulletWrapper* bt_wrapper;
+	struct BulletWrapper* bt_wrapper;
 
 	PhysicsSystem();
 	void init(struct World&);

@@ -1,3 +1,5 @@
+#include "stdafx.h"
+
 /*
 #include "core/serializer.h"
 #include "engine/vfs.h"

@@ -11,6 +11,7 @@
 #include "graphics/rhi/vulkan/buffer.h"
 #include "graphics/rhi/vulkan/vulkan.h"
 #include "graphics/culling/culling.h"
+#include "core/profiler.h"
 
 //todo wrap function in time.h
 #include <GLFW/glfw3.h>
@@ -41,7 +42,7 @@ Renderer* make_Renderer(const RenderSettings& settings, World& world) {
 
 			DescriptorDesc descriptor_desc = {};
 			add_ubo(descriptor_desc, VERTEX_STAGE, renderer->scene_pass_ubo[i], 0);
-			add_ubo(descriptor_desc, VERTEX_STAGE, renderer->simulation_ubo[i], 1);
+			add_ubo(descriptor_desc, VERTEX_STAGE | FRAGMENT_STAGE, renderer->simulation_ubo[i], 1);
 			update_descriptor_set(renderer->scene_pass_descriptor[i], descriptor_desc);
 		}
 
@@ -132,7 +133,9 @@ void extract_render_data(Renderer& renderer, Viewport& viewport, FrameData& fram
 }
 
 GPUSubmission build_command_buffers(Renderer& renderer, const FrameData& frame) {
+	Profile profile("Begin Render Frame");
 	RenderPass screen = begin_render_frame();
+	profile.end();
 
 	load_assets_in_queue();
 	
@@ -191,7 +194,7 @@ GPUSubmission build_command_buffers(Renderer& renderer, const FrameData& frame) 
 	//todo paritition into lit, unlit, transparent passes
 	
 	render_meshes(renderer.mesh_buckets, frame.culled_mesh_bucket[RenderPass::Scene], main_pass);
-	render_grass(frame.grass_data, main_pass);
+	//render_grass(frame.grass_data, main_pass);
 	//render_skybox(frame.skybox_data, main_pass);
 
 	return submission;

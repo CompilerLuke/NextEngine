@@ -317,10 +317,6 @@ pipeline_handle make_Pipeline(PipelineCache& cache, const PipelineDesc& desc) {
 		ranges.append({ VK_SHADER_STAGE_FRAGMENT_BIT, desc.range[1].offset, desc.range[1].size });
 	}
 
-	static uint count = 0;
-	//todo find strange bug!
-	printf("BINDING DESCRIPTIONS #%i\n", count++);
-
 	pipeline_desc.push_constant_range = ranges;
 
 	//todo add support for stencil
@@ -341,7 +337,11 @@ pipeline_handle make_Pipeline(PipelineCache& cache, const PipelineDesc& desc) {
 
 pipeline_handle query_Pipeline(PipelineCache& cache, const PipelineDesc& desc) {
 	int index = cache.keys.index(desc);
-	if (index == -1) return make_Pipeline(cache, desc);
+	if (index == -1) {
+		static uint count = 0;
+		printf("BINDING DESCRIPTORS #%i\n", count++);
+		return make_Pipeline(cache, desc);
+	}
 
 	return { (uint)index + 1 };
 }

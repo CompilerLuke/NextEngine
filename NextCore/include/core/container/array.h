@@ -77,6 +77,13 @@ struct array {
 		return false;
 	}
 
+	array<N, T>& operator=(slice<T>& other) {
+		assert(other.length <= N);
+		length = other.length;
+		for (int i = 0; i < length; i++) new (data + i) T(other[i]);
+		return *this;
+	}
+
 	array<N, T>& operator=(const array<N, T>& other) {
 		length = other.length;
 		for (int i = 0; i < length; i++) new (data + i) T(other[i]);
@@ -116,7 +123,7 @@ struct array {
 
 	void append(T&& elem) {
 		assert(length < N);
-		new (data + length++) T(std::move(elem));
+		new (data + length++) T(static_cast<T&&>(elem));
 	}
 
 	void clear() {

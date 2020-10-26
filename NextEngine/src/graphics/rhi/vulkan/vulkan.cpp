@@ -6,7 +6,7 @@
 #include "core/memory/linear_allocator.h"
 
 
-#include "stb_image.h"
+#include "vendor/stb_image.h"
 #include "graphics/assets/assets.h"
 #include "graphics/assets/model.h"
 #include "graphics/assets/shader.h"
@@ -31,23 +31,6 @@
 
 #include <shaderc/shaderc.h>
 
-/*
-struct RHI {
-	Window& window;
-	VulkanDesc desc;
-	Device device;
-	Swapchain swapchain;
-	BufferAllocator* buffer_allocator;
-	TextureStreaming* texture_allocator;
-	PipelineCache* pipeline_cache;
-	CommandPool graphics_cmd_pool;
-	StagingQueue staging_queue;
-	VkCommandPool transfer_cmd_pool;
-	VkDescriptorPool descriptor_pool;
-	uint waiting_on_transfer_frame;
-};
-*/
-
 RHI::RHI() 
 	: texture_allocator{ staging_queue }, 
 	  vertex_streaming{ staging_queue }, 
@@ -67,10 +50,6 @@ VkPipeline graphicsPipeline;
 
 VkRenderPass renderPass;
 
-array<MAX_SWAPCHAIN_IMAGES, VkCommandBuffer> commandBuffers;
-
-VkDescriptorSet material_descriptor_set;
-VkDescriptorSetLayout material_descriptor_layout;
 
 //Resources
 VertexBuffer vertex_buffer;
@@ -106,48 +85,6 @@ void upload_MeshData() {
 
 }
 
-void make_UniformBuffers(VkDevice device, VkPhysicalDevice physical_device, int frames_in_flight) {
-	VkDeviceSize bufferSize = sizeof(PassUBO);
-
-	uniform_buffers.resize(frames_in_flight);
-	uniform_buffers_memory.resize(frames_in_flight);
-
-	for (int i = 0; i < frames_in_flight; i++) {
-		make_Buffer(device, physical_device, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniform_buffers[i], uniform_buffers_memory[i]);
-	}
-}
-
-/*
-VkDescriptorPool make_DescriptorPool(VkDevice device, int frames_in_flight) {
-	VkDescriptorPoolSize poolSizes[2] = {};
-	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	poolSizes[0].descriptorCount = frames_in_flight * 10;
-	poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	poolSizes[1].descriptorCount = frames_in_flight * 20;
-
-	VkDescriptorPoolCreateInfo poolInfo = {};
-	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	poolInfo.poolSizeCount = 2;
-	poolInfo.pPoolSizes = poolSizes;
-	poolInfo.maxSets = frames_in_flight * 10;
-
-	VkDescriptorPool result;
-
-	if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &result) != VK_SUCCESS) {
-		throw "Failed to make descriptor pool!";
-
-	}
-
-	return result;
-}
-*/
-
-string_buffer read_file_or_fail(string_view src) {
-	string_buffer output;
-	if (!io_readf(src, &output)) throw "Failed to load vertex shaders!";
-	return output;
-}
-
 ArrayVertexInputs Vertex_attribute_descriptions() {
 	return input_attributes(rhi.vertex_layouts, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4);	
 }
@@ -155,32 +92,6 @@ ArrayVertexInputs Vertex_attribute_descriptions() {
 ArrayVertexBindings Vertex_binding_descriptors() {
 	return input_bindings(rhi.vertex_layouts, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4);
 }
-
-void make_GraphicsPipeline(VkDevice device, VkRenderPass render_pass, VkExtent2D extent, VkShaderModule vert_shader, VkShaderModule frag_shader) {
-	size_t before = temporary_allocator.occupied;
-
-	//NEEDS REFERENCE
-	auto binding_descriptors = Vertex_binding_descriptors();
-
-	VkDescriptorSetLayout layouts[] = { descriptorSetLayout, material_descriptor_layout };
-
-	VkPipelineDesc pipeline_desc;
-	pipeline_desc.vert_shader = vert_shader;
-	pipeline_desc.frag_shader = frag_shader;
-	pipeline_desc.extent = extent;
-	pipeline_desc.attribute_descriptions = Vertex_attribute_descriptions();
-	pipeline_desc.binding_descriptions = binding_descriptors;
-	pipeline_desc.descriptor_layouts = { layouts, 2 };
-	pipeline_desc.render_pass = renderPass;
-
-	make_GraphicsPipeline(device, pipeline_desc, &pipelineLayout, &graphicsPipeline);
-
-	vkDestroyShaderModule(device, pipeline_desc.vert_shader, nullptr);
-	vkDestroyShaderModule(device, pipeline_desc.frag_shader, nullptr);
-
-	temporary_allocator.reset(before);
-}
-
 
 VkFormat find_depth_format(VkPhysicalDevice);
 
@@ -290,110 +201,10 @@ uint get_frames_in_flight(RHI& rhi) {
 	return rhi.swapchain.images.length;
 }
 
-void record_CommandBuffers(VkCommandBuffer cmd_buffer, Swapchain& swapchain, int32_t image_index) {
-	uint frame_index = rhi.frame_index;
-
-	VkRenderPassBeginInfo render_pass_info = {};
-
-	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	render_pass_info.renderPass = renderPass;
-	render_pass_info.framebuffer = swapchain.framebuffers[image_index];
-	render_pass_info.renderArea.offset = { 0,0 };
-	render_pass_info.renderArea.extent = swapchain.extent;
-
-	VkClearValue clear_colors[2];
-	clear_colors[0].color = { 0.1f, 0.1f, 0.1f, 1.0f };
-	clear_colors[1].depthStencil = { 1, 0 };
-
-	render_pass_info.clearValueCount = 2;
-	render_pass_info.pClearValues = clear_colors;
-
-	//todo move into TransferSystem
-	vkCmdBeginRenderPass(cmd_buffer, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
-	vkCmdBindPipeline(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-
-	/*
-	vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertex_buffers, offsets);
-	vkCmdBindVertexBuffers(commandBuffers[i], 1, 1, instance_buffers, offsets);
-	vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-	vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[i], 0, nullptr);
-	*/
-	
-	VkDescriptorSet descriptor_sets[] = { descriptorSets[frame_index], material_descriptor_set };
-
-	bind_vertex_buffer(rhi.vertex_streaming, cmd_buffer, VERTEX_LAYOUT_DEFAULT);
-	bind_instance_buffer(render_thread.instance_allocator, cmd_buffer, INSTANCE_LAYOUT_MAT4X4);
-	vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 2, descriptor_sets, 0, nullptr);
-
-	vkCmdDrawIndexed(cmd_buffer, vertex_buffer.length, instance_buffer.length, vertex_buffer.index_base, vertex_buffer.vertex_base, instance_buffer.base);
-
-	vkCmdEndRenderPass(cmd_buffer);
-}
-
-void make_DescriptorSetLayout(VkDevice device) {
-	VkDescriptorSetLayoutBinding uboLayoutBinding = {};
-	uboLayoutBinding.binding = 0;
-	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	uboLayoutBinding.descriptorCount = 1;
-	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-	uboLayoutBinding.pImmutableSamplers = nullptr;
-
-	VkDescriptorSetLayoutBinding bindings[2] = { uboLayoutBinding };
-
-	VkDescriptorSetLayoutCreateInfo layoutInfo = {};
-	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	layoutInfo.bindingCount = 1;
-	layoutInfo.pBindings = bindings;
-
-	if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
-		throw "Failed to make descriptor set layout!";
-	}
-}
-
-void make_DescriptorSets(VkDevice device, VkDescriptorPool pool, int frames_in_flight) {
-	array<MAX_SWAPCHAIN_IMAGES, VkDescriptorSetLayout> layouts(frames_in_flight);
-	for (int i = 0; i < frames_in_flight; i++) layouts[i] = descriptorSetLayout;
-
-	VkDescriptorSetAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	allocInfo.descriptorPool = pool;
-	allocInfo.descriptorSetCount = static_cast<uint32_t>(frames_in_flight);
-	allocInfo.pSetLayouts = layouts.data;
-
-	descriptorSets.resize(frames_in_flight);
-	if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data) != VK_SUCCESS) {
-		throw "Failed to make descriptor sets!";
-	}
-
-	for (int i = 0; i < frames_in_flight; i++) {
-		VkDescriptorBufferInfo bufferInfo = {};
-		bufferInfo.buffer = uniform_buffers[i];
-		bufferInfo.offset = 0;
-		bufferInfo.range = sizeof(PassUBO);
-
-		VkWriteDescriptorSet descriptorWrites[2] = {};
-		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[0].dstSet = descriptorSets[i];
-		descriptorWrites[0].dstBinding = 0;
-		descriptorWrites[0].dstArrayElement = 0;
-		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		descriptorWrites[0].descriptorCount = 1;
-		descriptorWrites[0].pBufferInfo = &bufferInfo;
-		descriptorWrites[0].pImageInfo = nullptr;
-		descriptorWrites[0].pTexelBufferView = nullptr;
-
-		vkUpdateDescriptorSets(device, 1, descriptorWrites, 0, nullptr);
-	}
-}
-
-
 void make_DepthResources(VkDevice device, VkPhysicalDevice physical_device, VkExtent2D extent) {
 	VkFormat depthFormat = find_depth_format(physical_device);
 	make_alloc_Image(device, physical_device, extent.width, extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &depth_image, &depth_image_memory);
 	depth_image_view = make_ImageView(device, depth_image, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
-
-	//transitionImageLayout(depthImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-
 }
 
 VkDevice get_Device(RHI& rhi) {
@@ -403,26 +214,6 @@ VkDevice get_Device(RHI& rhi) {
 VkPhysicalDevice get_PhysicalDevice(RHI& rhi) {
 	return rhi.device.physical_device;
 }
-
-//VkDescriptorPool get_DescriptorPool(RHI& rhi) {
-//	return rhi.descriptor_pool;
-//}
-
-//VkInstance get_Instance(RHI& rhi) {
-//	return rhi.device.instance;
-//}
-
-//BufferAllocator& get_BufferAllocator(RHI& rhi) {
-//	return *rhi.buffer_allocator;
-//}
-
-//TextureStreaming& get_TextureAllocator(RHI& rhi) {
-//	return *rhi.texture_allocator;
-//}
-
-//VkQueue get_Queue(RHI& rhi, QueueType type) {
-//	return rhi.device[type];
-//}
 
 uint get_active_frame(RHI& rhi) {
 	return rhi.swapchain.current_frame;
@@ -451,7 +242,7 @@ void make_RHI(const VulkanDesc& desc, Window& window) {
 
 	u64 vertex_max_memory[VERTEX_LAYOUT_COUNT] = { mb(50) };
 	u64 index_max_memory[VERTEX_LAYOUT_COUNT] = { mb(50) };
-	u64 instance_max_memory[INSTANCE_LAYOUT_COUNT] = { mb(0), mb(5), mb(5) };
+	u64 instance_max_memory[INSTANCE_LAYOUT_COUNT] = { mb(0), mb(100), mb(5) };
 	u64 ubo_max_memory[UBO_UPDATE_MODE_COUNT] = { mb(5), mb(5), mb(5) };
 
 	//todo clean up function arguments
@@ -473,30 +264,15 @@ void make_RHI(const VulkanDesc& desc, Window& window) {
 
 	make_DescriptorPool(rhi.descriptor_pool, device, device, max_descriptor);
 
-	make_RenderPass(device, device, rhi.swapchain.imageFormat);
-	make_DescriptorSetLayout(device);
-	//make_GraphicsPipeline(device, renderPass, rhi.swapchain.extent, shader_modules->vert, shader_modules->frag);
-
 	make_DepthResources(device, device, rhi.swapchain.extent);
 	make_Framebuffers(device, rhi.swapchain);
+	make_RenderPass(device, device, rhi.swapchain.imageFormat);
 
 	int frames_in_flight = get_frames_in_flight(rhi);
-
-	make_UniformBuffers(device, device, frames_in_flight);
-	make_DescriptorSets(device, rhi.descriptor_pool, frames_in_flight);
 
 	register_wsi_pass(renderPass, swapchain.extent.width, swapchain.extent.height);
 
 	begin_gpu_upload();
-}
-
-//todo all of init RHI and the adhoc initialization has to be removed
-//this is only needed for the bootstrapping phase before the other systems come 
-//back online again
-
-void init_RHI() {	
-	VkDevice device = get_Device(rhi);
-	VkPhysicalDevice physical_device = get_PhysicalDevice(rhi);
 }
 
 void destroy(VkDevice device, Swapchain& swapchain) {
@@ -645,47 +421,6 @@ void present_swapchain_image(Swapchain& swapchain) {
 	}
 }
 
-/*
-void vk_end_frame() {
-	VkDevice device = rhi.device;
-	VkPhysicalDevice physical_device = rhi.device.physical_device;
-	Swapchain& swapchain = rhi.swapchain;
-	//BufferAllocator& buffer_allocator = *rhi.buffer_allocator;
-	//TextureStreaming& texture_allocator = *rhi.texture_allocator;
-
-	acquire_swapchain_image(rhi.swapchain);
-
-	{
-		CommandPool& graphics_cmd_pool = render_thread.command_pool;
-		//StagingQueue& staging_queue = rhi.trastaging_queue;
-
-		begin_frame(graphics_cmd_pool, rhi.frame_index);
-
-		VkCommandBuffer cmd_buffer = begin_recording(graphics_cmd_pool);
-
-		//update_UniformBuffer(device, swapchain.current_frame, frameData);
-		record_CommandBuffers(cmd_buffer, swapchain, swapchain.image_index);
-
-		end_recording(graphics_cmd_pool, cmd_buffer);
-	
-		QueueSubmitInfo submit_info = {};
-		submit_info.completion_fence = swapchain.in_flight_fences[swapchain.current_frame];
-
-		wait_on_transfer(rhi.waiting_on_transfer_frame, cmd_buffer, submit_info);
-		
-		submit_all_cmds(graphics_cmd_pool, submit_info);
-
-		queue_wait_semaphore(submit_info, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, swapchain.image_available_semaphore[swapchain.current_frame]);
-		queue_signal_semaphore(submit_info, swapchain.render_finished_semaphore[swapchain.current_frame]);
-
-		vkResetFences(device, 1, &swapchain.in_flight_fences[swapchain.current_frame]);
-
-		queue_submit(rhi.device, Queue_Graphics, submit_info);
-	}
-
-	swapchain.current_frame = (swapchain.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
-}*/
-
 void begin_gpu_upload() {
 	rhi.waiting_on_transfer_frame = begin_staging_cmds(rhi.staging_queue);
 	begin_vertex_buffer_upload(rhi.vertex_streaming);
@@ -736,25 +471,16 @@ RenderPass begin_render_frame() {
 	acquire_swapchain_image(swapchain);
 
 	//todo: figure out why this is crashing
-	//for (Task& task : rhi.queued_for_destruction[rhi.frame_index]) {
-	//	task.func(task.data);
-	//}
+	for (DestructionJob& task : rhi.queued_for_destruction[rhi.frame_index]) {
+		task.func(task.data);
+	}
 
 	rhi.queued_for_destruction[rhi.frame_index].clear();
 
 	begin_frame(render_thread.command_pool, rhi.frame_index);
 	begin_frame(render_thread.instance_allocator, rhi.frame_index);
 
-	/*{
-		CommandBuffer& cmd_buffer = begin_draw_cmds();
-		transfer_image_ownership(rhi.texture_allocator, cmd_buffer);
-		transfer_vertex_ownership(rhi.vertex_streaming, cmd_buffer);
-		end_draw_cmds(cmd_buffer);
-	}*/
-
 	CommandBuffer& cmd_buffer = begin_draw_cmds();
-
-
 
 	uint frame_index = rhi.frame_index;
 

@@ -1,4 +1,6 @@
+#include "stdafx.h"
 #include "core/memory/allocator.h"
+#include "core/memory/linear_allocator.h"
 #include "core/io/logger.h"
 #include <stdlib.h>
 
@@ -67,9 +69,33 @@ void MallocAllocator::deallocate(void* ptr) {
 	delete[] ptr;
 }
 
+//GLOBAL Allocators
+#include "core/context.h"
 
+MallocAllocator default_allocator;
+thread_local LinearAllocator temporary_allocator;
+thread_local LinearAllocator permanent_allocator;
 
-//DEFINE GLOBAL ALLOCATORS
-MallocAllocator CORE_API default_allocator;
-LinearAllocator CORE_API temporary_allocator;
-LinearAllocator CORE_API permanent_allocator;
+Allocator& get_allocator() {
+	return *get_context().allocator;
+}
+
+LinearAllocator& get_temporary_allocator() {
+	return *get_context().temporary_allocator;
+}
+
+LinearAllocator& get_default_allocator() {
+	return permanent_allocator;
+}
+
+LinearAllocator& get_permanent_allocator() {
+	return permanent_allocator;
+}
+
+LinearAllocator& get_thread_local_temporary_allocator() {
+	return temporary_allocator;
+}
+
+LinearAllocator& get_thread_local_permanent_allocator() {
+	return permanent_allocator;
+}

@@ -44,17 +44,6 @@ void add_ubo(DescriptorDesc& desc, Stage stage, slice<UBOBuffer> ubo_buffer, uin
 	desc.bindings.append(binding);
 }
 
-VkDescriptorSetLayout make_DescriptorSetLayout(VkDevice device, slice<VkDescriptorSetLayoutBinding> bindings) {
-	VkDescriptorSetLayoutCreateInfo layout_info = {};
-	layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	layout_info.bindingCount = bindings.length;
-	layout_info.pBindings = bindings.data;
-
-	VkDescriptorSetLayout layout;
-	vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &layout);
-	return layout;
-}
-
 VkDescriptorSet make_DescriptorSet(VkDevice device, VkDescriptorPool pool,  slice<VkDescriptorSetLayout> set_layouts) {
 	VkDescriptorSetAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -70,22 +59,6 @@ VkDescriptorSet make_DescriptorSet(VkDevice device, VkDescriptorPool pool,  slic
 
 	return descriptor_set;
 }
-
-/*
-void update_UniformBuffer(VkDevice device, uint32_t currentImage, Viewport& viewport) {
-	PassUBO ubo = {};
-	ubo.view = viewport.view;
-	ubo.proj = viewport.proj;
-	ubo.proj[1][1] *= -1;
-
-	void* data;
-	vkMapMemory(device, uniform_buffers_memory[currentImage], 0, sizeof(PassUBO), 0, &data);
-	memcpy(data, &ubo, sizeof(PassUBO));
-	vkUnmapMemory(device, uniform_buffers_memory[currentImage]);
-
-}
-*/
-
 
 VkDescriptorSetLayout make_set_layout(VkDevice device, DescriptorSetInfo& info) {
 	array<MAX_BINDING, VkDescriptorSetLayoutBinding> layout_bindings;
@@ -271,50 +244,13 @@ void destroy_descriptor_set(descriptor_set_handle handle) {
 }
 
 VkDescriptorSet get_descriptor_set(descriptor_set_handle set) {
+	if (set.id == INVALID_HANDLE) return nullptr;
 	return descriptors.sets[set.id - 1];
 }
 
 VkDescriptorSetLayout get_descriptor_set_layout(descriptor_set_handle set) {
 	return descriptors.layouts[set.id - 1];
 }
-
-/*
-void make_DescriptorSets(VkDevice device, VkDescriptorPool pool, int frames_in_flight) {
-	array<MAX_SWAPCHAIN_IMAGES, VkDescriptorSetLayout> layouts(frames_in_flight);
-	for (int i = 0; i < frames_in_flight; i++) layouts[i] = descriptorSetLayout;
-
-	VkDescriptorSetAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	allocInfo.descriptorPool = pool;
-	allocInfo.descriptorSetCount = static_cast<uint32_t>(frames_in_flight);
-	allocInfo.pSetLayouts = layouts.data;
-
-	descriptorSets.resize(frames_in_flight);
-	if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data) != VK_SUCCESS) {
-		throw "Failed to make descriptor sets!";
-	}
-
-	for (int i = 0; i < frames_in_flight; i++) {
-		VkDescriptorBufferInfo bufferInfo = {};
-		bufferInfo.buffer = uniform_buffers[i];
-		bufferInfo.offset = 0;
-		bufferInfo.range = sizeof(PassUBO);
-
-		VkWriteDescriptorSet descriptorWrites[2] = {};
-		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[0].dstSet = descriptorSets[i];
-		descriptorWrites[0].dstBinding = 0;
-		descriptorWrites[0].dstArrayElement = 0;
-		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		descriptorWrites[0].descriptorCount = 1;
-		descriptorWrites[0].pBufferInfo = &bufferInfo;
-		descriptorWrites[0].pImageInfo = nullptr;
-		descriptorWrites[0].pTexelBufferView = nullptr;
-
-		vkUpdateDescriptorSets(device, 1, descriptorWrites, 0, nullptr);
-	}
-}
-*/
 
 void make_DescriptorPool(DescriptorPool& pool, VkDevice device, VkPhysicalDevice physical_device, const DescriptorCount& count) {
 	pool.device = device;
@@ -361,22 +297,8 @@ void destroy_SetLayout(VkDevice device, VkDescriptorSetLayout layout) {
 }
 
 VkDescriptorSet make_set(DescriptorPool& pool, slice<VkDescriptorSetLayout> set_layouts) {
-	VkDescriptorSetAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	allocInfo.descriptorPool = pool.pool;
-	allocInfo.descriptorSetCount = set_layouts.length;
-	allocInfo.pSetLayouts = set_layouts.data;
-
-	VkDescriptorSet descriptor_set;
-
-	if (vkAllocateDescriptorSets(pool.device, &allocInfo, &descriptor_set) != VK_SUCCESS) {
-		throw "Failed to make descriptor sets!";
-	}
-
-	return descriptor_set;
+	return make_DescriptorSet(pool.device, pool, set_layouts);
 }
-
-
 
 void recycle_descriptor_set(periodically_updated_descriptor& set) {
 	//printf("CURRENT DESCRIPTOR %i\n", set.current.id);
@@ -402,93 +324,3 @@ void update_descriptor_set(periodically_updated_descriptor& set, DescriptorDesc&
 
 	set.updated_in_frame = frame;
 }
-
-
-
-/*
-void make_ShaderAcess() {
-	ShaderModules* module = get_shader_config(assets, desc.shader, permutations[perm]);
-
-	DescriptorSetInfo& material_bindings = module->info.sets[MATERIAL_SET];
-
-	array<MAX_BINDING, VkDescriptorSetLayoutBinding> layout_bindings(material_bindings.bindings.length);
-
-	DescriptorBindingInfo material_ubo_binding = {};
-
-	for (uint i = 0; i < material_bindings.bindings.length; i++) {
-		DescriptorBindingInfo& binding = material_bindings.bindings[i];
-
-		VkDescriptorSetLayoutBinding& layout_binding = layout_bindings[binding.binding];
-		layout_binding.binding = binding.binding;
-		layout_binding.descriptorCount = binding.count;
-		layout_binding.descriptorType = binding.type;
-		layout_binding.stageFlags = binding.stage;
-
-		if (binding.type_name == "Material") material_ubo_binding = binding;
-	}
-
-	VkDescriptorSetLayoutCreateInfo layout_info = {};
-	layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	layout_info.bindingCount = material_bindings.bindings.length;
-	layout_info.pBindings = layout_bindings.data;
-
-	VkDescriptorSetLayout layout;
-	vkCreateDescriptorSetLayout(device, &layout_info, nullptr, &layout);
-
-	VkDescriptorSetLayout layouts[MAX_FRAMES_IN_FLIGHT] = { layout, layout, layout };
-
-	VkDescriptorSetAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	allocInfo.descriptorPool = descriptor_pool;
-	allocInfo.descriptorSetCount = frames_in_flight;
-	allocInfo.pSetLayouts = layouts;
-
-	VkDescriptorSet descriptor_sets[MAX_FRAMES_IN_FLIGHT];
-
-	if (vkAllocateDescriptorSets(device, &allocInfo, descriptor_sets) != VK_SUCCESS) {
-		throw "Failed to make descriptor sets!";
-	}
-
-	for (int i = 0; i < frames_in_flight; i++) {
-
-
-		make_Buffer(device, physical_device, )
-
-			for (ParamDesc& param : desc.params) {
-
-			}
-
-		VkDescriptorBufferInfo bufferInfo = {};
-		bufferInfo.buffer = uniform_buffers[i];
-		bufferInfo.offset = 0;
-		bufferInfo.range = sizeof(UniformBufferObject);
-
-		VkDescriptorImageInfo imageInfo = {};
-		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo.imageView = texture_image_view;
-		imageInfo.sampler = texture_sampler;
-
-		VkWriteDescriptorSet descriptorWrites[2] = {};
-		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[0].dstSet = descriptorSets[i];
-		descriptorWrites[0].dstBinding = 0;
-		descriptorWrites[0].dstArrayElement = 0;
-		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		descriptorWrites[0].descriptorCount = 1;
-		descriptorWrites[0].pBufferInfo = &bufferInfo;
-		descriptorWrites[0].pImageInfo = nullptr;
-		descriptorWrites[0].pTexelBufferView = nullptr;
-
-		descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[1].dstSet = descriptorSets[i];
-		descriptorWrites[1].dstBinding = 1;
-		descriptorWrites[1].dstArrayElement = 0;
-		descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptorWrites[1].descriptorCount = 1;
-		descriptorWrites[1].pBufferInfo = nullptr;
-		descriptorWrites[1].pImageInfo = &imageInfo;
-
-		vkUpdateDescriptorSets(device, 2, descriptorWrites, 0, nullptr);
-	}
-}
-*/

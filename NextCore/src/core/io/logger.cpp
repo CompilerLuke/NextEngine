@@ -1,47 +1,11 @@
+#include "stdafx.h"
 #include "core/io/logger.h"
-#include <string>
-
-void format_intern(string_buffer& buffer, const string_buffer& str) {
-	buffer += str;
-}
-
-
-void format_intern(string_buffer& buffer, string_view str) {
-	buffer += str;
-}
-
-void format_intern(string_buffer& buffer, char* str) {
-	buffer += (const char*)str;
-}
-
-void format_intern(string_buffer& buffer, const char* str) {
-	buffer += str;
-}
-
-void format_intern(string_buffer& buffer, sstring str) {
-	buffer += str;
-}
-
-void format_intern(string_buffer& buffer, int num) {
-	buffer += std::to_string(num).c_str();
-}
-
-void format_intern(string_buffer& buffer, float num) {
-	buffer += std::to_string(num).c_str();
-}
-
-void format_intern(string_buffer& buffer, unsigned int num) {
-	buffer += std::to_string(num).c_str();
-}
-
-void format_intern(string_buffer& buffer, u64 num) {
-	buffer += std::to_string(num).c_str();
-}
+#include <stdio.h>
 
 string_buffer log_buffer;
 
 void log_string(string_view s) {
-	fwrite(s.c_str(), s.length, 1, stdout);
+	//fwrite(s.c_str(), s.length, 1, stdout);
 	return;
 
 	log_buffer += s;
@@ -62,4 +26,22 @@ void flush_logger() {
 
 void log(const char* s) {
 	log_string(string_view(s));
+}
+
+void DefaultLogger::log_string(LogLevel log_level, string_view str) {
+	if (log_level < min_log_level) return;
+
+	fwrite(str.data, str.length, 1, stdout);
+}
+
+void DefaultLogger::flush() {
+	fflush(stdout);
+}
+
+void DisabledLogger::log_string(LogLevel log_level, string_view str) {
+
+}
+
+void DisabledLogger::flush() {
+
 }

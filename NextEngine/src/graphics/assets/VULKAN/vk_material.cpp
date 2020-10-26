@@ -54,21 +54,31 @@ void MaterialAllocator::make(MaterialDesc& desc, Material* material) {
 	for (int perm = 0; perm < 1; perm++) {
 		ShaderModules* module = get_shader_config(desc.shader, permutations[perm]);
 
-		if (module->info.sets.length < 2) {
+		if (module->info.sets.length <= 2) {
+			bool contains_ubo_fields = false;
+			if (desc.params.length == 0) continue;
+
 			ShaderInfo* info = shader_info(desc.shader);
 			fprintf(stderr, "Shader %s %s, does not support this material setup!\n", info->vfilename, info->ffilename);
 			abort();
 		}
 
-		DescriptorSetInfo& material_bindings = module->info.sets[MATERIAL_SET];
-		UBOInfo& ubo_info = material_bindings.ubos[0];
+		bool requires_ubo = false;
+		for (ParamDesc& param : desc.params) {
+			if (param.type != Param_Image) {
+				requires_ubo = true;
+				break;
+			}
+		}
 
+		DescriptorSetInfo& material_bindings = module->info.sets[MATERIAL_SET];
+		UBOInfo* ubo_info = requires_ubo ? &material_bindings.ubos[0] : nullptr;
 
 		DescriptorDesc descriptor_desc;
 		UBOBuffer& ubo_buffer = material->ubos[material->index];
-		if (material->sets[material->index].id == INVALID_HANDLE) {
-			ubo_buffer = alloc_ubo_buffer(ubo_info.size, UBO_MAP_UNMAP);
-			add_ubo(descriptor_desc, from_vk_stage(material_bindings.bindings[ubo_info.id].stage), ubo_buffer, 0);
+		if (requires_ubo && material->sets[material->index].id == INVALID_HANDLE) {
+			ubo_buffer = alloc_ubo_buffer(ubo_info->size, UBO_MAP_UNMAP);
+			add_ubo(descriptor_desc, from_vk_stage(material_bindings.bindings[ubo_info->id].stage), ubo_buffer, 0);
 		}
 
 		char ubo_memory[256] = {};
@@ -109,7 +119,12 @@ void MaterialAllocator::make(MaterialDesc& desc, Material* material) {
 			}
 
 			if (is_ubo_field) {
-				UBOFieldInfo& ubo_field_info = ubo_info.fields[uniform_index++];
+				if (!ubo_info) {
+					fprintf(stderr, "Material Description and Shader Layout do not match!");
+					abort();
+				}
+
+				UBOFieldInfo& ubo_field_info = ubo_info->fields[uniform_index++];
 					
 				char* field_ptr = (char*)ubo_memory + ubo_field_info.offset;
 
@@ -139,12 +154,12 @@ void MaterialAllocator::make(MaterialDesc& desc, Material* material) {
 			abort();
 		}
 
-		if (ubo_info.fields.length != uniform_index) {
+		if (ubo_info && ubo_info->fields.length != uniform_index) {
 			fprintf(stderr, "Mismatch in the number of ubo fields!\n");
 			abort();
 		}
 
-		memcpy_ubo_buffer(ubo_buffer, ubo_info.size, ubo_memory);
+		if (ubo_info) memcpy_ubo_buffer(ubo_buffer, ubo_info->size, ubo_memory);
 
 		// TODO FIX BUG, WHERE DESCRIPTOR IS STILL IN USE!
 		// ONE POSSIBILITY IS A DESCRIPTOR REUSE SYSTEM, WHERE WHEN

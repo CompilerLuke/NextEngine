@@ -20,6 +20,9 @@ struct Vertex {
 	glm::vec3 bitangent;
 };
 
+using MeshFlags = uint;
+const MeshFlags MESH_WITH_NO_UVS = 1 << 0;
+
 struct Mesh {
 	uint lod_count;
 	VertexBuffer buffer[MAX_MESH_LOD];
@@ -27,11 +30,12 @@ struct Mesh {
 	slice<uint> indices[MAX_MESH_LOD];
 	AABB aabb;
 	uint material_id;
+	MeshFlags flags;
 };
 
 struct Model {
 	slice<Mesh> meshes;
-	array<10, float> lod_distance;
+	array<MAX_MESH_LOD, float> lod_distance;
 	slice<sstring> materials;
 	AABB aabb;
 };

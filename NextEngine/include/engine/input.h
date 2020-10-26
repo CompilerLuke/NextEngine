@@ -140,8 +140,8 @@ enum class ModKeys {
 	Alt = 1 << 2,
 };
 
-ModKeys operator|(ModKeys a, ModKeys b) { return (ModKeys)((uint)a | (uint)b); }
-uint operator&(ModKeys a, ModKeys b) { return ((uint)a & (uint)b); }
+inline ModKeys operator|(ModKeys a, ModKeys b) { return (ModKeys)((uint)a | (uint)b); }
+inline uint operator&(ModKeys a, ModKeys b) { return ((uint)a & (uint)b); }
 
 struct Input {
 	bool active = true;

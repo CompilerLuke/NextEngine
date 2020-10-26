@@ -48,7 +48,11 @@ void draw_mesh(CommandBuffer& cmd_buffer, model_handle model_handle, slice<mater
 	Model* model = get_Model(model_handle);
 
 	for (Mesh& mesh : model->meshes) {
-		material_handle mat_handle = materials[mesh.material_id];
+		material_handle mat_handle;
+
+		if (mesh.material_id < materials.length) mat_handle = materials[mesh.material_id];; //todo remove check
+		if (!mat_handle.id) mat_handle = default_materials.missing;
+
 		pipeline_handle pipeline_handle = query_pipeline(mat_handle, cmd_buffer.render_pass, cmd_buffer.subpass); 
 
 		bind_pipeline(cmd_buffer, pipeline_handle);
@@ -103,7 +107,10 @@ void bind_material(CommandBuffer& cmd_buffer, material_handle mat_handle) {
 	Material* mat = get_Material(mat_handle);
 
 	descriptor_set_handle set_handle = mat->sets[mat->index];
+
 	VkDescriptorSet set = get_descriptor_set(set_handle);
+	if (!set) return;
+
 	VkPipelineLayout pipeline_layout = get_pipeline_layout(rhi.pipeline_cache, cmd_buffer.bound_pipeline_layout);
 
 	vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, MATERIAL_SET, 1, &set, 0, 0);

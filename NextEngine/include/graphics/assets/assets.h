@@ -28,9 +28,15 @@ struct DefaultTextures {
 	texture_handle white;
 	texture_handle black;
 	texture_handle normal;
+	texture_handle checker;
 };
 
-ENGINE_API extern DefaultTextures default_textures;
+struct DefaultMaterials {
+	material_handle missing;
+};
+
+extern ENGINE_API DefaultTextures default_textures;
+extern ENGINE_API DefaultMaterials default_materials;
 
 void make_AssetManager(string_view path);
 void destroy_AssetManager();
@@ -45,10 +51,10 @@ ENGINE_API shader_handle load_SinglePass_Shader(string_view vfilename, string_vi
 ENGINE_API shader_handle load_Shader(string_view vfilename, string_view ffilename);
 ENGINE_API shader_handle load_Shader(string_view vfilename, string_view ffilename, slice<shader_flags> permutations);
 ENGINE_API void load_Shader(shader_handle, string_view vfilename, string_view ffilename);
-ENGINE_API void load_Shader(Shader&, slice<shader_flags> permutations);
-ENGINE_API bool load_Shader(Shader&, slice<shader_flags> permutations, string_buffer&);
+ENGINE_API void load_Shader(Shader&);
+ENGINE_API bool load_Shader(Shader&, string_buffer&);
 ENGINE_API Shader* get_Shader(shader_handle);
-ENGINE_API void reload_Shader(shader_handle);
+ENGINE_API bool reload_Shader(shader_handle);
 ENGINE_API bool reload_modified_shaders();
 
 ENGINE_API texture_handle load_Texture(string_view filename, bool serialized = false);

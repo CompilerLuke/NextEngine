@@ -4,7 +4,7 @@
 #include <string>
 #include "ecs/id.h"
 #include "core/container/event_dispatcher.h"
-#include "assetTab.h"
+#include "assets/explorer.h"
 #include "core/reflection.h"
 #include "lister.h"
 #include "displayComponents.h"

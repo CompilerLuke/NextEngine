@@ -1,7 +1,7 @@
 #pragma once
 
-#include "core/core.h"
 #include <chrono>
+#include "core/core.h"
 
 struct Time {
 	std::chrono::steady_clock::time_point last_frame;

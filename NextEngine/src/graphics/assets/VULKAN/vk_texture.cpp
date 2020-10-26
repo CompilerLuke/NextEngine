@@ -1,13 +1,11 @@
 #ifdef RENDER_API_VULKAN
 
-#define STB_IMAGE_IMPLEMENTATION
-
 #include "graphics/rhi/vulkan/vulkan.h"
 #include "graphics/rhi/vulkan/device.h"
 #include "graphics/rhi/vulkan/buffer.h"
 #include "graphics/rhi/vulkan/command_buffer.h"
 #include "graphics/rhi/vulkan/draw.h"
-#include <stb_image.h>
+#include <vendor/stb_image.h>
 #include "graphics/assets/assets.h"
 #include "core/memory/linear_allocator.h"
 #include "engine/vfs.h"
@@ -15,8 +13,6 @@
 //REFLECT_STRUCT_BEGIN(Texture)
 //REFLECT_STRUCT_MEMBER(filename)
 //REFLECT_STRUCT_END()
-
-
 
 bool has_StencilComponent(VkFormat format) {
 	return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;

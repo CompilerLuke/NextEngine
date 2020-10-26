@@ -82,3 +82,5 @@ inline u64 aligned_incr(u64* occupied, uint size, uint alignment) {
 	*occupied = offset + size;
 	return offset;
 }
+
+CORE_API Allocator& get_allocator();

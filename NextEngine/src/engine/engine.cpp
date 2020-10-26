@@ -16,6 +16,8 @@
 
 #include "graphics/rhi/window.h"
 
+#include "core/job_system/job.h"
+
 Modules::Modules(const char* app_name, const char* level_path) {
 	window = new Window();
 	input = new Input();
@@ -64,10 +66,7 @@ Modules::Modules(const char* app_name, const char* level_path) {
 	settings.display_resolution_height = window->height;
 	settings.shadow_resolution = 2048;
 
-	renderer = make_Renderer(settings, *world); //  new Renderer(settings, *world);
-	
-
-	init_RHI();
+	renderer = make_Renderer(settings, *world);
 }
 
 Modules::~Modules() {
@@ -104,12 +103,27 @@ void Modules::begin_frame() {
 	time->tick();
 }
 
+void clear_temporary(void*) {
+	get_thread_local_temporary_allocator().clear();
+}
+
 void Modules::end_frame() {
 	Profile profile("Swap Buffers");
 	window->swap_buffers();
 	profile.end();
 
 	Profiler::end_frame();
-	temporary_allocator.clear();
+
+	uint schedule_on[MAX_THREADS];
+	JobDesc job_desc[MAX_THREADS];
+
+	uint count = worker_thread_count() - 1;
+	for (uint i = 0; i < count; i++) {
+		job_desc[i] = JobDesc(clear_temporary, nullptr);
+		schedule_on[i] = i + 1;
+	}
+
+	schedule_jobs_on({ schedule_on, count}, { job_desc, count }, nullptr);
+	clear_temporary(nullptr);
 }
 

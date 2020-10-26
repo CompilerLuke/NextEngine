@@ -3,6 +3,7 @@
 #include "core/core.h"
 #include "core/container/vector.h"
 #include "core/container/string_view.h"
+#include "core/job_system/thread.h"
 
 struct CORE_API Profile {
 	double start_time;
@@ -12,6 +13,10 @@ struct CORE_API Profile {
 	bool ended;
 
 	Profile(const char* name);
+
+	double duration() {
+		return end_time - start_time;
+	}
 
 	void end();
 
@@ -34,8 +39,8 @@ struct Frame {
 
 struct Profiler {
 	static bool CORE_API paused;
-	static vector<Frame> CORE_API frames;
-	static int CORE_API profile_depth;
+	static vector<Frame> CORE_API frames[MAX_THREADS];
+	static int CORE_API profile_depth[MAX_THREADS];
 	static uint CORE_API frame_sample_count;
 
 	static void CORE_API begin_frame();

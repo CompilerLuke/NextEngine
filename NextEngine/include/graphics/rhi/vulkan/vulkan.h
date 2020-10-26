@@ -17,7 +17,7 @@ struct RenderThreadResources {
 };
 
 
-struct Task {
+struct DestructionJob {
 	void* data;
 	void(*func)(void*);
 };
@@ -44,7 +44,7 @@ struct RHI {
 	uint waiting_on_transfer_frame;
 	uint frame_index;
 
-	vector<Task> queued_for_destruction[MAX_FRAMES_IN_FLIGHT];
+	vector<DestructionJob> queued_for_destruction[MAX_FRAMES_IN_FLIGHT];
 
 	RHI();
 };
@@ -54,34 +54,9 @@ extern RHI rhi;
 
 ENGINE_API void begin_gpu_upload();
 ENGINE_API void end_gpu_upload();
-ENGINE_API void wait_on_transfer(uint frame, VkCommandBuffer cmd_buffer, QueueSubmitInfo& info);
-
-/*
-VkDevice get_Device(RHI&);
-VkPhysicalDevice get_PhysicalDevice(RHI&);
-VkInstance get_Instance(RHI&);
-BufferAllocator& get_BufferAllocator(RHI&);
-TextureAllocator& get_TextureAllocator(RHI&);
-VkDescriptorPool get_DescriptorPool(RHI&);
-PipelineCache& get_PipelineCache(RHI& rhi);
-CommandPool& get_CommandPool(RHI&, QueueType queue_type);
-VkQueue get_Queue(RHI&, QueueType queue_type);
-uint get_frames_in_flight(RHI&);
-uint get_active_frame(RHI&);
-StagingQueue& get_StagingQueue(RHI&);
-Assets& get_Assets(RHI&);
-*/
 
 struct Window;
-struct Level;
-struct ModelManager;
 struct RHI;
 
-
-//todo abstract VulkanDesc
-struct Assets;
-
 void make_RHI(const VulkanDesc&, Window&);
-void init_RHI();
-void submit_frame_RHI();
 void destroy_RHI();

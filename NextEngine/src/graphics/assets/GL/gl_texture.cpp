@@ -1,7 +1,6 @@
 #ifdef RENDER_API_OPENGL
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+#include <vendor/stb_image.h>
 #include "graphics/assets/texture.h"
 #include "glad/glad.h"
 #include "engine/vfs.h"

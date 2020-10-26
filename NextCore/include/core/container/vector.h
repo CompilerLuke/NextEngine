@@ -12,13 +12,14 @@
 
 template<typename T>
 struct vector {
-	Allocator* allocator = &default_allocator;
+	Allocator* allocator = nullptr;
 	uint length = 0;
 	uint capacity = 0;
 	T* data = NULL;
 
 	inline void reserve(uint count) {
 		if (count > capacity) {
+			if (!allocator) allocator = &get_allocator();
 			T* data = (T*)allocator->allocate(sizeof(T) * count);
 
 			if (this->data) memcpy(data, this->data, sizeof(T) * this->length);
@@ -100,24 +101,6 @@ struct vector {
 		data = new_data;
 		capacity = length;
 	}
-
-	inline T& operator[](unsigned int index) {
-
-#ifdef BOUNDS_CHECKING
-		if (index >= length) abort();
-#endif
-
-		return data[index];
-	}
-
-	inline const T& operator[](unsigned int index) const {
-#ifdef BOUNDS_CHECKING
-		if (index >= length) abort();
-#endif
-
-		return data[index];
-	}
-	
 
 	inline vector(vector<T>&& other) {
 		this->data = other.data;
@@ -214,24 +197,10 @@ struct vector {
 
 	inline ~vector() {
 		free_data();
-		allocator->deallocate(data);
+		if (allocator) allocator->deallocate(data);
 	}
 
-	inline T* begin() {
-		return this->data;
-	}
-
-	inline T* end() {
-		return this->data + length;
-	}
-
-	inline const T* begin() const {
-		return this->data;
-	}
-
-	inline const T* end() const {
-		return this->data + length;
-	}
+	ARRAY_INDEXING
 
 	operator slice<T>() {
 		return { data, length };

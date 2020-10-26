@@ -24,7 +24,7 @@
 #include "graphics/assets/material.h"
 #include "core/serializer.h"
 #include "terrain.h"
-#include <ImGuizmo/ImGuizmo.h>
+#include <vendor/ImGuizmo/ImGuizmo.h>
 #include "core/profiler.h"
 #include "graphics/renderer/renderer.h"
 #include "engine/engine.h"
@@ -1073,6 +1073,10 @@ void respond_to_framediffs(Editor& editor) {
 
 			if (diff->type->name == "Transform") {
 				rebuild_acceleration = true;
+			}
+
+			if (diff->type->name == "Materials") {
+				rebuild_acceleration = true; //todo requires changing mesh bucket of element
 			}
 
 			if (diff->type->name == "MaterialDesc") {

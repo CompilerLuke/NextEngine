@@ -5,40 +5,82 @@
 #include "core/container/string_buffer.h"
 #include "core/container/string_view.h"
 #include "core/container/sstring.h"
+#include <stdlib.h>
 
-void CORE_API format_intern(string_buffer&, char* str);
-void CORE_API format_intern(string_buffer&, const char* str);
-void CORE_API format_intern(string_buffer&, string_view str);
-void CORE_API format_intern(string_buffer&, sstring str);
-void CORE_API format_intern(string_buffer&, int num);
-void CORE_API format_intern(string_buffer&, float num);
-void CORE_API format_intern(string_buffer&, unsigned int num);
-void CORE_API format_intern(string_buffer&, u64 num);
-void CORE_API format_intern(string_buffer&, const string_buffer&);
+//can't we simply accept a string_view?
+inline void format_intern(string_buffer& buffer, char* str) {
+	buffer += str;
+}
+
+inline void format_intern(string_buffer& buffer, const char* str) {
+	buffer += str;
+}
+
+inline void format_intern(string_buffer& buffer, string_view str) {
+	buffer += str;
+}
+
+inline void format_intern(string_buffer& buffer, sstring str) {
+	buffer += str;
+}
+
+inline void format_intern(string_buffer& buffer, int num) {
+	char as_str[16];
+	_itoa_s(num, as_str, 10);
+	buffer += as_str;
+}
+
+inline void format_intern(string_buffer& buffer, float num) {
+	char as_str[32];
+	_gcvt_s(as_str, num, 10);
+	buffer += as_str;
+}
+
+inline void format_intern(string_buffer& buffer, uint num) {
+	format_intern(buffer, (int)num);
+}
+
+inline void format_intern(string_buffer& buffer, u64 num) {
+	char as_str[32];
+	_ltoa_s(num, as_str, 10);
+	buffer += as_str;
+}
+
+inline void format_intern(string_buffer& buffer, const string_buffer& str) {
+	buffer += str;
+}
 
 template<typename T>
 void format_intern(string_buffer&, T arg) {
 	static_assert(false, "unsupported format type");
 }
 
-template<typename T, typename ...Args>
-void format_intern(string_buffer& buffer, T arg, Args... args) {
-	format_intern(buffer, arg);
-	format_intern(buffer, args...);
-}
-
 template<typename ...Args>
 string_buffer format(Args... args) {
 	string_buffer buffer;
-	format_intern(buffer, args...);
+	(format_intern(buffer, args), ...);
 	return buffer;
 }
 
 template<typename ...Args>
 string_buffer tformat(Args... args) {
 	string_buffer buffer;
-	buffer.allocator = &temporary_allocator;
-	format_intern(buffer, args...);
+	buffer.allocator = &get_temporary_allocator();
+	(format_intern(buffer, args), ...);
+	return buffer;
+}
+
+template<typename ...Args>
+string_buffer tformat(string_view a, string_view b) {
+	string_buffer buffer;
+	buffer.allocator = &get_temporary_allocator();
+	buffer.length = a.length + b.length;
+	buffer.capacity = buffer.length;
+	buffer.data = TEMPORARY_ARRAY(char, buffer.capacity + 1);
+	memcpy(buffer.data, a.data, a.length);
+	memcpy(buffer.data + a.length, b.data, b.length);
+	buffer.data[buffer.length] = '\0';
+
 	return buffer;
 }
 
@@ -52,3 +94,28 @@ void log(Args... args) {
 }
 
 CORE_API void flush_logger();
+
+enum LogLevel {
+	LOG_LEVEL_DEBUG,
+	LOG_LEVEL_INFO,
+	LOG_LEVEL_WARNING,
+	LOG_LEVEL_ERROR,
+	LOG_LEVEL_CRITICAL
+};
+
+struct Logger {
+	virtual void log_string(LogLevel log_level, string_view str) = 0;
+	virtual void flush() = 0;
+};
+
+struct DefaultLogger : Logger {
+	LogLevel min_log_level;
+
+	CORE_API void log_string(LogLevel log_level, string_view str) override;
+	CORE_API void flush() override;
+};
+
+struct DisabledLogger : Logger {
+	CORE_API void log_string(LogLevel log_level, string_view str) override;
+	CORE_API void flush() override;
+};

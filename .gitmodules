@@ -1,0 +1,9 @@
+[submodule "vendor/glm"]
+	path = vendor/glm
+	url = https://github.com/g-truc/glm.git
+[submodule "NextEngine/vendor/assimp"]
+	path = NextEngine/vendor/assimp
+	url = https://github.com/CompilerLuke/assimp.git
+[submodule "NextEngine/vendor/glfw"]
+	path = NextEngine/vendor/glfw
+	url = https://github.com/TheCherno/glfw.git

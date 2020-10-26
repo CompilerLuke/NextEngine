@@ -2,7 +2,6 @@
 #include "displayComponents.h"
 #include <imgui/imgui.h>
 #include "core/io/logger.h"
-#include "assetTab.h"
 #include <glm/gtc/type_ptr.hpp>
 #include "graphics/renderer/ibl.h"
 #include "graphics/renderer/renderer.h"
@@ -303,7 +302,10 @@ bool TerrainSplat_inspect(void* data, string_view prefix, Editor& editor) {
 
 			if (selected) ImGui::PopStyleVar();
 		}
+		return true;
 	}
+
+	return false;
 }
 
 void register_on_inspect_callbacks() {

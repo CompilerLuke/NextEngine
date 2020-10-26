@@ -20,9 +20,9 @@ void copy_into_node(Node& node, T* to, T* from) {
 inline Node& alloc_node(Partition& scene_partition) {
 	assert(scene_partition.count <= MAX_MESH_INSTANCES);
 
-	Node& node = scene_partition.nodes[scene_partition.node_count++];
+	uint offset = ++scene_partition.node_count - 1;
+	Node& node = scene_partition.nodes[offset];
 	node = {};
-	node.offset = scene_partition.count;
 
 	return node;
 }
@@ -30,20 +30,22 @@ inline Node& alloc_node(Partition& scene_partition) {
 inline Node& alloc_leaf_node(Partition& scene_partition, AABB& node_aabb, int max, int count) {
 	Node& node = alloc_node(scene_partition);
 	node.aabb = node_aabb;
+	
+	uint offset = (scene_partition.count += count) - count;
+	node.offset = offset;
 	node.count = count;
-
-	scene_partition.count += count;
 
 	assert(scene_partition.count <= max);
 
 	return node;
 }
 
-inline BranchNodeInfo alloc_branch_node(Partition& scene_partition, AABB& node_aabb) {
+//todo pass in allocator
+inline BranchNodeInfo alloc_branch_node(Partition& scene_partition, AABB& node_aabb, LinearAllocator& allocator) {
 	BranchNodeInfo info = { alloc_node(scene_partition) };
 	glm::vec3 size = node_aabb.size();
 
-	info.watermark = temporary_allocator.occupied;
+	info.watermark = allocator.occupied;
 	info.axis = size.x > size.y ? (size.x > size.z ? 0 : 2) : (size.y > size.z ? 1 : 2);
 	info.pivot = node_aabb.centroid();
 	info.half_size = size[info.axis] * 0.5f;
@@ -70,7 +72,7 @@ inline int split_index(BranchNodeInfo& info, AABB& aabb) {
 	return node_index;
 }
 
-inline void bump_allocator(Partition& partition, BranchNodeInfo& info) {
-	temporary_allocator.occupied = info.watermark;
+inline void bump_allocator(Partition& partition, BranchNodeInfo& info, LinearAllocator& allocator) {
+	allocator.occupied = info.watermark;
 	partition.count += info.node.count;
 }

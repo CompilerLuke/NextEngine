@@ -7,6 +7,7 @@
 #include "graphics/pass/pass.h"
 
 #include "components/camera.h"
+#include "graphics/rhi/draw.h"
 
 //env_probe_handle make_EnvironmentProbe(cubemap_handle cubemap_handle) {
 //	EnvProbe env_probe;

@@ -95,7 +95,7 @@ slice<T> copy_slice(char** block, slice<T> slice) {
 
 void begin_tdiff(DiffUtil& util, void* ptr, refl::Type* type) {
 	util.real_ptr = ptr;
-	util.copy_ptr = temporary_allocator.allocate(type->size);
+	util.copy_ptr = get_temporary_allocator().allocate(type->size);
 	util.type = type;
 	
 	memcpy(util.copy_ptr, util.real_ptr, type->size);
