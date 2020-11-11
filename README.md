@@ -3,8 +3,9 @@
 
 NextEngine is designed with rapid iteration and high-end desktop graphics in mind. The engine has been fundamentally redesigned in a data-oriented fashion, with efforts to parallize the engine under-way. The engine, ported from OpenGL is vulkan-first and is cross-platform, with the capability of running on Windows, MacOSX and theoretically Linux, though this functionality has not been tested. 
 
+
 # Friendly warning
-This being a hobby project, implemented solely by one person, the mentality has been to move fast and break things. Though certain features of the engine are relatively mature, production level stability should not be expected or relied upon! Moreover development of new features will heavily depend on my spare time, as such there may be periods of massive improvements+changes and others of relative stagnation.
+This being a hobby project, implemented solely by one person, the mentality has been to move fast and break things. Though certain features of the engine are relatively mature, production level stability should not be expected or relied upon! In addition you may find parts of the engine aren't as configurable as they could be and this is not without reason. Features are developed in the order of when I need them and designed towards my use-cases, trying to be an all-round general engine isn't feasible on a 1 man project. If you are looking for an engine to use right out of the box, consider a commerical engine such as Unity, Unreal or Godot. If on the other hand you enjoy tinkering and are comfortable building out the engine, this could be an excellent starting point. Moreover development of new features will heavily depend on my spare time, as such there may be periods of massive improvements+changes and others of relative stagnation.
 
 # Getting Started Guide
 
@@ -14,24 +15,57 @@ git clone --recurse-submodules https://github.com/CompilerLuke/NextEngine.git
 cd NextEngine
 ```
 2. Generate appropriate solution/project
+
 Enviroment Variable VULKAN_SDK must be set and point to a version 1.2 of the Vulkan SDK or higher
 
 On MacOSX
+
 ```console
 ./vendor/premake/premake5 xcode4
 ```
 On Windows
+
 ```console
 vendor/premake/premake5.exe vs2017
 ```
 
 3. Open generated solution
-Modify paths in TheUnpluggingRunner/main.cpp. 
+
+Ensure paths in TheUnpluggingRunner/main.cpp such as level_path, game_path and editor_path are correct for your use case. They can either be absolute or relative to the current directory you launch the exe with. Level path determines where the engine will look for assets and the scene file. Game path and editor path need to point to the game dll and editor dll respectively. 
 
 4. Compile all + Run
+
 Hopefully everything is working as expected and a window with the editor should popup :)
 
+# Features
+1. PBR Image Based Shading
+2. Archetype ECS
+3. Built-in editor
+4. Live code reloading + Adding/removing fields on entities
+5. Basic physics support
+6. Terrain rendering 
+7. Kriging based heightmap generation and splat rendering
+8. Grass and vegetation rendering and planting system
+9. Point lights, 
+10. Shader graph
+11. Lister panel and nested entities
+12. Asset tab, filedialog import + drag and drop
+13. BVH-Culling and optimizations for static meshes
+14. AABB based in-editor picking
+15. Redo-undo system
+16. Profiler
+17. Fiber-based job system
+18. Built in, performant collections
+19. Compile time reflection/serialization based on header parser
+20. Simple frame-graph system which eliminates renderpass/framebuffer boilerplate
+
+# Goal
+This project serves as a test-bed for new ideas and developing my skills in computer graphics and low-level programming. The code is written in a variety of styles, ranging from OOP, with templated meta-programming thrown in, to low-level procedural routines manipulating memory at the byte level. As such the project is instrumental in determing the merit of various coding styles and best-practices, to filter out those which suit me the best. In terms of feature-set the engine is relatively far along and can be used for simple games/simulations. I plan on improving the lighting by adding spot-light support, global illumination as well as porting over the cascaded shadow map and volumetric lighting present in previous versions to vulkan. Moreover prefab support is currently missing and the physics system needs a little bit more love. Support for skeletal animation will be implemented soon. 
+
 # Skeleton
+
+Take a look at NextEngine/src/engine.cpp, on how the various engine systems are initialized. You may want to create your own initialization function which takes in a configuration file instead, or modify Modules::Modules directly as properties such as window size and vulkan device features are currently hardcoded.
+
 To allow for live-code reloads your game must be built as a DLL with the following function definitions exported. These serve as the basic interface between the engine and the game, Modules& contains pointers to all instantiated systems. There are few restrictions on the application with almost all of the engine's internal apis being public and calleable from the DLL. In fact the editor is an application itself and not part of the core engine. Recompiling your code should automatically trigger the DLL to be reloaded and the code to updated. Any changes to components will also be reflected in the editor. Word of caution with live-coding, changing structures other than Components will likely result in a crash. 
 
 ```c++
@@ -77,35 +111,13 @@ APPLICATION_API void render(Demo& game, Modules& engine, GPUSubmission& gpu_subm
 # Examples
 Check out either the TheUnpluggingGame or ChemistryProject folder.
 
-# Features
-1. PBR Image Based Shading
-2. Archetype ECS
-3. Built-in editor
-4. Live code reloading + Adding/removing fields on entities
-5. Basic physics support
-6. Terrain rendering 
-7. Kriging based heightmap generation and splat rendering
-8. Grass and vegetation rendering and planting system
-9. Point lights, 
-10. Shader graph
-11. Lister panel and nested entities
-12. Asset tab, filedialog import + drag and drop
-13. BVH-Culling and optimizations for static meshes
-14. AABB based in-editor picking
-15. Redo-undo system
-16. Profiler
-17. Fiber-based job system
-18. Built in, performant collections
-19. Compile time reflection/serialization based on header parser
-20. Simple frame-graph system which eliminates renderpass/framebuffer boilerplate
-
-# Goal
-This project serves as a test-bed for new ideas and developing my skills in computer graphics and low-level programming. The code is written in a variety of styles, ranging from OOP, with templated meta-programming thrown in, to low-level procedural routines manipulating memory at the byte level. As such the project is instrumental in determing the merit of various coding styles and best-practices, to filter out those which suit me the best. In terms of feature-set the engine is relatively far along and can be used for simple games/simulations. I plan on improving the lighting by adding spot-light support, global illumination as well as porting over the cascaded shadow map and volumetric lighting present in previous versions to vulkan. Moreover prefab support is currently missing and the physics system needs a little bit more love. Support for skeletal animation will be implemented soon. 
-
 # Screenshots
 
 ![Shader Graph support](https://media.discordapp.net/attachments/490868844760530944/768536285861380168/shadergraph_demo.JPG?width=2688&height=776)
 Shader Graph
+
+![Dissolve Effect](https://media.discordapp.net/attachments/490868844760530944/615550417794891803/Screenshot_190.png?width=2400&height=1350)
+Dissolve Effect
 
 ![MacOSX Chemistry Simulation](https://cdn.discordapp.com/attachments/490868844760530944/774741962640064532/Screenshot_2020-11-07_at_22.07.05.png)
 MacOSX Chemistry Simulation
@@ -132,5 +144,8 @@ Terrain texture splatting + Editor Icons
 
 ![Volumetric Lighting + Shadows + Fog (currently not supported)](https://media.discordapp.net/attachments/490868844760530944/683654920368554017/TreesAnime.PNG)
 Volumetric Lighting + Shadows + Fog (currently not supported)
+
+![Scene created using mega-scanned assets](https://cdn.discordapp.com/attachments/582610879808274442/648268562091343882/Screenshot_213.png)
+Scene created using mega-scanned assets
 
 
