@@ -5,7 +5,7 @@
 struct Fiber;
 struct FLS;
 
-Fiber* make_fiber(u64 stack_size, void(*func)());
+Fiber* make_fiber(u64 stack_size, void(*func)(void*));
 Fiber* get_current_fiber();
 Fiber* convert_thread_to_fiber();
 void convert_fiber_to_thread();

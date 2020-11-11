@@ -89,7 +89,7 @@ void    ImGui_ImplVulkan_Shutdown()
 void    ImGui_ImplVulkan_NewFrame()
 {
 	if (backend.font_texture.id == INVALID_HANDLE)
-	    ImGui_ImplVulkan_CreateDeviceObjects();
+		ImGui_ImplVulkan_CreateDeviceObjects();
 }
 
 #include "core/profiler.h"
@@ -101,7 +101,7 @@ void ImGui_ImplVulkan_RenderDrawData(CommandBuffer& draw_cmd_buffer, ImDrawData*
 	draw_cmd_buffer.bound_instance_layout = (InstanceLayout)-1;
 	draw_cmd_buffer.bound_material = { INVALID_HANDLE };
 	draw_cmd_buffer.bound_pipeline = { INVALID_HANDLE };
-	
+
 	VkCommandBuffer cmd_buffer = draw_cmd_buffer;
 
 	assert(sizeof(ImDrawIdx) == 2 || sizeof(ImDrawIdx) == 4);
@@ -115,7 +115,7 @@ void ImGui_ImplVulkan_RenderDrawData(CommandBuffer& draw_cmd_buffer, ImDrawData*
 	bool clip_origin_lower_left = true;
 
 	// Setup render state: alpha-blending enabled, no face culling, no depth testing, scissor enabled, polygon fill	 
-	
+
 	vkCmdBindPipeline(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, backend.pipeline);
 
 	VkViewport viewport = {};
@@ -126,20 +126,20 @@ void ImGui_ImplVulkan_RenderDrawData(CommandBuffer& draw_cmd_buffer, ImDrawData*
 
 	vkCmdSetViewport(cmd_buffer, 0, 1, &viewport);
 
-	 // Setup viewport, orthographic projection matrix
-	 // Our visible imgui space lies from draw_data->DisplayPos (top left) to draw_data->DisplayPos+data_data->DisplaySize (bottom right). DisplayMin is (0,0) for single viewport apps.
+	// Setup viewport, orthographic projection matrix
+	// Our visible imgui space lies from draw_data->DisplayPos (top left) to draw_data->DisplayPos+data_data->DisplaySize (bottom right). DisplayMin is (0,0) for single viewport apps.
 
 	float L = draw_data->DisplayPos.x;
 	float R = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
 	float T = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
 	float B = draw_data->DisplayPos.y;
-	
+
 	float ortho_projection[4][4] =
 	{
-		{ 2.0f/(R-L),   0.0f,         0.0f,   0.0f },
-		{ 0.0f,         2.0f/(T-B),   0.0f,   0.0f },
+		{ 2.0f / (R - L),   0.0f,         0.0f,   0.0f },
+		{ 0.0f,         2.0f / (T - B),   0.0f,   0.0f },
 		{ 0.0f,         0.0f,        -1.0f,   0.0f },
-		{ (R+L)/(L-R),  (T+B)/(B-T),  0.0f,   1.0f },
+		{ (R + L) / (L - R),  (T + B) / (B - T),  0.0f,   1.0f },
 	};
 
 
@@ -162,7 +162,7 @@ void ImGui_ImplVulkan_RenderDrawData(CommandBuffer& draw_cmd_buffer, ImDrawData*
 	ImVec2 clip_scale = draw_data->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
 
 	hash_map<uint, CombinedSampler, MAX_IMGUI_TEXTURES> combined_samplers = {};
-	
+
 	for (uint i = 0; i < MAX_IMGUI_TEXTURES; i++) {
 		combined_samplers.values[i].sampler = backend.sampler;
 		combined_samplers.values[i].texture = backend.dummy_tex;
@@ -227,9 +227,9 @@ void ImGui_ImplVulkan_RenderDrawData(CommandBuffer& draw_cmd_buffer, ImDrawData*
 				{
 					VkRect2D scissor;
 					scissor.offset.x = clip_rect.x;
-					scissor.offset.y = clip_rect.y; 
+					scissor.offset.y = clip_rect.y;
 					scissor.extent.width = clip_rect.z - clip_rect.x;
-					scissor.extent.height = clip_rect.w - clip_rect.y; 
+					scissor.extent.height = clip_rect.w - clip_rect.y;
 
 					int tex_id = combined_samplers.keys.index((u64)pcmd->TextureId);
 
@@ -254,24 +254,24 @@ void ImGui_ImplVulkan_RenderDrawData(CommandBuffer& draw_cmd_buffer, ImDrawData*
 bool ImGui_ImplVulkan_CreateFontsTexture()
 {
 	//Build texture atlas
-	
+
 	ImGuiIO& io = ImGui::GetIO();
-	
+
 	// Load as RGBA 32-bits (75% of the memory is wasted, but default font is so small) because it is more likely to be compatible with user's existing shaders. If your ImTextureId represent a higher-level concept than just a GL texture id, consider calling GetTexDataAsAlpha8() instead to save on GPU memory.
 	Image image = {};
 	image.num_channels = 4;
 	image.format = TextureFormat::UNORM;
-    
-    int width, height;
-    unsigned int flags = ImGuiFreeType::NoHinting;
+
+	int width, height;
+	unsigned int flags = ImGuiFreeType::NoHinting;
 #ifdef IMGUI_FREETYPE
-    ImGuiFreeType::BuildFontAtlas(io.Fonts, flags);
+	ImGuiFreeType::BuildFontAtlas(io.Fonts, flags);
 #endif
 	io.Fonts->GetTexDataAsRGBA32((unsigned char**)&image.data, &width, &height);
 
-    image.width = width;
-    image.height = height;
-    
+	image.width = width;
+	image.height = height;
+
 	backend.font_texture = upload_Texture(image);
 	io.Fonts->TexID = (ImTextureID)backend.font_texture.id;
 
@@ -291,20 +291,20 @@ void ImGui_ImplVulkan_DestroyFontsTexture() {
 bool ImGui_ImplVulkan_CreateDeviceObjects() {
 	VkDevice device = rhi.device;
 	VkPhysicalDevice physical_device = rhi.device;
-	
+
 	//LOAD SHADERS
 	string_buffer vertex_shader, fragment_shader;
-	
+
 	if (!io_readf("shaders/cache/imgui_vert.spirv", &vertex_shader)) abort();
 	if (!io_readf("shaders/cache/imgui_frag.spirv", &fragment_shader)) abort();
 
 	backend.vert_shader = make_ShaderModule(vertex_shader);
 	backend.frag_shader = make_ShaderModule(fragment_shader);
 
-    SamplerDesc sampler = {};
-    sampler.min_filter = Filter::Linear;
-    sampler.mag_filter = Filter::Linear;
-    
+	SamplerDesc sampler = {};
+	sampler.min_filter = Filter::Linear;
+	sampler.mag_filter = Filter::Linear;
+
 	backend.sampler = query_Sampler(sampler);
 	backend.dummy_tex = default_textures.white; //todo better ways of doing this
 
@@ -327,14 +327,14 @@ bool ImGui_ImplVulkan_CreateDeviceObjects() {
 
 		backend.index_arena[i].base_offset = index_offset;
 		backend.index_arena[i].capacity = MAX_IMGUI_INDEX_BUFFER_SIZE;
-	
+
 		vertex_offset += MAX_IMGUI_VERTEX_BUFFER_SIZE;
 		index_offset += MAX_IMGUI_INDEX_BUFFER_SIZE;
 	}
 
 	backend.vertex_buffer = make_HostVisibleBuffer(device, physical_device, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertex_offset);
 	backend.index_buffer = make_HostVisibleBuffer(device, physical_device, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, index_offset);
-	
+
 	map_buffer_memory(device, backend.vertex_buffer);
 	map_buffer_memory(device, backend.index_buffer);
 
@@ -383,7 +383,7 @@ bool ImGui_ImplVulkan_CreateDeviceObjects() {
 	push_constant_range.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
 	pipeline_desc.push_constant_range = push_constant_range;
-		
+
 	pipeline_desc.descriptor_layouts = descriptor_layout;
 
 	make_GraphicsPipeline(device, pipeline_desc, &backend.pipeline_layout, &backend.pipeline);
@@ -434,7 +434,7 @@ static void ImGui_ImplVulkan_RenderWindow(ImGuiViewport* viewport, void*)
 
 static void ImGui_ImplVulkan_InitPlatformInterface()
 {
-    ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
+	ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
 	platform_io.Renderer_RenderWindow = ImGui_ImplVulkan_RenderWindow;
 }
 */

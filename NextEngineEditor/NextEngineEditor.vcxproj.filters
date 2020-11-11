@@ -90,10 +90,25 @@
     <ClInclude Include="include\terrain.h">
       <Filter>include</Filter>
     </ClInclude>
+    <ClInclude Include="include\visualize_physics.h">
+      <Filter>include</Filter>
+    </ClInclude>
     <ClInclude Include="include\visualize_profiler.h">
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="vendor\ImGuizmo\ImCurveEdit.h">
+      <Filter>vendor\ImGuizmo</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\ImGuizmo\ImGradient.h">
+      <Filter>vendor\ImGuizmo</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\ImGuizmo\ImGuizmo.h">
+      <Filter>vendor\ImGuizmo</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\ImGuizmo\ImSequencer.h">
+      <Filter>vendor\ImGuizmo</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\assets\actions.cpp">
@@ -156,10 +171,19 @@
     <ClCompile Include="src\terrain.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\visualize_physics.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
     <ClCompile Include="src\visualize_profiler.cpp">
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="stdafx.cpp" />
+    <ClCompile Include="vendor\ImGuizmo\ImCurveEdit.cpp">
+      <Filter>vendor\ImGuizmo</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\ImGuizmo\ImGradient.cpp">
+      <Filter>vendor\ImGuizmo</Filter>
+    </ClCompile>
     <ClCompile Include="vendor\ImGuizmo\ImGuizmo.cpp">
       <Filter>vendor\ImGuizmo</Filter>
     </ClCompile>
