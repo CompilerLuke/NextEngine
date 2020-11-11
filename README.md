@@ -145,7 +145,7 @@ Terrain texture splatting + Editor Icons
 ![Volumetric Lighting + Shadows + Fog (currently not supported)](https://media.discordapp.net/attachments/490868844760530944/683654920368554017/TreesAnime.PNG)
 Volumetric Lighting + Shadows + Fog (currently not supported)
 
-![Scene created using mega-scanned assets](https://cdn.discordapp.com/attachments/582610879808274442/648268562091343882/Screenshot_213.png)
+![Scene created using mega-scanned assets](https://media.discordapp.net/attachments/582610879808274442/648229569949728788/Screenshot_206.png?width=2400&height=1350)
 Scene created using mega-scanned assets
 
 
