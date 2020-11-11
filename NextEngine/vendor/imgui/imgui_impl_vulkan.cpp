@@ -288,7 +288,7 @@ void ImGui_ImplVulkan_DestroyFontsTexture() {
 	}
 }
 
-bool    ImGui_ImplVulkan_CreateDeviceObjects() {
+bool ImGui_ImplVulkan_CreateDeviceObjects() {
 	VkDevice device = rhi.device;
 	VkPhysicalDevice physical_device = rhi.device;
 	
