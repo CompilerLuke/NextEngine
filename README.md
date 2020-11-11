@@ -4,7 +4,7 @@
 NextEngine is designed with rapid iteration and high-end desktop graphics in mind. The engine has been fundamentally redesigned in a data-oriented fashion, with efforts to parallize the engine under-way. The engine, ported from OpenGL is vulkan-first and is cross-platform, with the capability of running on Windows, MacOSX and theoretically Linux, though this functionality has not been tested. 
 
 # Friendly warning
-This being a hobby project, implemented solely by one person, the mentality has been to move fast and break things. Though certain features of the engine are relatively mature, production level stability should not be expected or relied upon! Moreover development of new features will heavily depend on my spare, as such there may be periods of massive changes and others of relative stagnation.
+This being a hobby project, implemented solely by one person, the mentality has been to move fast and break things. Though certain features of the engine are relatively mature, production level stability should not be expected or relied upon! Moreover development of new features will heavily depend on my spare time, as such there may be periods of massive improvements+changes and others of relative stagnation.
 
 # Getting Started Guide
 
