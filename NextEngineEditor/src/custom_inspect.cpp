@@ -3,13 +3,13 @@
 #include <imgui/imgui.h>
 #include "core/io/logger.h"
 #include <glm/gtc/type_ptr.hpp>
-#include "graphics/renderer/ibl.h"
 #include "graphics/renderer/renderer.h"
 #include "graphics/assets/assets.h"
 #include "graphics/assets/model.h"
 #include "grass.h"
 #include "editor.h"
 #include "components/lights.h"
+
 
 bool Quat_inspect(void* data, string_view prefix, Editor& editor) {
 	ImGui::PushID((long long)data);
@@ -68,18 +68,15 @@ bool render_asset_preview(AssetTab& asset_tab, AssetNode::Type type, uint* asset
 	AssetNode* node = NULL;
 	if (*asset_handle != INVALID_HANDLE && *asset_handle < MAX_ASSETS) node = asset_tab.info.asset_type_handle_to_node[type][*asset_handle]; //todo probably want reference to editor
 
-	if (node == NULL) {
-		ImGui::Text("Not set");
-		ImGui::NewLine();
-	}
-	else {
-		preview_image(asset_tab.preview_resources, node->model.rot_preview, ImVec2(128, 128));
-	}
-
-	accept_drop(drop_types[type], asset_handle, sizeof(uint));
-
-	ImGui::SameLine();
-	if (node) ImGui::Text(tformat(prefix, " : ", node->asset.name).c_str());
+    if (node) {
+        preview_image(asset_tab.preview_resources, node->model.rot_preview, ImVec2(128, 128));
+    } else {
+        ImGui::Image(default_textures.white, ImVec2(128, 128));
+    }
+    
+    accept_drop(drop_types[type], asset_handle, sizeof(uint));
+    ImGui::SameLine();
+    ImGui::Text("%s : %s", prefix.c_str(), node ? node->asset.name.data : "Not Set");
 
 	return true;
 }
@@ -140,7 +137,8 @@ bool Entity_inspect(void* data, string_view prefix, Editor& editor) {
 bool accept_drop(const char* drop_type, void* ptr, unsigned int size) {
 	if (ImGui::BeginDragDropTarget()) {
 		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(drop_type)) {
-			memcpy(ptr, payload->Data, size);
+            assert(ptr);
+            memcpy(ptr, payload->Data, size);
 			return true;
 		}
 		ImGui::EndDragDropTarget();
@@ -314,6 +312,7 @@ void register_on_inspect_callbacks() {
 	register_on_inspect_gui("Materials", Materials_inspect);
 	register_on_inspect_gui("shader_handle", Shader_inspect);
 	register_on_inspect_gui("model_handle", Model_inspect);
+    register_on_inspect_gui("material_handle", Material_inspect);
 	register_on_inspect_gui("Entity", Entity_inspect);
 	register_on_inspect_gui("ID", ID_inspect);
 	register_on_inspect_gui("Grass", Grass_inspect);

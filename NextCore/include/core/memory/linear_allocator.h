@@ -1,10 +1,12 @@
 #pragma once
 
-#include "core\memory\allocator.h"
+
+#include "core/memory/allocator.h"
+#include <new>
 
 struct LinearAllocator : Allocator {
-	size_t occupied;
-	size_t max_size;
+	u64 occupied;
+	u64 max_size;
 
 	char* memory;
 	Allocator* parent;

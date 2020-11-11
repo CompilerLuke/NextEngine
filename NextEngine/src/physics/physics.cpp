@@ -376,7 +376,7 @@ void PhysicsSystem::update(World& world, UpdateCtx& params) {
 	}
 
 	auto terrains = world.first<Terrain, Transform>();
-	if (terrains.some) return;
+	if (!terrains) return;
 
 	auto [terrain_e, terrain, terrain_trans] = *terrains;
 

@@ -10,7 +10,7 @@
 #include "core/container/tvector.h"
 #include <glm/gtc/type_ptr.hpp>
 #include <shaderc/shaderc.h>
-#include <vendor/spirv-reflect/spirv_reflect.h>
+#include <spirv-reflect/spirv_reflect.h>
 
 VkShaderModule make_ShaderModule(string_view code) {
 	VkDevice device = rhi.device;

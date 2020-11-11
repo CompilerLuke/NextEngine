@@ -1,4 +1,4 @@
-﻿#include "editor.h"
+#include "editor.h"
 #include "graphics/rhi/window.h"
 #include "engine/input.h"
 #include "graphics/renderer/renderer.h"
@@ -18,13 +18,14 @@
 #include "components/transform.h"
 #include "components/camera.h"
 #include "components/flyover.h"
+#include "components/terrain.h"
 #include "custom_inspect.h"
 #include "picking.h"
 #include "engine/vfs.h"
 #include "graphics/assets/material.h"
 #include "core/serializer.h"
 #include "terrain.h"
-#include <vendor/ImGuizmo/ImGuizmo.h>
+#include <ImGuizmo/ImGuizmo.h>
 #include "core/profiler.h"
 #include "graphics/renderer/renderer.h"
 #include "engine/engine.h"
@@ -33,12 +34,8 @@
 
 
 #include "generated.h"
-#include <core/types.h>
+#include "core/types.h"
 
-
-
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
 
 
 //theme by Derydoca 
@@ -189,19 +186,25 @@ void override_mouse_button_callback(GLFWwindow* window_ptr, int button, int acti
 }
 
 void Editor::select(int id) {
-	this->selected_id = id;
 	if (id != -1) {
+        ID uint_id = selected_id != -1 ? selected_id : 0;
+        entity_selection_action(actions, {&uint_id, selected_id != -1});
+        this->selected_id = id;
 		this->selected.broadcast(id);
-	}
+    } else {
+        entity_selection_action(actions, {nullptr, 0});
+        this->selected_id = -1;
+    }
 }
 
+/*
 wchar_t* to_wide_char(const char* orig) {
 	unsigned int newsize = strlen(orig) + 1;
 	wchar_t * wcstring = new wchar_t[newsize];
 	size_t convertedChars;
 	mbstowcs_s(&convertedChars, wcstring, newsize, orig, _TRUNCATE);
 	return wcstring;
-}
+}*/
 
 /*
 void hotreload(Editor& editor) {
@@ -349,17 +352,20 @@ bool load_scene(Editor& editor, const char** err) {
 	//if (!load_scene_partition(editor.renderer.scene_partition, buffer, err)) return false;
 	if (!load_picking_scene_partition(editor.picking.partition, buffer, err)) return false;
 
-	auto [_,terrain] = *world.first<Terrain>();
+    if (auto has_terrain = world.first<Terrain>(); has_terrain) {
+        auto [_,terrain] = *has_terrain;
 
-	//todo remove adhoc initialization
-	default_terrain(terrain); //generate terrain from height points
-	update_terrain_material(renderer.terrain_render_resources, terrain);
-	regenerate_terrain(world, renderer.terrain_render_resources, {EDITOR_ONLY});
+        //todo remove adhoc initialization
+        default_terrain(terrain); //generate terrain from height points
+        update_terrain_material(renderer.terrain_render_resources, terrain);
+        regenerate_terrain(world, renderer.terrain_render_resources, {EDITOR_ONLY});
+    }
 	
 	update_acceleration_structure(renderer.scene_partition, renderer.mesh_buckets, world);
 
-
+    printf("Loaded sucessfully!");
 	//submit_framegraph();
+    return true;
 }
 
 void on_load(Editor& editor) {
@@ -462,15 +468,13 @@ void on_save(Editor& editor) {
 }
 
 void register_callbacks(Editor& editor, Modules& engine) {
-	editor.selected.listeners.clear();
-	
 	Window& window = *engine.window;
 	World& world = *engine.world;
 
 
 	register_on_inspect_callbacks();
 
-	//editor.asset_tab.register_callbacks(window, editor);
+	editor.asset_tab.register_callbacks(window, editor);
 
 	editor.selected.listen([&engine, &world](ID id) {
 		auto rb = world.m_by_id<RigidBody>(id);
@@ -478,6 +482,7 @@ void register_callbacks(Editor& editor, Modules& engine) {
 			rb->bt_rigid_body = NULL; //todo fix leak
 		}
 	});
+    
 
 	engine.window->override_key_callback(override_key_callback);
 	engine.window->override_char_callback(ImGui_ImplGlfw_CharCallback);
@@ -493,7 +498,7 @@ Editor::Editor(Modules& modules, const char* game_code) :
 	game(modules, game_code),
 	asset_tab(renderer, asset_info, window),
 	copy_of_world(*PERMANENT_ALLOC(World, WORLD_SIZE)),
-	actions{world}
+	actions{*this}
 {
 	//world.add(new DebugShaderReloadSystem());
 	//world.add(new TerrainSystem(world, this));
@@ -541,6 +546,8 @@ Editor::Editor(Modules& modules, const char* game_code) :
 	ImGui_ImplVulkan_CreateDeviceObjects();
 
 	make_special_gizmo_resources(gizmo_resources);
+    make_physics_resources(physics_resources);
+    make_outline_render_state(outline_selected);
 
 	Profiler::begin_frame();
 	on_load(*this);
@@ -555,30 +562,41 @@ void Editor::init_imgui() {
 
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	io.ConfigDockingWithShift = false;
+    
+    //TODO Save in config
+    scaling = 0.75;
+    
 
 	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
 
-	ImFontConfig icons_config; icons_config.MergeMode = false; icons_config.PixelSnapH = true; icons_config.FontDataOwnedByAtlas = true; icons_config.FontDataSize = 32.0f;
+	ImFontConfig icons_config;
+    icons_config.MergeMode = false;
+    icons_config.PixelSnapH = false;
+    icons_config.FontDataOwnedByAtlas = true;
+    //icons_config.SizePixels = 64;
+    //icons_config.OversampleH = 2;
+    //icons_config.OversampleV = 2;
 
-	auto font_path = tasset_path("fonts/segoeui.ttf");
-	ImFont* font = io.Fonts->AddFontFromFileTTF(font_path.c_str(), 32.0f, &icons_config, io.Fonts->GetGlyphRangesDefault());
+	auto font_path = tasset_path("editor/fonts/segoeui.ttf");
+	ImFont* font = io.Fonts->AddFontFromFileTTF(font_path.c_str(), 32.0f * scaling, &icons_config, io.Fonts->GetGlyphRangesDefault());
 
 	io.FontAllowUserScaling = true;
 
-	asset_tab.explorer.filename_font = io.Fonts->AddFontFromFileTTF(font_path.c_str(), 26.0f, &icons_config, io.Fonts->GetGlyphRangesDefault());
+	asset_tab.explorer.filename_font = io.Fonts->AddFontFromFileTTF(font_path.c_str(), 26.0f * scaling, &icons_config, io.Fonts->GetGlyphRangesDefault());
 	asset_tab.explorer.default_font = font;
 
-	for (int i = 0; i < 10; i++) {
-		ImFontConfig im_font_config; im_font_config.OversampleH = 5; im_font_config.OversampleV = 5;
+	for (int i = 0; i < 8; i++) {
+		ImFontConfig im_font_config;
+        
+        //im_font_config.OversampleH = 5; im_font_config.OversampleV = 5;
 
-		shader_editor.font[i] = io.Fonts->AddFontFromFileTTF(font_path.c_str(), (i + 1) * 10.0f, &icons_config, io.Fonts->GetGlyphRangesDefault());
+		shader_editor.font[i] = io.Fonts->AddFontFromFileTTF(font_path.c_str(), (i + 1) * 40.0f * scaling, &icons_config, io.Fonts->GetGlyphRangesDefault());
 	}
 
 	set_darcula_theme();
 
 	ImGui_ImplGlfw_InitForOpenGL(window.window_ptr, false);
 	ImGui_ImplVulkan_Init();
-
 }
 
 texture_handle Editor::get_icon(string_view name) {
@@ -600,8 +618,9 @@ void ImGui::InputText(const char* str, sstring& buffer) {
 }
 
 void ImGui::InputText(const char* str, string_buffer& buffer) {
-	char buf[50];
-	std::memcpy(buf, buffer.data, buffer.length + 1);
+    char buf[50];
+	std::memcpy(buf, buffer.data, buffer.length);
+    buf[buffer.length] = '\0';
 	ImGui::InputText(str, buf, 50);
 	buffer = buf;
 }
@@ -661,6 +680,17 @@ void default_scene(Editor& editor) {
 		auto[e, trans, flyover, camera] = world.make<Transform, Flyover, Camera>(EDITOR_ONLY);
 		register_entity(editor.lister, "Camera", e.id);
 	}
+    
+    {
+        register_entity(editor.lister, "Skybox", 0);
+        
+        /*AssetNode asset(AssetNode::Material);
+        asset.material.desc = desc;
+        asset.material.handle = handle;
+        asset.material.name = "Skybox material";
+
+        add_asset_to_current_folder(self, std::move(asset));*/
+    }
 
 	/*
 	{
@@ -693,6 +723,19 @@ void default_scene(Editor& editor) {
 	}*/
 	
 }
+
+void set_play_mode(Editor& editor, bool playing) {
+    editor.playing_game = playing;
+
+    if (playing) { //this will not fully serialize this
+        editor.copy_of_world = editor.world;
+    }
+    else {
+        editor.world = editor.copy_of_world;
+        editor.editor_viewport.input.capture_mouse(false);
+    }
+}
+
 void render_view(Editor& editor, World& world, RenderPass& ctx) {
 	if (ctx.type == RenderPass::Scene && editor.selected_id != -1) {
 		ID selected = editor.selected_id;
@@ -717,8 +760,22 @@ void render_Editor(Editor& editor, RenderPass& ctx, RenderPass& scene);
 void render_frame(Editor& editor, World& world) {
 	Renderer& renderer = editor.renderer;
 	FrameData frame_data;
+    
+    const float title_bar_margin = 50;
+    bool is_fullscreen = editor.playing_game && editor.game_fullscreen;
 
-	Viewport viewport = editor.editor_viewport.viewport; 
+    Viewport viewport;
+    if (is_fullscreen) {
+        int width, height;
+        editor.window.get_framebuffer_size(&width, &height);
+        
+        viewport = {};
+        viewport.width = width;
+        viewport.height = height - title_bar_margin;
+    } else {
+        viewport = editor.editor_viewport.viewport;
+    }
+    
 	EntityQuery mask = editor.playing_game ? EntityQuery().with_none(EDITOR_ONLY) : EntityQuery();
 
 	GizmoRenderData gizmo_render_data = {};
@@ -728,6 +785,8 @@ void render_frame(Editor& editor, World& world) {
 		extract_render_data(renderer, viewport, frame_data, world, mask);
 		extract_render_data_special_gizmo(gizmo_render_data, world, mask);
 	}
+    
+    if (editor.playing_game) editor.game.extract_render_data(frame_data);
 
 	//SYNC WITH FRAMES IN FLIGHT
 	GPUSubmission gpu_submission = build_command_buffers(renderer, frame_data);
@@ -740,15 +799,17 @@ void render_frame(Editor& editor, World& world) {
 			receive_terrain = 1;
 		}
 		else if (receive_terrain == 1 && frame_index == 0) {
-			auto[_, terrain] = *world.first<Terrain>();
-			receive_generated_heightmap(renderer.terrain_render_resources, terrain);
-			regenerate_terrain(world, renderer.terrain_render_resources, EntityQuery{ EDITOR_ONLY }); //this should not be necessary 
+            if (auto has_terrain = world.first<Terrain>(); has_terrain) {
+                auto[_, terrain] = *has_terrain;
+                receive_generated_heightmap(renderer.terrain_render_resources, terrain);
+                regenerate_terrain(world, renderer.terrain_render_resources, EntityQuery{ EDITOR_ONLY }); //this should not be necessary
+            }
 			receive_terrain = 2;
 		}
 	}
 
 	RenderPass& scene_pass = gpu_submission.render_passes[RenderPass::Scene];
-
+    
 	if (!editor.playing_game) {
 		//material_handle mat_handle = editor.gizmo_resources.camera_material; //FRANKLY THIS SHOULD NOT BE NECESSARY
 		//bind_descriptor(scene_pass.cmd_buffer, 0, editor.renderer.scene_pass_descriptor[get_frame_index()]);
@@ -757,11 +818,45 @@ void render_frame(Editor& editor, World& world) {
 		//bind_descriptor(scene_pass.cmd_buffer, 1, editor.renderer.lighting_system.pbr_descriptor);
 
 		render_special_gizmos(editor.gizmo_resources, gizmo_render_data, scene_pass);
-		render_overlay(editor, scene_pass);
-	}
+        if (editor.selected_id != -1) {
+            ID selected_id = editor.selected_id;
+            render_object_selected_outline(editor.outline_selected, world, selected_id, scene_pass);
+        }
+        if (editor.visibility & SHOW_PHYSICS) render_colliders(editor.physics_resources, scene_pass.cmd_buffer, world, mask);
+        render_overlay(editor, scene_pass);
+    } else {
+        editor.game.render(gpu_submission);
+        
+        if (editor.visibility & SHOW_PHYSICS) render_colliders(editor.physics_resources, scene_pass.cmd_buffer, world, mask);
+    }
+    
+    
 
 	render_skybox(frame_data.skybox_data, scene_pass);
-	render_Editor(editor, gpu_submission.render_passes[RenderPass::Screen], scene_pass);
+	
+    if (editor.playing_game && editor.game_fullscreen) {
+        RenderPass screen = gpu_submission.render_passes[RenderPass::Screen];
+        
+        editor.begin_imgui(editor.editor_viewport.input);
+        
+        ImGui::SetNextWindowCollapsed(false);
+        ImGui::SetNextWindowPos(ImVec2(0,0));
+        ImGui::SetNextWindowSize(ImVec2(viewport.width, viewport.height + title_bar_margin));
+        if (ImGui::Begin("Playing Fullscreen")) {
+            ImGui::Image(editor.renderer.scene_map, ImVec2(viewport.width, viewport.height));
+        } else {
+            set_play_mode(editor, false);
+        }
+            
+        ImGui::End();
+
+        ImGui::PopFont();
+        ImGui::EndFrame();
+        
+        editor.end_imgui(screen.cmd_buffer);
+    } else {
+        render_Editor(editor, gpu_submission.render_passes[RenderPass::Screen], scene_pass);
+    }
 
 
 	submit_frame(renderer, gpu_submission);
@@ -788,17 +883,6 @@ void render_frame(Editor& editor, World& world) {
 	*/
 }
 
-void on_set_play_mode(Editor& editor, bool playing) {
-	editor.playing_game = playing;
-
-	if (playing) { //this will not fully serialize this
-		editor.copy_of_world = editor.world;
-	}
-	else {
-		editor.world = editor.copy_of_world;
-		editor.editor_viewport.input.capture_mouse(false);
-	}
-}
 
 glm::vec3 Editor::place_at_cursor() {
 	RayHit hit;
@@ -855,7 +939,7 @@ void Editor::end_imgui(CommandBuffer& cmd_buffer) {
 
 void render_play(Editor& editor) {
 	if (ImGui::ImageButton(editor.get_icon("play"), ImVec2(30, 30))) {
-		on_set_play_mode(editor, true);
+		set_play_mode(editor, true);
 	}
 
 	ImGui::SameLine();
@@ -966,6 +1050,11 @@ void render_Editor(Editor& editor, RenderPass& ctx, RenderPass& scene) {
 	}
 
 	if (ImGui::BeginMenu("Settings")) {
+        if (ImGui::BeginMenu("Visibility")) {
+            if (ImGui::MenuItem("Toggle physics", "")) editor.visibility ^= SHOW_PHYSICS;
+            if (ImGui::MenuItem("Toggle camera", "")) editor.visibility ^= SHOW_CAMERA;
+            ImGui::EndMenu();
+        }
 		ImGui::EndMenu();
 	}
 
@@ -1043,16 +1132,17 @@ void respond_to_shortcut(Editor& editor) {
 	}
 
 	if (input.key_pressed(Key::P)) {
-		on_set_play_mode(editor, !editor.playing_game);
+		set_play_mode(editor, !editor.playing_game);
 	}
 
 	if (editor.game_fullscreen && editor.playing_game) return;
 
 	if (input.key_pressed(Key::X)) delete_object(editor);
 	if (input.mouse_button_pressed(MouseButton::Left) && !ImGuizmo::IsOver()) mouse_click_select(editor);
-	if (input.key_mod_pressed(Key::Y)) undo_action(editor.actions);
-	if (input.key_mod_pressed(Key::R)) redo_action(editor.actions);
+	if (input.key_mod_pressed(Key::Z)) undo_action(editor.actions);
+	if (input.key_mod_pressed(Key::Y)) redo_action(editor.actions);
 	if (input.key_mod_pressed(Key::S)) on_save(editor);
+    if (input.key_mod_pressed(Key::D) && editor.selected_id) clone_entity(editor.lister, world, editor.selected_id);
 
 	UpdateCtx ctx(editor.time, input);
 	editor.gizmo.update(world, editor, ctx);
@@ -1070,21 +1160,31 @@ void respond_to_framediffs(Editor& editor) {
 		switch (header.type) {
 		case EditorActionHeader::Diff: {
 			Diff* diff = (Diff*)header.ptr;
+            ElementPtr element = diff->element[0];
+            refl::Type* type = element.refl_type;
 
-			if (diff->type->name == "Transform") {
+            Archetype arch = world.arch_of_id(element.id);
+            
+			if (has_component(arch, type_id<Transform>()) || has_component(arch, type_id<LocalTransform>())) {
 				rebuild_acceleration = true;
 			}
 
-			if (diff->type->name == "Materials") {
+			if (type->name == "Materials") {
 				rebuild_acceleration = true; //todo requires changing mesh bucket of element
 			}
 
-			if (diff->type->name == "MaterialDesc") {
-				assert(diff->id != INVALID_HANDLE);
-				editor.renderer.update_materials.append({ diff->id, *(MaterialDesc*)diff->copy_ptr.data(), *(MaterialDesc*)diff->real_ptr });
+			if (type->name == "MaterialDesc") {
+				assert(element.id != INVALID_HANDLE);
+				
+                MaterialDesc* copy_asset = (MaterialDesc*)diff->copy_ptr.data();
+                MaterialDesc* real_asset = (MaterialDesc*)get_ptr(diff->element);
+                ID id = diff->element[1].id;
+                assert(diff->element[1].component_id == AssetNode::Material);
+                
+                editor.renderer.update_materials.append({ id, *copy_asset, *real_asset});
 			}
 
-			Archetype arch = world.arch_of_id(diff->id);
+
 
 			if (arch & terrain_control_point) update_terrain = true;
 
@@ -1162,9 +1262,13 @@ APPLICATION_API bool is_running(Editor* editor, Modules& engine) {
 APPLICATION_API void update(Editor& editor, Modules& modules) {
 	respond_to_shortcut(editor);
 
-	UpdateCtx update_ctx(editor.time, editor.editor_viewport.input);
+    Input& input = editor.playing_game && editor.game_fullscreen ? editor.input : editor.editor_viewport.input;
+    
+	UpdateCtx update_ctx(editor.time, input);
 	UpdateCtx update_ctx_editor_only = update_ctx;
 	update_ctx_editor_only.layermask = EntityQuery{ EDITOR_ONLY };
+    
+    editor.game.reload_if_modified();
 
 	if (editor.playing_game) {
 		if (update_ctx.input.key_down(Key::R)) editor.game.reload();
@@ -1179,11 +1283,21 @@ APPLICATION_API void update(Editor& editor, Modules& modules) {
 		//FlyOverSystem::update(engine.world, update_ctx);
 	}
 
+    
 	respond_to_framediffs(editor);
 }
 
 #include "graphics/renderer/model_rendering.h"
 #include "graphics/renderer/transforms.h"
+
+void remove_callbacks(Editor& editor) {
+    editor.selected.listeners.clear();
+    editor.asset_tab.remove_callbacks(editor.window, editor);
+}
+
+APPLICATION_API void unload(Editor& editor, Modules& modules) {
+    remove_callbacks(editor);
+}
 
 APPLICATION_API void reload(Editor& editor, Modules& modules) {
 	register_callbacks(editor, modules);
@@ -1197,5 +1311,6 @@ APPLICATION_API void render(Editor& editor, Modules& engine) {
 }
 
 APPLICATION_API void deinit(Editor* editor) {
-	delete editor;
+    remove_callbacks(*editor);
+    delete editor;
 }

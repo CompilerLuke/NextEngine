@@ -9,7 +9,7 @@ struct offset_ptr {
 	int offset;
 
 	offset_ptr() : offset(0) {}
-	offset_ptr(offset_ptr& other) { set_base(data); }
+	offset_ptr(offset_ptr& other) { set_base(data()); }
 	offset_ptr(offset_ptr&& other) { 
 		other.offset = 0;
 		set_base(other); 

@@ -52,8 +52,9 @@ struct Window {
 	void ENGINE_API override_mouse_button_callback(mousebuttonfun func);
 	void ENGINE_API wait_events();
 	void ENGINE_API get_framebuffer_size(int* width, int* height);
+    bool ENGINE_API is_visible();
 
-	ENGINE_API void* get_win32_window();
+	ENGINE_API void* get_native_window();
 
 	static ENGINE_API Window* from(GLFWwindow*);
 };

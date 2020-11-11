@@ -3,8 +3,15 @@
 #include "core/core.h"
 
 #ifdef NEXTENGINE_EXPORTS
-#define ENGINE_API __declspec(dllexport)
-#endif
-#ifndef NEXTENGINE_EXPORTS
-#define ENGINE_API __declspec(dllimport)
+    #ifdef NE_WINDOWS
+        #define ENGINE_API __declspec(dllexport)
+    #else
+        #define ENGINE_API
+    #endif
+#else
+    #ifdef NE_WINDOWS
+        #define ENGINE_API __declspec(dllimport)
+    #else
+        #define ENGINE_API
+    #endif
 #endif

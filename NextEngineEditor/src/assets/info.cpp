@@ -1,5 +1,9 @@
 #include "assets/info.h"
 #include "assets/node.h"
+#include "assets/explorer.h"
+#include "assets/preview.h"
+#include <imgui/imgui.h>
+
 
 //todo make reflection generate call to constructor
 AssetNode::AssetNode() {}
@@ -14,6 +18,20 @@ AssetNode::AssetNode(Type type) {
 	}
 	if (type == Folder) folder.contents.allocator = &default_allocator;
 }
+
+/*
+AssetNode::AssetNode(const AssetNode& other) {
+    switch (other.type) {
+    case Folder:
+        type = other.type;
+        handle = other.handle;
+        
+        folder = other.folder;
+        break;
+        
+    default: memcpy(this, &other, sizeof(AssetNode));
+    }
+}*/
 
 void AssetNode::operator=(AssetNode&& other) {
 	memcpy(this, &other, sizeof(AssetNode));
@@ -46,6 +64,7 @@ void add_to_folder(AssetInfo& self, asset_handle folder_handle, AssetNode&& asse
 	}
 }
 
+#include "shaderGraph.h" //make this not required
 
 void free_asset(AssetPreviewResources& resources, AssetNode& asset) {
 	if (asset.type == AssetNode::Material) free_atlas_slot(resources, asset.material.rot_preview);

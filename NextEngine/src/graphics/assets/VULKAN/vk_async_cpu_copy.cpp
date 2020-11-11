@@ -4,12 +4,15 @@
 #include "graphics/rhi/vulkan/vulkan.h"
 #include "graphics/assets/assets.h"
 
-void make_async_copy_resources(AsyncCopyResources& resources, uint size) {
+AsyncCopyResources* make_async_copy_resources(uint size) {
+    AsyncCopyResources& resources = *PERMANENT_ALLOC(AsyncCopyResources);
 	VkDevice device = rhi.device;
 	VkPhysicalDevice physical_device = rhi.device;
 
 	resources.host_visible = make_HostVisibleBuffer(device, physical_device, VK_BUFFER_USAGE_TRANSFER_DST_BIT, size);
 	map_buffer_memory(device, resources.host_visible);
+    
+    return &resources;
 }
 
 void destroy_async_copy_resources(AsyncCopyResources& resources) {

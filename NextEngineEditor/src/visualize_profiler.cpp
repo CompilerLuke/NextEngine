@@ -13,8 +13,8 @@ int is_max(int a, int b) {
 
 #define ms(value) (value / 1000)
 
-__forceinline
-void drawRectFilled(ImDrawList* drawList, ImVec2 ref, glm::vec2 pos, glm::vec2 size, ImColor color) {
+
+inline void drawRectFilled(ImDrawList* drawList, ImVec2 ref, glm::vec2 pos, glm::vec2 size, ImColor color) {
 	drawList->AddRectFilled(ImVec2(ref.x + pos.x, ref.y + pos.y), ImVec2(ref.x + pos.x + size.x, ref.y + pos.y + size.y), color);
 }
 
@@ -91,7 +91,7 @@ void VisualizeProfiler::render(struct World& world, struct Editor& editor, struc
 				if (ImGui::Button("Pause")) Profiler::paused = true;
 			}
 
-			ImGui::SameLine(500);
+            ImGui::SameLine(); //ImGui::GetContentRegionAvailWidth());
 		}
 
 		uint core = 0;
@@ -118,23 +118,25 @@ void VisualizeProfiler::render(struct World& world, struct Editor& editor, struc
 			ImGui::SameLine();
 			ImGui::Text("min[%.1f ms %.1f fps]", frame_max * 1000, 1.0f / frame_max);
 		}
+        
+        float scale = 0.5f;
 
 		{
-			ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - 1100);
+            ImGui::SameLine(ImGui::GetContentRegionAvailWidth() - 1000 * scale);
 
-			ImGui::SetNextItemWidth(300);
+			ImGui::SetNextItemWidth(300 * scale);
 			ImGui::SliderFloat("Max frame time", &frame_max_time, 0, 0.1);
 			ImGui::SameLine();
 
 			int frame_sample_count = Profiler::frame_sample_count;
-			ImGui::SetNextItemWidth(300);
+			ImGui::SetNextItemWidth(300 * scale);
 			ImGui::SliderInt("Frame sample count", &frame_sample_count, 10, 1000);
 			Profiler::set_frame_sample_count(frame_sample_count);
 
 		}
 
 		ProfileCtx ctx = {name_to_color_idx, drawList, ImGui::GetCursorScreenPos()};
-		ctx.width = ImGui::GetContentRegionMax().x * 0.8;
+		ctx.width = ImGui::GetContentRegionMax().x - 600 * scale;
 		ctx.height = ImGui::GetContentRegionMax().y - ImGui::GetCursorPos().y;
 		ctx.frame_count = frames.length - 1;
 		ctx.frame_max = frame_max_time;
@@ -201,23 +203,23 @@ void VisualizeProfiler::render(struct World& world, struct Editor& editor, struc
 				return mid_a > mid_b; 
 			});
 
-			ImGui::Dummy(ImVec2(0,50));
+			ImGui::Dummy(ImVec2(0,50 * scale));
 
 			for (ProfileData& profile : frame.profiles) {
 				ProfileDrawData data = profile_draw_data(ctx, frames_length, profile);
 				data.pos += ctx.p;
 
 				ImVec2 points[4];
-				points[0] = glm::vec2(data.pos.x - 1.0f, data.pos.y);
-				points[1] = glm::vec2(data.pos.x + 101.0f, ImGui::GetCursorScreenPos().y);
-				points[2] = glm::vec2(data.pos.x + 101.0f, ImGui::GetCursorScreenPos().y + ImGui::GetTextLineHeightWithSpacing());
-				points[3] = glm::vec2(data.pos.x - 1.0f, data.pos.y + data.size.y);
+				points[0] = glm::vec2(data.pos.x - 1.0f * scale, data.pos.y);
+				points[1] = glm::vec2(data.pos.x + 101.0f * scale, ImGui::GetCursorScreenPos().y);
+				points[2] = glm::vec2(data.pos.x + 101.0f * scale, ImGui::GetCursorScreenPos().y + ImGui::GetTextLineHeightWithSpacing());
+				points[3] = glm::vec2(data.pos.x - 1.0f * scale, data.pos.y + data.size.y);
 
 				//drawList->AddRectFilled(ImVec2(points[0].x - tip, points[0].y), ImVec2(points[0].x, points[3].y), data.color);
 				drawList->AddConvexPolyFilled(points, 4, data.color);
-				drawList->AddRectFilled(ImVec2(points[1].x - 1.0f, points[1].y), ImVec2(points[2].x + 50.0f, points[2].y), data.color);
+				drawList->AddRectFilled(ImVec2(points[1].x - 1.0f, points[1].y), ImVec2(points[2].x + 50.0f * scale, points[2].y), data.color);
 				
-				ImGui::SetCursorPosX(ctx.width + 250.f);
+				ImGui::SetCursorPosX(ctx.width + 200.f * scale);
 				ImGui::TextColored(data.color, "%s - %.2f ms", profile.name, profile.duration * 1000);
 			}
 		}

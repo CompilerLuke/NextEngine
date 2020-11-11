@@ -14,6 +14,7 @@
 #include "graphics/culling/scene_partition.h"
 #include <glm/mat4x4.hpp>
 #include <glm/glm.hpp>
+#include "frame.h"
 
 struct Modules;
 struct Window;
@@ -39,11 +40,6 @@ struct FrameData {
 	TerrainRenderData terrain_data;
 	GrassRenderData grass_data;
 	struct CulledMeshBucket* culled_mesh_bucket[RenderPass::ScenePassCount];
-};
-
-struct GPUSubmission {
-	RenderPass render_passes[RenderPass::ScenePassCount];
-	RenderPass screen_render_pass;
 };
 
 const uint SHADOW_CASCADES = 4;

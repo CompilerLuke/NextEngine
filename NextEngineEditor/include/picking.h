@@ -4,6 +4,7 @@
 #include "graphics/assets/material.h"
 #include "graphics/culling/culling.h"
 #include "core/container/slice.h"
+#include "ecs/id.h"
 #include <limits.h>
 
 struct World;

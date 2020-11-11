@@ -30,7 +30,7 @@ struct ref_tuple<T, Args...> {
 	template<std::size_t N>
 	auto& get() {
 		if constexpr (N == 0) return value;
-		else return next.get<N - 1>();
+		else return next.template get<N - 1>();
 	}
 };
 
@@ -41,6 +41,6 @@ namespace std {
 
 	template<size_t N, typename... Args>
 	struct tuple_element<N, ref_tuple<Args...>> {
-		using type = decltype(declval<ref_tuple<Args...>>().get<N>());
+		using type = decltype(declval<ref_tuple<Args...>>().template get<N>());
 	};
 }

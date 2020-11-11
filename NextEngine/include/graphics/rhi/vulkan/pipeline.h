@@ -24,11 +24,13 @@ struct VkPipelineDesc {
 	bool depth_write_enable = VK_TRUE;
 	bool stencil_test_enable = VK_FALSE;
 	bool alpha_blend_enable = VK_FALSE;
+    VkStencilOpState front_stencil = {};
 	VkCompareOp depth_compare_op = VK_COMPARE_OP_LESS;
 	VkBlendOp blend_op;
 	VkBlendFactor src_blend_factor;
 	VkBlendFactor dst_blend_factor;
-
+    VkSampleCountFlagBits sample_count = VK_SAMPLE_COUNT_1_BIT;
+    
 	uint subpass = 0;
 };
 

@@ -1,6 +1,8 @@
 #include "assets/dialog.h"
-#include <graphics/rhi/window.h>
-#include <graphics/assets/assets.h>
+#include "graphics/rhi/window.h"
+#include "graphics/assets/assets.h"
+
+#ifdef NE_WINDOWS
 #include <Windows.h>
 #include <commdlg.h>
 
@@ -29,3 +31,14 @@ string_buffer open_dialog(Window& window) {
 
 	return "";
 }
+
+#elif __APPLE__
+
+string_buffer open_dialog(Window& window) {
+    string_buffer asset_folder_path = current_asset_path_folder();
+    
+    //TODO COCOA IMPLEMENTATION
+    return "";
+}
+
+#endif

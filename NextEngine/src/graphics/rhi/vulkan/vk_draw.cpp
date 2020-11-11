@@ -51,7 +51,8 @@ void draw_mesh(CommandBuffer& cmd_buffer, model_handle model_handle, slice<mater
 		material_handle mat_handle;
 
 		if (mesh.material_id < materials.length) mat_handle = materials[mesh.material_id];; //todo remove check
-		if (!mat_handle.id) mat_handle = default_materials.missing;
+        if (mesh.material_id >= materials.length) mat_handle = materials[materials.length-1];
+        if (!mat_handle.id) mat_handle = default_materials.missing;
 
 		pipeline_handle pipeline_handle = query_pipeline(mat_handle, cmd_buffer.render_pass, cmd_buffer.subpass); 
 

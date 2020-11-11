@@ -55,9 +55,6 @@ VkRenderPass renderPass;
 VertexBuffer vertex_buffer;
 InstanceBuffer instance_buffer;
 
-array<MAX_SWAPCHAIN_IMAGES, VkBuffer> uniform_buffers;
-array<MAX_SWAPCHAIN_IMAGES, VkDeviceMemory> uniform_buffers_memory;
-
 VkImage depth_image;
 VkDeviceMemory depth_image_memory;
 VkImageView depth_image_view;
@@ -93,7 +90,7 @@ ArrayVertexBindings Vertex_binding_descriptors() {
 	return input_bindings(rhi.vertex_layouts, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4);
 }
 
-VkFormat find_depth_format(VkPhysicalDevice);
+VkFormat find_depth_format(VkPhysicalDevice, bool stencil);
 
 
 void make_RenderPass(VkDevice device, VkPhysicalDevice physical_device, VkFormat image_format) {
@@ -108,7 +105,7 @@ void make_RenderPass(VkDevice device, VkPhysicalDevice physical_device, VkFormat
 	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 	VkAttachmentDescription depthAttachment = {};
-	depthAttachment.format = find_depth_format(physical_device);
+	depthAttachment.format = find_depth_format(physical_device, false);
 	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -202,7 +199,7 @@ uint get_frames_in_flight(RHI& rhi) {
 }
 
 void make_DepthResources(VkDevice device, VkPhysicalDevice physical_device, VkExtent2D extent) {
-	VkFormat depthFormat = find_depth_format(physical_device);
+	VkFormat depthFormat = find_depth_format(physical_device, false);
 	make_alloc_Image(device, physical_device, extent.width, extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &depth_image, &depth_image_memory);
 	depth_image_view = make_ImageView(device, depth_image, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
@@ -265,8 +262,8 @@ void make_RHI(const VulkanDesc& desc, Window& window) {
 	make_DescriptorPool(rhi.descriptor_pool, device, device, max_descriptor);
 
 	make_DepthResources(device, device, rhi.swapchain.extent);
+    make_RenderPass(device, device, rhi.swapchain.imageFormat);
 	make_Framebuffers(device, rhi.swapchain);
-	make_RenderPass(device, device, rhi.swapchain.imageFormat);
 
 	int frames_in_flight = get_frames_in_flight(rhi);
 
@@ -290,8 +287,6 @@ void destroy(VkDevice device, Swapchain& swapchain) {
 
 	for (int i = 0; i < swapchain.image_views.length; i++) {
 		vkDestroyImageView(device, swapchain.image_views[i], nullptr);
-		vkDestroyBuffer(device, uniform_buffers[i], nullptr);
-		vkFreeMemory(device, uniform_buffers_memory[i], nullptr);
 	}
 
 	vkDestroySwapchainKHR(device, swapchain, nullptr);
@@ -349,19 +344,6 @@ void vk_destroy() {
 }
 
 #include "graphics/pass/render_pass.h"
-
-void update_UniformBuffer(VkDevice device, uint32_t currentImage, Viewport& viewport) {
-	PassUBO ubo = {};
-	ubo.view = viewport.view;
-	ubo.proj = viewport.proj;
-	ubo.proj[1][1] *= -1;
-
-	void* data;
-	vkMapMemory(device, uniform_buffers_memory[currentImage], 0, sizeof(PassUBO), 0, &data);
-	memcpy(data, &ubo, sizeof(PassUBO));
-	vkUnmapMemory(device, uniform_buffers_memory[currentImage]);
-
-}
 
 void vk_begin_frame() {
 	uint current_frame = rhi.swapchain.current_frame;
@@ -464,16 +446,26 @@ void end_gpu_upload() {
 	
 }
 
+#include "core/atomic.h"
+
 RenderPass begin_render_frame() {
 	Swapchain& swapchain = rhi.swapchain;
-	rhi.frame_index = rhi.swapchain.current_frame;
+
+    swapchain.current_frame = (swapchain.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
+
 
 	acquire_swapchain_image(swapchain);
 
 	//todo: figure out why this is crashing
-	for (DestructionJob& task : rhi.queued_for_destruction[rhi.frame_index]) {
+	for (DestructionJob& task : rhi.queued_for_destruction[swapchain.current_frame]) {
 		task.func(task.data);
 	}
+    
+    rhi.frame_index = rhi.swapchain.current_frame; //Broadcast frame index only after destruction
+    
+    TASK_MEMORY_BARRIER
+    
+    //todo eliminate distinction between frame and swapchain.current_frame
 
 	rhi.queued_for_destruction[rhi.frame_index].clear();
 

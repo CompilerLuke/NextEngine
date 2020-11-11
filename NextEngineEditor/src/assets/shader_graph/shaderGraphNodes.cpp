@@ -134,7 +134,9 @@ void render_inputs(ShaderGraph& graph, shader_node_handle handle, unsigned int n
 }
 
 void render_title(ShaderGraph& graph, string_view title) {
-	ImGui::Text(title.c_str());
+    ImGui::Dummy(ImVec2(0, 40 * graph.scale));
+    ImGui::SameLine();
+    ImGui::Text(title.c_str());
 	ImGui::Dummy(ImVec2(0, 10 * graph.scale));
 }
 

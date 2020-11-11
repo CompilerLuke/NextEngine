@@ -4,13 +4,13 @@
 #include "engine/input.h"
 #include "graphics/renderer/renderer.h"
 #include <imgui/imgui.h>
-#include <vendor/ImGuizmo/ImGuizmo.h>
+#include <ImGuizmo/ImGuizmo.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include "components/transform.h"
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
-#include <core/types.h>
-#include <graphics/assets/assets.h>
+#include "core/types.h"
+#include "graphics/assets/assets.h"
 
 material_handle make_icon_material(string_view path, bool billboard = true) {
 	MaterialDesc mat_desc{ load_Shader(billboard ? "shaders/icon.vert" : "shaders/pbr.vert", "shaders/icon.frag") };
@@ -146,7 +146,7 @@ void Gizmo::render(World& world, Editor& editor, Viewport& viewport, Input& inpu
 
 	ImGuizmo::Manipulate(glm::value_ptr(viewport.view), glm::value_ptr(viewport.proj), guizmo_operation, guizmo_mode, glm::value_ptr(model_matrix), NULL, snap ? glm::value_ptr(snap_vec) : NULL);
 
-
+    
 
 	glm::mat4 transformation = model_matrix; // your transformation matrix.
 	glm::vec3 scale;
@@ -158,7 +158,7 @@ void Gizmo::render(World& world, Editor& editor, Viewport& viewport, Input& inpu
 
 	bool is_using = ImGuizmo::IsUsing();
 
-	if (!was_using && is_using) begin_diff(diff_util, trans, &copy_transform, get_Transform_type());
+	if (!was_using && is_using) begin_e_diff<Transform>(diff_util, world, editor.selected_id, &copy_transform);
 
 	if (mode == GizmoMode::Translate) trans->position = translation;
 	if (mode == GizmoMode::Rotate) trans->rotation = glm::conjugate(rotation);
@@ -166,7 +166,7 @@ void Gizmo::render(World& world, Editor& editor, Viewport& viewport, Input& inpu
 
 	if (was_using && !is_using) {
 		char desc[50];
-		sprintf_s(desc, "Moved %i", editor.selected_id);
+		snprintf(desc, 50, "Moved %i", editor.selected_id);
 
 		end_diff(editor.actions, diff_util, desc);
 	}

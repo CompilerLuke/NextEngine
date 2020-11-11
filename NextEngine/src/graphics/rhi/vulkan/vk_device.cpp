@@ -210,9 +210,9 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
 ) {
 	VulkanDesc* desc = (VulkanDesc*)pUserData;
 
-	//if (messageSeverity >= desc->min_log_severity) {
+	if (messageSeverity >= desc->min_log_severity) {
 		printf("validation layers: %s", pCallbackData->pMessage);
-	//}
+	}
 
 	return VK_FALSE;
 }

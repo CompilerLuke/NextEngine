@@ -3,13 +3,13 @@
 layout (location = 0) out vec4 FragColor;
 void main()
 {
-if (1.<0.) discard;
+if (1.000000<0.000000) discard;
 #ifndef IS_DEPTH_ONLY
 
-FragColor = vec4(pow(vec3(0.,0.,0.), vec3(2.2)), 1.0) + pbr_frag(pow(vec3(0.,0.,0.), vec3(2.2)),
-calc_normals_from_tangent(vec3(0.5,0.5,1.)),
-0.,
-0.,
+FragColor = vec4(pow(vec3(0.000000,0.000000,0.000000), vec3(2.2)), 1.0) + pbr_frag(pow(vec3(0.154124,0.526169,0.554140), vec3(2.2)),
+calc_normals_from_tangent(vec3(0.500000,0.500000,1.000000)),
+0.000000,
+0.000000,
 1.0f);
 #endif
 }

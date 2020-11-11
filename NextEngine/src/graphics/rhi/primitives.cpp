@@ -31,6 +31,9 @@ void init_primitives() {
 	for (int i = 0; i < 4; i++) {
 		vertices[i].position = vertices_pos[i];
 		vertices[i].tex_coord = tex_coords[i];
+        vertices[i].normal = glm::vec3(0,0,1);
+        vertices[i].tangent = glm::vec3(0,1,0);
+        vertices[i].bitangent = glm::cross(vertices[i].normal, vertices[i].tangent);
 	}
 
 	Model& model = *PERMANENT_ALLOC(Model);
@@ -38,8 +41,8 @@ void init_primitives() {
 	model.materials.length = 1;
 	model.materials[0] = "default_material";
 
-	model.aabb.max = glm::vec3(0.5, 0, 0.5);
-	model.aabb.min = glm::vec3(-0.5, 0, -0.5);
+	model.aabb.max = glm::vec3(1.0, 1.0, 0);
+	model.aabb.min = glm::vec3(-1.0, -1.0, 0);
 
 	model.meshes.data = PERMANENT_ALLOC(Mesh);
 	model.meshes.length = 1;

@@ -4,6 +4,7 @@
 
 using hash_meta = uint;
 
+inline uint hash_func(void* ptr) { return (u64)ptr >> 32; }
 inline uint hash_func(uint hash) { return hash; }
 inline uint hash_func(const char* str) {
 	int hash = 7;
@@ -142,6 +143,6 @@ struct hash_map {
 	V* get(K key) {
 		int index = keys.index(key);
 		if (index != -1) return &values[index];
-		else return NULL;
+		else return nullptr;
 	}
 };

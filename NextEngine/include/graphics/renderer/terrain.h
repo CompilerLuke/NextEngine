@@ -7,11 +7,12 @@
 #include "graphics/pass/pass.h"
 #include "terrain/kriging.h"
 #include <glm/mat4x4.hpp>
+#include "graphics/assets/material.h"
 
-#include "graphics/rhi/vulkan/vulkan.h"
-#include "graphics/rhi/vulkan/draw.h"
+//#include "graphics/rhi/vulkan/vulkan.h"
+//#include "graphics/rhi/vulkan/draw.h"
 
-#include "graphics/rhi/vulkan/async_cpu_copy.h"
+//#include "graphics/rhi/vulkan/async_cpu_copy.h"
 
 #include "ecs/id.h"
 
@@ -49,7 +50,7 @@ struct TerrainRenderResources {
 	pipeline_handle splat_pipeline;
 	descriptor_set_handle splat_descriptor;
 
-	AsyncCopyResources async_copy;
+	struct AsyncCopyResources* async_copy;
 };
 
 struct TerrainUBO {

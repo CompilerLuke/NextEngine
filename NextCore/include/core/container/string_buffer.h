@@ -79,7 +79,12 @@ struct string_buffer {
 	}
 
 	inline string_buffer& operator=(string_view other) {
-		if (*this == other) return *this;
+		//if (*this == other) return *this;
+        if (other.length == 0) {
+            length = 0;
+            if (capacity) data[0] = '\0';
+            return *this;
+        }
 		
 		this->reserve(other.length);
 		this->length = other.length;
@@ -89,7 +94,12 @@ struct string_buffer {
 
 		return *this;
 	}
+    
+    inline string_buffer& operator=(const char* other) {
+        return *this = (string_view)other;
+    }
 
+    /*
 	inline string_buffer& operator=(const string_buffer& other) {
 		if (*this == other) return *this;
 
@@ -100,7 +110,7 @@ struct string_buffer {
 		data[length] = '\0';
 
 		return *this;
-	}
+	}*/
 
 	inline string_buffer& operator+=(const string_view other) {
 		if (other.length == 0) return *this;
@@ -202,7 +212,7 @@ struct string_buffer {
 		if (this->capacity > 0) this->allocator->deallocate(this->data);
 	}
 
-	operator string_view() const {
+	operator string_view() const&  {
 		return { data, length };
 	}
 

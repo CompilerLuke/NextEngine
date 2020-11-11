@@ -3,29 +3,31 @@
 #include "graphics/rhi/window.h"
 #include <GLFW/glfw3.h>
 
-void on_cursor_pos(Input* self, glm::vec2 mouse_position) {
-	if (!self->mouse_captured && (mouse_position.x > self->region_max.x || mouse_position.y > self->region_max.y || mouse_position.x < self->region_min.x || mouse_position.y < self->region_min.y)) {
+void on_cursor_pos(Input* self, glm::vec2 screen_mouse_position) {
+    glm::vec2 past_screen_position = self->screen_mouse_position;
+    self->screen_mouse_position = screen_mouse_position;
+    
+	if (!self->mouse_captured && (screen_mouse_position.x > self->region_max.x || screen_mouse_position.y > self->region_max.y || screen_mouse_position.x < self->region_min.x || screen_mouse_position.y < self->region_min.y)) {
 		self->active = false;
 		return;
 	}
 	
-	self->active = true;
-
-	mouse_position -= self->region_min;
+	glm::vec2 mouse_position = screen_mouse_position - self->region_min;
 	
-	if (self->first_mouse) {
-		self->mouse_position = mouse_position;
+	if (self->first_mouse || !self->active) {
+        self->screen_mouse_position = screen_mouse_position;
 		self->first_mouse = false;
+        self->active = true;
 	}
 
-	auto xpos = mouse_position.x;
-	auto ypos = mouse_position.y;
-
-	auto xoffset = xpos - self->mouse_position.x;
-	auto yoffset = self->mouse_position.y - ypos;
+	auto xoffset = screen_mouse_position.x - past_screen_position.x;
+	auto yoffset = past_screen_position.y - screen_mouse_position.y;
 
 	self->mouse_offset = glm::vec2(xoffset, yoffset);
 	self->mouse_position = mouse_position;
+    self->screen_mouse_position = screen_mouse_position;
+    
+    
 }
 
 
@@ -35,9 +37,9 @@ void on_scroll(Input* self, glm::vec2 offset) {
 
 bool is_mod_down(Input* input, ModKeys mask) {
 	return
-		input->keys[GLFW_KEY_LEFT_CONTROL] != GLFW_RELEASE && !(mask & ModKeys::Control)
-		|| input->keys[GLFW_KEY_LEFT_SHIFT] != GLFW_RELEASE && !(mask & ModKeys::Shift)
-		|| input->keys[GLFW_KEY_LEFT_ALT] != GLFW_RELEASE && !(mask & ModKeys::Alt);
+		(input->keys[GLFW_KEY_LEFT_CONTROL] != GLFW_RELEASE && !(mask & ModKeys::Control))
+		|| (input->keys[GLFW_KEY_LEFT_SHIFT] != GLFW_RELEASE && !(mask & ModKeys::Shift))
+		|| (input->keys[GLFW_KEY_LEFT_ALT] != GLFW_RELEASE && !(mask & ModKeys::Alt));
 }
 
 void on_key(Input* self, KeyData& key_data) {
@@ -74,6 +76,7 @@ void Input::init(Window& window) {
 
 bool is_mod_key(Key key) {
 	switch (key) {
+    case Key::Left_Super: return true;
 	case Key::Left_Control: return true;
 	case Key::Left_Shift: return true;
 	case Key::Left_Alt: return true;
@@ -85,12 +88,17 @@ bool Input::key_down(Key key, ModKeys allow_mod) {
 	if (!is_mod_key(key) && is_mod_down(this, allow_mod))
 		return false;
 
-	auto state = this->keys[(int)key];
+    auto state = glfwGetKey(window_ptr, (int)key);
+    //this->keys[(int)key];
 	return state == GLFW_PRESS || state == GLFW_REPEAT;
 }
 
 bool Input::key_mod_pressed(Key key, Key mod) {
-	return key_down(mod) && keys[(int)key] == GLFW_PRESS;
+    bool mod_down;
+    if (mod == Key::Control) mod_down = key_down(Key::Left_Control) || key_down(Key::Right_Control) || key_down(Key::Left_Super) || key_down(Key::Right_Super);
+    else mod_down = key_down(mod);
+    
+    return mod_down && keys[(int)key] == GLFW_PRESS;
 }
 
 bool Input::key_pressed(Key key, ModKeys allow_mod) {
@@ -110,8 +118,13 @@ bool Input::mouse_button_pressed(MouseButton button) {
 }
 
 void Input::capture_mouse(bool capture) {
+    if (mouse_captured == capture) return;
 	glfwSetInputMode(window_ptr, GLFW_CURSOR, capture ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
 	mouse_captured = capture;
+    double xpos, ypos;
+    glfwGetCursorPos(window_ptr, &xpos, &ypos);
+    screen_mouse_position.x = xpos;
+    screen_mouse_position.y = ypos;
 }
 
 float Input::get_vertical_axis() {

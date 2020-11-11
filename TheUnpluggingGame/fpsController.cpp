@@ -5,6 +5,7 @@
 #include "playerInput.h"
 #include <physics/physics.h>
 #include "components/camera.h"
+#include "component_ids.h"
 
 float gravity = -9.81;
 

@@ -1,12 +1,14 @@
 #pragma once
 
-#include <engine/handle.h>
-#include <graphics/rhi/buffer.h>
-#include <graphics/rhi/frame_buffer.h>
+#include "engine/handle.h"
+#include "graphics/rhi/buffer.h"
+#include "graphics/rhi/frame_buffer.h"
 #include "info.h"
 
 struct RotatablePreview;
 struct Camera;
+struct Renderer;
+struct AssetInfo;
 
 struct AssetPreviewResources {
 	pipeline_layout_handle pipeline_layout;
@@ -36,3 +38,10 @@ void end_preview_pass(AssetPreviewResources& self, RenderPass& render_pass, glm:
 
 void render_preview_for(AssetPreviewResources& self, MaterialAsset& asset);
 void render_preview_for(AssetPreviewResources& self, ModelAsset& asset);
+
+void alloc_atlas_slot(AssetPreviewResources& resources, RotatablePreview& preview);
+void free_atlas_slot(AssetPreviewResources& resources, RotatablePreview& preview);
+
+void make_AssetPreviewRenderData(AssetPreviewResources& resources, Renderer& renderer);
+void render_previews(AssetPreviewResources& self, AssetInfo& info);
+

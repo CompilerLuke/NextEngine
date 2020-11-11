@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#if 1
+#ifdef NE_WINDOWS
 #ifdef NEXTCORE_EXPORTS
 #define CORE_API __declspec(dllexport)
 #endif

@@ -29,8 +29,11 @@ struct Lister {
 
 	string_buffer filter;
 
+    Lister();
 	void render(struct World& world, struct Editor& editor, struct RenderPass& params);
 };
 
 void register_entity(Lister&, string_view, ID);
+EntityNode* node_by_id(Lister& lister, ID id);
 string_buffer name_with_id(struct World&, ID id);
+void clone_entity(Lister& lister, World& world, ID id);

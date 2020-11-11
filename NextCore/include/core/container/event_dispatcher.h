@@ -4,24 +4,42 @@
 #include <functional>
 #include "core/container/vector.h"
 
+struct callback_handle {
+    uint id = 0;
+};
+
+template<typename T>
+struct Listener {
+    callback_handle handle;
+    std::function<void(const T&)> function;
+    
+    void operator()(const T& mesg) {
+        function(mesg);
+    }
+};
+
 template<class T>
 struct EventDispatcher {
-	vector<std::function<void(T)> > listeners;
+    uint handle_counter = 0;
+	vector<Listener<T>> listeners;
 
-	void listen(std::function<void(T)> func) {
-		listeners.append(func);
+	callback_handle listen(std::function<void(const T&)>&& func) {
+        callback_handle handle{++handle_counter};
+        listeners.append({handle, std::move(func)});
+        
+        return handle;
 	}
 
-	void remove(std::function<void(T)> func) {
+	void remove(callback_handle handle) {
 		int i = 0;
 		for (; i < listeners.length; i++) {
-			if (listeners[i] == func) break;
+			if (listeners[i].handle.id == handle.id) break;
 		}
 
-		listeners[i] = listeners.pop();
+		listeners.data[i] = listeners.pop();
 	}
 
-	void broadcast(T mesg) {
+	void broadcast(const T& mesg) {
 		for (auto& func : listeners) {
 			func(mesg);
 		}

@@ -4,10 +4,12 @@
 #include <sys/stat.h>
 #include <stdio.h>
 
+#ifdef __APPLE__
+#define _stat stat
+#endif
+
 FILE* open(string_view full_filepath, const char* mode) {
-	FILE* f = NULL;
-	errno_t errors = fopen_s(&f, full_filepath.c_str(), mode);
-	return errors ? NULL : f;
+	return fopen(full_filepath.c_str(), mode);
 }
 
 FILE* open_rel(string_view filepath, const char* mode) {
@@ -25,7 +27,8 @@ bool read_file(string_view filepath, string_buffer* buffer, int null_terminated)
 	size_t length = info->st_size;
 
 	buffer->reserve(length + null_terminated);
-	length = fread_s(buffer->data, length, sizeof(char), length, f);
+	length = fread(buffer->data, sizeof(char), length, f);
+    
 	if (null_terminated) buffer->data[length] = '\0';
 	buffer->length = length;
 
@@ -60,6 +63,26 @@ i64 io_time_modified(string_view filename) {
 
 	return buffer.st_mtime;
 }
+
+#ifdef NE_WINDOWS
+#include <Windows.h>
+
+bool io_copyf(string_view src, string_view dst, bool fail_if_exists) {
+    return CopyFileA(src.c_str(), dst.c_str(), true)
+}
+
+#elif __APPLE__
+#include <copyfile.h>
+
+bool io_copyf(string_view src, string_view dst, bool fail_if_exists) {
+    copyfile_state_t state = copyfile_state_alloc();
+    
+    bool result = copyfile(src.c_str(), dst.c_str(), state, fail_if_exists ? COPYFILE_ALL | COPYFILE_EXCL : COPYFILE_ALL);
+    copyfile_state_free(state);
+    
+    return result;
+}
+#endif
 
 wchar_t* to_wide_char(const char* orig);
 

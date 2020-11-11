@@ -8,6 +8,7 @@
 #include "core/container/tuple.h"
 #include "core/container/tvector.h"
 #include "core/container/array.h"
+#include "core/container/slice.h"
 
 COMP
 struct Entity {
@@ -86,6 +87,7 @@ struct DeserializerBuffer;
 
 namespace refl {
 	struct Struct;
+    struct Type;
 }
 
 struct ComponentLifetimeFunc {
@@ -102,8 +104,15 @@ struct ComponentLifetimeFunc {
 	DeserializeFunc deserialize;
 };
 
+struct RegisterComponent {
+    uint component_id;
+    refl::Type* type;
+    ComponentLifetimeFunc funcs;
+};
+
+
 struct World {
-	Archetype id_to_arch[MAX_COMPONENTS] = {};
+	Archetype id_to_arch[MAX_ENTITIES] = {};
 	void* id_to_ptr[MAX_COMPONENTS][MAX_ENTITIES] = {};
 	hash_map<Archetype, ArchetypeStore, ARCHETYPE_HASH> arches;
 
@@ -125,6 +134,9 @@ struct World {
 			free_ids.append(i);
 		}
 	}
+    
+    void register_components(slice<struct RegisterComponent> components);
+    ID clone(ID id);
 
 	void clear() {
 		world_memory_offset = 0;
@@ -136,68 +148,7 @@ struct World {
 
 	World(const World& world) = delete;
 
-	World& operator=(const World& from) {
-		memcpy(id_to_arch, from.id_to_arch, sizeof(id_to_arch));
-		memcpy(component_type, from.component_type, sizeof(component_type));
-		memcpy(component_size, from.component_size, sizeof(component_size));
-		memcpy(component_lifetime_funcs, from.component_lifetime_funcs, sizeof(component_lifetime_funcs));
-		memcpy(&arches, &from.arches, sizeof(arches));
-		memcpy(&free_ids, &from.free_ids, sizeof(free_ids));
-
-		//CLEAR
-		memset(id_to_ptr, 0, sizeof(id_to_ptr));
-		world_memory_offset = 0;
-		block_free_list = nullptr;
-
-		//COPY ARCHETYPES
-		//todo replace 103 with constant
-		for (uint i = 0; i < ARCHETYPE_HASH; i++) {
-			if (!from.arches.keys.is_full(i)) continue;
-
-			Archetype arch = from.arches.keys.keys[i];
-			const ArchetypeStore& from_arch_store = from.arches.values[i];
-			ArchetypeStore& arch_store = arches.values[i];
-
-			BlockHeader* from_header = from_arch_store.blocks;
-			BlockHeader* header = alloc_block();
-			if (from_header) arch_store.blocks = header;
-
-			uint entity_count = from_arch_store.entity_count_last_block;
-			uint max_per_block = from_arch_store.max_per_block;
-
-			while (from_header) {
-				u8* from_data = (u8*)(from_header + 1);
-				u8* data = (u8*)(header + 1);
-
-				for (uint component = 0; component < MAX_COMPONENTS; component++) {
-					if (!has_component(arch, component)) continue;
-					u8* from_components = from_data + from_arch_store.offsets[component];
-					u8* components = data + arch_store.offsets[component];
-
-					uint size = component_size[component];
-
-					auto copy = component_lifetime_funcs[component].copy;
-					if (copy) copy(components, from_components, entity_count);
-					else memcpy(components, from_components, size * entity_count);
-
-					Entity* entities = (Entity*)data;
-					for (uint entity = 0; entity < entity_count; entity++) {
-						ID id = entities[entity].id;
-						id_to_ptr[component][id] = components + entity * size;
-					}
-				}
-
-				from_header = from_header->next;
-				if (!from_header) break;
-				
-				header->next = alloc_block();
-				header = header->next;
-				entity_count = max_per_block;
-			}
-		}
-
-		return *this;
-	}
+    World& operator=(const World& from);
 
 	/*template<typename T>
 	void add_component() {
@@ -247,7 +198,10 @@ struct World {
 
 	BlockHeader* get_block() {
 		BlockHeader* block = block_free_list;
-		if (block) block_free_list = block->next;
+        if (block) {
+            assert(block != block->next);
+            block_free_list = block->next;
+        }
 		else block = alloc_block();
 
 		block->next = NULL;
@@ -265,6 +219,7 @@ struct World {
 
 	void add_block(ArchetypeStore& store) {
 		BlockHeader* block = get_block();
+        assert(store.blocks != block);
 		block->next = store.blocks;
 
 		store.blocks = block;
@@ -396,7 +351,7 @@ struct World {
 		id_to_ptr[0][id] = &entity;
 
 
-		printf("MAKING ENTITY WITH ARCHETYPE %i, BASE %p, ENTITY %i\n", arch, data, offset);
+		//printf("MAKING ENTITY WITH ARCHETYPE %i, BASE %p, OFFSET %i, ENTITY %i\n", arch, data, offset, id);
 
 		return ref_tuple<Entity>(entity) + (init_component<Args>(data, store.offsets, offset, id) + ...);
 	}
@@ -420,7 +375,7 @@ struct World {
 	maybe<ref_tuple<Args...>> get_by_id(ID id) {
 		Archetype arch = to_archetype<Args...>();
 
-		if (id_to_arch[id] & arch == arch) {
+		if ((id_to_arch[id] & arch) == arch) {
 			return maybe((ref_by_id<Args>(id) + ...));
 		}
 		else {
@@ -446,11 +401,13 @@ struct World {
 
 	void shrink_store_to_fit(ArchetypeStore& store) {
 		if (store.entity_count_last_block == 0) {
-			if (store.blocks = store.blocks->next) {
-				store.entity_count_last_block = store.max_per_block;
-				release_block(store.blocks);
-			}
+            BlockHeader* block = store.blocks;
+            BlockHeader* previous_block = block->next;
+			if (previous_block) store.entity_count_last_block = store.max_per_block;
+				
+            release_block(block);
 
+            store.blocks = previous_block;
 			store.block_count--; /* todo why does this field exist! */
 		}
 	}
@@ -462,23 +419,27 @@ struct World {
 		auto destructor = component_lifetime_funcs[component_id].destructor;
 		if (call_destructor && destructor) destructor(dst, 1);
 
-		memcpy(dst, src, component_size[component_id]);
+        id_to_ptr[component_id][id] = 0;
+        if (id != last_id) {
+            memcpy(dst, src, component_size[component_id]);
 
-		id_to_ptr[component_id][id] = 0;
-		id_to_ptr[component_id][last_id] = dst;
+            id_to_ptr[component_id][last_id] = dst;
+        }
 	}
 
 	void emplace_move_component(ArchetypeStore& store, uint component_id, ID id, ID last_id, uint offset, u8* data) {
 		uint size = component_size[component_id];
-
-		void* ptr = id_to_ptr[component_id][id];
-		void* last_element = id_to_ptr[component_id][last_id];
-		void* moving_to = data + store.offsets[component_id] + offset * size; //todo turn into function!
-		memcpy(moving_to, ptr, size);
-		memcpy(ptr, last_element, size);
-
-		id_to_ptr[component_id][id] = moving_to;
-		id_to_ptr[component_id][last_id] = ptr;
+        
+        void* ptr = id_to_ptr[component_id][id];
+        void* moving_to = data + store.offsets[component_id] + offset * size; //todo turn into function!
+        memcpy(moving_to, ptr, size);
+        id_to_ptr[component_id][id] = moving_to;
+        
+        if (id != last_id) {
+            void* last_element = id_to_ptr[component_id][last_id];
+            memcpy(ptr, last_element, size);
+            id_to_ptr[component_id][last_id] = ptr;
+        }
 	}
 
 	void emplace_move_components(ArchetypeStore& store, Archetype arch, ID id, ID last_id) {
@@ -495,6 +456,8 @@ struct World {
 		ArchetypeStore* store = from > 0 ? &find_archetype(from) : nullptr;
 		ArchetypeStore* new_store = to > 0 ? &find_archetype(to) : nullptr;
 		ID last_id = store ? pop_store(*store) : 0;
+        
+        //printf("Destroying %i, moving %i in it's place\n", id, last_id);
 
 		Archetype common = from & to;
 		Archetype removed = from & ~to;
@@ -515,7 +478,7 @@ struct World {
 			if (flag & common) emplace_move_component(*new_store, i, id, last_id, offset, data);
 			else if (flag & removed) emplace_free_component(i, id, last_id, call_lifetime);
 			else if (flag & added) {
-				printf("MAKING ENTITY WITH ARCHETYPE %i, BASE %p, ENTITY %i\n", to, data, offset);
+				//printf("MAKING ENTITY WITH ARCHETYPE %i, BASE %p, ENTITY %i\n", to, data, offset);
 
 				void* moving_to = data + new_store->offsets[i] + offset * component_size[i];
 				id_to_ptr[i][id] = moving_to;
@@ -534,6 +497,7 @@ struct World {
 	void free_by_id(ID id, bool call_destructor = true) { //todo handle id not existing!
 		Archetype arch = id_to_arch[id];
 		change_archetype(id, arch, 0, call_destructor);
+        free_ids.append(id);
 	}
 
 	template<typename T>
@@ -548,7 +512,7 @@ struct World {
 
 		emplace_move_components(find_archetype(new_arch), new_arch, id, last_id);
 
-		(T*)(id_to_ptr[delete_component_id][id])->~T();
+		((T*)id_to_ptr[delete_component_id][id])->~T();
 		emplace_free_component(delete_component_id, id, last_id, false);
 
 		id_to_arch[id] = new_arch;

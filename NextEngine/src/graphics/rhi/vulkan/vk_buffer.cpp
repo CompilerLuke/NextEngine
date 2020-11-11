@@ -185,15 +185,19 @@ void input_attributes(ArrayVertexInputs& vertex_inputs, slice<VertexAttrib> attr
 			VkFormat format[4] = { VK_FORMAT_R32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32A32_SFLOAT };
 			input_attribute_desc.format = format[attrib.length - 1];
 		}
-		if (attrib.kind == VertexAttrib::Int) {
+		else if (attrib.kind == VertexAttrib::Int) {
 			VkFormat format[4] = { VK_FORMAT_R32_SINT, VK_FORMAT_R32G32_SINT, VK_FORMAT_R32G32B32_SINT, VK_FORMAT_R32G32B32A32_SINT };
 			input_attribute_desc.format = format[attrib.length - 1];
 		}
 
-		if (attrib.kind == VertexAttrib::Unorm) {
+		else if (attrib.kind == VertexAttrib::Unorm) {
 			VkFormat format[4] = { VK_FORMAT_R8_UNORM, VK_FORMAT_R8G8_UNORM, VK_FORMAT_R8G8B8_UNORM, VK_FORMAT_R8G8B8A8_UNORM };
 			input_attribute_desc.format = format[attrib.length - 1];
 		}
+        else {
+            printf("Unexpected format!");
+            abort();
+        }
 
 		vertex_inputs.append(input_attribute_desc);
 	}

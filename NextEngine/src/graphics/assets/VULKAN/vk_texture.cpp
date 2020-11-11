@@ -5,7 +5,7 @@
 #include "graphics/rhi/vulkan/buffer.h"
 #include "graphics/rhi/vulkan/command_buffer.h"
 #include "graphics/rhi/vulkan/draw.h"
-#include <vendor/stb_image.h>
+#include <stb_image.h>
 #include "graphics/assets/assets.h"
 #include "core/memory/linear_allocator.h"
 #include "engine/vfs.h"
@@ -63,6 +63,14 @@ void transition_ImageLayout(VkCommandBuffer cmd_buffer, VkImage image, VkFormat 
 
 		//printf("TRANSITIONING 0x%p from DST_OPTIMAL TO TRANSFER_DST_OPTIMAL, from %i, to %i\n", image, src_queue, dst_queue);
 	}
+    else if (oldLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+        barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        
+        sourceStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        destinationStage = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        //todo optimize for fragment or vertex
+    }
 	else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
 		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
@@ -239,7 +247,6 @@ VkSampler make_TextureSampler(const SamplerDesc& sampler_desc) {
 	samplerInfo.mipLodBias = 0.0f;
 	samplerInfo.minLod = 0.0f;
 	samplerInfo.maxLod = FLT_MAX;
-
 
 	VkSampler texture_sampler;
 
@@ -529,6 +536,10 @@ Texture make_TextureImage(TextureAllocator& allocator, const Image& image) {
 void transfer_image_ownership(TextureAllocator& allocator, VkCommandBuffer cmd_buffer) {
 	StagingQueue& queue = allocator.staging_queue;
 	TextureAllocInfo* transfer_ownership = allocator.uploaded_this_frame;
+    
+    if (queue.queue == rhi.device.graphics_queue) {
+        return;
+    }
 
 	while (transfer_ownership) {
 		printf("===========================\n");

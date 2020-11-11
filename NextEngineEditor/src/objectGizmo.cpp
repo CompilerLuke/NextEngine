@@ -1,5 +1,3 @@
-#pragma once
-
 #include "objectGizmo.h"
 #include "graphics/assets/assets.h"
 #include "components/transform.h"
@@ -8,6 +6,7 @@
 #include "components/grass.h"
 #include "graphics/renderer/renderer.h"
 #include "graphics/renderer/model_rendering.h"
+#include "ecs/ecs.h"
 
 ObjectGizmoSystem::ObjectGizmoSystem() {
 	this->dir_light_model =  load_Model("editor/dirLight.fbx");

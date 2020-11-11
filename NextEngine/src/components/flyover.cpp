@@ -35,24 +35,23 @@ void update_flyover(World& world, UpdateCtx& ctx) {
 		}
 		self.past_movement_speed.append(last_mouse_offset);
 
-		glm::vec2 mouse_offset;
-		for (glm::vec2 past_speed : self.past_movement_speed) {
+		glm::vec2 mouse_offset = last_mouse_offset;
+		/*for (glm::vec2 past_speed : self.past_movement_speed) {
 			mouse_offset += past_speed;
-		}
+		}*/
 		
 		if (ctx.input.mouse_button_down(MouseButton::Right)) {
 			ctx.input.capture_mouse(true);
-			mouse_offset = mouse_offset * (1.0f / self.past_movement_speed.length);
+			//mouse_offset = mouse_offset * (1.0f / self.past_movement_speed.length);
 		}
 		else {
 			ctx.input.capture_mouse(false);
+            self.past_movement_speed.clear();
 			mouse_offset = glm::vec2(0);
 		}
 
-		
-
-		self.yaw = -mouse_offset.x + self.yaw;
-		self.pitch = mouse_offset.y + self.pitch;
+        self.yaw -= mouse_offset.x;
+		self.pitch += mouse_offset.y;
 
 		if (self.pitch > 89) 
 			self.pitch = 89;

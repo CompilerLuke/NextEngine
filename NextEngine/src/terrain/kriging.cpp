@@ -3,7 +3,7 @@
 //  C_ECS
 //
 //  Created by Lucas  Goetz on 10/07/2020.
-//  Copyright © 2020 Lucas  Goetz. All rights reserved.
+//  Copyright ï¿½ 2020 Lucas  Goetz. All rights reserved.
 //
 
 #include <stdio.h>
@@ -16,10 +16,10 @@
 #include "core/profiler.h"
 #include "terrain/kriging.h"
 
-struct Point {
+/*struct HeightmapPoint {
 	glm::vec2 position;
 	float height;
-};
+};*/
 
 struct Matrix {
 	uint N;
@@ -235,7 +235,7 @@ bool compute_kriging_matrix(KrigingUBO& kriging_ubo, uint width, uint height) {
 	float sill = 0.5f * powf(radius, 2);
 	float range = radius;
 
-	int N = ++kriging_ubo.N;
+	uint N = ++kriging_ubo.N;
 
 	//ALLOCATE MATRICES
 	Matrix c1 = alloc_temporary_matrix(N); //todo remove with static array allocations

@@ -253,7 +253,7 @@ void DisplayComponents::render(World& world, RenderPass& params, Editor& editor)
 					ImGui::SetNextTreeNodeOpen(true);
 
 				DiffUtil diff_util;
-				begin_tdiff(diff_util, data, type);
+				begin_e_tdiff(diff_util, world, component_id, selected_id);
 
 				bool open = render_fields(type, data, "Component", editor);
 				if (open) {
@@ -285,7 +285,7 @@ void DisplayComponents::render(World& world, RenderPass& params, Editor& editor)
 				for (uint i = 0; i < MAX_COMPONENTS; i++) {
 					refl::Struct* type = world.component_type[i];
 					if (!type || (1ull << i) & arch) continue;
-					if (!type->name.starts_with_ignore_case(filter)) continue;
+					if (!((string_view)type->name).starts_with_ignore_case(filter)) continue;
 
 					if (ImGui::Button(type->name.c_str())) { 
 						entity_create_component_action(editor.actions, i, selected_id);

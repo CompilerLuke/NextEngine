@@ -14,6 +14,8 @@ struct Attachment {
 	VkImageView view;
 	VkFormat format;
 	VkImageLayout final_layout;
+    VkSampleCountFlagBits samples;
+    VkImageAspectFlagBits aspect;
 	uint mips = 1;
 };
 
@@ -29,7 +31,9 @@ struct RenderPassInfo {
 	array<MAX_ATTACHMENT, Attachment> transient_attachments;
 };
 
-VkFormat find_depth_format(VkPhysicalDevice physical_device);
+VkFormat find_depth_format(VkPhysicalDevice physical_device, bool stencil);
+
+RenderPass::ID register_render_pass(VkRenderPass pass);
 
 void submit_framegraph();
 void register_wsi_pass(VkRenderPass render_pass, uint width, uint height);

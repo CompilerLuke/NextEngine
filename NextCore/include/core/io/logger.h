@@ -6,6 +6,7 @@
 #include "core/container/string_view.h"
 #include "core/container/sstring.h"
 #include <stdlib.h>
+#include <stdio.h>
 
 //can't we simply accept a string_view?
 inline void format_intern(string_buffer& buffer, char* str) {
@@ -26,13 +27,13 @@ inline void format_intern(string_buffer& buffer, sstring str) {
 
 inline void format_intern(string_buffer& buffer, int num) {
 	char as_str[16];
-	_itoa_s(num, as_str, 10);
+    snprintf(as_str, 16, "%d", num);
 	buffer += as_str;
 }
 
 inline void format_intern(string_buffer& buffer, float num) {
 	char as_str[32];
-	_gcvt_s(as_str, num, 10);
+	snprintf(as_str, 32, "%f", num);
 	buffer += as_str;
 }
 
@@ -42,7 +43,7 @@ inline void format_intern(string_buffer& buffer, uint num) {
 
 inline void format_intern(string_buffer& buffer, u64 num) {
 	char as_str[32];
-	_ltoa_s(num, as_str, 10);
+    snprintf(as_str, 32, "%llu", num);
 	buffer += as_str;
 }
 
@@ -52,7 +53,7 @@ inline void format_intern(string_buffer& buffer, const string_buffer& str) {
 
 template<typename T>
 void format_intern(string_buffer&, T arg) {
-	static_assert(false, "unsupported format type");
+	//static_assert(false, "unsupported format type");
 }
 
 template<typename ...Args>

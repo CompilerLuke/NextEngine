@@ -14,6 +14,10 @@ struct sstring {
 	inline sstring() {
 		length(0);
 	}
+    
+    const char* c_str() const {
+        return data;
+    }
 
 	inline sstring(const char* str) {
 		int i = 0;
@@ -61,7 +65,7 @@ struct sstring {
 		return !(*this == other);
 	}
 
-	operator string_view() const {
+	operator string_view() const& {
 		return { data, length() };
 	}
 };

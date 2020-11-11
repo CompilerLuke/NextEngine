@@ -19,3 +19,4 @@ CORE_API i64  io_time_modified(string_view path);
 CORE_API bool io_readf(string_view path, string_buffer* output);
 CORE_API bool io_readfb(string_view path, string_buffer* output);
 CORE_API bool io_writef(string_view path, string_view contents);
+CORE_API bool io_copyf(string_view src, string_view dst, bool fail_if_exists);

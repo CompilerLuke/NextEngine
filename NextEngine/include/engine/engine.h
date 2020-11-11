@@ -12,7 +12,7 @@ struct ENGINE_API Modules {
 	struct PhysicsSystem* physics_system;
 	struct LocalTransformSystem* local_transforms_system;
 
-	Modules(const char* app_name, const char* level_path);
+	Modules(const char* app_name, const char* level_path, const char* engine_asset_path);
 	void begin_frame();
 	void end_frame();
 	~Modules();

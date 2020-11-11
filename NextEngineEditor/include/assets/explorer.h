@@ -1,7 +1,7 @@
 #pragma once
 
-#include <core/container/sstring.h>
-#include <engine/handle.h>
+#include "core/container/sstring.h"
+#include "engine/handle.h"
 #include "handle.h"
 #include "preview.h"
 #include <glm/vec3.hpp>
@@ -34,10 +34,13 @@ struct AssetTab {
 	AssetExplorer explorer;
 
 	AssetPreviewResources preview_resources;
+    
+    uint drop_file_callback;
 
 	AssetTab(Renderer&, AssetInfo&, Window& window);
 
-	//void register_callbacks(struct Window&, struct Editor&);
+	void register_callbacks(struct Window&, struct Editor&);
+    void remove_callbacks(struct Window&, struct Editor&);
 	void render(struct World&, struct Editor&, struct RenderPass&);
 };
 
@@ -53,11 +56,6 @@ AssetNode* get_asset(AssetInfo& self, asset_handle handle);
 asset_handle add_asset_to_current_folder(AssetTab& self, AssetNode&& node);
 
 void render_name(sstring& name, struct ImFont* font = nullptr);
-
-void edit_color(glm::vec3& color, string_view name, glm::vec2 size = glm::vec2(200, 200));
-void edit_color(glm::vec4& color, string_view name, glm::vec2 size = glm::vec2(200, 200));
-
-
 bool accept_drop(const char* drop_type, void* ptr, unsigned int size);
 
 //void insert_shader_handle_to_asset(AssetTab& asset_tab, ShaderAsset* asset);

@@ -6,6 +6,7 @@
 #include "core/container/array.h"
 #include "core/container/sstring.h"
 #include "core/container/string_buffer.h"
+#include "core/container/hash_map.h"
 #include <glm/gtc/quaternion.hpp>
 
 using namespace refl;
@@ -103,28 +104,148 @@ RESOLVE_TYPE(string_buffer, string_buffer)
 
 Array* make_vector_type(Type* type) {
 	char* name = PERMANENT_ARRAY(char, 100);
-	sprintf_s(name, 100, "vector<%s>", type->name.c_str());
+	snprintf(name, 100, "vector<%s>", type->name.c_str());
 
 	return PERMANENT_ALLOC(Array, Array::Vector, sizeof(vector<char>), name, type);
 }
 
 Array* make_tvector_type(Type* type) {
 	char* name = PERMANENT_ARRAY(char, 100);
-	sprintf_s(name, 100, "tvector<%s>", type->name.c_str());
+	snprintf(name, 100, "tvector<%s>", type->name.c_str());
 
 	return PERMANENT_ALLOC(Array, Array::TVector, sizeof(tvector<char>), name, type);
 }
 
 Array* make_array_type(uint N, uint size, Type* type) {
 	char* name = PERMANENT_ARRAY(char, 100);
-	sprintf_s(name, 100, "array<%i, %s>", N, type->name.c_str());
+	snprintf(name, 100, "array<%i, %s>", N, type->name.c_str());
 
 	return PERMANENT_ALLOC(Array, Array::StaticArray, size, name, type);
 }
 
 Array* make_carray_type(uint N, Type* type) {
 	char* name = PERMANENT_ARRAY(char, 100);
-	sprintf_s(name, 100, "%s[%i]", type->name.c_str(), N);
+	snprintf(name, 100, "%s[%i]", type->name.c_str(), N);
 
 	return PERMANENT_ALLOC(Array, Array::CArray, sizeof(void*) + type->size * N, name, type);
+}
+
+
+
+//DIFF
+namespace refl {
+
+DiffOfType diff_type(Type* a, Type* b);
+
+DiffField diff_field(Field& a, Field& b) {
+    DiffField field = {};
+    field.previous_name = a.name;
+    field.current_name = b.name;
+    field.previous_offset = a.offset;
+    field.current_offset = b.offset;
+    field.previous_type = a.type;
+    field.current_type = b.type;
+    
+    if (field.previous_type->name == field.current_type->name
+    ) {
+        field.type = UNCHANGED_DIFF;
+    } else {
+        field.type = EDITED_DIFF;
+    }
+    
+    field.diff = diff_type(a.type, b.type);
+    //assert(field.diff.type != REMOVED_DIFF && field.diff.type != ADDED_DIFF);
+    if (field.diff.type == EDITED_DIFF) field.type = EDITED_DIFF;
+    
+    return field;
+}
+
+Field* find_field(slice<Field> fields, string_view name) {
+    for (uint i = 0; i < fields.length; i++) {
+        if (fields[i].name == name) return &fields[i];
+    }
+    return nullptr;
+}
+
+DiffOfType diff_type(Type* a, Type* b) {
+    DiffOfType diff = {};
+    if (a) {
+        diff.previous_name = a->name;
+        diff.previous_type = a->type;
+        
+        if (!b) {
+            diff.type = REMOVED_DIFF;
+            return diff;
+        }
+    }
+    if (b) {
+        diff.current_name = b->name;
+        diff.current_type = b->type;
+        
+        if (!a) {
+            diff.type = ADDED_DIFF;
+            return diff;
+        }
+    }
+    
+    diff.previous_size = a->size;
+    diff.current_size = b->size;
+    
+    if (a->type == Type::Struct && b->type == Type::Struct) {
+        Struct* a_struct = (Struct*)a;
+        Struct* b_struct = (Struct*)b;
+        
+        hash_map<sstring, Field*, 103> a_fields;
+        hash_map<sstring, Field*, 103> b_fields;
+        
+        diff.fields.reserve(a_struct->fields.length);
+        
+        bool edited = false;
+        
+        for (int i = 0; i < a_struct->fields.length; i++) {
+            Field* field_a = &a_struct->fields[i];
+            Field* field_b = find_field(b_struct->fields, field_a->name);
+            
+            if (!field_b) {
+                DiffField field = {};
+                field.previous_name = field_a->name;
+                field.previous_offset = field_a->offset;
+                field.previous_type = field_a->type;
+                field.type = REMOVED_DIFF;
+                edited = true;
+                
+                diff.fields.append(field);
+            } else {
+                DiffField field = diff_field(*field_a, *field_b);
+                edited |= field.type == EDITED_DIFF;
+                field.previous_order = field_a - a_struct->fields.data;
+                field.current_order = field_b - b_struct->fields.data;
+                diff.fields.append(field);
+            }
+        }
+        
+        for (int i = 0; i < b_struct->fields.length; i++) {
+            Field* field_b = &b_struct->fields[i];
+            Field* field_a = find_field(a_struct->fields, field_b->name);
+            
+            if (!field_a) {
+                DiffField field = {};
+                field.current_name = field_b->name;
+                field.current_offset = field_b->offset;
+                field.current_type = field_b->type;
+                field.type = ADDED_DIFF;
+                edited = true;
+                
+                diff.fields.append(field);
+            } 
+        }
+        
+        if (edited) {
+            diff.type = EDITED_DIFF;
+        }
+    }
+    
+    return diff;
+}
+
 }

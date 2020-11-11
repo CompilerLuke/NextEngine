@@ -34,6 +34,7 @@ struct Assets {
 	//struct MaterialAllocator* material_allocator;
 
 	string_buffer asset_path;
+    string_buffer engine_asset_path;
 	hash_map<sstring, uint, 1000> path_to_handle;
 
 	HandleManager<Model, model_handle> models;
@@ -45,7 +46,7 @@ struct Assets {
 	queue<LoadTextureJob, 20> load_texture_jobs;
 	queue<EquirectangularToCubemapJob, 5> equirectangular_to_cubemap_jobs;
 
-	CubemapPassResources cubemap_pass_resources;
+	CubemapPassResources* cubemap_pass_resources;
 };
 
 extern Assets assets;

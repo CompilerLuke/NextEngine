@@ -7,17 +7,19 @@
 #include <core/memory/allocator.h>
 #include <core/time.h>
 #include <core/job_system/job.h>
+#include <core/job_system/fiber.h>
 #include <core/context.h>
+#include <stdio.h>
 
 atomic_counter counter;
 
 void nop(void* data) {
-	uint current = (counter += 1);
+	(counter += 1);
 	//printf("Nop %i\n", current);
 }
 
 void fork3(void* data) {
-	uint index = (uint)data;
+	//u64 index = (u64)data;
 
 	const uint JOB_COUNT = 10;
 
@@ -28,7 +30,7 @@ void fork3(void* data) {
 }
 
 void fork2(void* data) {
-	uint index = (uint)data;
+	//u64 index = (u64)data;
 
 	const uint JOB_COUNT = 10;
 
@@ -39,7 +41,7 @@ void fork2(void* data) {
 }
 
 void fork(void* data) {
-	uint index = (uint)data;
+	//u64 index = (u64)data;
 
 	const uint JOB_COUNT = 10;
 
@@ -56,7 +58,7 @@ void job_system_test(void*) {
 
 	JobDesc* desc = PERMANENT_ARRAY(JobDesc, JOB_COUNT);
 	for (uint i = 0; i < JOB_COUNT; i++) {
-		desc[i] = { fork, (void*)i };
+		desc[i] = { fork, (void*)(u64)i };
 	}
 
 	for (uint i = 0; i < 1; i++) {
@@ -64,7 +66,7 @@ void job_system_test(void*) {
 	}
 
 	double end_time = Time::now();
-	//printf("Took %f ms\n", (end_time - start_time) * 1000);
+	printf("Took %f ms\n", (end_time - start_time) * 1000);
 	//printf("Executed %i jobs", (uint)counter);
 }
 
@@ -90,28 +92,38 @@ void fiber_main(void* data) {
 
 	ScopedContext scoped_context(context);
 
-	const char* level = "C:\\Users\\User\\source\\repos\\NextEngine\\TheUnpluggingGame\\data\\level1\\";
+	const char* level = "/Users/antonellacalvia/Desktop/Coding/NextEngine/TheUnpluggingGame/data/level1/";
+    const char* engine_asset_path = "/Users/antonellacalvia/Desktop/Coding/NextEngine/NextEngine/data/";
 	const char* app_name = "The Unplugging";
 
 	//assert(get_worker_id() == 0);
 	//printf("Linear allocator %p on main fiber\n", &get_temporary_allocator());
 
-	Modules modules(app_name, level);
+	Modules modules(app_name, level, engine_asset_path);
+    
+#ifdef NE_RELEASE
+    const char* game_dll_path = "/Users/antonellacalvia/Desktop/Coding/NextEngine/bin/Release-macosx-x86_64/TheUnpluggingRunner/libTheUnpluggingGame.dylib";
+    const char* editor_dll_path = "/Users/antonellacalvia/Desktop/Coding/NextEngine/bin/Release-macosx-x86_64/TheUnpluggingRunner/libNextEngineEditor.dylib";
+#else
+    const char* game_dll_path = "/Users/antonellacalvia/Desktop/Coding/NextEngine/bin/Debug-macosx-x86_64/TheUnpluggingRunner/libTheUnpluggingGame.dylib";
+    const char* editor_dll_path = "/Users/antonellacalvia/Desktop/Coding/NextEngine/bin/Debug-macosx-x86_64/TheUnpluggingRunner/libNextEngineEditor.dylib";
+#endif
 
+    /*
 #ifdef _DEBUG
 	const char* game_dll_path = "C:\\Users\\User\\source\\repos\\NextEngine\\x64\\Debug\\TheUnpluggingGame.dll";
 	const char* engine_dll_path = "C:\\Users\\User\\source\\repos\\NextEngine\\x64\\Debug\\NextEngineEditor.dll";
 #else
 	const char* game_dll_path = "C:\\Users\\User\\source\\repos\\NextEngine\\x64\\Release\\TheUnpluggingGame.dll";
 	const char* engine_dll_path = "C:\\Users\\User\\source\\repos\\NextEngine\\x64\\Release\\NextEngineEditor.dll";
-#endif
+#endif*/
 
 #ifdef BUILD_STANDALONE
 	Application game(game_dll_path);
 	game.init();
 	game.run();
 #else
-	Application editor(modules, engine_dll_path);
+	Application editor(modules, editor_dll_path);
 	editor.init((void*)game_dll_path);
 
 	editor.run();
@@ -128,23 +140,25 @@ void init_workers(void*) {
 }
 
 int main() {
-	uint num_workers = 8;
+	uint num_workers = 1;
 	make_job_system(20, num_workers);
 
 	JobDesc init_jobs[MAX_THREADS];
 	uint init_jobs_on[MAX_THREADS];
 
-	init_jobs[0] = JobDesc(fiber_main, nullptr);
-	init_jobs_on[0] = 0; //schedule fiber main on main thread
-
-	for (uint i = 1; i < num_workers; i++) {
+	for (uint i = 0; i < num_workers - 1; i++) {
 		init_jobs[i] = { init_workers, nullptr };
-		init_jobs_on[i] = i;
+		init_jobs_on[i] = i + 1;
 	}
 
+    convert_thread_to_fiber();
 	atomic_counter counter = 0;
-	schedule_jobs_on({ init_jobs_on, num_workers }, { init_jobs, num_workers }, &counter);
-	wait_for_counter_on_thread(&counter, 0);
+	schedule_jobs_on({ init_jobs_on, num_workers }, { init_jobs, num_workers - 1 }, &counter);
+	
+    convert_thread_to_fiber();
+    wait_for_counter(&counter, 0);
+    fiber_main(nullptr);
+    convert_fiber_to_thread();
 
 	destroy_job_system();
 

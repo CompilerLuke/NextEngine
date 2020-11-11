@@ -2,8 +2,8 @@
 #include "components/lights.h"
 #include "graphics/renderer/ibl.h"
 #include "components/transform.h"
-#include <core/container/array.h>
-#include <ecs/ecs.h>
+#include "core/container/array.h"
+#include "ecs/ecs.h"
 #include "graphics/pass/pass.h"
 
 #include "components/camera.h"

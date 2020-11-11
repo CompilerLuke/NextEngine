@@ -6,7 +6,7 @@
 #include "components/terrain.h"
 #include "components/lights.h"
 #include "components/grass.h"
-#include "graphics\rhi\forward.h"
+#include "graphics/rhi/forward.h"
 #include "engine/handle.h"
 #include "physics/physics.h"
 #include "graphics/assets/assets.h"
@@ -20,6 +20,7 @@
 #include "ecs/flags.h"
 #include "ecs/id.h"
 #include "ecs/system.h"
+#include <glm/vec2.hpp>
 
 refl::Enum init_MaterialDesc_Mode() {
 	refl::Enum type("Mode", sizeof(MaterialDesc::Mode));
@@ -206,7 +207,7 @@ refl::Struct init_Flyover() {
 	type.fields.append({"movement_speed", offsetof(Flyover, movement_speed), get_float_type()});
 	type.fields.append({"yaw", offsetof(Flyover, yaw), get_float_type()});
 	type.fields.append({"pitch", offsetof(Flyover, pitch), get_float_type()});
-	type.fields.append({"past_movement_speed", offsetof(Flyover, past_movement_speed), make_array_type(3, sizeof(array<3, struct glm::vec2>), get_vec2_type())});
+	type.fields.append({"past_movement_speed", offsetof(Flyover, past_movement_speed), make_array_type(3, sizeof(array<3, glm::vec2>), get_vec2_type())});
 	return type;
 }
 
@@ -835,6 +836,7 @@ void write_RigidBody_to_buffer(SerializerBuffer& buffer, RigidBody& data) {
 
 void read_RigidBody_from_buffer(DeserializerBuffer& buffer, RigidBody& data) {
     read_n_from_buffer(buffer, &data, sizeof(RigidBody));
+    data.bt_rigid_body = nullptr;
 }
 
 refl::Struct* get_RigidBody_type() {
@@ -1013,7 +1015,7 @@ refl::Struct* get_ArchetypeStore_type() {
 	return &type;
 }
 
-#include "C:\Users\User\source\repos\NextEngine\NextEngine\/include/ecs/component_ids.h"
+#include "ecs/component_ids.h"
 #include "ecs/ecs.h"
 #include "engine/application.h"
 

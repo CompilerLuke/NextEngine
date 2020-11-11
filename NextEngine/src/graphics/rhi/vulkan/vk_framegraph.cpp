@@ -41,6 +41,10 @@ struct Framegraph {
 
 static Framegraph framegraph;
 
+uint render_pass_samples_by_id(RenderPass::ID pass_id) {
+    return framegraph.info[pass_id].attachments[0].samples; //todo may not be correct in all cases
+}
+
 render_pass_handle render_pass_by_id(RenderPass::ID pass_id) {
 	return { (u64)framegraph.render_pass[pass_id] };
 }
@@ -187,11 +191,18 @@ RenderPass begin_render_pass(RenderPass::ID id, glm::vec4 clear_color) {
 	render_pass_info.renderArea.extent = { viewport.width, viewport.height };
 
 	//todo add customization
-	VkClearValue clear_colors[2] = {};
-	clear_colors[0].color = { clear_color.x, clear_color.y, clear_color.z, clear_color.w };
-	clear_colors[1].depthStencil = { 1, 0 };
-
-	render_pass_info.clearValueCount = 2;
+	VkClearValue clear_colors[MAX_ATTACHMENT] = {};
+    
+    uint offset = 0;
+    for (uint i = 0; i < view.attachments.length; i++) {
+        if (view.attachments[i].aspect == VK_IMAGE_ASPECT_DEPTH_BIT) clear_colors[offset].depthStencil = { 1, 0};
+        else clear_colors[offset].color = { clear_color.x, clear_color.y, clear_color.z, clear_color.w };
+        
+        if (view.attachments[i].samples != VK_SAMPLE_COUNT_1_BIT) offset += 2;
+        else offset++;
+    }
+    
+	render_pass_info.clearValueCount = offset;
 	render_pass_info.pClearValues = clear_colors;
 
 	//todo merge into one call
@@ -373,7 +384,7 @@ void end_render_frame(RenderPass& render_pass) {
 	submit_framegraph();
 	submit_all_cmds(graphics_cmd_pool, submit_info);
 
-	static bool first_frame = true;
+	//static bool first_frame = true;
 
 	//0x83d4ee000000000b[]
 
@@ -392,11 +403,6 @@ void end_render_frame(RenderPass& render_pass) {
 	queue_submit(rhi.device, Queue_Graphics, submit_info);
 
 	present_swapchain_image(rhi.swapchain);
-
-	swapchain.current_frame = (swapchain.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
-	first_frame = false;
-
-	rhi.frame_index = swapchain.current_frame; //todo eliminate distinction between frame and swapchain.current_frame
 }
 
 VkFormat find_supported_format(VkPhysicalDevice physical_device, slice<VkFormat> candidates, VkImageTiling tiling, VkFormatFeatureFlags features) {
@@ -415,13 +421,20 @@ VkFormat find_supported_format(VkPhysicalDevice physical_device, slice<VkFormat>
 	throw "Failed to find supported format!";
 }
 
-VkFormat find_depth_format(VkPhysicalDevice physical_device) {
-	array<3, VkFormat> candidates = { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT };
-	return find_supported_format(physical_device, candidates, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+VkFormat find_depth_format(VkPhysicalDevice physical_device, bool stencil) {
+	VkFormat depth_candidates[3] = { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT };
+    VkFormat stencil_and_depth_candidates[2] = { VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT };
+    
+    return find_supported_format(physical_device, stencil ? slice{stencil_and_depth_candidates,2} : slice{depth_candidates,3}, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
 }
 
 VkFormat find_color_format(VkPhysicalDevice device, AttachmentDesc& desc) {
 	return to_vk_image_format(desc.format, desc.num_channels);
+}
+
+VkSampleCountFlagBits find_sample_count(VkSampleCountFlagBits max, uint count) {
+    assert((count & (count-1)) == 0);
+    return count > max ? max : (VkSampleCountFlagBits)count;
 }
 
 const uint MAX_SUBPASSES = 5;
@@ -436,6 +449,22 @@ VkAttachmentStoreOp to_vk_store_op(StoreOp op) {
 	return ops[(uint)op];
 }
 
+VkSampleCountFlagBits get_max_usable_sample_count(VkPhysicalDevice physical_device) {
+    VkPhysicalDeviceProperties properties;
+    vkGetPhysicalDeviceProperties(physical_device, &properties);
+
+    VkSampleCountFlags counts = properties.limits.framebufferColorSampleCounts & properties.limits.framebufferDepthSampleCounts;
+    
+    if (counts & VK_SAMPLE_COUNT_64_BIT) { return VK_SAMPLE_COUNT_64_BIT; }
+    if (counts & VK_SAMPLE_COUNT_32_BIT) { return VK_SAMPLE_COUNT_32_BIT; }
+    if (counts & VK_SAMPLE_COUNT_16_BIT) { return VK_SAMPLE_COUNT_16_BIT; }
+    if (counts & VK_SAMPLE_COUNT_8_BIT) { return VK_SAMPLE_COUNT_8_BIT; }
+    if (counts & VK_SAMPLE_COUNT_4_BIT) { return VK_SAMPLE_COUNT_4_BIT; }
+    if (counts & VK_SAMPLE_COUNT_2_BIT) { return VK_SAMPLE_COUNT_2_BIT; }
+
+    return VK_SAMPLE_COUNT_1_BIT;
+}
+
 /*
 			color_attachment_desc.samples = VK_SAMPLE_COUNT_1_BIT;
 			color_attachment_desc.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -446,44 +475,72 @@ VkAttachmentStoreOp to_vk_store_op(StoreOp op) {
 
 VkRenderPass make_RenderPass(VkDevice device, VkPhysicalDevice physical_device, FramebufferDesc& desc, slice<SubpassDesc> subpasses) {
 	VkSubpassDescription subpass_description[MAX_SUBPASSES] = {};
-	array<MAX_ATTACHMENT, VkAttachmentDescription> attachments_desc;
+    array<MAX_ATTACHMENT * 2, VkAttachmentDescription> attachments_desc = {};
+    array<MAX_ATTACHMENT, VkAttachmentReference> resolve_attachment_ref = {};
+    
 	tvector<VkSubpassDependency> dependencies;
+    VkSampleCountFlagBits max_samples = get_max_usable_sample_count(physical_device);
 
 	for (uint i = 0; i < desc.color_attachments.length; i++) {
 		AttachmentDesc& attach = desc.color_attachments[i];
 
 		VkFormat format = find_color_format(physical_device, attach);
+        VkSampleCountFlagBits samples = find_sample_count(max_samples, attach.num_samples);
 
 		VkAttachmentDescription color_attachment_desc = {};
 		color_attachment_desc.format = format;
-		color_attachment_desc.samples = VK_SAMPLE_COUNT_1_BIT;
+        color_attachment_desc.samples = samples;
 		color_attachment_desc.loadOp = to_vk_load_op(attach.load_op);
 		color_attachment_desc.storeOp = to_vk_store_op(attach.store_op);
 		color_attachment_desc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		color_attachment_desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 		color_attachment_desc.initialLayout = to_vk_layout[(uint)attach.initial_layout]; //todo not sure this is correct
 
-		if (attach.num_mips > 1) color_attachment_desc.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; //VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-		else color_attachment_desc.finalLayout = to_vk_layout[(uint)attach.final_layout];
+        VkImageLayout final_layout;
+        
+		if (attach.num_mips > 1) final_layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; //VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		else final_layout = to_vk_layout[(uint)attach.final_layout];
 
-		attachments_desc.append(color_attachment_desc);
+        if (attach.num_samples == 1) {
+            color_attachment_desc.finalLayout = final_layout;
+            attachments_desc.append(color_attachment_desc);
+        } else {
+            VkAttachmentDescription resolve_attachment_desc = color_attachment_desc;
+            resolve_attachment_desc.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            resolve_attachment_desc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            resolve_attachment_desc.samples = VK_SAMPLE_COUNT_1_BIT;
+            resolve_attachment_desc.finalLayout = final_layout;
+            
+            color_attachment_desc.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            color_attachment_desc.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            attachments_desc.append(color_attachment_desc);
+            
+            VkAttachmentReference resolve_reference = {};
+            resolve_reference.attachment = attachments_desc.length;
+            resolve_reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            
+            resolve_attachment_ref.append(resolve_reference);
+            attachments_desc.append(resolve_attachment_desc);
+        }
 	}
 
 	bool depth_attachment = desc.depth_buffer != DepthBufferFormat::None;
+    bool stencil_attachment = desc.stencil_buffer != StencilBufferFormat::None;
 	bool store_depth_buffer = desc.depth_attachment;
 
 	VkAttachmentReference depth_attachment_ref = {};
 
 	if (depth_attachment) {
-		VkFormat depth_format = find_depth_format(physical_device);
+		VkFormat depth_format = find_depth_format(physical_device, stencil_attachment);
+        VkSampleCountFlagBits samples = store_depth_buffer ? find_sample_count(max_samples, desc.depth_attachment->num_samples) : attachments_desc[0].samples;
 
 		VkAttachmentDescription depth_attachment_desc = {};
 		depth_attachment_desc.format = depth_format;
-		depth_attachment_desc.samples = VK_SAMPLE_COUNT_1_BIT;
+		depth_attachment_desc.samples = samples;
 		depth_attachment_desc.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		depth_attachment_desc.storeOp = store_depth_buffer ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_DONT_CARE;
 		depth_attachment_desc.stencilLoadOp = desc.stencil_buffer == StencilBufferFormat::None ? VK_ATTACHMENT_LOAD_OP_DONT_CARE : VK_ATTACHMENT_LOAD_OP_CLEAR;
-		depth_attachment_desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		depth_attachment_desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; 
 		depth_attachment_desc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		depth_attachment_desc.finalLayout = store_depth_buffer ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
@@ -589,7 +646,9 @@ VkRenderPass make_RenderPass(VkDevice device, VkPhysicalDevice physical_device, 
 		subpass.pColorAttachments = color_attachment_ref.data;
 		subpass.pDepthStencilAttachment = subpass_desc.depth_attachment ? &depth_attachment_ref : NULL;
 	}
-
+    
+    subpass_description[subpasses.length - 1].pResolveAttachments = resolve_attachment_ref.length > 0 ? resolve_attachment_ref.data : nullptr;
+    
 	VkRenderPassCreateInfo render_pass_info = {};
 	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	render_pass_info.attachmentCount = attachments_desc.length;
@@ -606,43 +665,72 @@ VkRenderPass make_RenderPass(VkDevice device, VkPhysicalDevice physical_device, 
 
 VkFramebuffer make_Framebuffer(VkDevice device, VkPhysicalDevice physical_device, VkRenderPass render_pass, FramebufferDesc& desc, RenderPassInfo& info) {
 	array<MAX_ATTACHMENT, VkImageView> attachments_view;
+    
+    VkSampleCountFlagBits max_samples = get_max_usable_sample_count(physical_device);
 
 	for (uint i = 0; i < desc.color_attachments.length; i++) {
 		AttachmentDesc& attach = desc.color_attachments[i];
+        bool msaa = attach.num_samples > 1;
 
+        VkSampleCountFlagBits samples = find_sample_count(max_samples, attach.num_samples);
 		VkImageUsageFlags usage = to_vk_usage_flags(attach.usage);
 		VkFormat format = find_color_format(physical_device, attach); //  VK_FORMAT_R8G8B8_UINT;
-
 
 		//todo add support for mip-mapping
 		VkImageCreateInfo create_info = image_create_default;
 		create_info.format = format;
-		create_info.mipLevels = attach.num_mips;
+		create_info.mipLevels = msaa ? 1 : attach.num_mips;
 		create_info.extent.width = desc.width;
 		create_info.extent.height = desc.height;
-		create_info.usage = to_vk_usage_flags(attach.usage);
-		
+        create_info.usage = usage;
+        create_info.samples = samples;
+        
 		if (attach.num_mips > 1) create_info.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
 		Attachment attachment = {};
 		VK_CHECK(vkCreateImage(device, &create_info, nullptr, &attachment.image));
-		alloc_and_bind_memory(rhi.texture_allocator, attachment.image);
+		alloc_and_bind_memory(rhi.texture_allocator, attachment.image); //todo use transient memory for msaa
+        
+        VkImageViewCreateInfo image_view_info = image_view_create_default;
+        image_view_info.image = attachment.image;
+        image_view_info.format = format;
+        
+        VkImageView image_view;
+        VK_CHECK(vkCreateImageView(device, &image_view_info, nullptr, &image_view));
 				
-		attachment.view = make_ImageView(device, attachment.image, format, VK_IMAGE_ASPECT_COLOR_BIT);
+		attachment.view = image_view;
 		attachment.format = format;
+        attachment.samples = samples;
 		attachment.mips = attach.num_mips;
 		attachment.final_layout = to_vk_layout[(int)attach.final_layout];
+        attachment.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
 
-		attachments_view.append(attachment.view);
-
+		attachments_view.append(image_view);
 		info.attachments.append(attachment);
+        
+        //todo leaking resources
+        if (msaa) { //RESOLVE ATTACHMENT
+            VkImageCreateInfo create_info_resolved = create_info;
+            create_info_resolved.samples = VK_SAMPLE_COUNT_1_BIT;
+            create_info_resolved.mipLevels = attach.num_mips;
+            
+            VkImage resolved_image; //todo store in attachment
+            VK_CHECK(vkCreateImage(device, &create_info_resolved, nullptr, &resolved_image));
+            alloc_and_bind_memory(rhi.texture_allocator, resolved_image);
+            
+            image_view_info.image = resolved_image;
+            image_view_info.subresourceRange.levelCount = attach.num_mips;
+            VK_CHECK(vkCreateImageView(device, &image_view_info, nullptr, &image_view));
+            
+            attachments_view.append(image_view);
+        }
+        else if (attachment.mips != 1) {
+            image_view_info.subresourceRange.levelCount = create_info.mipLevels;
+            
+            VK_CHECK(vkCreateImageView(device, &image_view_info, nullptr, &image_view));
+        }
 		
 		{
-			VkImageViewCreateInfo info = image_view_create_default;
-			info.image = attachment.image;
-			info.format = format;
-			info.subresourceRange.levelCount = attach.num_mips;
-
 			Texture texture;
 			texture.alloc_info = nullptr;
 			texture.desc.format = attach.format;
@@ -652,27 +740,44 @@ VkFramebuffer make_Framebuffer(VkDevice device, VkPhysicalDevice physical_device
 			texture.desc.num_channels = attach.num_channels;
 			texture.desc.num_mips = attach.num_mips;
 			texture.desc.format = attach.format;
-
-			VK_CHECK(vkCreateImageView(device, &info, nullptr, &texture.view));
-
+            
+            texture.view = image_view;
 			*attach.tex_id = assets.textures.assign_handle(std::move(texture));
 		}
 	}
 
 	if (desc.depth_buffer != DepthBufferFormat::None) {
-		VkFormat depth_format = find_depth_format(physical_device);
+        bool stencil_attachment = desc.stencil_buffer != StencilBufferFormat::None;
+		VkFormat depth_format = find_depth_format(physical_device, stencil_attachment);
 
 		bool store_depth = desc.depth_attachment;
+        VkImageAspectFlags aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
+        if (stencil_attachment) aspect |= VK_IMAGE_ASPECT_STENCIL_BIT;
+        
+        VkSampleCountFlagBits samples = !store_depth ? info.attachments[0].samples : find_sample_count(max_samples, desc.depth_attachment->num_samples);
 
 		Attachment attachment = {};
-		make_alloc_Image(device, physical_device, desc.width, desc.height, depth_format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | (store_depth ? VK_IMAGE_USAGE_SAMPLED_BIT : 0), VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &attachment.image, &attachment.memory);
-		attachment.view = make_ImageView(device, attachment.image, depth_format, VK_IMAGE_ASPECT_DEPTH_BIT);
-
+        
+        VkImageCreateInfo create_info = image_create_default;
+        create_info.extent.width = desc.width;
+        create_info.extent.height = desc.height;
+        create_info.format = depth_format;
+        create_info.samples = samples;
+        create_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | (store_depth ? VK_IMAGE_USAGE_SAMPLED_BIT : 0);
+        
+        VK_CHECK(vkCreateImage(device, &create_info, nullptr, &attachment.image));
+        alloc_and_bind_memory(rhi.texture_allocator, attachment.image);
+        
+		//make_alloc_Image(device, physical_device, desc.width, desc.height, depth_format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | (store_depth ? VK_IMAGE_USAGE_SAMPLED_BIT : 0), VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &attachment.image, &attachment.memory);
+		attachment.view = make_ImageView(device, attachment.image, depth_format, aspect);
+        attachment.samples = samples;
+        attachment.aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
+    
 		attachments_view.append(attachment.view);
 
+        info.attachments.append(attachment);
+        
 		if (store_depth) {
-			info.attachments.append(attachment);
-
 			Texture texture;
 			texture.alloc_info = nullptr;
 			//texture.desc.format = depth_format;

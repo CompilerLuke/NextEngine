@@ -1,5 +1,5 @@
 #include "generated.h"
-#include <core/types.h>
+#include "engine/types.h"
 #include "lister.h"
 #include "assets/dialog.h"
 #include "assets/explorer.h"
@@ -308,7 +308,7 @@ refl::Struct* get_AssetNode_type() {
 	return &type;
 }
 
-#include "C:\Users\User\source\repos\NextEngine\NextEngineEditor\/include/component_ids.h"
+#include "../include/component_ids.h"
 #include "ecs/ecs.h"
 #include "engine/application.h"
 

@@ -8,6 +8,7 @@
 #include "core/reflection.h"
 #include "core/io/logger.h"
 #include "core/serializer.h"
+#include "component_ids.h"
 
 #include <ecs/system.h>
 

@@ -1,5 +1,7 @@
 #include "engine/engine.h"
 #include "assets/explorer.h"
+#include "assets/dialog.h"
+#include "assets/importer.h"
 #include "assets/info.h"
 #include "editor.h"
 #include "core/io/logger.h"
@@ -23,7 +25,7 @@
 #include "diffUtil.h"
 #include "graphics/renderer/renderer.h"
 #include <imgui/imgui.h>
-#include <core/types.h>
+#include "core/types.h"
 
 #include "graphics/rhi/draw.h"
 #include "graphics/rhi/pipeline.h"
@@ -51,14 +53,16 @@ bool filtered(AssetExplorer& self, string_view name) {
 	return !name.starts_with_ignore_case(self.filter);
 }
 
-void render_asset(AssetExplorer& tab, AssetNode& node, texture_handle tex_handle, bool* deselect, glm::vec2 uv0 = glm::vec2(0,0), glm::vec2 uv1 = glm::vec2(1,1)) {	
+void render_asset(AssetExplorer& tab, AssetNode& node, texture_handle tex_handle, bool* deselect, float scaling, glm::vec2 uv0 = glm::vec2(0,0), glm::vec2 uv1 = glm::vec2(1,1)) {
 	if (filtered(tab, node.asset.name)) return;
 	
 	bool selected = node.handle.id == tab.selected.id;
 	if (selected) ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 3);
 
+    ImVec2 size(128.0f * scaling, 128.0f * scaling);
+    
 	ImGui::PushID(node.handle.id);
-	bool is_selected = ImGui::ImageButton(tex_handle, ImVec2(128, 128), uv0, uv1);
+	bool is_selected = ImGui::ImageButton(tex_handle, size, uv0, uv1);
 	if (ImGui::IsItemHovered() && ImGui::GetIO().MouseClicked[1]) { //Right click
 		tab.selected = node.handle;
 		*deselect = false;
@@ -72,7 +76,7 @@ void render_asset(AssetExplorer& tab, AssetNode& node, texture_handle tex_handle
 
 	if (ImGui::BeginDragDropSource()) {
 
-		ImGui::Image(tex_handle, ImVec2(128, 128));
+		ImGui::Image(tex_handle, size);
 		ImGui::SetDragDropPayload(drop_types[node.type], &node.asset.handle, sizeof(uint));
 		ImGui::EndDragDropSource();
 	}
@@ -88,12 +92,12 @@ void render_asset(AssetExplorer& tab, AssetNode& node, texture_handle tex_handle
 }
 
 
-void render_asset(AssetExplorer& tab, AssetNode& node, RotatablePreview& preview, bool* deselect) {
+void render_asset(AssetExplorer& tab, AssetNode& node, RotatablePreview& preview, bool* deselect, float scaling) {
 	texture_handle handle;
 	glm::vec2 uv0, uv1;
 
 	preview_from_atlas(tab.preview_resources, preview, &handle, &uv0, &uv1);
-	render_asset(tab, node, tab.preview_resources.preview_atlas, deselect, uv0, uv1);
+	render_asset(tab, node, tab.preview_resources.preview_atlas, deselect, scaling, uv0, uv1);
 }
 
 struct MoveToFolder {
@@ -121,22 +125,24 @@ void render_assets(Editor& editor, AssetExplorer& asset_tab, string_view filter,
 	asset_handle folder_handle = asset_tab.current_folder;
 	AssetFolder& folder = get_asset(asset_tab.info, folder_handle)->folder;
 	
-	ImGui::PushStyleColor(ImGuiCol_Column, ImVec4(0.16, 0.16, 0.16, 1));
+	ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.16, 0.16, 0.16, 1));
 	ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.16, 0.16, 0.16, 1));
 
-	ImGui::Columns(16, 0, false);
+    float scaling = editor.scaling;
+	ImGui::Columns(8, 0, false);
 
 	MoveToFolder move_to_folder = {};
+    
 
 	for (AssetNode& node : folder.contents) {
-		if (node.type == AssetNode::Texture) render_asset(asset_tab, node, node.texture.handle, deselect);
-		if (node.type == AssetNode::Shader) render_asset(asset_tab, node, editor.get_icon("shader"), deselect);
-		if (node.type == AssetNode::Model) render_asset(asset_tab, node, node.model.rot_preview, deselect);
-		if (node.type == AssetNode::Material) render_asset(asset_tab, node, node.material.rot_preview, deselect);
+		if (node.type == AssetNode::Texture) render_asset(asset_tab, node, node.texture.handle, deselect, scaling);
+		if (node.type == AssetNode::Shader) render_asset(asset_tab, node, editor.get_icon("shader"), deselect, scaling);
+		if (node.type == AssetNode::Model) render_asset(asset_tab, node, node.model.rot_preview, deselect, scaling);
+		if (node.type == AssetNode::Material) render_asset(asset_tab, node, node.material.rot_preview, deselect, scaling);
 
 		if (node.type == AssetNode::Folder && !filtered(asset_tab, node.folder.name)) {
 			ImGui::PushID(node.handle.id);
-			if (ImGui::ImageButton(editor.get_icon("folder"), ImVec2(128, 128))) {
+			if (ImGui::ImageButton(editor.get_icon("folder"), ImVec2(128 * scaling, 128 * scaling))) {
 				asset_tab.current_folder = node.handle;
 				*deselect = false;
 			}
@@ -144,7 +150,7 @@ void render_assets(Editor& editor, AssetExplorer& asset_tab, string_view filter,
 
 			if (ImGui::BeginDragDropSource()) {
 				ImGui::SetDragDropPayload("DRAG_AND_DROP_FOLDER", &node.handle.id, sizeof(uint));
-				ImGui::Image(editor.get_icon("folder"), ImVec2(128, 128));
+				ImGui::Image(editor.get_icon("folder"), ImVec2(128 * scaling, 128 * scaling));
 				ImGui::EndDragDropSource();
 			}
 
@@ -177,6 +183,18 @@ AssetTab::AssetTab(Renderer& renderer, AssetInfo& info, Window& window) :
 	make_AssetPreviewRenderData(preview_resources, renderer);	
 	make_AssetInfo(info); //note: this is overwritten when loading a scene
 	explorer.current_folder = info.toplevel.handle;
+}
+
+#include "graphics/rhi/window.h"
+
+void AssetTab::register_callbacks(Window& window, Editor& editor) {
+    drop_file_callback = window.on_drop.listen([this, &editor](const string_buffer& filename) {
+        import_filename(editor, editor.world, *this, filename);
+    }).id;
+}
+
+void AssetTab::remove_callbacks(Window& window, Editor& editor) {
+    window.on_drop.remove({drop_file_callback});
 }
 
 void AssetTab::render(World& world, Editor& editor, RenderPass& ctx) {
@@ -248,7 +266,7 @@ void AssetTab::render(World& world, Editor& editor, RenderPass& ctx) {
 		{
 			if (ImGui::MenuItem("Import")) {
 				string_buffer filename = open_dialog(window);
-				if (filename != "") import_filename(editor, world, ctx, *this, filename);
+				if (filename != "") import_filename(editor, world, *this, filename);
 			}
 
 			if (ImGui::MenuItem("New Material"))

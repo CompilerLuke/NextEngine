@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/container/sstring.h"
 #include "core/container/hash_map.h"
 
 struct VisualizeProfiler {

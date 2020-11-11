@@ -1,4 +1,5 @@
 #include "assets/explorer.h"
+#include "assets/inspect.h"
 #include <imgui/imgui.h>
 #include "ecs/ecs.h"
 #include "editor.h"
@@ -12,7 +13,8 @@
 #include "core/profiler.h"
 #include "core/job_system/job.h"
 
-float GRID_SZ = 64.0f;
+
+float GRID_SZ = 40.0f;
 
 ShaderNode::ShaderNode(Type type, ChannelType output_type) {
 	this->output.type = output_type;
@@ -62,7 +64,9 @@ float override_width_of_node(ShaderNode* self);
 
 glm::vec2 calc_size(ShaderGraph& graph, ShaderNode* self) {
 	float width = override_width_of_node(self);
-	return  (self->inputs.length * 2.5f) + graph.scale * glm::vec2(width, 70.0f + fmax(1.0f, self->inputs.length) * 40.f) + glm::vec2(0, calc_extra_height(graph, self));
+    
+    //(self->inputs.length * 2.5f) +
+	return  graph.scale * glm::vec2(width, 80.0f + fmax(1.0f, self->inputs.length) * 40.0f) + glm::vec2(0, calc_extra_height(graph, self));
 }
 
 bool mouse_hovering(glm::vec2 position, glm::vec2 size) {
@@ -81,7 +85,7 @@ bool mouse_hovering(glm::vec2 position, glm::vec2 size) {
 bool was_dragging = false;
 
 bool mouse_begin_drag() {	
-	return ImGui::IsMouseDragging() && !was_dragging;
+	return ImGui::IsMouseDragging(ImGuiMouseButton_Left) && !was_dragging;
 }
 
 bool mouse_hovering_node(ShaderGraph& graph, ShaderNode* self) {
@@ -180,7 +184,7 @@ void draw_connector(ShaderGraph& graph, glm::vec2 start_position, shader_node_ha
 	glm::vec2 begin_hitbox = glm::vec2(start_position.x - graph.scale * (is_input(connector) ? 30.0f : 20.0f), start_position.y - graph.scale * 20.0f);
 	glm::vec2 hitbox_size = glm::vec2(graph.scale * 40.0f);
 
-	if (graph.action.type == ShaderGraph::Action::None && ImGui::IsMouseDragging() && mouse_hovering(begin_hitbox, hitbox_size)) {
+	if (graph.action.type == ShaderGraph::Action::None && ImGui::IsMouseDragging(ImGuiMouseButton_Left) && mouse_hovering(begin_hitbox, hitbox_size)) {
 		graph.action.type = ShaderGraph::Action::Dragging_Connector;
 		graph.action.link = make_link(connector, node);
 		graph.action.link->index = index;
@@ -224,7 +228,7 @@ void render_bezier_link(ShaderGraph& graph, ImVec2 start, ImVec2 end, bool not_c
 
 	float length = glm::length(v_start.x - v_end.x);
 
-	length = glm::min(length * 0.5f, 50.0f);
+	length = glm::min(length * 0.5f, 50.0f * graph.scale);
 
 	glm::vec2 cp0, cp1;
 
@@ -243,8 +247,8 @@ void render_bezier_link(ShaderGraph& graph, ImVec2 start, ImVec2 end, bool not_c
 	}
 
 	ImGui::GetCurrentWindow()->DrawList->AddLine(start, ImVec2(cp0.x, cp0.y), ImColor(120, 120, 120), graph.scale * 5.f);
-	ImGui::GetCurrentWindow()->DrawList->AddLine( ImVec2(cp0.x, cp0.y), ImVec2(cp1.x, cp1.y), ImColor(120, 120, 120), graph.scale * 5.f);
-	ImGui::GetCurrentWindow()->DrawList->AddLine( ImVec2(cp1.x, cp1.y), end, ImColor(120, 120, 120), graph.scale * 5.f);
+	ImGui::GetCurrentWindow()->DrawList->AddLine(ImVec2(cp0.x, cp0.y), ImVec2(cp1.x, cp1.y), ImColor(120, 120, 120), graph.scale * 5.f);
+	ImGui::GetCurrentWindow()->DrawList->AddLine(ImVec2(cp1.x, cp1.y), end, ImColor(120, 120, 120), graph.scale * 5.f);
 }
 
 
@@ -263,7 +267,7 @@ void render_complete_link(ShaderGraph& graph, ShaderNode::Link* link) {
 void render_link(ShaderGraph& graph, ShaderNode::Link* link, bool is_input) {
 	
 	if (graph.action.type == ShaderGraph::Action::Dragging_Connector && graph.action.link == link) {
-		if (ImGui::IsMouseDragging()) {
+		if (ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
 			ShaderNode* node_result = graph.nodes_manager.get(link->from);
 			ShaderNode* node_input = graph.nodes_manager.get(link->to);
 
@@ -295,7 +299,6 @@ void render_input(ShaderGraph& graph, shader_node_handle handle, unsigned int i,
 	ShaderNode::InputChannel& input = node->inputs[i];
 	
 	auto window = ImGui::GetCurrentWindow();
-	ImGui::SetNextItemWidth(200 * graph.scale);
 
 	glm::vec2 start_position = glm::vec2(window->DC.CursorPos.x - 10.0f * graph.scale, window->DC.CursorPos.y + 20.0f * graph.scale);
 
@@ -304,30 +307,32 @@ void render_input(ShaderGraph& graph, shader_node_handle handle, unsigned int i,
 	bool is_connected = input.link.from.id != INVALID_HANDLE;
 
 	ImGui::PushID(handle.id);
-
-	if (input.type == Channel1 && !is_connected && render_default) { 
-		ImGui::Dummy(ImVec2(0, 40.0f * graph.scale));
-		ImGui::SameLine();
-		ImGui::InputFloat(name, &input.value1); 
+    ImGui::SetNextItemWidth(200 * graph.scale);
+    ImGui::Dummy(ImVec2(0, 40.0f * graph.scale));
+    
+    ImGui::SameLine();
+    
+	if (input.type == Channel1 && !is_connected && render_default) {
+        ImGui::SetNextItemWidth(200 * graph.scale);
+		ImGui::InputFloat(name, &input.value1);
 	}
-	else if (input.type == Channel2 && !is_connected && render_default) ImGui::InputFloat2(names[i], &input.value2.x);
-	else if (input.type == Channel3 && !is_connected && render_default) {
-		edit_color(input.value3, name, glm::vec2(graph.scale) * 40.0f);
-
+    else if (input.type == Channel2 && !is_connected && render_default) {
+        ImGui::SameLine();
+        ImGui::InputFloat2(names[i], &input.value2.x);
+    } else if (input.type == Channel3 && !is_connected && render_default) {
+		edit_color(input.value3, name, glm::vec2(graph.scale) * 35.0f);
 		ImGui::SameLine();
 		ImGui::Text(name);
 	}
 	else if (input.type == Channel4 && !is_connected && render_default) {
-		edit_color(input.value4, name, glm::vec2(graph.scale) * 40.0f);
+		edit_color(input.value4, name, glm::vec2(graph.scale) * 35.0f);
 		ImGui::SameLine();
 		ImGui::Text(name);
 	}
 	else {
-		ImGui::Dummy(ImVec2(0, 40 * graph.scale));
-		ImGui::SameLine();
 		ImGui::Text(name);
-		
 	}
+    
 
 	ImGui::PopID();
 }
@@ -368,7 +373,7 @@ glm::vec2 calc_pos_of_node(ShaderGraph& graph, shader_node_handle handle, bool i
 	//If Dragging this node
 	if ((graph.action.type == ShaderGraph::Action::Moving_Node && is_selected) || (graph.action.type == ShaderGraph::Action::Dragging_Node && graph.action.drag_node.id == handle.id)) {
 
-		bool is_done = !ImGui::IsMouseDragging();
+		bool is_done = !ImGui::IsMouseDragging(ImGuiMouseButton_Left);
 		glm::vec2 delta = glm::vec2(ImGui::GetMouseDragDelta().x, ImGui::GetMouseDragDelta().y);
 
 		if (graph.action.type == ShaderGraph::Action::Moving_Node) { //Solution to this problem, is to create a new action to apply the movement
@@ -464,12 +469,12 @@ void render_node(ShaderGraph& graph, shader_node_handle handle) {
 	}
 
 	draw_list->AddRectFilled(ImVec2(position.x, position.y), ImVec2(position.x + size.x, position.y + size.y), ImColor(80, 80, 80), 5.0f);
-	draw_list->AddRectFilled(ImVec2(position.x, position.y), ImVec2(position.x + size.x, position.y + 50.0f * graph.scale), ImColor(40, 40, 40), 5.0f);
-	draw_list->AddRectFilled(ImVec2(position.x, position.y + 45.0f * graph.scale), ImVec2(position.x + size.x, position.y + 50.0f * graph.scale), ImColor(40, 40, 40));
+	draw_list->AddRectFilled(ImVec2(position.x, position.y), ImVec2(position.x + size.x, position.y + 35.0f * graph.scale), ImColor(40, 40, 40), 5.0f);
+	draw_list->AddRectFilled(ImVec2(position.x, position.y + 30.0f * graph.scale), ImVec2(position.x + size.x, position.y + 40.0f * graph.scale), ImColor(40, 40, 40));
 
 	float padding = graph.scale * 10.0f;
 
-	ImGui::SetCursorScreenPos(ImVec2(position.x + padding, position.y + padding));
+	ImGui::SetCursorScreenPos(ImVec2(position.x + padding, position.y + 10 * graph.scale));
 	
 	//Draw Node Window
 	ImGui::BeginGroup(); // Lock horizontal position
@@ -502,7 +507,7 @@ void render_node(ShaderGraph& graph, shader_node_handle handle) {
 	}
 
 	//Begin Drag
-	if (graph.action.type == ShaderGraph::Action::None && ImGui::IsMouseDragging() && mouse_hovering_node(graph, self) && is_selected) {
+	if (graph.action.type == ShaderGraph::Action::None && ImGui::IsMouseDragging(ImGuiMouseButton_Left) && mouse_hovering_node(graph, self) && is_selected) {
 		graph.action.type = ShaderGraph::Action::Dragging_Node;
 		graph.action.drag_node = handle;
 	}
@@ -579,11 +584,12 @@ void draw_grid(ShaderGraph& graph, float grid_sz, float width) {
 		pos = shift_by_grid(graph, pos, glm::vec2(0, GRID_SZ));
 	}
 
-	GRID_SZ = 64.0f;
+	GRID_SZ = 40.0f;
 }
 
 void set_scale(ShaderGraph* graph, Input& input, float scale) {
 	scale = glm::clamp(scale, 0.1f, 2.0f);
+    scale = ceilf(scale * 8) / 8;
 
 	glm::vec2 mouse_pos(ImGui::GetMousePos().x, ImGui::GetMousePos().y);
 	glm::vec2 mouse_rel = screenspace_to_position(*graph, mouse_pos);
@@ -599,35 +605,44 @@ void ShaderGraph::render(World& world, RenderPass& ctx, Input& input) {
 
 	float scroll_speed = 0.2f;
 
+    static float non_snapped = scale;
+    
 	if (input.scroll_offset > 0) {
-		set_scale(this, input, scale * (1.0 + input.scroll_offset * scroll_speed));
+        non_snapped *= (1.0 + input.scroll_offset * scroll_speed);
+		set_scale(this, input, non_snapped);
 	}
 	else if (input.scroll_offset < 0) {
-		set_scale(this, input, scale  / (1.0 - input.scroll_offset * scroll_speed));
+        non_snapped /= (1.0 - input.scroll_offset * scroll_speed);
+		set_scale(this, input, non_snapped);
 	}
 	
-	float target_font_size = 32.0f * scale;
+	float target_font_size = 30.0f * scale;
 
 	auto g = ImGui::GetCurrentContext();
 	float fontBaseSize = g->FontBaseSize;
 	float fontSize = g->FontSize;
 
-	g->FontSize = target_font_size;
-	g->FontBaseSize = (g->FontSize / fontSize) * g->FontBaseSize;
+	//g->FontSize = target_font_size;
+	//g->FontBaseSize = (g->FontSize / fontSize) * g->FontBaseSize;
 
-	draw_grid(*this, 64.0f, 1.0f);
-	draw_grid(*this, 64.0f * 5.0f, 3.0f);
+	draw_grid(*this, 40.0f, 1.0f);
+	draw_grid(*this, 40.0f * 5.0f, 3.0f);
 
 	auto draw_list = ImGui::GetCurrentWindow()->DrawList;
 
 	draw_list->ChannelsSplit(4);
 
 	draw_list->ChannelsSetCurrent(1);
+    
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.5 * scale, 2.5 * scale));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0,0));
 
 	//Draw Nodes
 	for (unsigned int i = 0; i < nodes_manager.slots.length; i++) {
 		render_node(*this, nodes_manager.index_to_handle(i));
 	}
+    
+    ImGui::PopStyleVar(2);
 
 	draw_list->ChannelsSetCurrent(0);
 
@@ -668,11 +683,6 @@ void ShaderGraph::render(World& world, RenderPass& ctx, Input& input) {
 
 
 	draw_list->ChannelsMerge();
-
-	// Scrolling
-	if (ImGui::IsWindowHovered() && !ImGui::IsAnyItemActive() && ImGui::IsMouseDragging(2, 0.0f)) {
-		scrolling += glm::vec2(ImGui::GetIO().MouseDelta.x, ImGui::GetIO().MouseDelta.y) / scale;
-	}
 
 	g->FontBaseSize = fontBaseSize;
 	g->FontSize = fontSize;
@@ -1052,21 +1062,20 @@ void ShaderEditor::render(World& world, Editor& editor, RenderPass& ctx, Input& 
 			}
 		}
 
-		float font_size = 32.0f * graph->scale;
-
+		float font_size = 35.0f * graph->scale;
 		
 		if (font_size > 90.0f) {
 			ImGui::PushFont(font[9]);
 		}
 		else {
-			ImGui::PushFont(font[glm::max(0, (int)glm::ceil(font_size / 10.0f) - 1)]);
+            uint font_lod = (int)glm::floor(font_size / 10.0f);
+            ImGui::SetWindowFontScale(font_size / font[font_lod]->FontSize);
+            ImGui::PushFont(font[font_lod]);
 
 			//log("Scaling to font size ", font_size);
 			//log("Got font size ", 10.0f * ((int)glm::ceil(font_size / 10.0f)));
 		}
-		
-		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2.0f * graph->scale, 2.0f * graph->scale));
-
+    
 		graph->render(world, ctx, input);
 
 		glm::vec2 mouse_drag_begin(ImGui::GetMousePos().x, ImGui::GetMousePos().y);
@@ -1083,11 +1092,19 @@ void ShaderEditor::render(World& world, Editor& editor, RenderPass& ctx, Input& 
 		//ImGui::IsAnyItemHovered()
 		bool any_item_hovered = ImGui::GetCurrentContext()->HoveredId != 0;
 
-		if (!any_item_hovered && mouse_begin_drag && graph->action.type == ShaderGraph::Action::None && mouse_drag_within_window) {
+		if (!any_item_hovered && mouse_begin_drag && graph->action.type == ShaderGraph::Action::None && mouse_drag_within_window && !ImGui::IsKeyDown((int)Key::Left_Shift)) {
 			//log("Is active ", (int)ImGui::IsAnyItemActive());
 			graph->action.type = ShaderGraph::Action::BoxSelect;
 			graph->action.mouse_pos = glm::vec2(ImGui::GetMousePos().x, ImGui::GetMousePos().y);
 		}
+        
+        bool is_scrolling = ImGui::IsMouseDragging(ImGuiMouseButton_Middle)
+        || (ImGui::IsMouseDragging(ImGuiMouseButton_Left) && ImGui::IsKeyDown((int)Key::Left_Shift));
+
+        if (mouse_drag_within_window && is_scrolling) {
+            graph->scrolling += glm::vec2(ImGui::GetIO().MouseDelta.x, ImGui::GetIO().MouseDelta.y) / graph->scale;
+        }
+        
 
 		if (graph->action.type == ShaderGraph::Action::ApplyMove || graph->action.type == ShaderGraph::Action::BoxSelectApply) {
 			graph->action.type = ShaderGraph::Action::None;
@@ -1098,7 +1115,7 @@ void ShaderEditor::render(World& world, Editor& editor, RenderPass& ctx, Input& 
 			graph->selected.clear();
 		}
 
-		if (graph->action.type == ShaderGraph::Action::BoxSelect && !ImGui::IsMouseDragging()) {
+		if (graph->action.type == ShaderGraph::Action::BoxSelect && !ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
 			graph->action.type = ShaderGraph::Action::BoxSelectApply;
 			graph->action.mouse_delta.x = ImGui::GetMouseDragDelta().x;
 			graph->action.mouse_delta.y = ImGui::GetMouseDragDelta().y;
@@ -1114,7 +1131,7 @@ void ShaderEditor::render(World& world, Editor& editor, RenderPass& ctx, Input& 
 			//}
 		}
 
-		was_dragging = ImGui::IsMouseDragging();
+		was_dragging = ImGui::IsMouseDragging(ImGuiMouseButton_Left);
 
 		//Create property node
 		{
@@ -1137,7 +1154,7 @@ void ShaderEditor::render(World& world, Editor& editor, RenderPass& ctx, Input& 
 			}
 		}
 
-		ImGui::PopStyleVar();
+        ImGui::SetWindowFontScale(1.0);
 		ImGui::PopFont();
 
 		if (ImGui::GetIO().MouseClicked[1] && mouse_drag_within_window) {

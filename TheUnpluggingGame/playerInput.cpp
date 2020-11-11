@@ -2,7 +2,7 @@
 #include "playerInput.h"
 #include <ecs/ecs.h>
 #include <engine/input.h>
-#include <GLFW/glfw3.h>
+#include "component_ids.h"
 
 PlayerInput* get_player_input(World& world) {
 	auto result = world.first<PlayerInput>();

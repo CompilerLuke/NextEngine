@@ -6,21 +6,22 @@ workspace "NextEngine"
 	architecture "x64"
 	startproject "TheUnpluggingRunner"
 
-	configurations
-	{
+	configurations {
 		"Debug",
 		"Release",
 		"Dist"
 	}
 
-	flags
-	{
+	flags {
 		"MultiProcessorCompile"
 	}
 
 	filter "system:windows"
 		staticruntime "Off"
 		systemversion "latest"
+
+    filter "system:macosx"
+        systemversion "10.15.5"
 
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
@@ -30,113 +31,123 @@ function pch()
 
 	includedirs { "%{prj.name}/" }
 
-	files 
-	{
+	files {
 		"%{prj.name}/stdafx.h",
 		"%{prj.name}/stdafx.cpp"
 	}
 end
 
+function copy_into_runner()
+    filter "*"
+        postbuildcommands {
+            ("{COPY} %{cfg.buildtarget.relpath} ../bin/" .. outputdir .. "/TheUnpluggingRunner")
+        }
+end
+
+function set_rpath()
+    if os.istarget("macosx") then
+        filter "*"
+            postbuildcommands {
+                "install_name_tool -change /usr/local/lib/libNextCore.dylib @executable_path/libNextCore.dylib ../bin/" .. outputdir .. "/%{prj.name}/%{prj.name}"
+            }
+    end
+end
+
+function default_config()
+    language "C++"
+    cppdialect "C++17"
+
+    targetdir ("bin/" .. outputdir .. "/%{prj.name}")
+    objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
+
+    files {
+        "%{prj.name}/include/**.h",
+        "%{prj.name}/src/**.cpp"
+    }
+
+    includedirs {
+        "%{prj.name}/include",
+        "%{prj.name}/"
+    }
+    sysincludedirs "vendor/glm"
+
+    filter "system:windows"
+    		staticruntime "Off"
+    		runtime "Release"
+            unitybuild "on"
+
+    		defines {
+    			"%{prj.name:upper()}_EXPORTS",
+    			"NE_PLATFORM_WINDOWS"
+    		}
+
+    filter "system:macosx"
+        defines "NE_MACOSX"
+
+    filter "configurations:Debug"
+        defines "NE_DEBUG"
+        symbols "On"
+
+    filter "configurations:Release"
+        defines "NE_RELEASE"
+        symbols "On"
+        optimize "On"
+
+    filter "configurations:Dist"
+        defines "NE_DIST"
+        optimize "On"
+end
+
+
 function dll_config()
+    kind "SharedLib"
 	pch()
-	cppdialect "C++17"
+	default_config()
+    copy_into_runner()
 
 	filter "system:windows"
-		staticruntime "Off"
-		runtime "Release"
-		systemversion "latest"
+	    defines {
+	        "%{prj.name.upper()}_DLL",
+	        "%{prj.name:upper()}_EXPORTS"
+        }
 
-		defines 
-		{
-			"%{prj.name:upper()}_EXPORTS",
-			"NE_PLATFORM_WINDOWS"
-		}
-
-		postbuildcommands
-		{
-			("{COPY} %{cfg.buildtarget.relpath} ../bin/" .. outputdir .. "/TheUnpluggingRunner")
-		}
-
-	filter "configurations:Debug"
-		defines "NE_DEBUG"
-		symbols "On"
-
-	filter "configurations:Release"
-		defines "NE_RELEASE"
-		symbols "On"
-		optimize "On"
-
-	filter "configurations:Dist"
-		defines "NE_DIST"
-		optimize "On"
-
-	unitybuild "On"
-
-end 
+end
 
 project "NextCore"
 	location "NextCore"
-	kind "SharedLib"
-	language "C++"
-
-	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
-	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
-
-	files 
-	{
-		"%{prj.name}/include/**.h",
-		"%{prj.name}/src/**.cpp"
-	}
-
-	includedirs {
-		"%{prj.name}/include;",
-		"vendor/glm;"
-	}
-
 	dll_config()
-	
+
 
 VULKAN_SDK = os.getenv("VULKAN_SDK")
 
 project "NextEngine"
 	location "NextEngine"
-	kind "SharedLib"
 
-	language "C++"
-
-	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
-	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
-
-	unitybuild "On"
-
-	files 
-	{
-		"%{VULKAN_SDK}/include",
-		"%{prj.name}/include/**.h",
-		"%{prj.name}/src/**.cpp",
+	files {
 		"%{prj.name}/vendor/spirv-reflect/*.cpp",
 		"%{prj.name}/vendor/spirv-reflect/*.h",
-		"%{prj.name}/vendor/imgui/*.cpp",
-		"%{prj.name}/vendor/imgui/*.h",
+		"%{prj.name}/vendor/imgui/**.cpp",
+		"%{prj.name}/vendor/imgui/**.h",
 	}
 	
 	includedirs {
-		"%{prj.name}/",
-		"%{prj.name}/include;",
-		"%{prj.name}/vendor/glfw/include;",
-		"%{prj.name}/vendor/assimp/include;",
-		"%{prj.name}/vendor/bullet3/src;",
-		"vendor/glm;",
-		"%{VULKAN_SDK}/Include;",
-		"NextCore/include;"
+		"NextCore/include"
 	}
+
+	sysincludedirs {
+        VULKAN_SDK .. "/Include",
+        "%{prj.name}/vendor/",
+        "%{prj.name}/vendor/glfw/include",
+        "%{prj.name}/vendor/assimp/include",
+        "%{prj.name}/vendor/bullet3/src",
+	}
+
 
 	links 
 	{
 		"NextCore",
 		"assimp",
 		"glfw",
-		"%{VULKAN_SDK}/lib/shaderc_combined.lib",
 		"BulletInverseDynamics",
 		"BulletSoftBody",
 		"BulletDynamics",
@@ -144,40 +155,50 @@ project "NextEngine"
 		"LinearMath"
 	}
 
+
 	-- $(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) -d graphics/assets -d ecs components/transform.h components/camera.h components/flyover.h components/skybox.h components/terrain.h components/lights.h components/grass.h graphics\rhi\forward.h engine/handle.h physics/physics.h -h engine/types -c ecs/component_ids.h -o src/generated -l ENGINE_API
 
 	defines "RENDER_API_VULKAN"
 
 	dll_config()
-
 	
 	filter { "files:NextEngine/vendor/**" }
+	    optimize "Full"
 		dontincludeinunity "On"
+
+    filter "system:macosx"
+        sysincludedirs "/usr/local/Cellar/freetype/2.10.2/include/freetype2"
+        libdirs {
+            VULKAN_SDK .. "/lib/",
+            "/usr/local/Cellar/freetype/2.10.2/lib" --maybe it is better to include freetype through git submodules
+        }
+        links {"shaderc_shared", "freetype" }
+        linkoptions {"-framework Foundation", "-framework Cocoa", "-framework IOKit"}
+        defines "IMGUI_FREETYPE"
+
+    filter "system:windows"
+        links "%{VULKAN_SDK}/lib/shaderc_combined.lib"
 
 
 project "NextEngineEditor"
 	location "NextEngineEditor"
-	kind "SharedLib"
-
-	language "C++"
-
-	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
-	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
 
 	files 
 	{
-		"%{prj.name}/include/**.h",
-		"%{prj.name}/src/**.cpp",
-		"%{prj.name}/vendor/ImGuizmo/*.cpp",
+	    "%{prj.name}/vendor/ImGuizmo/*.h",
+		"%{prj.name}/vendor/ImGuizmo/*.cpp"
 	}
 	
 	includedirs {
-		"%{prj.name}/include;",
-		"%{VULKAN_SDK}/Include;",
-		"NextEngine/include;",
-		"NextCore/include;",
-		"vendor/glm;",
-		"NextEngine/vendor/"
+		"NextEngine/include",
+		"NextCore/include",
+	}
+
+	sysincludedirs {
+        "vendor/glm",
+        "NextEngine/vendor/",
+        "NextEngineEditor/vendor/",
+        "%{VULKAN_SDK}/Include",
 	}
 
 	links 
@@ -186,36 +207,32 @@ project "NextEngineEditor"
 		"NextEngine",
 	}
 
-	unitybuild "On"
-
 	-- $(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) lister.h -d assets -o src\generatedts/terrain.h components/lights.h components/grass.h graphics\rhi\forward.h engine/handle.h physics/physics.h -h engine/types -c ecs/component_ids.h -o src/generated -l ENGINE_API
 	defines "RENDER_API_VULKAN"
 	dll_config()
 
 	filter { "files:NextEngineEditor/vendor/**" }
+	    optimize "Full"
 		dontincludeinunity "On"
 
 project "ReflectionTool"
 	location "ReflectionTool"
 	kind "ConsoleApp"
+	entrypoint "main"
 
-	language "C++"
-
-	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
-	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
-	entrypoint ("main")
-
-	files 
-	{
-		"%{prj.name}/include/**.h",
-		"%{prj.name}/src/**.cpp"
-	}
-	
 	includedirs {
-		"%{prj.name}/include;",
-		"NextCore/include;",
+		"NextCore/include",
 		"vendor/glm",
 	}
+
+	if os.istarget("macosx") then
+	    postbuildcommands {
+	        "cp ../bin/" .. outputdir .. "/NextCore/libNextCore.dylib ../bin/" .. outputdir .. "/%{prj.name}/libNextCore.dylib",
+        }
+	    reflection_exe = "../bin/" .. outputdir .. "/ReflectionTool/ReflectionTool"
+	else
+	    reflection_exe = "../bin/" .. outputdir .. "/ReflectionTool/ReflectionTool.exe"
+    end
 
 	links 
 	{
@@ -224,50 +241,43 @@ project "ReflectionTool"
 
 	-- $(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) lister.h -d assets -o src\generatedts/terrain.h components/lights.h components/grass.h graphics\rhi\forward.h engine/handle.h physics/physics.h -h engine/types -c ecs/component_ids.h -o src/generated -l ENGINE_API
 
-	filter "system:windows"
-		cppdialect "C++17"
-		staticruntime "Off"
-		runtime "Release"
-		systemversion "latest"
+	default_config()
+	set_rpath()
 
-		defines 
-		{
-			"NE_PLATFORM_WINDOWS"
-		}
+project "ChemistryProject"
+	location "ChemistryProject"
 
-	filter "configurations:Debug"
-		defines "NE_DEBUG"
-		symbols "On"
+	files {
+	    "%{prj.name}/include/generated.h",
+	    "%{prj.name}/include/chemistry_component_ids.h",
+	    "%{prj.name}/src/generated.cpp"
+	}
 
-	filter "configurations:Release"
-		defines "NE_RELEASE"
-		symbols "On"
-		optimize "On"
+	includedirs { "NextEngine/include", "NextCore/include" }
+	links { "NextCore", "NextEngine" }
 
-	filter "configurations:Dist"
-		defines "NE_DIST"
-		optimize "On"
+	prebuildcommands (reflection_exe .. ' -b "." -i "include" -d "" -c "chemistry_component_ids.h" -o src/generated')
+
+	-- $(SolutionDir)x64\Release\ReflectionTool.exe  -b $(ProjectDir) -i "" -d "" -o generated
+	dll_config()
 
 project "TheUnpluggingGame"
 	location "TheUnpluggingGame"
-	kind "SharedLib"
 
-	language "C++"
-
-	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
-	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
-
-	files 
-	{
-		"%{prj.name}/include/**.h",
-		"%{prj.name}/src/**.cpp"
+	files {
+	    "%{prj.name}/*.h",
+	    "%{prj.name}/*.cpp",
+	    "%{prj.name}/generated.cpp",
 	}
-	
+
 	includedirs {
-		"%{prj.name}/include;",
-		"NextEngine/include;",
-		"NextCore/include;",
-		"vendor/glm;"
+        "NextEngine/include",
+        "NextCore/include",
+    }
+	
+	sysincludedirs {
+		"NextEngine/include", --todo could always use "" include and not <>
+		"NextCore/include",
 	}
 
 	links 
@@ -276,10 +286,11 @@ project "TheUnpluggingGame"
 		"NextEngine"
 	}
 
-	unitybuild "On"
+	prebuildcommands {
+	    reflection_exe .. ' -b "." -i "" -d "" -o generated'
+	}
 
 	-- $(SolutionDir)x64\Release\ReflectionTool.exe  -b $(ProjectDir) -i "" -d "" -o generated
-
 	dll_config()
 
 project "TheUnpluggingRunner"
@@ -287,21 +298,14 @@ project "TheUnpluggingRunner"
 	kind "WindowedApp"
 	entrypoint "main"
 
-	language "C++"
-
-	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
-	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
-
-	files 
-	{
-		"%{prj.name}/include/**.h",
-		"%{prj.name}/src/**.cpp"
+	includedirs {
+        "NextEngine/include",
+        "NextCore/include",
 	}
 	
-	includedirs {
-		"NextEngine/include;",
-		"NextCore/include;",
-		"vendor/glm;"
+	sysincludedirs {
+		"NextEngine/include",
+		"NextCore/include",
 	}
 
 	links 
@@ -310,19 +314,13 @@ project "TheUnpluggingRunner"
 		"NextEngine",
 	}
 
-	-- $(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) lister.h -d assets -o src\generatedts/terrain.h components/lights.h components/grass.h graphics\rhi\forward.h engine/handle.h physics/physics.h -h engine/types -c ecs/component_ids.h -o src/generated -l ENGINE_API
+	--$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) lister.h -d assets -o src\generatedts/terrain.h components/lights.h components/grass.h graphics\rhi\forward.h engine/handle.h physics/physics.h -h engine/types -c ecs/component_ids.h -o src/generated -l ENGINE_API
 
-	dll_config()
+    pch()
+	default_config()
 
-	filter "system:windows"
-		links "vcruntime.lib"
 
 group "Dependencies"
 	include "NextEngine/vendor/assimp"
 	include "NextEngine/vendor/glfw"
-	require "NextEngine/vendor/bullet3/src/BulletInverseDynamics/premake4"
-	require "NextEngine/vendor/bullet3/src/BulletSoftBody/premake4"
-	require "NextEngine/vendor/bullet3/src/BulletDynamics/premake4"
-	require "NextEngine/vendor/bullet3/src/BulletCollision/premake4"
-	require "NextEngine/vendor/bullet3/src/LinearMath/premake4"
-
+    include "NextEngine/vendor/bullet3"

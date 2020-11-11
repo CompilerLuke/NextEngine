@@ -1,20 +1,21 @@
-#include <graphics/assets/assets.h>
-#include <graphics/assets/shader.h>
-#include <graphics/rhi/pipeline.h>
+#include "graphics/assets/assets.h"
+#include "graphics/assets/shader.h"
+#include "graphics/rhi/pipeline.h"
 #include <imgui/imgui.h>
 #include "assets/node.h"
 #include "assets/explorer.h"
 #include "assets/inspect.h"
 #include "custom_inspect.h"
 #include "diffUtil.h"
+#include "shaderGraph.h"
 
-#include "generated.h"
+#include "../src/generated.h"
 #include "editor.h"
 
 struct AssetTab;
 struct Editor;
 
-void edit_color(glm::vec4& color, string_view name, glm::vec2 size) {
+bool edit_color(glm::vec4& color, string_view name, glm::vec2 size) {
 
 	ImVec4 col(color.x, color.y, color.z, color.w);
 	if (ImGui::ColorButton(name.c_str(), col, 0, ImVec2(size.x, size.y))) {
@@ -23,35 +24,69 @@ void edit_color(glm::vec4& color, string_view name, glm::vec2 size) {
 
 	color = glm::vec4(col.x, col.y, col.z, col.w);
 
+    bool active = false;
 	if (ImGui::BeginPopup(name.c_str())) {
 		ImGui::ColorPicker4(name.c_str(), &color.x);
+        active = ImGui::IsItemActive();
 		ImGui::EndPopup();
 	}
+    
+    return active;
 }
 
-void edit_color(glm::vec3& color, string_view name, glm::vec2 size) {
+bool edit_color(glm::vec3& color, string_view name, glm::vec2 size) {
 	glm::vec4 color4 = glm::vec4(color, 1.0f);
-	edit_color(color4, name, size);
+	bool active = edit_color(color4, name, size);
 	color = color4;
+    return active;
 }
 
-void channel_image(uint& image, string_view name) {
-	if (image == INVALID_HANDLE) { ImGui::Image(default_textures.white, ImVec2(200, 200)); }
-	else ImGui::Image({ image }, ImVec2(200, 200));
+void channel_image(uint& image, string_view name, float scaling) {
+    ImVec2 size(scaling * 200, scaling * 200);
+    
+    if (image == INVALID_HANDLE) { ImGui::Image(default_textures.white, size); }
+	else ImGui::Image({ image }, size);
 
-	if (ImGui::IsMouseDragging() && ImGui::IsItemHovered()) {
-		image = INVALID_HANDLE;
+	if (ImGui::IsMouseDragging(ImGuiMouseButton_Left) && ImGui::IsItemHovered()) {
+        if (name == "normal") image = default_textures.normal.id;
+        else image = INVALID_HANDLE;
 	}
 
 	accept_drop("DRAG_AND_DROP_IMAGE", &image, sizeof(texture_handle));
 	ImGui::SameLine();
 
-	ImGui::Text(name.c_str());
-	ImGui::SameLine(ImGui::GetWindowWidth() - 300);
+	ImGui::Text("%s", name.c_str());
+	ImGui::SameLine(ImGui::GetWindowWidth() - 300 * scaling);
 }
 
 void texture_properties(TextureAsset* tex, Editor& editor) {
-
+    TextureDesc& texture = *texture_desc(tex->handle);
+    
+    if (ImGui::CollapsingHeader("TextureInfo - Modified")) {
+        ImGui::Text("Width : %i", texture.width);
+        ImGui::Text("Height : %i", texture.height);
+        ImGui::Text("Num Channels : %i", texture.num_channels);
+        ImGui::Text("Mips : %i", texture.num_mips);
+        
+        TextureFormat format = texture.format;
+        const char* format_str = "Unknown format";
+        
+        switch (texture.format) {
+            case TextureFormat::U8: format_str = "U8"; break;
+            case TextureFormat::UNORM: format_str = "UNORM"; break;
+            case TextureFormat::SRGB: format_str = "SRGB"; break;
+            case TextureFormat::HDR: format_str = "HDR"; break;
+        }
+        
+        ImGui::Text("Format : %s", format_str);
+    }
+    
+    ImGui::NewLine();
+    ImGui::SetNextItemOpen(true);
+    if (ImGui::CollapsingHeader("Preview")) {
+        float size = 500 * editor.scaling;
+        ImGui::Image(tex->handle, ImVec2(size, size));
+    }
 }
 
 MaterialDesc base_shader_desc(shader_handle shader) {
@@ -68,17 +103,47 @@ MaterialDesc base_shader_desc(shader_handle shader) {
 	return desc;
 }
 
+#include "generated.h"
+
+void begin_asset_diff(DiffUtil& util, AssetInfo& info, uint handle, AssetNode::Type type, void* copy) {
+    refl::Type* types[AssetNode::Count] = {
+        get_TextureAsset_type(),
+        get_MaterialAsset_type(),
+        get_ShaderAsset_type(),
+        get_ModelAsset_type(),
+        get_AssetFolder_type(),
+    };
+    
+    ElementPtr ptr[2] = {};
+    ptr[0].type = ElementPtr::AssetNode;
+    ptr[0].id = handle;
+    ptr[0].component_id = type;
+    ptr[0].refl_type = types[type];
+    ptr[1].type = ElementPtr::StaticPointer;
+    ptr[1].ptr = &info;
+    
+    begin_diff(util, {ptr, 2}, copy);
+}
+
 void inspect_material_params(Editor& editor, material_handle handle, MaterialDesc* material) {
 	static DiffUtil diff_util;
 	static MaterialDesc copy;
 	static material_handle last_asset = { INVALID_HANDLE };
+    static bool slider_active;
 
-	if (handle.id != last_asset.id) {
-		diff_util.id = handle.id;
-		begin_diff(diff_util, material, &copy, get_MaterialDesc_type());
+    ElementPtr ptr[3] = {};
+    ptr[0] = {ElementPtr::Offset, offsetof(MaterialAsset, desc), get_MaterialDesc_type()};
+    ptr[1] = {ElementPtr::AssetNode, handle.id, AssetNode::Material, get_AssetNode_type()};
+    ptr[2] = {ElementPtr::StaticPointer, &editor.asset_info};
+    
+	if (handle.id != last_asset.id || !slider_active) {
+        begin_diff(diff_util, {ptr,3}, &copy);
+        last_asset.id = handle.id;
 	}
+    
+    slider_active = false;
 
-	bool slider_active = false;
+    float scaling = editor.scaling;
 
 	for (auto& param : material->params) {
 		const char* name = param.name.data;
@@ -94,7 +159,7 @@ void inspect_material_params(Editor& editor, material_handle handle, MaterialDes
 			ImGui::Text(name);
 		}
 		if (param.type == Param_Image) {
-			channel_image(param.image, param.name);
+			channel_image(param.image, param.name, scaling);
 			ImGui::SameLine();
 			ImGui::Text(name);
 		}
@@ -111,19 +176,19 @@ void inspect_material_params(Editor& editor, material_handle handle, MaterialDes
 		}
 
 		if (param.type == Param_Channel3) {
-			channel_image(param.image, name);
-			edit_color(param.vec3, name, glm::vec2(50, 50));
-			slider_active |= ImGui::IsItemActive();
+			channel_image(param.image, name, scaling);
+			slider_active |= edit_color(param.vec3, name, glm::vec2(50, 50));
 		}
 
 		if (param.type == Param_Channel2) {
-			channel_image(param.image, name);
+			channel_image(param.image, name, scaling);
 			ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.3f);
 			ImGui::InputFloat2(tformat("##", name).c_str(), &param.vec2.x);
+            slider_active |= ImGui::IsItemActive();
 		}
 
 		if (param.type == Param_Channel1) {
-			channel_image(param.image, name);
+			channel_image(param.image, name, scaling);
 			ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.3f);
 			ImGui::SliderFloat(tformat("##", name).c_str(), &param.real, 0, 1.0f);
 			slider_active |= ImGui::IsItemActive();
@@ -131,10 +196,10 @@ void inspect_material_params(Editor& editor, material_handle handle, MaterialDes
 	}
 
 	if (slider_active) {
-		submit_diff(editor.actions.frame_diffs, diff_util, "Material Property");
+        commit_diff(editor.actions, diff_util);
 	}
 	else {
-		end_diff(editor.actions, diff_util, "Material Property");
+        end_diff(editor.actions, diff_util, "Material Property");
 	}
 }
 
@@ -217,8 +282,9 @@ void model_properties(ModelAsset* mod_asset, Editor& editor, AssetTab& self) {
 	render_name(mod_asset->name, self.explorer.default_font);
 
 	DiffUtil diff_util;
-	begin_tdiff(diff_util, &mod_asset->trans, get_Transform_type());
-
+    ModelAsset copy;
+    begin_asset_diff(diff_util, editor.asset_info, mod_asset->handle.id, AssetNode::Model, &copy);
+    
 	ImGui::SetNextTreeNodeOpen(true);
 	ImGui::CollapsingHeader("Transform");
 	ImGui::InputFloat3("position", &mod_asset->trans.position.x);
@@ -270,7 +336,7 @@ void model_properties(ModelAsset* mod_asset, Editor& editor, AssetTab& self) {
 
 		uint lod_count = model->lod_distance.length;
 
-		if (!ImGui::IsMouseDragging()) {
+		if (!ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
 			dragging = -1;
 			last_drag_delta = glm::vec2();
 			drag_delta = glm::vec2();
@@ -284,7 +350,7 @@ void model_properties(ModelAsset* mod_asset, Editor& editor, AssetTab& self) {
 			draw_list->AddRectFilled(cursor_pos + glm::vec2(offset, 0), cursor_pos + glm::vec2(offset + width, height), colors[i]);
 
 			char buffer[100];
-			sprintf_s(buffer, "LOD %i - %.1fm", i, dist);
+			snprintf(buffer, 100, "LOD %i - %.1fm", i, dist);
 
 			draw_list->AddText(cursor_pos + glm::vec2(offset + padding, padding), ImColor(255, 255, 255), buffer);
 

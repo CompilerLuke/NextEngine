@@ -7,7 +7,7 @@
 #include "components/transform.h"
 #include "core/io/logger.h"
 #include "engine/vfs.h"
-#include <vendor/stb_image.h>
+#include <stb_image.h>
 #include "components/camera.h"
 #include "components/lights.h"
 #include "graphics/pass/render_pass.h"
@@ -23,6 +23,16 @@
 struct CubemapViewPushConstant {
 	glm::mat4 projection;
 	glm::mat4 view;
+};
+
+struct CubemapPassResources {
+    VkRenderPass wait_after_render_pass;
+    VkRenderPass no_wait_render_pass;
+    VkImage depth_image;
+    VkImageView depth_image_view;
+    sampler_handle sampler;
+    VkFormat depth_format;
+    VkFormat color_format;
 };
 
 VkRenderPass make_color_and_depth_render_pass(VkDevice device, VkAttachmentDescription attachments[2], bool wait_after) {
@@ -92,7 +102,7 @@ void begin_render_pass(VkCommandBuffer cmd_buffer, VkRenderPass render_pass, VkF
 	begin_info.renderArea = { 0,0,width,height };
 
 	//todo disable dynamic viewport
-	VkViewport viewport = { 0,0,width,height,0,1 };
+	VkViewport viewport = { 0,0,(float)width,(float)height,0,1 };
 	vkCmdSetViewport(cmd_buffer, 0, 1, &viewport);
 
 	VkRect2D scissor{ 0,0,width,height };
@@ -102,9 +112,11 @@ void begin_render_pass(VkCommandBuffer cmd_buffer, VkRenderPass render_pass, VkF
 }
 
 
-void make_cubemap_pass_resources(CubemapPassResources& resources) {	
+CubemapPassResources* make_cubemap_pass_resources() {
+    CubemapPassResources& resources = *PERMANENT_ALLOC(CubemapPassResources);
+    
 	resources.color_format = VK_FORMAT_R32G32B32A32_SFLOAT;
-	resources.depth_format = find_depth_format(rhi.device);
+	resources.depth_format = find_depth_format(rhi.device, false);
 
 	SamplerDesc sampler_desc = {};
 	sampler_desc.wrap_u = Wrap::ClampToBorder;
@@ -123,6 +135,8 @@ void make_cubemap_pass_resources(CubemapPassResources& resources) {
 
 	printf("CREATED RENDER PASS %p\n", resources.wait_after_render_pass);
 	printf("CREATED RENDER PASS %p\n", resources.no_wait_render_pass);
+                                                       
+    return &resources;
 }
 
 const uint MAX_RENDER_TO_CUBEMAP_MIP = 5;
@@ -210,15 +224,17 @@ void make_cubemap_render_target(CubemapRenderTarget& cubemap, VkFormat color_for
 	make_cubemap_framebuffer(cubemap, color_format, render_pass, 0);
 }
 
+//pipeline_handle
 pipeline_handle make_no_cull_pipeline(VkRenderPass render_pass, shader_handle shader, array<2, PushConstantRange> ranges) {
 	//CREATE PIPELINE AND DESCRIPTORS
-	PipelineDesc pipeline_desc = {};
+    
+    PipelineDesc pipeline_desc = {};
 	pipeline_desc.shader = shader;
 	pipeline_desc.state = Cull_None;
-	pipeline_desc.render_pass = { (u64)render_pass };
+	pipeline_desc.render_pass = { (u64)render_pass | NATIVE_RENDER_PASS };
 	memcpy_t(pipeline_desc.range, ranges.data, 2);
 
-	return query_Pipeline(pipeline_desc);
+    return query_Pipeline(pipeline_desc);
 }
 
 Cubemap cubemap_from_target(CubemapRenderTarget target) {
@@ -262,12 +278,13 @@ void render_to_cubemap_mip(VkRenderPass render_pass, CubemapRenderTarget& cubema
 }
 
 void render_to_cubemap(VkRenderPass render_pass, CubemapRenderTarget& cubemap, shader_handle shader, descriptor_set_handle descriptor, bool flip = false) {
-	pipeline_handle pipeline = make_no_cull_pipeline(render_pass, shader, { PushConstantRange{ 0, sizeof(glm::mat4) } });
+
+    pipeline_handle pipeline = make_no_cull_pipeline(render_pass, shader, { PushConstantRange{ 0, sizeof(glm::mat4) }});
 	
 	CommandBuffer cmd_buffer;
 	cmd_buffer.cmd_buffer = begin_recording(rhi.background_graphics);
-
-	bind_pipeline(cmd_buffer, pipeline);
+    
+    bind_pipeline(cmd_buffer, pipeline);
 	bind_descriptor(cmd_buffer, 0, descriptor);
 	bind_vertex_buffer(cmd_buffer, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4);
 
@@ -276,7 +293,7 @@ void render_to_cubemap(VkRenderPass render_pass, CubemapRenderTarget& cubemap, s
 	end_recording(rhi.background_graphics, cmd_buffer);
 }
 
-Cubemap convert_equirectangular_to_cubemap(CubemapPassResources& resources, texture_handle env_map) {
+cubemap_handle convert_equirectangular_to_cubemap(CubemapPassResources& resources, texture_handle env_map) {
 	VkPhysicalDevice physical_device = rhi.device;
 	VkDevice device = rhi.device;
 
@@ -291,11 +308,11 @@ Cubemap convert_equirectangular_to_cubemap(CubemapPassResources& resources, text
 
 	render_to_cubemap(resources.wait_after_render_pass, render_target, load_Shader("shaders/eToCubemap.vert", "shaders/eToCubemap.frag"), descriptor, true);
 
-	return cubemap_from_target(render_target);
+	return assets.cubemaps.assign_handle(cubemap_from_target(render_target));
 }
 
-Cubemap compute_irradiance(CubemapPassResources& resources, cubemap_handle env_map) {
-	CubemapRenderTarget render_target = { 32, 32 };
+cubemap_handle compute_irradiance(CubemapPassResources& resources, cubemap_handle env_map) {
+	CubemapRenderTarget render_target = { 64, 64 };
 	make_cubemap_render_target(render_target, resources.color_format, resources.depth_format, resources.no_wait_render_pass);
 
 	DescriptorDesc descriptor_desc{};
@@ -305,13 +322,13 @@ Cubemap compute_irradiance(CubemapPassResources& resources, cubemap_handle env_m
 	update_descriptor_set(descriptor, descriptor_desc);
 
 	render_to_cubemap(resources.no_wait_render_pass, render_target, load_Shader("shaders/irradiance.vert", "shaders/irradiance.frag"), descriptor);
-
-	return cubemap_from_target(render_target);
+    
+    return assets.cubemaps.assign_handle(cubemap_from_target(render_target));
 }
 
-Cubemap compute_reflection(CubemapPassResources& resources, cubemap_handle env_map) {
-	uint max_mip_levels = 5;
-	CubemapRenderTarget cubemap_images = {128,128,5};
+cubemap_handle compute_reflection(CubemapPassResources& resources, cubemap_handle env_map) {
+	uint max_mip_levels = 7;
+	CubemapRenderTarget cubemap_images = {512,512,max_mip_levels};
 	make_cubemap_images(cubemap_images, resources.color_format, resources.depth_format);
 
 	DescriptorDesc descriptor_desc{};
@@ -323,7 +340,7 @@ Cubemap compute_reflection(CubemapPassResources& resources, cubemap_handle env_m
 	
 	PipelineDesc pipeline_desc = {};
 	pipeline_desc.shader = load_Shader("shaders/prefilter.vert", "shaders/prefilter.frag");
-	pipeline_desc.render_pass = { (u64)resources.wait_after_render_pass };
+	pipeline_desc.render_pass = { (u64)resources.wait_after_render_pass | NATIVE_RENDER_PASS };
 	pipeline_desc.state = Cull_None;
 	pipeline_desc.range[0] = {0, sizeof(glm::mat4)};
 	pipeline_desc.range[1] = { sizeof(glm::mat4), sizeof(float) };
@@ -339,8 +356,8 @@ Cubemap compute_reflection(CubemapPassResources& resources, cubemap_handle env_m
 
 	for (uint mip = 0; mip < max_mip_levels; mip++) {
 		CubemapRenderTarget target = cubemap_images;
-		target.width = 128 * std::pow(0.5, mip);
-		target.height = 128 * std::pow(0.5, mip);
+		target.width = cubemap_images.width * std::pow(0.5, mip);
+		target.height = cubemap_images.height * std::pow(0.5, mip);
 
 		float roughness = (float)mip / (float)(max_mip_levels - 1);
 		
@@ -351,7 +368,7 @@ Cubemap compute_reflection(CubemapPassResources& resources, cubemap_handle env_m
 
 	end_recording(rhi.background_graphics, cmd_buffer);
 
-	return cubemap_from_target(cubemap_images);
+	return assets.cubemaps.assign_handle(cubemap_from_target(cubemap_images));
 }
 
 texture_handle compute_brdf_lut(uint resolution) {
@@ -393,23 +410,23 @@ texture_handle compute_brdf_lut(uint resolution) {
 
 
 void extract_lighting_from_cubemap(LightingSystem& lighting_system, SkyLight& skylight) {
-	Cubemap irradiance = compute_irradiance(assets.cubemap_pass_resources, skylight.cubemap);
-	Cubemap prefilter = compute_reflection(assets.cubemap_pass_resources, skylight.cubemap);
-
-	skylight.irradiance = assets.cubemaps.assign_handle(std::move(irradiance));
-	skylight.prefilter = assets.cubemaps.assign_handle(std::move(prefilter));
+    skylight.irradiance = compute_irradiance(*assets.cubemap_pass_resources, skylight.cubemap);
+	skylight.prefilter = compute_reflection(*assets.cubemap_pass_resources, skylight.cubemap);
 }
 
 void recompute_lighting_from_cubemap(LightingSystem& lighting_system, SkyLight& skylight) {
-	Cubemap irradiance = compute_irradiance(assets.cubemap_pass_resources, skylight.cubemap);
-	Cubemap prefilter = compute_reflection(assets.cubemap_pass_resources, skylight.cubemap);
+	cubemap_handle irradiance = compute_irradiance(*assets.cubemap_pass_resources, skylight.cubemap);
+	cubemap_handle prefilter = compute_reflection(*assets.cubemap_pass_resources, skylight.cubemap);
 
-	*assets.cubemaps.get(skylight.cubemap) = irradiance;
-	*assets.cubemaps.get(skylight.prefilter) = prefilter;
+    //TODO NO FUNCTION SUPPORT YET
+    return;
+    
+	//*assets.cubemaps.get(skylight.cubemap) = irradiance;
+	//*assets.cubemaps.get(skylight.prefilter) = prefilter;
 
 	DescriptorDesc desc{};
-	add_combined_sampler(desc, FRAGMENT_STAGE, assets.cubemap_pass_resources.sampler, skylight.irradiance, 1);
-	add_combined_sampler(desc, FRAGMENT_STAGE, assets.cubemap_pass_resources.sampler, skylight.prefilter, 2);
+	add_combined_sampler(desc, FRAGMENT_STAGE, assets.cubemap_pass_resources->sampler, skylight.irradiance, 1);
+	add_combined_sampler(desc, FRAGMENT_STAGE, assets.cubemap_pass_resources->sampler, skylight.prefilter, 2);
 
 	update_descriptor_set(lighting_system.pbr_descriptor, desc);
 }
@@ -423,11 +440,8 @@ ID make_default_Skybox(World& world, string_view filename) {
 	skylight.capture_scene = false;
 	skylight.cubemap = env_map;
 
-	Cubemap irradiance = compute_irradiance(assets.cubemap_pass_resources, env_map);
-	Cubemap prefilter = compute_reflection(assets.cubemap_pass_resources, env_map);
-	
-	skylight.irradiance = assets.cubemaps.assign_handle(std::move(irradiance));
-	skylight.prefilter = assets.cubemaps.assign_handle(std::move(prefilter));
+	skylight.irradiance = compute_irradiance(*assets.cubemap_pass_resources, env_map);
+	skylight.prefilter = compute_reflection(*assets.cubemap_pass_resources, env_map);
 
 
 	//auto name = world.make<EntityEditor>(id);
@@ -442,9 +456,12 @@ ID make_default_Skybox(World& world, string_view filename) {
 	mat.draw_state = Cull_None | DepthFunc_Lequal;
 	
 	//mat_cubemap(mat, "environmentMap", sky.cubemap);
+    
+    mat_vec3(mat, "skyhorizon", glm::vec3(55, 55, 55) / 255.0f);
+    mat_vec3(mat, "skytop", glm::vec3(0, 0, 0) / 255.0f);
 
-	mat_vec3(mat, "skyhorizon", glm::vec3(66, 188, 245) / 200.0f);
-	mat_vec3(mat, "skytop", glm::vec3(66, 135, 245) / 300.0f);
+	//mat_vec3(mat, "skyhorizon", glm::vec3(66, 188, 245) / 200.0f);
+	//mat_vec3(mat, "skytop", glm::vec3(66, 135, 245) / 300.0f);
 
 	materials.materials.append(make_Material(mat));
 

@@ -37,6 +37,11 @@ COMP struct RigidBody {
 	bool continous = false;
 
 	REFL_FALSE btRigidBody* bt_rigid_body = NULL;
+    REFL_FALSE RigidBody() = default;
+    REFL_FALSE RigidBody(const RigidBody& other) {
+        memcpy(this, &other, sizeof(RigidBody));
+        bt_rigid_body = nullptr;
+    }
 };
 
 COMP struct CharacterController {

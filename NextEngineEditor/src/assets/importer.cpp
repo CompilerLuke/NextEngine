@@ -1,8 +1,9 @@
 #include "assets/importer.h"
 #include "assets/explorer.h"
-#include <graphics/assets/assets.h>
-#include <graphics/assets/model.h>
-#include <graphics/rhi/rhi.h>
+#include "graphics/assets/assets.h"
+#include "graphics/assets/model.h"
+#include "graphics/rhi/rhi.h"
+#include "engine/vfs.h"
 
 sstring name_from_filename(string_view filename) {
 	int after_slash = filename.find_last_of('\\') + 1;
@@ -60,14 +61,18 @@ void import_shader(Editor& editor, AssetTab& self, string_view filename) {
 }
 
 //todo revise this function
-void import_filename(Editor& editor, World& world, RenderPass& ctx, AssetTab& self, string_view filename) {
+void import_filename(Editor& editor, World& world, AssetTab& self, string_view filename) {
 	string_buffer asset_path;
 	if (!asset_path_rel(filename, &asset_path)) {
+#ifdef NE_WINDOWS
 		asset_path = filename.sub(filename.find_last_of('\\') + 1, filename.size());
-
+#else
+        asset_path = filename.sub(filename.find_last_of('/') + 1, filename.size());
+#endif
 		string_buffer new_filename = tasset_path(asset_path);
-		if (!CopyFileA(filename.c_str(), new_filename.c_str(), true)) {
+		if (!io_copyf(filename, new_filename, true)) {
 			log("Could not copy filename");
+            return;
 		}
 	}
 

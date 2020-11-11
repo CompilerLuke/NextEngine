@@ -1,8 +1,11 @@
 #include "assets/preview.h"
+#include "assets/info.h"
 #include <imgui/imgui.h>
-#include <graphics/rhi/rhi.h>
-#include <graphics/renderer/renderer.h>
-#include <components/camera.h>
+#include "graphics/rhi/rhi.h"
+#include "graphics/renderer/renderer.h"
+#include "components/camera.h"
+#include "graphics/assets/assets.h"
+#include "core/time.h"
 
 const uint ATLAS_PREVIEWS_WIDTH = 10;
 const uint ATLAS_PREVIEWS_HEIGHT = 10;
@@ -74,27 +77,23 @@ void end_preview_pass(AssetPreviewResources& self, RenderPass& render_pass, glm:
 }
 
 void render_preview_for(AssetPreviewResources& self, ModelAsset& asset) {
-	Camera camera;
-	Transform camera_trans, trans_of_model;
-	trans_of_model.rotation = asset.rot_preview.rot;
-
 	Model* model = get_Model(asset.handle);
-	AABB aabb = model->aabb;
+    Transform trans_of_model;
+    trans_of_model.rotation = asset.rot_preview.rot;
+    
+    AABB aabb = model->aabb;
 
 	glm::vec3 center = (aabb.max + aabb.min) / 2.0f;
-	float radius = 0;
-
-	glm::vec4 verts[8];
-	aabb.to_verts(verts);
-	for (int i = 0; i < 8; i++) {
-		radius = glm::max(radius, glm::length(glm::vec3(verts[i]) - center));
-	}
+    float radius = 1.1 * 0.5f * glm::length(aabb.max - aabb.min);
 
 	double fov = glm::radians(60.0f);
 
+    Transform camera_trans;
+    
+    Camera camera;
 	camera.fov = 60.0f; // fov;
-	camera_trans.position = center;
-	camera_trans.position.z += (radius) / glm::tan(fov / 2.0);
+    camera_trans.position = asset.rot_preview.rot * center;
+    camera_trans.position.z += radius / glm::tan(fov / 2.0);
 
 	RenderPass render_pass = begin_preview_pass(self, camera, camera_trans);
 
@@ -119,20 +118,25 @@ void render_preview_for(AssetPreviewResources& self, MaterialAsset& asset) {
 	end_preview_pass(self, render_pass, asset.rot_preview.preview_tex_coord);
 }
 
+glm::quat deg_angle_axis(float deg, glm::vec3 axis) {
+    return glm::angleAxis(glm::radians(deg), axis);
+}
+
 void rot_preview(AssetPreviewResources& resources, RotatablePreview& self) {
 	ImGui::SetNextTreeNodeOpen(true);
 	ImGui::CollapsingHeader("Preview");
 
 	ImGui::Image(resources.preview_map, ImVec2(512, 512));
 
-	if (ImGui::IsItemHovered() && ImGui::IsMouseDragging()) {
+	if (ImGui::IsItemHovered() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
 		self.previous = self.current;
-		self.current = glm::vec2(ImGui::GetMouseDragDelta().x, ImGui::GetMouseDragDelta().y);
+		self.current = ImGui::GetMouseDragDelta();
 
 		glm::vec2 diff = self.current - self.previous;
 
 		self.rot_deg += diff;
-		self.rot = glm::quat(glm::vec3(glm::radians(self.rot_deg.y), 0, 0)) * glm::quat(glm::vec3(0, glm::radians(self.rot_deg.x), 0));
+        self.rot = deg_angle_axis(self.rot_deg.y, glm::vec3(1, 0, 0)) * deg_angle_axis(self.rot_deg.x, glm::vec3(0, 1, 0));
+        self.rot = glm::normalize(self.rot);
 	}
 	else {
 		self.previous = glm::vec2(0);

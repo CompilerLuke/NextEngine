@@ -18,7 +18,7 @@ namespace refl {
 	struct Type {
 		enum RefType { UInt, Int, Bool, Float, Char, Struct, Union, Alias, Enum, Array, StringView, StringBuffer, SString, Ptr } type;
 		uint size;
-		string_view name;
+		sstring name;
 	};
 
 	struct Alias : Type {
@@ -28,8 +28,8 @@ namespace refl {
 	};
 
 	struct Field {
-		string_view name;
-		int offset;
+		sstring name;
+		uint offset;
 		Type* type;
 		uint flags;
 	};
@@ -81,6 +81,38 @@ namespace refl {
 		vector<Namespace*> namespaces;
 		vector<Struct*> structs;
 	};
+
+    enum DiffType {
+        UNCHANGED_DIFF, ADDED_DIFF, REMOVED_DIFF, EDITED_DIFF
+    };
+
+    struct DiffField;
+
+    struct DiffOfType {
+        DiffType type;
+        string_view previous_name;
+        string_view current_name;
+        u64 previous_size;
+        u64 current_size;
+        Type::RefType previous_type;
+        Type::RefType current_type;
+        vector<DiffField> fields;
+    };
+
+    struct DiffField {
+        DiffType type;
+        string_view previous_name;
+        string_view current_name;
+        uint previous_offset;
+        uint current_offset;
+        uint previous_order;
+        uint current_order;
+        Type* previous_type;
+        Type* current_type;
+        DiffOfType diff;
+    };
+
+    DiffOfType diff_type(Type* a, Type* b) ;
 }
 
 //todo some of these should return Struct

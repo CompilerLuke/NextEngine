@@ -36,7 +36,7 @@ inline bool operator&(TextureUsage a, TextureUsage b) {return (uint)a & (uint)b;
 //todo potentially move into rhi folder
 struct TextureDesc {
 	TextureFormat format = TextureFormat::UNORM;
-	int width, height, num_channels;
+	uint width, height, num_channels;
 	TextureUsage usage = TextureUsage::Sampled | TextureUsage::TransferDst;
 	uint num_mips = 1;
 };
@@ -51,7 +51,7 @@ struct SamplerDesc {
 	Filter mip_mode = Filter::Nearest;
 	Wrap wrap_u = Wrap::ClampToBorder;
 	Wrap wrap_v = Wrap::ClampToBorder;
-	uint max_anisotropy = 0;
+	uint max_anisotropy = 4;
 
 	//Could write meta program to generate POD equality
 	bool operator==(const SamplerDesc& other) const {
@@ -84,6 +84,7 @@ ENGINE_API Image load_Image(string_view, bool reverse=false);
 ENGINE_API void free_Image(Image& image);
 ENGINE_API texture_handle upload_Texture(const Image& image, bool serialized=false);
 ENGINE_API u64 underlying_texture(texture_handle handle);
+ENGINE_API TextureDesc* texture_desc(texture_handle handle);
 
 ENGINE_API sampler_handle query_Sampler(const SamplerDesc&);
 

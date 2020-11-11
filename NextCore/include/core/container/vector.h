@@ -202,7 +202,7 @@ struct vector {
 
 	ARRAY_INDEXING
 
-	operator slice<T>() {
+	operator slice<T>() & {
 		return { data, length };
 	}
 };

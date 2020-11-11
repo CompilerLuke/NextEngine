@@ -30,7 +30,11 @@ VERSION HISTORY
 #ifndef SPIRV_REFLECT_H
 #define SPIRV_REFLECT_H
 
+#ifdef __APPLE__
+#include <spirv-tools/spirv.h>
+#else
 #include <spirv-headers/spirv.h>
+#endif
 
 #include <stdint.h>
 #include <string.h>

@@ -6,7 +6,6 @@
 struct BranchNodeInfo {
 	Node& node;
 	AABB child_aabbs[2];
-	int watermark;
 	int axis;
 	glm::vec3 pivot;
 	float half_size;
@@ -41,11 +40,10 @@ inline Node& alloc_leaf_node(Partition& scene_partition, AABB& node_aabb, int ma
 }
 
 //todo pass in allocator
-inline BranchNodeInfo alloc_branch_node(Partition& scene_partition, AABB& node_aabb, LinearAllocator& allocator) {
+inline BranchNodeInfo alloc_branch_node(Partition& scene_partition, AABB& node_aabb) {
 	BranchNodeInfo info = { alloc_node(scene_partition) };
 	glm::vec3 size = node_aabb.size();
 
-	info.watermark = allocator.occupied;
 	info.axis = size.x > size.y ? (size.x > size.z ? 0 : 2) : (size.y > size.z ? 1 : 2);
 	info.pivot = node_aabb.centroid();
 	info.half_size = size[info.axis] * 0.5f;
@@ -53,26 +51,23 @@ inline BranchNodeInfo alloc_branch_node(Partition& scene_partition, AABB& node_a
 	return info;
 }
 
-inline int elem_offset(Partition& scene_partition, BranchNodeInfo& info, AABB& aabb) {
-	int offset = scene_partition.count++;
-	assert(scene_partition.count <= MAX_MESH_INSTANCES);
-	info.node.aabb.update_aabb(aabb);
-	info.node.count++;
-
-	return offset;
-}
-
-inline bool bigger_than_leaf(BranchNodeInfo& info, AABB& aabb) {
-	return aabb.size()[info.axis] > info.half_size;
-}
-
-inline int split_index(BranchNodeInfo& info, AABB& aabb) {
-	int node_index = aabb.centroid()[info.axis] > info.pivot[info.axis];
-	info.child_aabbs[node_index].update_aabb(aabb);
-	return node_index;
-}
-
-inline void bump_allocator(Partition& partition, BranchNodeInfo& info, LinearAllocator& allocator) {
-	allocator.occupied = info.watermark;
-	partition.count += info.node.count;
+inline uint split_aabbs(Partition& scene_partition, BranchNodeInfo& info, slice<AABB> aabbs, int* result) {
+    uint count_bigger_than_leaf = 0;
+    for (int i = 0; i < aabbs.length; i++) {
+        AABB& aabb = aabbs[i];
+        
+        if (aabb.size()[info.axis] > info.half_size) {
+            result[i] = -1;
+            count_bigger_than_leaf++;
+        } else {
+            int node_index = aabb.centroid()[info.axis] > info.pivot[info.axis];
+            result[i] = node_index;
+            info.child_aabbs[node_index].update_aabb(aabb);
+        }
+    }
+    
+    info.node.offset = (scene_partition.count += count_bigger_than_leaf) - count_bigger_than_leaf;
+    info.node.count = count_bigger_than_leaf;
+    
+    return info.node.offset;
 }

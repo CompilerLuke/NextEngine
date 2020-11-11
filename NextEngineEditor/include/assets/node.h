@@ -1,11 +1,11 @@
 #pragma once
 
-#include <core/core.h>
-#include <core/container/sstring.h>
-#include <core/container/vector.h>
-#include <engine/handle.h>
-#include <components/transform.h>
-#include <graphics/assets/material.h>
+#include "core/core.h"
+#include "core/container/sstring.h"
+#include "core/container/vector.h"
+#include "engine/handle.h"
+#include "components/transform.h"
+#include "graphics/assets/material.h"
 #include <glm/vec2.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include "handle.h"
@@ -92,10 +92,12 @@ struct AssetNode {
 	REFL_FALSE AssetNode();
 	REFL_FALSE ~AssetNode();
 	REFL_FALSE AssetNode(AssetNode::Type type);
+    REFL_FALSE AssetNode(const AssetNode&);
+    REFL_FALSE void operator=(const AssetNode&);
 	REFL_FALSE void operator=(AssetNode&&);
 };
 
-const char* drop_types[AssetNode::Count] = {
+constexpr const char* drop_types[AssetNode::Count] = {
 	"DRAG_AND_DROP_IMAGE",
 	"DRAG_AND_DROP_MATERIAL",
 	"DRAG_AND_DROP_SHADER",

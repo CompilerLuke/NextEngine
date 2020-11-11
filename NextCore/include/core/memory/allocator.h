@@ -72,6 +72,11 @@ void memcpy_t(T* a, T* b, u64 count) {
 	memcpy(a, b, count * sizeof(T));
 }
 
+template<typename T, typename Allocator>
+T* alloc_t(Allocator& allocator, uint num = 1) {
+    return (T*)allocator.allocate(num * sizeof(T));
+}
+
 inline u64 align_offset(u64 offset, uint alignment) {
 	uint alignment_bytes_minus_one = alignment - 1;
 	return (offset + alignment_bytes_minus_one) & ~alignment_bytes_minus_one;

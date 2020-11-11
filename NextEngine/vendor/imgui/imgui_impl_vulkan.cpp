@@ -25,7 +25,7 @@
 #include "core/container/hash_map.h"
 #include "graphics/assets/assets.h"
 
-const uint MAX_IMGUI_TEXTURES = 19;
+const uint MAX_IMGUI_TEXTURES = 16;
 const u64 MAX_IMGUI_VERTEX_BUFFER_SIZE = mb(1);
 const u64 MAX_IMGUI_INDEX_BUFFER_SIZE = mb(1);
 
@@ -75,7 +75,7 @@ bool    ImGui_ImplVulkan_Init(const char* glsl_version)
 	//GLint current_texture;
 	//glGetIntegerv(GL_TEXTURE_BINDING_2D, &current_texture);
 
-	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) ImGui_ImplVulkan_InitPlatformInterface();
+	//if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) ImGui_ImplVulkan_InitPlatformInterface();
 
 	return true;
 }
@@ -174,7 +174,7 @@ void ImGui_ImplVulkan_RenderDrawData(CommandBuffer& draw_cmd_buffer, ImDrawData*
 
 		for (const ImDrawCmd& pcmd : cmd_list->CmdBuffer) {
 			if (!pcmd.UserCallback) {
-				texture_handle id = { (u64)pcmd.TextureId };
+				texture_handle id = { (uint)(u64)pcmd.TextureId };
 
 				CombinedSampler combined_sampler = {};
 				combined_sampler.texture = id;
@@ -247,6 +247,10 @@ void ImGui_ImplVulkan_RenderDrawData(CommandBuffer& draw_cmd_buffer, ImDrawData*
 	}
 }
 
+#ifdef IMGUI_FREETYPE
+#include <imgui/misc/freetype/imgui_freetype.h>
+#endif
+
 bool ImGui_ImplVulkan_CreateFontsTexture()
 {
 	//Build texture atlas
@@ -257,8 +261,17 @@ bool ImGui_ImplVulkan_CreateFontsTexture()
 	Image image = {};
 	image.num_channels = 4;
 	image.format = TextureFormat::UNORM;
-	io.Fonts->GetTexDataAsRGBA32((unsigned char**)&image.data, &image.width, &image.height);
+    
+    int width, height;
+    unsigned int flags = ImGuiFreeType::NoHinting;
+#ifdef IMGUI_FREETYPE
+    ImGuiFreeType::BuildFontAtlas(io.Fonts, flags);
+#endif
+	io.Fonts->GetTexDataAsRGBA32((unsigned char**)&image.data, &width, &height);
 
+    image.width = width;
+    image.height = height;
+    
 	backend.font_texture = upload_Texture(image);
 	io.Fonts->TexID = (ImTextureID)backend.font_texture.id;
 
@@ -288,7 +301,11 @@ bool    ImGui_ImplVulkan_CreateDeviceObjects() {
 	backend.vert_shader = make_ShaderModule(vertex_shader);
 	backend.frag_shader = make_ShaderModule(fragment_shader);
 
-	backend.sampler = query_Sampler({});
+    SamplerDesc sampler = {};
+    sampler.min_filter = Filter::Linear;
+    sampler.mag_filter = Filter::Linear;
+    
+	backend.sampler = query_Sampler(sampler);
 	backend.dummy_tex = default_textures.white; //todo better ways of doing this
 
 	//CREATE VERTEX BUFFER
@@ -403,26 +420,28 @@ void    ImGui_ImplVulkan_DestroyDeviceObjects()
 // If you are new to dear imgui or creating a new binding for dear imgui, it is recommended that you completely ignore this section first..
 //--------------------------------------------------------------------------------------------------------
 
+/*
 static void ImGui_ImplVulkan_RenderWindow(ImGuiViewport* viewport, void*)
 {
-	/*if (!(viewport->Flags & ImGuiViewportFlags_NoRendererClear))
-	{
-		ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
-		glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
-		glClear(GL_COLOR_BUFFER_BIT);
-	}*/
+	//if (!(viewport->Flags & ImGuiViewportFlags_NoRendererClear))
+	//{
+	//	ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
+	//	glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+	//	glClear(GL_COLOR_BUFFER_BIT);
+	//}
 	//ImGui_ImplVulkan_RenderDrawData(cmd_buffer, viewport->DrawData);
 }
 
 static void ImGui_ImplVulkan_InitPlatformInterface()
 {
-	ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
+    ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
 	platform_io.Renderer_RenderWindow = ImGui_ImplVulkan_RenderWindow;
 }
+*/
 
 static void ImGui_ImplVulkan_ShutdownPlatformInterface()
 {
-	ImGui::DestroyPlatformWindows();
+	//ImGui::DestroyPlatformWindows();
 }
 
 

@@ -129,8 +129,8 @@ void MaterialAllocator::make(MaterialDesc& desc, Material* material) {
 				char* field_ptr = (char*)ubo_memory + ubo_field_info.offset;
 
 				char name[100];
-				if (is_channel) sprintf_s(name, "%s_scalar", param.name);
-				else sprintf_s(name, "%s", param.name);
+				if (is_channel) snprintf(name, 100, "%s_scalar", param.name.data);
+				else snprintf(name, 100, "%s", param.name.data);
 
 				printf("UBO FIELD %s, param %s %i\n", ubo_field_info.name.data, name, ubo_field_info.offset);
 

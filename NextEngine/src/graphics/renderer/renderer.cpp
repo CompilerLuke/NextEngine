@@ -12,9 +12,7 @@
 #include "graphics/rhi/vulkan/vulkan.h"
 #include "graphics/culling/culling.h"
 #include "core/profiler.h"
-
-//todo wrap function in time.h
-#include <GLFW/glfw3.h>
+#include "core/time.h"
 
 //HACK ACKWARD INITIALIZATION
 #include "ecs/ecs.h"
@@ -61,8 +59,13 @@ Renderer* make_Renderer(const RenderSettings& settings, World& world) {
 
 	{
 		FramebufferDesc desc{ settings.display_resolution_width, settings.display_resolution_height };
-		add_color_attachment(desc, &renderer->scene_map);
-
+        desc.stencil_buffer = StencilBufferFormat::P8;
+        
+        uint msaa = 4;
+        
+		AttachmentDesc& attachment = add_color_attachment(desc, &renderer->scene_map);
+        attachment.num_samples = msaa;
+        
 		add_dependency(desc, VERTEX_STAGE, RenderPass::TerrainHeightGeneration);
 		add_dependency(desc, FRAGMENT_STAGE, RenderPass::TerrainTextureGeneration);
 
@@ -125,7 +128,7 @@ void extract_render_data(Renderer& renderer, Viewport& viewport, FrameData& fram
 
 	fill_pass_ubo(frame.pass_ubo, viewport);
 	fill_light_ubo(frame.light_ubo, world, viewport, layermask);
-	cull_meshes(renderer.scene_partition, frame.culled_mesh_bucket[RenderPass::Scene], viewport);
+	cull_meshes(renderer.scene_partition, world, renderer.mesh_buckets, frame.culled_mesh_bucket[RenderPass::Scene], viewport);
 	extract_grass_render_data(frame.grass_data, world, &viewport);
 	extract_render_data_terrain(frame.terrain_data, world, &viewport, layermask);
 	extract_skybox(frame.skybox_data, world, layermask);
@@ -162,7 +165,7 @@ GPUSubmission build_command_buffers(Renderer& renderer, const FrameData& frame) 
 	uint frame_index = get_frame_index();
 
 	SimulationUBO simulation_ubo = {};
-	simulation_ubo.time = glfwGetTime();
+	simulation_ubo.time = Time::now();
 
 	//todo would be more efficient to build structs in place, instead of copying
 	memcpy_ubo_buffer(renderer.scene_pass_ubo[frame_index], &frame.pass_ubo);
@@ -194,7 +197,7 @@ GPUSubmission build_command_buffers(Renderer& renderer, const FrameData& frame) 
 	//todo paritition into lit, unlit, transparent passes
 	
 	render_meshes(renderer.mesh_buckets, frame.culled_mesh_bucket[RenderPass::Scene], main_pass);
-	//render_grass(frame.grass_data, main_pass);
+	render_grass(frame.grass_data, main_pass);
 	//render_skybox(frame.skybox_data, main_pass);
 
 	return submission;

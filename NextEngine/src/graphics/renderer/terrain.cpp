@@ -13,6 +13,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <algorithm>
 #include "graphics/rhi/vulkan/texture.h"
+#include "graphics/rhi/vulkan/async_cpu_copy.h"
+#include "graphics/rhi/vulkan/draw.h"
 
 model_handle load_subdivided(uint num) {
 	return load_Model(tformat("engine/subdivided_plane", num, ".fbx"));
@@ -33,10 +35,11 @@ void init_terrain_render_resources(TerrainRenderResources& resources) {
 	resources.blend_values_sampler = query_Sampler({Filter::Linear, Filter::Linear, Filter::Linear});
 	resources.blend_idx_sampler = query_Sampler({Filter::Nearest, Filter::Nearest, Filter::Nearest});
 
-	make_async_copy_resources(resources.async_copy, 12*12 * 32*32 * sizeof(float)); //allow resizing of this buffer
+
+	resources.async_copy = make_async_copy_resources(12*12 * 32*32 * sizeof(float)); //allow resizing of this buffer
 }
 
-const uint MAX_TERRAIN_TEXTURES = 10;
+const uint MAX_TERRAIN_TEXTURES = 2;
 const uint TERRAIN_SUBDIVISION = 32;
 
 void clear_terrain(Terrain& terrain) {
@@ -59,7 +62,17 @@ void clear_terrain(Terrain& terrain) {
 
 void default_terrain_material(Terrain& terrain) {
 	terrain.materials.clear();
+    
+    TerrainMaterial terrain_material;
+    /*terrain_material.diffuse = default_textures.checker;
+    terrain_material.metallic = default_textures.black;
+    terrain_material.roughness = default_textures.white;
+    terrain_material.normal = default_textures.normal;
+    terrain_material.height = default_textures.white;
+    terrain_material.ao = default_textures.white;
+    terrain.materials.append(terrain_material);*/
 	
+    
 	{
 
 		TerrainMaterial terrain_material;
@@ -82,6 +95,7 @@ void default_terrain_material(Terrain& terrain) {
 		terrain_material.ao = default_textures.white;
 		terrain.materials.append(terrain_material);
 	}
+    
 }
 
 void default_terrain(Terrain& terrain) {
@@ -134,7 +148,7 @@ void update_terrain_material(TerrainRenderResources& resources, Terrain& terrain
 		make_Framebuffer(RenderPass::TerrainHeightGeneration, framebuffer_desc);
 
 		PipelineDesc pipeline_desc = {};
-		pipeline_desc.render_pass = render_pass_by_id(RenderPass::TerrainHeightGeneration);
+		pipeline_desc.render_pass = RenderPass::TerrainHeightGeneration;
 		pipeline_desc.shader = load_Shader("shaders/kriging.vert", "shaders/kriging.frag");
 
 		resources.kriging_pipeline = query_Pipeline(pipeline_desc);
@@ -168,7 +182,7 @@ void update_terrain_material(TerrainRenderResources& resources, Terrain& terrain
 		pipeline_desc.state = BlendMode_One_Minus_Src_Alpha;
 		pipeline_desc.range[1].size = sizeof(SplatPushConstant);
 		pipeline_desc.shader = load_Shader("shaders/splat.vert", "shaders/splat.frag");
-		pipeline_desc.render_pass = render_pass_by_id(RenderPass::TerrainTextureGeneration);
+		pipeline_desc.render_pass = RenderPass::TerrainTextureGeneration;
 
 		resources.splat_pipeline = query_Pipeline(pipeline_desc);
 	}
@@ -237,7 +251,7 @@ void update_terrain_material(TerrainRenderResources& resources, Terrain& terrain
 	add_combined_sampler(terrain_descriptor, FRAGMENT_STAGE, { roughness_textures, MAX_TERRAIN_TEXTURES}, 6);
 	add_combined_sampler(terrain_descriptor, FRAGMENT_STAGE, { normal_textures, MAX_TERRAIN_TEXTURES}, 7);
 	add_combined_sampler(terrain_descriptor, FRAGMENT_STAGE, { height_textures, MAX_TERRAIN_TEXTURES}, 8);
-	add_combined_sampler(terrain_descriptor, FRAGMENT_STAGE, { ao_textures, MAX_TERRAIN_TEXTURES}, 9);
+	//add_combined_sampler(terrain_descriptor, FRAGMENT_STAGE, { ao_textures, MAX_TERRAIN_TEXTURES}, 9);
 
 
 	TerrainUBO terrain_ubo; 
@@ -253,7 +267,7 @@ void update_terrain_material(TerrainRenderResources& resources, Terrain& terrain
 	//todo add shader variants for shadow mapping!
 	PipelineDesc pipeline_desc = {};
 	pipeline_desc.shader = resources.terrain_shader;
-	pipeline_desc.render_pass = render_pass_by_id(RenderPass::Scene); 
+	pipeline_desc.render_pass = RenderPass::Scene; 
 	pipeline_desc.shader_flags = SHADER_INSTANCED | SHADER_DEPTH_ONLY;
 	pipeline_desc.instance_layout = INSTANCE_LAYOUT_TERRAIN_CHUNK;
 
@@ -356,7 +370,8 @@ void clear_undefined_image(CommandBuffer& cmd_buffer, texture_handle handle, glm
 void clear_terrain(TerrainRenderResources& resources) {
 	RenderPass clear_height = begin_render_pass(RenderPass::TerrainHeightGeneration, glm::vec4(1.0));
 	end_render_pass(clear_height);
-
+    
+    
 	transition_layout(clear_height.cmd_buffer, resources.displacement_map, TextureLayout::ColorAttachmentOptimal, TextureLayout::ShaderReadOptimal);
 
 	RenderPass clear_blend = begin_render_pass(RenderPass::TerrainTextureGeneration, glm::vec4(1.0, 0.0, 0.0, 0.0));
@@ -364,7 +379,9 @@ void clear_terrain(TerrainRenderResources& resources) {
 }
 
 void render_terrain(TerrainRenderResources& resources, const TerrainRenderData& data, RenderPass render_passes[RenderPass::ScenePassCount]) {
-	recycle_descriptor_set(resources.terrain_descriptor);
+    if (!resources.terrain_descriptor.current.id) return;
+    
+    recycle_descriptor_set(resources.terrain_descriptor);
 	
 	for (uint pass = 0; pass < 1; pass++) {
 		CommandBuffer& cmd_buffer = render_passes[pass].cmd_buffer;
@@ -388,7 +405,7 @@ void receive_generated_heightmap(TerrainRenderResources& resources, Terrain& ter
 	uint size = terrain.width * 32 * terrain.height * 32;
 
 	terrain.displacement_map[0].reserve(size);
-	receive_transfer(resources.async_copy, size * sizeof(float), terrain.displacement_map[0].data);
+	receive_transfer(*resources.async_copy, size * sizeof(float), terrain.displacement_map[0].data);
 }
 
 void gpu_estimate_terrain_surface(TerrainRenderResources& resources, KrigingUBO& ubo) {
@@ -406,7 +423,7 @@ void gpu_estimate_terrain_surface(TerrainRenderResources& resources, KrigingUBO&
 	end_render_pass(render_pass);
 
 	transition_layout(cmd_buffer, resources.displacement_map, TextureLayout::ColorAttachmentOptimal, TextureLayout::TransferSrcOptimal);
-	async_copy_image(cmd_buffer, resources.displacement_map, resources.async_copy);
+	async_copy_image(cmd_buffer, resources.displacement_map, *resources.async_copy);
 	transition_layout(cmd_buffer, resources.displacement_map, TextureLayout::TransferSrcOptimal, TextureLayout::ShaderReadOptimal);
 }
 

@@ -304,7 +304,6 @@ void recycle_descriptor_set(periodically_updated_descriptor& set) {
 	//printf("CURRENT DESCRIPTOR %i\n", set.current.id);
 	uint frame = rhi.frame_index;
 
-
 	descriptor_set_handle& handle = set.modified_in_frame[frame];
 	assert(handle.id != set.current.id);
 	//printf("RECYCLING DESCRIPTOR %i\n", handle.id);

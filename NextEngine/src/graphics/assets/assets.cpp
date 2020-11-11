@@ -15,7 +15,7 @@
 #include <mutex>
 
 #include "graphics/assets/assets_store.h"
-#include <vendor/stb_image.h>
+#include <stb_image.h>
 #include "graphics/renderer/ibl.h"
 
 #include "core/io/logger.h"
@@ -24,12 +24,14 @@
 Assets assets;
 DefaultTextures default_textures;
 DefaultMaterials default_materials;
+GlobalShaders global_shaders; //todo rename to default
 
-void make_AssetManager(string_view path) {
+void make_AssetManager(string_view path, string_view engine_path) {
 	assets.asset_path = path;
+    assets.engine_asset_path = engine_path;
 
 	init_primitives();
-	make_cubemap_pass_resources(assets.cubemap_pass_resources);
+	assets.cubemap_pass_resources = make_cubemap_pass_resources();
 
 	default_textures.white = { 1 };
 	default_textures.black = { 2 };
@@ -48,7 +50,7 @@ void make_AssetManager(string_view path) {
 
 	load_Shader(global_shaders.pbr, "shaders/pbr.vert", "shaders/pbr.frag");
 	load_Shader(global_shaders.tree, "shaders/tree.vert", "shaders/tree.frag");
-	load_Shader(global_shaders.gizmo, "shaders/gizmo.vert", "shaders/gizmo.frag");
+	load_Shader(global_shaders.gizmo, "shaders/pbr.vert", "shaders/gizmo.frag");
 	load_Shader(global_shaders.grass, "shaders/grass.vert", "shaders/tree.frag");
 
 	default_materials.missing = { 1 };
@@ -68,15 +70,35 @@ void make_AssetManager(string_view path) {
 void destroy_AssetManager() {}
 
 string_buffer tasset_path(string_view filename) {
+    string_view asset_path = assets.asset_path;
+    if (filename.starts_with("shaders")
+        || filename.starts_with("engine")
+        || filename.starts_with("editor")) asset_path = assets.engine_asset_path;
+    
 	string_buffer buffer;
 	buffer.allocator = &get_temporary_allocator();
-	buffer.length = assets.asset_path.length + filename.length;
+	buffer.length = asset_path.length + filename.length;
 	buffer.capacity = buffer.length;
 	buffer.data = TEMPORARY_ARRAY(char, buffer.capacity + 1);
 
-	memcpy(buffer.data, assets.asset_path.data, assets.asset_path.length);
-	memcpy(buffer.data + assets.asset_path.length, filename.data, filename.length);
-	buffer.data[assets.asset_path.length + filename.length] = '\0';
+	memcpy(buffer.data, asset_path.data, asset_path.length);
+    
+    uint offset = asset_path.length;
+    
+    //Ensure \\ gets converted into /
+    
+    for (uint i = 0; i < filename.length; i++) {
+        char c = filename.data[i];
+        if (c == '\\') {
+            buffer.data[offset + i] = '/';
+            if (i + 1 < filename.length && filename.data[i + 1] == '\\') i++;
+        } else {
+            buffer.data[offset + i] = c;
+        }
+    }
+    
+	//memcpy(buffer.data + assets.asset_path.length, filename.data, filename.length);
+	buffer.data[asset_path.length + filename.length] = '\0';
 	
 	return buffer;
 }
@@ -281,8 +303,9 @@ bool reload_Shader(shader_handle handle) {
 		PipelineDesc& desc = cache.keys.keys[i];
 		if (desc.shader.id != handle.id) continue;
 
+        VkPipeline pipeline = cache.pipelines[i];
 		reload_Pipeline(desc);
-		queue_t_for_destruction<VkPipeline>(cache.pipelines[i], [](VkPipeline pipeline) {
+		queue_t_for_destruction<VkPipeline>(pipeline, [](VkPipeline pipeline) {
 			vkDestroyPipeline(rhi.device, pipeline, nullptr);
 		});
 	}
@@ -363,10 +386,13 @@ Image load_Image(string_view filename, bool reverse) {
 
 	stbi_set_flip_vertically_on_load(reverse);
 
-	Image image;
+    int width, height, num_channels;
 
-	image.data = stbi_load(real_filename.c_str(), &image.width, &image.height, &image.num_channels, STBI_rgb_alpha); //todo might waste space
-	image.num_channels = 4;
+    Image image;
+	image.data = stbi_load(real_filename.c_str(), &width, &height, &num_channels, STBI_rgb_alpha); //todo might waste space
+    image.width = width;
+    image.height = height;
+    image.num_channels = 4;
 	image.format = TextureFormat::UNORM;
 	//image.usage = TextureUsage::Sampled | TextureUsage::TransferDst;
 
@@ -517,6 +543,12 @@ void load() {
 
 }
 
+TextureDesc* texture_desc(texture_handle handle) {
+    Texture* texture = assets.textures.get(handle);
+    if (!texture) return nullptr;
+    return &texture->desc;
+}
+
 u64 underlying_texture(texture_handle handle) {
 	return (u64)assets.textures.get(handle)->image;
 }
@@ -561,7 +593,7 @@ pipeline_handle query_pipeline(material_handle material, RenderPass::ID render_p
 	MaterialPipelineInfo info = material_pipeline_info(material);
 
 	PipelineDesc desc = {};
-	desc.render_pass = render_pass_by_id(render_pass);
+	desc.render_pass = render_pass;
 	desc.shader = info.shader;
 	desc.vertex_layout = VERTEX_LAYOUT_DEFAULT;
 	desc.instance_layout = INSTANCE_LAYOUT_MAT4X4;
@@ -581,18 +613,19 @@ void reload_modified() {
 
 void load_assets_in_queue() {
 	return;
-	begin_gpu_upload();
+	/*begin_gpu_upload();
 
 	EquirectangularToCubemapJob job;
 	while (assets.equirectangular_to_cubemap_jobs.dequeue(&job)) {
 		Cubemap* cubemap = assets.cubemaps.get(job.handle);
 
-		*cubemap = convert_equirectangular_to_cubemap(assets.cubemap_pass_resources, job.env_map);
+        convert_equirectangular_to_cubemap(*assets.cubemap_pass_resources, job.env_map, cubemap);
 
 		printf("LOADING HDR\n");
 	}
 
 	end_gpu_upload();
+    */
 }
 
 
@@ -601,10 +634,13 @@ cubemap_handle load_HDR(string_view filename) {
 
 	string_buffer real_filename = tasset_path(filename);
 
-	
+    int width, height, num_channels;
+    
 	Image image = {};
-	image.data = stbi_loadf(real_filename.c_str(), &image.width, &image.height, &image.num_channels, STBI_rgb_alpha);
-	image.num_channels = 4;
+	image.data = stbi_loadf(real_filename.c_str(), &width, &height, &num_channels, STBI_rgb_alpha);
+    image.width = width;
+    image.height = height;
+    image.num_channels = 4;
 	image.format = TextureFormat::HDR;
 
 	assert(image.data);
@@ -619,9 +655,7 @@ cubemap_handle load_HDR(string_view filename) {
 
 	//texture_handle env_map = load_Texture("Wood_2//Stylized_Wood_basecolor.jpg");
 
-	Cubemap cubemap = convert_equirectangular_to_cubemap(assets.cubemap_pass_resources, env_map);
-
-	return assets.cubemaps.assign_handle(std::move(cubemap));
+	return convert_equirectangular_to_cubemap(*assets.cubemap_pass_resources, env_map);
 }
 
 //REFLECT_STRUCT_BEGIN(Model)

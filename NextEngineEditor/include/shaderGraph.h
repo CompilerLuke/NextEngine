@@ -143,6 +143,7 @@ string_buffer get_dependency(shader_node_handle node);
 
 ShaderAsset* make_new_shader(World& world, AssetTab& self, Editor& editor);
 void shader_graph_properties(AssetNode& asset, struct Editor& editor, struct AssetTab& self);
+void set_params_for_shader_graph(AssetTab& asset_tab, shader_handle shader_handle);
 
 string_view get_param_name(ShaderGraph& graph, unsigned int i);
 

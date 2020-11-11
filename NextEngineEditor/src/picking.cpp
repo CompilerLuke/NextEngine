@@ -23,8 +23,8 @@
 #define MAX_PICKING_DEPTH 6
 
 struct SubdivideBVHJob {
-	PickingScenePartition& scene_partition;
-	AABB& node_aabb;
+	PickingScenePartition* scene_partition;
+	AABB node_aabb;
 	uint depth;
 	uint mesh_count;
 	AABB* aabbs;
@@ -34,17 +34,21 @@ struct SubdivideBVHJob {
 };
 
 void subdivide_BVH(SubdivideBVHJob& job) {
-	PickingScenePartition& scene_partition = job.scene_partition;
+	PickingScenePartition& scene_partition = *job.scene_partition;
 	
 	if (job.mesh_count <= MAX_ENTITIES_PER_NODE || job.depth >= MAX_PICKING_DEPTH) {
 		Node& node = alloc_leaf_node(scene_partition, job.node_aabb, MAX_PICKING_INSTANCES, job.mesh_count);
 		
 		copy_into_node(node, scene_partition.ids, job.ids);
 		copy_into_node(node, scene_partition.aabbs, job.aabbs);
+        
+        job.child_idx = &node - scene_partition.nodes;
 	}
 	else {
 		LinearAllocator& temporary = get_thread_local_temporary_allocator();
-		BranchNodeInfo info = alloc_branch_node(scene_partition, job.node_aabb, temporary);
+        LinearRegion region(temporary);
+        
+		BranchNodeInfo info = alloc_branch_node(scene_partition, job.node_aabb);
 
 		tvector<AABB> subdivided_aabbs[2];
 		tvector<ID> subdivided_ids[2];
@@ -55,53 +59,52 @@ void subdivide_BVH(SubdivideBVHJob& job) {
 			subdivided_ids[i].allocator = &temporary;
 			subdivided_tags[i].allocator = &temporary;
 		}
-
-		for (int i = 0; i < job.mesh_count; i++) {
-			AABB& aabb = job.aabbs[i];
-
-			if (bigger_than_leaf(info, aabb)) {
-				int offset = elem_offset(scene_partition, info, aabb);
-				scene_partition.aabbs[offset] = aabb;
+        
+        int* split_idx = alloc_t<int>(temporary, job.mesh_count);
+        uint offset = split_aabbs(scene_partition, info, {job.aabbs, job.mesh_count}, split_idx);
+        
+		for (uint i = 0; i < job.mesh_count; i++) {
+            int split_index = split_idx[i];
+            if (split_index == -1) {
+				scene_partition.aabbs[offset] = job.aabbs[i];
 				scene_partition.ids[offset] = job.ids[i];
 				scene_partition.tags[offset] = job.tags[i];
+                offset++;
 			}
 			else {
-				bool node_index = split_index(info, aabb);
-				subdivided_aabbs[node_index].append(aabb);
-				subdivided_ids[node_index].append(job.ids[i]);
-				subdivided_tags[node_index].append(job.tags[i]);
+				subdivided_aabbs[split_index].append(job.aabbs[i]);
+				subdivided_ids[split_index].append(job.ids[i]);
+				subdivided_tags[split_index].append(job.tags[i]);
 			}
 		}
 
 		JobDesc desc[2];
-		SubdivideBVHJob jobs[2] = {
-			{scene_partition, info.child_aabbs[0]},
-			{scene_partition, info.child_aabbs[1]}
-		};
+        SubdivideBVHJob jobs[2];
 
 		uint count = 0;
 		for (int i = 0; i < 2; i++) {
 			if (subdivided_aabbs[i].length == 0) continue;
 			
+            jobs[count].scene_partition = job.scene_partition;
+            jobs[count].node_aabb = info.child_aabbs[i];
 			jobs[count].depth = job.depth + 1;
 			jobs[count].mesh_count = subdivided_aabbs[i].length;
 			jobs[count].aabbs = subdivided_aabbs[i].data;
 			jobs[count].ids = subdivided_ids[i].data;
 			jobs[count].tags = subdivided_tags[i].data;
 
-			desc[count] = JobDesc{ subdivide_BVH, jobs + i };
+			desc[count] = JobDesc{ subdivide_BVH, jobs + count };
 			count++;
 		}
 
 		wait_for_jobs(PRIORITY_HIGH, { desc, count });
 
-		for (int i = 0; i < 2; i++) {
+		for (int i = 0; i < count; i++) {
 			uint child_idx = jobs[i].child_idx;
-			info.node.child[info.node.child_count++] = child_idx;
+			info.node.child[i] = child_idx;
 			info.node.aabb.update_aabb(scene_partition.nodes[child_idx].aabb);
 		}
-
-		bump_allocator(scene_partition, info, temporary);
+        info.node.child_count = count;
 		job.child_idx = &info.node - scene_partition.nodes;
 	}
 }
@@ -110,8 +113,9 @@ void build_acceleration_structure(PickingScenePartition& scene_partition, World&
 	Profile profile("rebuild picking acceleration");
 	
 	AABB world_bounds;
-
-	int occupied = get_temporary_allocator().occupied;
+    
+    LinearAllocator& allocator = get_temporary_allocator();
+    LinearRegion region(allocator);
 
 	tvector<AABB> aabbs;
 	tvector<ID> ids;
@@ -196,16 +200,14 @@ void build_acceleration_structure(PickingScenePartition& scene_partition, World&
 		}
 	}
 
-	SubdivideBVHJob job = {scene_partition, world_bounds};
+	SubdivideBVHJob job = {&scene_partition, world_bounds};
 	job.depth = 0;
 	job.mesh_count = aabbs.length;
 	job.aabbs = aabbs.data;
 	job.ids = ids.data;
 	job.tags = tags.data;
 
-	subdivide_BVH(job);
-
-	get_temporary_allocator().occupied = occupied;
+	//subdivide_BVH(job);
 }
 
 Ray ray_from_mouse(Viewport& viewport, glm::vec2 mouse_position) {
@@ -328,12 +330,14 @@ void render_node(RenderPass& ctx, material_handle mat, PickingScenePartition& pa
 
 	for (int i = 0; i < node.child_count; i++) {
 		Node& child = partition.nodes[node.child[i]];
-		if (intersect(child.aabb, ray) < FLT_MAX) render_node(ctx, mat, partition, child, ray);
+		if (intersect(child.aabb, ray) < FLT_MAX)
+        render_node(ctx, mat, partition, child, ray);
 	}
 
 	for (int i = node.offset; i < node.offset + node.count; i++) {
 		AABB& aabb = partition.aabbs[i];
-		if (intersect(aabb, ray) < FLT_MAX) render_cube(ctx, mat, (aabb.max + aabb.min) * 0.5f, aabb.max - aabb.min);
+		if (intersect(aabb, ray) < FLT_MAX)
+        render_cube(ctx, mat, (aabb.max + aabb.min) * 0.5f, aabb.max - aabb.min);
 	}
 }
 
@@ -373,16 +377,19 @@ void PickingSystem::visualize(Viewport& viewport, glm::vec2 position, RenderPass
 	//render_cube(ctx, mat, models.get(cube), ray.orig + ray.dir * 20.0f, glm::vec3(0.1f));
 }
 
-void make_render_outline_state(OutlineRenderState& self) {
+void make_outline_render_state(OutlineRenderState& self) {
 	self.outline_shader = load_Shader("shaders/outline.vert", "shaders/outline.frag");
-
-	DrawCommandState object_state = StencilFunc_Always | (0xFF << StencilMask_Offset) | ColorMask_None | DepthFunc_None;
+    
+    MaterialDesc outline_object_material{ global_shaders.gizmo };
+    mat_vec3(outline_object_material, "color", glm::vec3(0));
+    outline_object_material.draw_state = StencilFunc_Always | (0xFF << StencilMask_Offset) | ColorMask_None | DepthFunc_None;
 
 	int outline_width = 3;
 
 	MaterialDesc outline_material{ self.outline_shader };
-	outline_material.draw_state = StencilFunc_NotEqual | (0x00 << StencilMask_Offset) | DepthFunc_None | PolyMode_Wireframe | (outline_width << WireframeLineWidth_Offset);
+	outline_material.draw_state = StencilFunc_Nequal | DepthFunc_Always | (outline_width << WireframeLineWidth_Offset);
 
+    self.object_material = make_Material(outline_object_material);
 	self.outline_material = make_Material(outline_material);
 }
 

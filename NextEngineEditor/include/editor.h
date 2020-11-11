@@ -12,7 +12,6 @@
 #include "gizmo.h"
 #include "picking.h"
 #include "graphics/pass/render_pass.h"
-#include "diffUtil.h"
 #include "graphics/rhi/frame_buffer.h"
 #include "shaderGraph.h"
 #include "visualize_profiler.h"
@@ -20,6 +19,9 @@
 #include "engine/application.h"
 #include "components/flyover.h"
 #include "graphics/assets/shader.h"
+#include "visualize_physics.h"
+#include "diffUtil.h"
+
 
 struct World;
 struct Time;
@@ -56,6 +58,11 @@ struct Icon {
 	texture_handle texture_id;
 };
 
+using Visibility = u64;
+
+const Visibility SHOW_PHYSICS = 1ul << 0;
+const Visibility SHOW_CAMERA = 1ul << 1;
+
 //todo split up into multiple classes
 struct Editor {
 	Window& window;
@@ -74,6 +81,8 @@ struct Editor {
 	bool playing_game = false;
 	bool game_fullscreen = false;
 	bool exit = false;
+    
+    float scaling = 1.0;
 
 	Application game;
 
@@ -81,12 +90,11 @@ struct Editor {
 
 	vector<Icon> icons;
 
-	EditorActions actions;
-
 	texture_handle get_icon(string_view name);
 	
 	AssetInfo asset_info;
 
+    Visibility visibility = 0;
 	VisualizeProfiler profiler;
 	ShaderEditor shader_editor;
 	AssetTab asset_tab;
@@ -96,8 +104,10 @@ struct Editor {
 	PickingSystem picking;
 	OutlineRenderState outline_selected;
 	GizmoResources gizmo_resources;
-
+    PhysicsResources physics_resources;
 	EditorViewport editor_viewport;
+    
+    EditorActions actions;
 	
 	//bool droppable_field_active;
 	//DroppableField droppable_field;

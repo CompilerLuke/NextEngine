@@ -23,6 +23,7 @@ struct AttachmentDesc {
 	StoreOp store_op = StoreOp::Store;
 	uint num_channels = 4;
 	uint num_mips = 1;
+    uint num_samples = 1;
 };
 
 struct Dependency {

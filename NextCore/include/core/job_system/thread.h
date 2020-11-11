@@ -12,3 +12,10 @@ struct worker_handle {
 CORE_API uint get_worker_id();
 CORE_API uint hardware_thread_count();
 CORE_API uint worker_thread_count();
+
+#ifdef __APPLE__
+#include <unistd.h>
+#define thread_sleep usleep
+#else
+#define thread_sleep Sleep
+#endif

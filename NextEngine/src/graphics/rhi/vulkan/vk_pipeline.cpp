@@ -30,12 +30,14 @@ VkCompareOp vk_depth_compare_op(DrawCommandState state) {
 
 VkColorComponentFlags vk_color_mask(DrawCommandState state) {
 	VkColorComponentFlags color_masks[2] = { VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, 0 };
-	return color_masks[decode_DrawState(ColorMask_Offset, state, 2)];
+	
+    return color_masks[0]; //Investigate why 0 isn't supported
+    //return color_masks[decode_DrawState(ColorMask_Offset, state, 2)];
 }
 
-bool vk_enable_alpha_blend(DrawCommandState state) {
-	bool enable[] = {false, true};
-	return enable[decode_DrawState(BlendMode_Offset, state, 2)];
+bool vk_alpha_blend(DrawCommandState state) {
+    bool alpha_blend[2] = {false, true};
+	return alpha_blend[decode_DrawState(BlendMode_Offset, state, 2)];
 }
 
 VkBlendOp vk_alpha_blend_op(DrawCommandState state) {
@@ -63,10 +65,13 @@ bool vk_depth_test(DrawCommandState state) {
 	return depth_test[decode_DrawState(DepthFunc_Offset, state, 2)];
 }
 
-
+bool vk_stencil_test(DrawCommandState state) {
+    bool stencil_test[4] = { false, true, true, true };
+    return stencil_test[decode_DrawState(StencilFunc_Offset, state, 2)];
+}
 
 VkStencilOpState vk_front_stencil_op(DrawCommandState state) {
-	VkCompareOp stencil_test[4] = { VK_COMPARE_OP_LESS, VK_COMPARE_OP_LESS_OR_EQUAL, VK_COMPARE_OP_NEVER };
+	VkCompareOp stencil_test[4] = { VK_COMPARE_OP_ALWAYS, VK_COMPARE_OP_EQUAL, VK_COMPARE_OP_NOT_EQUAL, VK_COMPARE_OP_ALWAYS };
 	
 	VkStencilOpState stencil_state = {};
 	stencil_state.compareOp = stencil_test[decode_DrawState(StencilFunc_Offset, state, 4)];
@@ -74,7 +79,7 @@ VkStencilOpState vk_front_stencil_op(DrawCommandState state) {
 	stencil_state.passOp = VK_STENCIL_OP_REPLACE;
 	stencil_state.depthFailOp = VK_STENCIL_OP_KEEP;
 	stencil_state.reference = 1;
-	stencil_state.compareMask = 0xFF;
+	stencil_state.compareMask =  0xFF;
 	stencil_state.writeMask = decode_DrawState(StencilMask_Offset, state, 8);
 
 	return stencil_state;
@@ -161,7 +166,7 @@ void make_GraphicsPipeline(VkDevice device, VkPipelineDesc& desc, VkPipelineLayo
 	rasterizer.depthClampEnable = VK_FALSE;
 	rasterizer.rasterizerDiscardEnable = VK_FALSE;
 	rasterizer.polygonMode = desc.polygon_mode;
-	rasterizer.lineWidth = desc.line_width;
+    rasterizer.lineWidth = 1.0; //todo add check for device support desc.line_width;
 	rasterizer.cullMode = desc.cull_mode; // VK_CULL_MODE_BACK_BIT;
 	rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
 	rasterizer.depthBiasEnable = VK_FALSE;
@@ -172,7 +177,7 @@ void make_GraphicsPipeline(VkDevice device, VkPipelineDesc& desc, VkPipelineLayo
 	VkPipelineMultisampleStateCreateInfo multisampling = {};
 	multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 	multisampling.sampleShadingEnable = VK_FALSE;
-	multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	multisampling.rasterizationSamples = desc.sample_count;
 	multisampling.minSampleShading = 1.0f;
 	multisampling.pSampleMask = nullptr;
 	multisampling.alphaToCoverageEnable = VK_FALSE;
@@ -207,19 +212,19 @@ void make_GraphicsPipeline(VkDevice device, VkPipelineDesc& desc, VkPipelineLayo
 	depthStencil.minDepthBounds = 0.0f;
 	depthStencil.maxDepthBounds = 1.0f;
 	depthStencil.stencilTestEnable = desc.stencil_test_enable;
-	depthStencil.front = {};
-	depthStencil.back = {};
+	depthStencil.front = desc.front_stencil;
+    depthStencil.back = desc.front_stencil;
 
 	//todo add ability to choose!
 	VkDynamicState dynamicStates[] = {
 		VK_DYNAMIC_STATE_VIEWPORT,
-		VK_DYNAMIC_STATE_LINE_WIDTH,
-		VK_DYNAMIC_STATE_SCISSOR
+		VK_DYNAMIC_STATE_SCISSOR,
+        //VK_DYNAMIC_STATE_LINE_WIDTH,
 	};
 
 	VkPipelineDynamicStateCreateInfo dynamicState = {};
 	dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-	dynamicState.dynamicStateCount = 3;
+	dynamicState.dynamicStateCount = 2;
 	dynamicState.pDynamicStates = dynamicStates;
 
 
@@ -231,7 +236,8 @@ void make_GraphicsPipeline(VkDevice device, VkPipelineDesc& desc, VkPipelineLayo
 	pipelineLayoutInfo.pPushConstantRanges = desc.push_constant_range.data;
 
 	if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, pipeline_layout) != VK_SUCCESS) {
-		throw "failed to make pipeline!";
+		fprintf(stderr, "failed to make pipeline layout!\n");
+        abort();
 	}
 
 	VkGraphicsPipelineCreateInfo pipelineInfo = {};
@@ -251,9 +257,19 @@ void make_GraphicsPipeline(VkDevice device, VkPipelineDesc& desc, VkPipelineLayo
 	pipelineInfo.subpass = desc.subpass;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineInfo.basePipelineIndex = -1;
+    
 
 	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, pipeline) != VK_SUCCESS) {
-		throw "failed to make graphics pipeline!";
+        /*for (VkVertexInputAttributeDescription& attrib : desc.attribute_descriptions) {
+            printf("Attribute (%i), format: %i, binding: %i, offset: %i\n", attrib.location, attrib.format, attrib.binding, attrib.offset);
+        }
+        
+        fprintf(stderr, "Failed to make graphics pipeline!\n");
+        fprintf(stderr, "Num vert attributes %i\n", vertexInputInfo.vertexAttributeDescriptionCount);
+        fprintf(stderr, "Num vert bindings %i\n", vertexInputInfo.vertexBindingDescriptionCount);
+        */
+        
+        abort();
 	}
 }
 
@@ -261,7 +277,7 @@ void make_GraphicsPipeline(VkDevice device, VkPipelineDesc& desc, VkPipelineLayo
 u64 hash_func(PipelineDesc& pipeline_desc) {
 	return (pipeline_desc.vertex_layout << 0)
 		| (pipeline_desc.instance_layout << 4)
-		| (pipeline_desc.render_pass.id << 8)
+		| (pipeline_desc.render_pass << 8)
 		| (pipeline_desc.state << 16);
 }
 
@@ -278,34 +294,50 @@ VkPipelineLayout get_pipeline_layout(PipelineCache& cache, pipeline_handle handl
 pipeline_handle make_Pipeline(PipelineCache& cache, const PipelineDesc& desc) {
 	//todo get actuall shader config
 
-	ENGINE_API Viewport render_pass_viewport_by_id(RenderPass::ID id);
+	//ENGINE_API Viewport render_pass_viewport_by_id(RenderPass::ID id);
 
 	Viewport viewport{}; // = render_pass_viewport_by_id(desc.render_pass);
-	VkRenderPass render_pass = (VkRenderPass)desc.render_pass.id;
+    VkRenderPass render_pass;
+    VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT;
+    
+    if (desc.render_pass & NATIVE_RENDER_PASS) {
+        render_pass = (VkRenderPass)(desc.render_pass & ((1ull << 63) - 1));
+    } else {
+        render_pass = (VkRenderPass)render_pass_by_id((RenderPass::ID)desc.render_pass).id;
+        samples = (VkSampleCountFlagBits)render_pass_samples_by_id((RenderPass::ID)desc.render_pass);
+    }
+    
 	ShaderModules* shader_module = get_shader_config(desc.shader, desc.shader_flags);
 
 	//DESCRIBE PIPELINE
+    auto binding_descriptions = input_bindings(rhi.vertex_layouts, desc.vertex_layout, desc.instance_layout);
+    auto attribute_descriptions = input_attributes(rhi.vertex_layouts, desc.vertex_layout, desc.instance_layout);
+    
 	VkPipelineDesc pipeline_desc = {};
 	pipeline_desc.subpass = desc.subpass;
 	pipeline_desc.vert_shader = shader_module->vert;
 	pipeline_desc.frag_shader = shader_module->frag;
 	pipeline_desc.render_pass = render_pass;
 	pipeline_desc.extent = { viewport.width, viewport.height };
-	pipeline_desc.binding_descriptions = input_bindings(rhi.vertex_layouts, desc.vertex_layout, desc.instance_layout);
-	pipeline_desc.attribute_descriptions = input_attributes(rhi.vertex_layouts, desc.vertex_layout, desc.instance_layout);
+	pipeline_desc.binding_descriptions = binding_descriptions;
+	pipeline_desc.attribute_descriptions = attribute_descriptions;
 	pipeline_desc.descriptor_layouts = shader_module->set_layouts; 
 	
 	pipeline_desc.polygon_mode = vk_polygon_mode(desc.state);
+    pipeline_desc.color_write_mask = vk_color_mask(desc.state);
 	pipeline_desc.line_width = vk_line_width(desc.state);
 	pipeline_desc.cull_mode = vk_cull_mode(desc.state);
 	pipeline_desc.depth_test_enable = vk_depth_test(desc.state);
 	pipeline_desc.depth_write_enable = vk_depth_write(desc.state);
 	pipeline_desc.depth_compare_op = vk_depth_compare_op(desc.state);
 	
-	pipeline_desc.alpha_blend_enable = vk_enable_alpha_blend(desc.state);
+	pipeline_desc.alpha_blend_enable = vk_alpha_blend(desc.state);
 	pipeline_desc.src_blend_factor = vk_src_alpha_blend_factor(desc.state);
 	pipeline_desc.dst_blend_factor = vk_dst_alpha_blend_factor(desc.state);
 	pipeline_desc.blend_op = vk_alpha_blend_op(desc.state);
+    pipeline_desc.stencil_test_enable = vk_stencil_test(desc.state);
+    pipeline_desc.front_stencil = vk_front_stencil_op(desc.state);
+    pipeline_desc.sample_count = samples;
 
 	array<2, VkPushConstantRange> ranges = {};
 

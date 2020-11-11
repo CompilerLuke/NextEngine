@@ -50,6 +50,7 @@ ENGINE_API void next_subpass(RenderPass&);
 ENGINE_API RenderPass begin_render_frame();
 ENGINE_API void end_render_frame(RenderPass&);
 
+ENGINE_API uint render_pass_samples_by_id(RenderPass::ID);
 ENGINE_API RenderPass::Type render_pass_type_by_id(RenderPass::ID id, uint subpass);
 ENGINE_API render_pass_handle render_pass_by_id(RenderPass::ID id);
 ENGINE_API Viewport render_pass_viewport_by_id(RenderPass::ID id);

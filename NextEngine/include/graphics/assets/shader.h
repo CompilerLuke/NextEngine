@@ -34,7 +34,7 @@ struct GlobalShaders {
 	shader_handle gizmo;
 };
 
-static GlobalShaders global_shaders;
+ENGINE_API extern GlobalShaders global_shaders;
 
 //ENGINE_API uniform_handle uniform_id(shader_handle shader, string_view name);
 ENGINE_API UniformInfo*   uniform_info(uniform_handle);

@@ -18,7 +18,7 @@
 
 #include "core/job_system/job.h"
 
-Modules::Modules(const char* app_name, const char* level_path) {
+Modules::Modules(const char* app_name, const char* level_path, const char* engine_asset_path) {
 	window = new Window();
 	input = new Input();
 	time = new Time();
@@ -28,6 +28,8 @@ Modules::Modules(const char* app_name, const char* level_path) {
 	register_default_components(*world);
 	physics_system->init(*world);
 
+    window->width = 2048;
+    window->height = 2048;
 	window->title = app_name;
 	window->full_screen = false;
 	window->vSync = false;
@@ -40,7 +42,7 @@ Modules::Modules(const char* app_name, const char* level_path) {
 	};
 
 	VulkanDesc vk_desc = {};
-	vk_desc.api_version = VK_MAKE_VERSION(1, 2, 0);
+    vk_desc.api_version = VK_API_VERSION_1_2; // VK_MAKE_VERSION(1, 2, 0);
 	vk_desc.app_name = app_name;
 	vk_desc.app_version = VK_MAKE_VERSION(0, 0, 0);
 	vk_desc.engine_name = "NextEngine";
@@ -48,23 +50,27 @@ Modules::Modules(const char* app_name, const char* level_path) {
 	vk_desc.min_log_severity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
 	vk_desc.validation_layers = validation_layers;
 	
-#ifdef _DEBUG
-	vk_desc.num_validation_layers = 1;
-#else
+/*#ifdef NDEBUG
 	vk_desc.num_validation_layers = 0;
-#endif
+#else
+	vk_desc.num_validation_layers = 1;
+#endif*/
+
+    vk_desc.num_validation_layers = 1;
+    //vk_desc.num_validation_layers = 0;
 
 	vk_desc.device_features.samplerAnisotropy = VK_TRUE;
 	vk_desc.device_features.multiDrawIndirect = VK_TRUE;
 	vk_desc.device_features.fillModeNonSolid = VK_TRUE;
+    //vk_desc.device_features.wideLines = VK_TRUE;
 
 	make_RHI(vk_desc, *window);
-	make_AssetManager(level_path);
+	make_AssetManager(level_path, engine_asset_path);
 
 	RenderSettings settings = {};
-	settings.display_resolution_width = window->width;
-	settings.display_resolution_height = window->height;
-	settings.shadow_resolution = 2048;
+    settings.display_resolution_width = 2048;
+	settings.display_resolution_height = 2048;
+	settings.shadow_resolution = 512;
 
 	renderer = make_Renderer(settings, *world);
 }

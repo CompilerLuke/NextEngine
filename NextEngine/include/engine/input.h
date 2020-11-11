@@ -129,6 +129,7 @@ enum class Key {
 	Right_Alt = 346,
 	Right_Super = 347,
 	Menu = 348,
+    Control = 3, //Special Mod Key (Left_Control, Right_Control, Right_Super, Left_Super)
 	Last = Menu,
 };
 
@@ -151,6 +152,7 @@ struct Input {
 	
 	bool first_mouse = true;
 
+    glm::vec2 screen_mouse_position;
 	glm::vec2 mouse_position;
 	glm::vec2 mouse_offset;
 
@@ -164,7 +166,7 @@ struct Input {
 
 	bool ENGINE_API key_down(Key, ModKeys allow_mod = ModKeys::None);
 	bool ENGINE_API key_pressed(Key, ModKeys allow_mod = ModKeys::None);
-	bool ENGINE_API key_mod_pressed(Key key, Key mod = Key::Left_Control);
+	bool ENGINE_API key_mod_pressed(Key key, Key mod = Key::Control);
 
 	bool ENGINE_API mouse_button_down(MouseButton);
 	bool ENGINE_API mouse_button_pressed(MouseButton);

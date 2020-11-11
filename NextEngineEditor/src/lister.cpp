@@ -21,8 +21,13 @@ struct AddChild {
 	ID child;
 };
 
+EntityNode* node_by_id(Lister& lister, ID id) {
+    if (id == 0) return &lister.root_node;
+    else return lister.by_id[id];
+}
+
 void render_hierarchy(tvector<AddChild>& defer_add_child, EntityNode& node, Editor& editor, int indent = 0) {
-	EntityNode* real = editor.lister.by_id[node.id];
+	EntityNode* real = node_by_id(editor.lister, node.id);
 
 	ID id = node.id;
 	bool selected = editor.selected_id == node.id;
@@ -112,7 +117,7 @@ bool filter_hierarchy(EntityNode* result, EntityNode& top, World& world, EntityF
 }
 
 void remove_child(Lister& lister, EntityNode* child) {
-	EntityNode* parent = lister.by_id[child->parent];
+	EntityNode* parent = node_by_id(lister, child->parent);
 
 	uint index = child - parent->children.data; //todo merge this function with remove folder
 	for (uint i = index; i < parent->children.length - 1; i++) {
@@ -123,7 +128,7 @@ void remove_child(Lister& lister, EntityNode* child) {
 	parent->children.length--;
 }
 
-void add_child(Lister& lister, EntityNode& parent, EntityNode&& child) {
+void add_child_in_lister(Lister& lister, EntityNode& parent, EntityNode&& child) {
 	uint capacity = parent.children.capacity;
 	child.parent = parent.id;
 	parent.expanded = true;
@@ -139,36 +144,42 @@ void add_child(Lister& lister, EntityNode& parent, EntityNode&& child) {
 	}
 }
 
-void add_child(Lister& lister, World& world, AddChild add) {
-	const Transform* transform = world.by_id<Transform>(add.parent);
-	if (transform) {
-		const Transform* child_transform = world.by_id<Transform>(add.child);
-		LocalTransform* child_local = world.m_by_id<LocalTransform>(add.child);
+void add_child(Lister& lister, World& world, ID parent, EntityNode&& child_node) {
+    ID child = child_node.id;
+    
+    const Transform* transform = parent == 0 ? nullptr : world.by_id<Transform>(parent);
+    if (transform) {
+        const Transform* child_transform = world.by_id<Transform>(child);
+        LocalTransform* child_local = world.m_by_id<LocalTransform>(child);
 
-		if (child_transform) {
-			if (!child_local) child_local = world.add<LocalTransform>(add.child);
-			
-			//todo move function into transforms_components
-			child_local->scale = child_transform->scale / transform->scale;
-			child_local->rotation = child_transform->rotation * glm::inverse(transform->rotation);
+        if (child_transform) {
+            if (!child_local) child_local = world.add<LocalTransform>(child);
+            
+            //todo move function into transforms_components
+            child_local->scale = child_transform->scale / transform->scale;
+            child_local->rotation = child_transform->rotation * glm::inverse(transform->rotation);
 
-			auto position = child_transform->position - transform->position; 
-			child_local->position = position * glm::inverse(transform->rotation);
+            auto position = child_transform->position - transform->position;
+            child_local->position = position * glm::inverse(transform->rotation);
 
-			child_local->owner = add.parent;
-		}
-	}
+            child_local->owner = parent;
+        }
+    }
 
-	EntityNode* child_ptr = lister.by_id[add.child];
-	EntityNode child = std::move(*child_ptr);
+    EntityNode* new_parent = node_by_id(lister, parent);
+    add_child_in_lister(lister, *new_parent, std::move(child_node));
+}
+
+void add_child(Lister& lister, World& world, ID parent, ID child) {
+	EntityNode* child_ptr = lister.by_id[child];
+	EntityNode child_node = std::move(*child_ptr);
 	remove_child(lister, child_ptr);
 
-	EntityNode* new_parent = lister.by_id[add.parent];
-	add_child(lister, *new_parent, std::move(child));
+    add_child(lister, world, parent, std::move(child_node));
 }
 
 EntityNode remove_child(Lister& lister, EntityNode& parent, ID id) {
-	EntityNode* node = lister.by_id[id];
+    EntityNode* node = node_by_id(lister, id);
 	assert(node);
 
 	uint position = node - parent.children.data;
@@ -187,11 +198,31 @@ EntityNode remove_child(Lister& lister, EntityNode& parent, ID id) {
 }
 
 void register_entity(Lister& lister, string_view name, ID id) {
-	add_child(lister, lister.root_node, { name, id });
+	add_child_in_lister(lister, lister.root_node, { name, id });
 }
 
-void create_object_popup(Lister& lister, World& world, material_handle default_material) {
-	if (ImGui::IsWindowHovered()) {
+void create_under_selected(Editor& editor, string_view name, ID id) {
+    Lister& lister = editor.lister;
+    uint selected_id = editor.selected_id > 0 ? editor.selected_id : 0;
+    EntityNode* parent = node_by_id(editor.lister, selected_id);
+    if (!parent) {
+        printf("Found no parent!\n");
+        return;
+    }
+    
+    add_child(lister, editor.world, selected_id, {name, id});
+}
+
+void spawn_primitive(Editor& editor, World& world, model_handle primitive, const char* name, material_handle default_material) {
+    auto [e, trans, renderer, materials] = world.make<Transform, ModelRenderer, Materials>();
+    materials.materials.append(default_material);
+    renderer.model_id = primitive;
+    
+    create_under_selected(editor, name, e.id);
+}
+
+void create_object_popup(Editor& editor, World& world, material_handle default_material) {
+    if (ImGui::IsWindowHovered()) {
 		if (ImGui::GetIO().MouseClicked[1]) ImGui::OpenPopup("CreateObject");
 	}
 
@@ -200,24 +231,56 @@ void create_object_popup(Lister& lister, World& world, material_handle default_m
 			auto [e,trans,terrain,materials] = world.make<Transform, Terrain, Materials>();
 			materials.materials.append(default_material);
 			
-			register_entity(lister, "Terrain", e.id);
+			create_under_selected(editor, "Terrain", e.id);
 		}
 
 		if (ImGui::MenuItem("New Grass")) {
 			auto[e, trans, grass, materials] = world.make<Transform, Grass, Materials>();
 			materials.materials.append(default_material);
 
-			register_entity(lister, "Grass", e.id);
+			create_under_selected(editor, "Grass", e.id);
 		}
 
 		if (ImGui::MenuItem("New Empty")) {
-			Entity e = world.make();
+			auto [e, trans] = world.make<Transform>();
 
-			register_entity(lister, "Empty", e.id);
+			create_under_selected(editor, "Empty", e.id);
 		}
+        
+        if (ImGui::MenuItem("New Cube")) spawn_primitive(editor, world, primitives.cube, "Cube", default_material);
+        
+        if (ImGui::MenuItem("New Plane")) spawn_primitive(editor, world, primitives.quad, "Plane", default_material);
+        
+        if (ImGui::MenuItem("New Sphere")) spawn_primitive(editor, world, primitives.sphere, "Sphere", default_material);
 
 		ImGui::EndPopup();
 	}
+}
+
+Lister::Lister() {
+    by_id[0] = &root_node; //self-referential do not move lister!
+}
+
+void clone_entity(Lister& lister, World& world, ID parent, EntityNode& node) {
+    ID new_id = world.clone(node.id);
+    
+    char buffer[sstring::N];
+    snprintf(buffer, sstring::N, "%s Copy", node.name.data);
+    add_child(lister, world, parent, {buffer, new_id});
+    
+    for (EntityNode child : node.children) {
+        clone_entity(lister, world, new_id, child);
+    }
+}
+
+void clone_entity(Lister& lister, World& world, ID id) {
+    EntityNode* node = node_by_id(lister, id);
+    if (!node) {
+        fprintf(stderr, "ID is not associated with node");
+        return;
+    }
+    
+    clone_entity(lister, world, node->parent, *node);
 }
 
 void Lister::render(World& world, Editor& editor, RenderPass& params) {
@@ -228,7 +291,7 @@ void Lister::render(World& world, Editor& editor, RenderPass& params) {
 		EntityFilter entity_filter;
 		entity_filter.filter = filter;
 
-		create_object_popup(*this, world, editor.asset_info.default_material);
+		create_object_popup(editor, world, editor.asset_info.default_material);
 
 		if (filter.starts_with("#")) {
 			auto splice = filter.sub(1, filter.size());
@@ -271,7 +334,7 @@ void Lister::render(World& world, Editor& editor, RenderPass& params) {
 		}
 
 		for (AddChild& add : deferred_add_child) {
-			add_child(*this, world, add);
+			add_child(*this, world, add.parent, add.child);
 		}
 	}
 

@@ -40,8 +40,8 @@ struct Gizmo {
 
 	void register_callbacks(struct Editor& editor);
 
-	void update(struct World&, struct Editor&, struct UpdateCtx&);
-	void render(struct World&, struct Editor&, struct Viewport&, struct Input&);
+	void update(struct World&, Editor&, struct UpdateCtx&);
+	void render(struct World&, Editor&, struct Viewport&, struct Input&);
 
 	~Gizmo();
 };

@@ -33,7 +33,7 @@ ShadowPass::ShadowPass(Renderer& renderer, glm::vec2 size, texture_handle depth_
 {}
 
 ShadowMask::ShadowMask(glm::vec2 size) {
-	FramebufferDesc desc{ size.x, size.y };
+	FramebufferDesc desc{ (uint)size.x, (uint)size.y };
 
 	AttachmentDesc& color_attachment = add_color_attachment(desc, &shadow_mask_map);
 

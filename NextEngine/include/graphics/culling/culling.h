@@ -18,4 +18,6 @@ ENGINE_API void update_acceleration_structure(ScenePartition& scene_partition, h
 
 void render_debug_bvh(ScenePartition& scene_partition, RenderPass&);
 
-void cull_meshes(const ScenePartition& scene_partition, CulledMeshBucket* culled_mesh_bucket, const Viewport&);
+using MeshBuckets = hash_set<MeshBucket, MAX_MESH_BUCKETS>;
+
+void cull_meshes(const ScenePartition& scene_partition, World& world, MeshBuckets& buckets, CulledMeshBucket* culled_mesh_bucket, const Viewport& viewport);

@@ -1,18 +1,17 @@
 #include "stdafx.h"
+#include "core/job_system/fiber.h"
 #include "core/job_system/job.h"
 #include "core/job_system/work_stealing_queue.h"
 #include "core/container/queue.h"
 #include "core/container/array.h"
 
-#include <Windows.h>
+
 #include <thread>
 
-thread_local worker_handle worker_id;
+thread_local worker_handle worker_handle;
 
 constexpr uint MAX_FIBERS = 1000;
 constexpr uint MAX_JOBS = 10000;
-
-using Fiber = LPVOID;
 
 struct Job {
 	JobFunc func;
@@ -21,13 +20,13 @@ struct Job {
 };
 
 struct ParkedFiber {
-	Fiber fiber;
+	Fiber* fiber;
 	atomic_counter* counter;
 	uint value;
 };
 
 using JobQueue = work_stealing_queue<MAX_JOBS, Job>; //todo change order
-using FiberPool = array<MAX_FIBERS, Fiber>;
+using FiberPool = array<MAX_FIBERS, Fiber*>;
 using WaitList = array<MAX_FIBERS, ParkedFiber>;
 
 //JOB SYSTEM DATA
@@ -40,7 +39,7 @@ queue<Job, 10> private_queue[MAX_THREADS] = {};
 FiberPool fiber_pools[MAX_THREADS] = {};
 WaitList wait_lists[MAX_THREADS] = {};
 
-DWORD fls_context;
+
 
 uint hardware_thread_count() {
 	return std::thread::hardware_concurrency();
@@ -51,11 +50,11 @@ uint worker_thread_count() {
 }
 
 uint get_worker_id() {
-	assert(worker_id.id);
-	return worker_id.id - 1;
+	assert(worker_handle.id);
+	return worker_handle.id - 1;
 }
 
-Fiber alloc_fiber() {
+Fiber* alloc_fiber() {
 	FiberPool& pool = fiber_pools[get_worker_id()];
 	
 	if (pool.length == 0) {
@@ -66,7 +65,7 @@ Fiber alloc_fiber() {
 	return pool.pop();
 }
 
-void dealloc_fiber(Fiber fiber) {
+void dealloc_fiber(Fiber* fiber) {
 	FiberPool& pool = fiber_pools[get_worker_id()];
 	pool.append(fiber);
 }
@@ -79,6 +78,7 @@ void execute(Job job) {
 	}
 
 	//printf("dequeued job #%i\n", counter++);
+    assert(job.func);
 	job.func(job.data);
 	if (job.counter) {
 		uint current = --(*job.counter);
@@ -111,12 +111,11 @@ bool steal_job(uint worker, Job* job) {
 	return false;
 }
 
-void run_fiber(void* _fiber) {
+void run_fiber() {
 	uint worker = get_worker_id();
 	WaitList& wait_list = wait_lists[worker];
-	Fiber worker_fiber = GetCurrentFiber();
+	Fiber* worker_fiber = get_current_fiber();
 
-	uint steal_roundrobin = rand();
 	uint workers_len = workers.length;
 
 	while (!workers_exit) {
@@ -131,11 +130,11 @@ void run_fiber(void* _fiber) {
 			for (uint i = 0; i < wait_list.length; i++) {
 				uint counter = wait_list[i].counter->load(std::memory_order_relaxed);
 				if (counter == wait_list[i].value) {
-					Fiber fiber = wait_list[i].fiber;
+					Fiber* fiber = wait_list[i].fiber;
 					wait_list.data[i] = wait_list.data[--wait_list.length];
 					resumed = true;
 					dealloc_fiber(worker_fiber);
-					SwitchToFiber(fiber);
+					switch_to_fiber(fiber);
 					break;
 				}
 			}
@@ -149,22 +148,25 @@ void run_fiber(void* _fiber) {
 				}
 
 				if (job.func) execute(job);
-				else Sleep(0);
+				else thread_sleep(1);
 			}
 		}
 	}
 }
 
 void wait_for_counter(atomic_counter* counter, uint value) {
-	if (counter->load(std::memory_order_relaxed) == value) return;
+    assert(counter);
+    if (counter->load(std::memory_order_relaxed) == value) return;
 	
 	uint worker_id = get_worker_id();
 	WaitList& wait_list = wait_lists[worker_id];
 	FiberPool& fiber_pool = fiber_pools[worker_id];
-	Fiber fiber = GetCurrentFiber();
+	Fiber* fiber = get_current_fiber(); //corrupts the stack??
+    
+    //assert(worker_id == 0);
 
 	//todo what memory order should this be
-	Fiber yield_to = nullptr;
+	Fiber* yield_to = nullptr;
 
 	for (uint i = 0; i < wait_list.length; i++) {
 		if (wait_list[i].counter->load(std::memory_order_relaxed) == wait_list[i].value) {
@@ -179,36 +181,38 @@ void wait_for_counter(atomic_counter* counter, uint value) {
 		wait_list.append({fiber, counter, value});
 	}
 
-	SwitchToFiber(yield_to); 
+	switch_to_fiber(yield_to);
 }
 
 WaitCondition::WaitCondition() {
-	fiber = GetCurrentFiber();
+	fiber = get_current_fiber();
 	counter = 0;
 	value = 0;
 }
 
 void wait_for_jobs_on_thread(Priority priority, slice<JobDesc> desc) {
-	ConvertThreadToFiber(nullptr);
+	convert_thread_to_fiber();
 	wait_for_jobs(priority, desc);
-	ConvertFiberToThread();
+	convert_fiber_to_thread();
 }
 
 void wait_for_counter_on_thread(atomic_counter* counter, uint value) {
-	ConvertThreadToFiber(nullptr);
+	convert_thread_to_fiber();
 	wait_for_counter(counter, value);
-	ConvertFiberToThread();
+	convert_fiber_to_thread();
 }
 
 
 void run_worker(uint worker) {
 	//printf("Starting worker %i\n", worker);
 
-	worker_id = { worker + 1 };
+	worker_handle = { worker + 1 };
 
-	Fiber fiber = ConvertThreadToFiber(nullptr);
-	run_fiber(fiber);
+	convert_thread_to_fiber();
+	run_fiber();
 }
+
+FLS* fls_context;
 
 void make_job_system(uint num_fibers, uint num_workers) {
 	assert(num_workers <= MAX_THREADS);
@@ -220,7 +224,7 @@ void make_job_system(uint num_fibers, uint num_workers) {
 	
 	for (uint worker = 0; worker < num_workers; worker++) {
 		for (uint i = 0; i < num_fibers; i++) {
-			fiber_pools[worker].append(CreateFiber(kb(64), run_fiber, nullptr));
+			fiber_pools[worker].append(make_fiber(kb(128), run_fiber));
 		}
 
 		if (worker == main_thread) workers.append(std::thread());
@@ -236,12 +240,12 @@ void make_job_system(uint num_fibers, uint num_workers) {
 		workers[worker].detach();
 	}
 
-	worker_id = { main_thread + 1 };
-	fls_context = FlsAlloc(nullptr);
+	worker_handle = { main_thread + 1 };
+    fls_context = make_FLS(nullptr);
 }
 
 void destroy_job_system() {
-	FlsFree(fls_context);
+    free_FLS(fls_context);
 
 	workers_exit = true;
 
@@ -251,14 +255,16 @@ void destroy_job_system() {
 void schedule_jobs_on(slice<uint> workers, slice<JobDesc> jobs, atomic_counter* counter) {
 	if (counter) *counter += jobs.length;
 
-	assert(workers.length == jobs.length);
+	//assert(workers.length == jobs.length);
 
 	for (uint i = 0; i < jobs.length; i++) {
-		assert(private_queue[workers[i]].enqueue({
+		while (!private_queue[workers[i]].enqueue({
 			jobs[i].func,
 			jobs[i].data,
 			counter
-		}));
+        })) {
+            sleep(0);
+        }
 	}
 }
 
@@ -266,7 +272,7 @@ void add_jobs(Priority priority, slice<JobDesc> jobs, atomic_counter* counter) {
 	if (counter) *counter += jobs.length;
 
 	uint worker = get_worker_id();
-	Fiber fiber = GetCurrentFiber();
+	Fiber* fiber = get_current_fiber();
 	
 	for (JobDesc& desc : jobs) { 
 		//Could we enqueue multiple jobs at a time?
@@ -304,24 +310,27 @@ void wait_for_jobs(Priority priority, slice<JobDesc> jobs) {
 static thread_local Context* thread_local_context;
 
 Context& get_context() {
-	Context* ctx = (Context*)FlsGetValue(fls_context);
-	if (ctx) return *ctx;
-	else return *thread_local_context; //Fallback setting thread local if not in fiber
+	Context* ctx = (Context*)get_FLS(fls_context);
+    if (ctx) return *ctx;
+    assert(thread_local_context != nullptr);
+	return *thread_local_context; //Fallback setting thread local if not in fiber
 }
 
 void set_context(Context* context) {
-	if (!FlsSetValue(fls_context, context)) {
+	if (!set_FLS(fls_context, context)) {
 		thread_local_context = context; //fallback setting thread local if not in fiber
 	}
 }
 
 ScopedContext::ScopedContext(Context& current) {
 	this->current = current;
-	this->previus = &get_context();
+
+    if (Context* ctx = (Context*)get_FLS(fls_context)) this->previus = ctx;
+    else this->previus = thread_local_context;
 
 	set_context(&current); 
 }
 
 ScopedContext::~ScopedContext() {
-	FlsSetValue(fls_context, previus);
+	set_FLS(fls_context, previus);
 }

@@ -16,7 +16,9 @@ void cursor_pos_callback(GLFWwindow* window_ptr, double x, double y) {
 	glfwGetWindowSize(window_ptr, &width, &height);
 
 	auto window = (Window*)glfwGetWindowUserPointer(window_ptr);
-	window->on_cursor_pos.broadcast(glm::vec2(x, y + (window->height - height)));
+    // + (window->height - height)
+    // todo account for title bar
+	window->on_cursor_pos.broadcast(glm::vec2(x, y));
 }
 
 void key_callback(GLFWwindow* window_ptr, int key, int scancode, int action, int mods) {
@@ -82,7 +84,7 @@ void Window::init() {
 	glfwSetFramebufferSizeCallback(window_ptr, framebuffer_size_callback);
 	glfwSetCursorPosCallback(window_ptr, cursor_pos_callback);
 	glfwSetKeyCallback(window_ptr, key_callback);
-	glfwSetInputMode(window_ptr, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	glfwSetInputMode(window_ptr, GLFW_CURSOR, GLFW_CURSOR);
 	glfwSetDropCallback(window_ptr, drop_callback);
 	glfwSetMouseButtonCallback(window_ptr, mouse_button_callback);
 	glfwSetScrollCallback(window_ptr, scroll_callback);
@@ -107,8 +109,12 @@ void Window::init() {
 	}
 }
 
-void* Window::get_win32_window() {
+void* Window::get_native_window() {
+#ifdef NE_WINDOWS
 	return (void*)glfwGetWin32Window(window_ptr);
+#else
+    return (void*)glfwGetCocoaWindow(window_ptr);
+#endif
 }
 
 void Window::wait_events() {
@@ -117,6 +123,10 @@ void Window::wait_events() {
 
 void Window::get_framebuffer_size(int* width, int* height) {
 	glfwGetFramebufferSize(window_ptr, width, height);
+}
+
+bool Window::is_visible() {
+    return glfwGetWindowAttrib(window_ptr, GLFW_FOCUSED);
 }
 
 void Window::override_key_callback(GLFWkeyfun func) {

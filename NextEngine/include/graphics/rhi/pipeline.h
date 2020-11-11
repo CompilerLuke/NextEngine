@@ -29,7 +29,7 @@ enum StencilFunc : DrawCommandState {
 	StencilFunc_Offset = 4,
 	StencilFunc_None = 0 << StencilFunc_Offset,
 	StencilFunc_Equal = 1 << StencilFunc_Offset,
-	StencilFunc_NotEqual = 2 << StencilFunc_Offset,
+	StencilFunc_Nequal = 2 << StencilFunc_Offset,
 	StencilFunc_Always = 3 << StencilFunc_Offset
 };
 
@@ -72,8 +72,8 @@ enum BlendMode : DrawCommandState {
 
 enum DynamicState : DrawCommandState {
 	DynamicState_Offset = 30,
-	DynamicState_LineWidth = 1 << (DynamicState_Offset + 0),
-	DynamicState_Viewport  = 1 << (DynamicState_Offset + 1),
+	DynamicState_LineWidth = 1ull << (DynamicState_Offset + 0),
+	DynamicState_Viewport  = 1ull << (DynamicState_Offset + 1),
 };
 
 inline uint decode_DrawState(u64 offset, DrawCommandState state, uint bits) {
@@ -117,10 +117,12 @@ struct PushConstantRange {
 	};
 };
 
+const u64 NATIVE_RENDER_PASS = 1ul << 63;
+
 struct PipelineDesc {
 	shader_handle shader;
 	shader_flags shader_flags = SHADER_INSTANCED;
-	render_pass_handle render_pass;
+	u64 render_pass;
 	uint subpass = 0;
 	VertexLayout vertex_layout = VERTEX_LAYOUT_DEFAULT;
 	InstanceLayout instance_layout = INSTANCE_LAYOUT_MAT4X4;
@@ -130,7 +132,7 @@ struct PipelineDesc {
 	inline bool operator==(const PipelineDesc& other) const {
 		return shader.id == other.shader.id
 			&& shader_flags == other.shader_flags
-			&& render_pass.id == other.render_pass.id
+			&& render_pass == other.render_pass
 			&& subpass == other.subpass
 			&& vertex_layout == other.vertex_layout
 			&& instance_layout == other.instance_layout

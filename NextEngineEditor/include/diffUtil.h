@@ -1,14 +1,29 @@
 #pragma once
 
+#include "core/core.h"
 #include "ecs/id.h"
 #include "core/reflection.h"
 #include "core/container/array.h"
 #include "core/container/offset_slice.h"
 #include "ecs/ecs.h"
 #include "core/reflection.h"
+#include "assets/node.h"
+#include "ecs/ecs.h"
+
+struct Editor;
 
 struct EditorActionHeader {
-	enum Type { Diff, Create_Entity, Destroy_Entity, Create_Component, Destroy_Component, Create_Asset, Destroy_Asset } type;
+    enum ActionType {
+        Create_Element,
+        Destroy_Element,
+        Create_Component,
+        Destroy_Component,
+        Select,
+        Create_Entity,
+        Destroy_Entity,
+        Diff
+    } type;
+
 	char* ptr;
 	u64 size;
 	sstring name;
@@ -26,25 +41,43 @@ struct ActionStack {
 };
 
 struct EditorActions {
-	World& world;
+    Editor& editor;
 	ActionStack frame_diffs;
 	ActionStack undo;
 	ActionStack redo;
 };
 
+struct ElementPtr {
+    enum Type {
+        Component, Offset, VectorElement, ListerNode, AssetNode, StaticPointer
+    } type;
+    union {
+        uint id;
+        struct { uint entity_id; uint component_id; };
+        void* ptr;
+    };
+    refl::Type* refl_type = NULL;
+    
+    ElementPtr() { memset(this, 0, sizeof(ElementPtr)); }
+    ElementPtr(Type type, ID id, refl::Type* refl_type) : type(type), id(id), refl_type(refl_type) {}
+    ElementPtr(Type type, ID id, ID component_id, refl::Type* refl_type) : type(type), entity_id(id), component_id(component_id), refl_type(refl_type) {}
+    ElementPtr(Type type, void* ptr) : type(type), ptr(ptr) {}
+};
+
 struct DiffUtil {
-	void* real_ptr = NULL;
+    array<5, ElementPtr> element;
 	void* copy_ptr = NULL;
-	refl::Type* type = NULL;
-	uint id = 0;
 };
 
 struct Diff {
-	void* real_ptr;
+    offset_slice<ElementPtr> element;
 	offset_ptr<char> copy_ptr;
-	refl::Type* type;
 	offset_slice<uint> fields_modified;
-	uint id;
+};
+
+struct SelectionAction {
+    enum Type { Entity, AssetNode } type;
+    offset_slice<ID> ids;
 };
 
 struct EntityCopy {
@@ -67,90 +100,37 @@ struct AssetCopy {
 void clear_stack(ActionStack&);
 void init_actions(EditorActions&);
 
-void begin_diff(DiffUtil&, void* ptr, void* copy, refl::Type* type);
-void begin_tdiff(DiffUtil&, void* ptr, refl::Type* type);
+void begin_diff(DiffUtil&, slice<ElementPtr> ptr, void* copy);
+void begin_tdiff(DiffUtil&, slice<ElementPtr> ptr);
 bool end_diff(EditorActions&, DiffUtil&, string_view);
 void commit_diff(EditorActions&, DiffUtil&);
 
+void begin_e_diff(DiffUtil& util, World& world, ID component_id, ID id, void* copy);
+void begin_e_tdiff(DiffUtil& util, World& world, ID component_id, ID id);
+
+template<typename T>
+void begin_e_diff(DiffUtil& util, World& world, ID id, T* copy) {
+    begin_e_diff(util, world, type_id<T>(), id, copy);
+}
+
+template<typename T>
+void begin_e_tdiff(DiffUtil& util, World& world, ID id) {
+    T* copy = TEMPORARY_ALLOC(T, *world.by_id<T>(id));
+    begin_e_diff(util, world, type_id<T>(), id, copy);
+}
+
 bool submit_diff(ActionStack& stack, DiffUtil& util, string_view string);
 
+void asset_selection_action(EditorActions& actions, slice<asset_handle> handle);
+
+void entity_selection_action(EditorActions& actions, slice<ID> ids);
 void entity_create_action(EditorActions& actions, ID id);
 void entity_destroy_action(EditorActions& actions, ID id); //will destroy for you
 void entity_create_component_action(EditorActions& actions, uint component_id, ID id); //will create for you
 void entity_destroy_component_action(EditorActions& actions, uint component_id, ID id);  //will destroy for you
 
-/*template<typename T>
-void begin_diff(DiffUtil& util, T* ptr, T* copy) {
-	begin_diff(util, ptr, copy, refl_type(T));
-}
-
-template<typename T>
-void begin_tdiff(DiffUtil& util, T* ptr) {
-	begin_tdiff(util, ptr, refl_type(T));
-}*/
-
 void undo_action(EditorActions&);
 void redo_action(EditorActions&);
 
-/*
-struct Diff : EditorAction {
-	void* target;
-	void* undo_buffer;
-	void* redo_buffer;
-	const char* name;
+void* get_ptr(slice<ElementPtr> elements);
 
-	vector<unsigned int> offsets;
-	vector<unsigned int> sizes;
-	vector<void*> data;
-
-	void undo() override;
-	void redo() override;
-
-	Diff(unsigned int);
-	Diff(Diff&&);
-	~Diff();
-};
-
-struct CreateAction : EditorAction {
-	World& world;
-	ID id;
-	vector<Component> components;
-	bool undid = false;
-
-	CreateAction(World&, ID);
-
-	void undo() override;
-	void redo() override;
-
-	~CreateAction();
-};
-
-struct DestroyAction : CreateAction {
-	DestroyAction(World&, ID);
-
-	void undo() override;
-	void redo() override;
-};
-
-struct DestroyComponentAction : EditorAction {
-	ComponentStore* store;
-	void* ptr;
-	bool undid = false;
-
-	DestroyComponentAction(ComponentStore*, ID);
-	~DestroyComponentAction();
-
-	void undo() override;
-	void redo() override;
-};
-
-struct UndoRedoScope : EditorAction {
-	vector<EditorAction*> children;
-};
-*/
-
-//void submit_action(std::unique_ptr<EditorAction>* action);
-//void push_undo(std::unique_ptr<EditorAction>);
-//void push_redo(std::unique_ptr<EditorAction>);
-//void on_undo();
-//void on_redo();
