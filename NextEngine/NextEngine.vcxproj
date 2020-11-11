@@ -61,6 +61,7 @@
     <IntDir>..\bin-int\Debug-windows-x86_64\NextEngine\</IntDir>
     <TargetName>NextEngine</TargetName>
     <TargetExt>.dll</TargetExt>
+    <IncludePath>C:\VulkanSDK\1.2.154.1\Include;vendor;vendor\glfw\include;vendor\assimp\include;vendor\bullet3\src;..\vendor\glm;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -68,6 +69,7 @@
     <IntDir>..\bin-int\Release-windows-x86_64\NextEngine\</IntDir>
     <TargetName>NextEngine</TargetName>
     <TargetExt>.dll</TargetExt>
+    <IncludePath>C:\VulkanSDK\1.2.154.1\Include;vendor;vendor\glfw\include;vendor\assimp\include;vendor\bullet3\src;..\vendor\glm;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -75,14 +77,15 @@
     <IntDir>..\bin-int\Dist-windows-x86_64\NextEngine\</IntDir>
     <TargetName>NextEngine</TargetName>
     <TargetExt>.dll</TargetExt>
+    <IncludePath>C:\VulkanSDK\1.2.154.1\Include;vendor;vendor\glfw\include;vendor\assimp\include;vendor\bullet3\src;..\vendor\glm;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>RENDER_API_VULKAN;NEXTENGINE_EXPORTS;NE_PLATFORM_WINDOWS;NE_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>include;;vendor\glfw\include;;vendor\assimp\include;;vendor\bullet3\src;;..\vendor\glm;;C:\VulkanSDK\1.2.154.1\Include;;..\NextCore\include;;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>RENDER_API_VULKAN;NE_PLATFORM_WINDOWS;NE_DEBUG;NEXTENGINE_DLL;NEXTENGINE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <MinimalRebuild>false</MinimalRebuild>
@@ -106,8 +109,8 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>RENDER_API_VULKAN;NEXTENGINE_EXPORTS;NE_PLATFORM_WINDOWS;NE_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>include;;vendor\glfw\include;;vendor\assimp\include;;vendor\bullet3\src;;..\vendor\glm;;C:\VulkanSDK\1.2.154.1\Include;;..\NextCore\include;;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>RENDER_API_VULKAN;NE_PLATFORM_WINDOWS;NE_RELEASE;NEXTENGINE_DLL;NEXTENGINE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -136,8 +139,8 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>RENDER_API_VULKAN;NEXTENGINE_EXPORTS;NE_PLATFORM_WINDOWS;NE_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>include;;vendor\glfw\include;;vendor\assimp\include;;vendor\bullet3\src;;..\vendor\glm;;C:\VulkanSDK\1.2.154.1\Include;;..\NextCore\include;;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>RENDER_API_VULKAN;NE_PLATFORM_WINDOWS;NE_DIST;NEXTENGINE_DLL;NEXTENGINE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -195,6 +198,7 @@
     <ClInclude Include="include\graphics\pass\render_pass.h" />
     <ClInclude Include="include\graphics\pass\shadow.h" />
     <ClInclude Include="include\graphics\pass\volumetric.h" />
+    <ClInclude Include="include\graphics\renderer\frame.h" />
     <ClInclude Include="include\graphics\renderer\grass.h" />
     <ClInclude Include="include\graphics\renderer\ibl.h" />
     <ClInclude Include="include\graphics\renderer\lighting_system.h" />
@@ -252,6 +256,7 @@
     <ClCompile Include="src\components\lights.cpp" />
     <ClCompile Include="src\components\terrain_components.cpp" />
     <ClCompile Include="src\components\transforms_components.cpp" />
+    <ClCompile Include="src\ecs\ecs.cpp" />
     <ClCompile Include="src\ecs\system.cpp" />
     <ClCompile Include="src\ecs\update_params.cpp" />
     <ClCompile Include="src\engine\application.cpp" />
@@ -313,6 +318,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <IncludeInUnityFile>false</IncludeInUnityFile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>Full</Optimization>
     </ClCompile>
     <ClCompile Include="vendor\imgui\imgui_draw.cpp">
       <IncludeInUnityFile>false</IncludeInUnityFile>
@@ -321,6 +327,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <IncludeInUnityFile>false</IncludeInUnityFile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>Full</Optimization>
     </ClCompile>
     <ClCompile Include="vendor\imgui\imgui_impl_glfw.cpp">
       <IncludeInUnityFile>false</IncludeInUnityFile>
@@ -329,6 +336,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <IncludeInUnityFile>false</IncludeInUnityFile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>Full</Optimization>
     </ClCompile>
     <ClCompile Include="vendor\imgui\imgui_impl_opengl3.cpp">
       <IncludeInUnityFile>false</IncludeInUnityFile>
@@ -337,6 +345,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <IncludeInUnityFile>false</IncludeInUnityFile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>Full</Optimization>
     </ClCompile>
     <ClCompile Include="vendor\imgui\imgui_impl_vulkan.cpp">
       <IncludeInUnityFile>false</IncludeInUnityFile>
@@ -345,6 +354,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <IncludeInUnityFile>false</IncludeInUnityFile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>Full</Optimization>
     </ClCompile>
     <ClCompile Include="vendor\imgui\imgui_widgets.cpp">
       <IncludeInUnityFile>false</IncludeInUnityFile>
@@ -353,6 +363,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <IncludeInUnityFile>false</IncludeInUnityFile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>Full</Optimization>
     </ClCompile>
     <ClCompile Include="vendor\spirv-reflect\spirv_reflect.cpp">
       <IncludeInUnityFile>false</IncludeInUnityFile>
@@ -361,10 +372,8 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <IncludeInUnityFile>false</IncludeInUnityFile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>Full</Optimization>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="C:\VulkanSDK\1.2.154.1\include" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\NextCore\NextCore.vcxproj">

@@ -111,7 +111,7 @@ bool steal_job(uint worker, Job* job) {
 	return false;
 }
 
-void run_fiber() {
+void run_fiber(void* fiber) {
 	uint worker = get_worker_id();
 	WaitList& wait_list = wait_lists[worker];
 	Fiber* worker_fiber = get_current_fiber();
@@ -209,7 +209,7 @@ void run_worker(uint worker) {
 	worker_handle = { worker + 1 };
 
 	convert_thread_to_fiber();
-	run_fiber();
+	run_fiber(nullptr);
 }
 
 FLS* fls_context;
@@ -263,7 +263,7 @@ void schedule_jobs_on(slice<uint> workers, slice<JobDesc> jobs, atomic_counter* 
 			jobs[i].data,
 			counter
         })) {
-            sleep(0);
+            thread_sleep(0);
         }
 	}
 }

@@ -82,7 +82,7 @@ function default_config()
     		}
 
     filter "system:macosx"
-        defines "NE_MACOSX"
+        defines "NE_PLATFORM_MACOSX"
 
     filter "configurations:Debug"
         defines "NE_DEBUG"
@@ -107,7 +107,7 @@ function dll_config()
 
 	filter "system:windows"
 	    defines {
-	        "%{prj.name.upper()}_DLL",
+	        "%{prj.name:upper()}_DLL",
 	        "%{prj.name:upper()}_EXPORTS"
         }
 

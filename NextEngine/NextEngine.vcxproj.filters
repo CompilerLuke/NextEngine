@@ -1,15 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="C:">
-      <UniqueIdentifier>{22735900-0EFF-870B-77AD-880B6358880B}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="C:\VulkanSDK">
-      <UniqueIdentifier>{44CD6CB3-3030-FC57-D9B5-340EC5F7C7DA}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="C:\VulkanSDK\1.2.154.1">
-      <UniqueIdentifier>{AB878989-9781-B2DB-80EE-48EC6C871848}</UniqueIdentifier>
-    </Filter>
     <Filter Include="include">
       <UniqueIdentifier>{89AF369E-F58E-B539-FEA6-40106A051C9B}</UniqueIdentifier>
     </Filter>
@@ -216,6 +207,9 @@
     <ClInclude Include="include\graphics\pass\volumetric.h">
       <Filter>include\graphics\pass</Filter>
     </ClInclude>
+    <ClInclude Include="include\graphics\renderer\frame.h">
+      <Filter>include\graphics\renderer</Filter>
+    </ClInclude>
     <ClInclude Include="include\graphics\renderer\grass.h">
       <Filter>include\graphics\renderer</Filter>
     </ClInclude>
@@ -380,6 +374,9 @@
     </ClCompile>
     <ClCompile Include="src\components\transforms_components.cpp">
       <Filter>src\components</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ecs\ecs.cpp">
+      <Filter>src\ecs</Filter>
     </ClCompile>
     <ClCompile Include="src\ecs\system.cpp">
       <Filter>src\ecs</Filter>
@@ -556,10 +553,5 @@
     <ClCompile Include="vendor\spirv-reflect\spirv_reflect.cpp">
       <Filter>vendor\spirv-reflect</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="C:\VulkanSDK\1.2.154.1\include">
-      <Filter>C:\VulkanSDK\1.2.154.1</Filter>
-    </None>
   </ItemGroup>
 </Project>

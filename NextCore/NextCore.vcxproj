@@ -1,5 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <EnableUnitySupport>true</EnableUnitySupport>
+  </PropertyGroup>
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
@@ -60,6 +63,7 @@
     <IntDir>..\bin-int\Debug-windows-x86_64\NextCore\</IntDir>
     <TargetName>NextCore</TargetName>
     <TargetExt>.dll</TargetExt>
+    <IncludePath>..\vendor\glm;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -67,6 +71,7 @@
     <IntDir>..\bin-int\Release-windows-x86_64\NextCore\</IntDir>
     <TargetName>NextCore</TargetName>
     <TargetExt>.dll</TargetExt>
+    <IncludePath>..\vendor\glm;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -74,20 +79,22 @@
     <IntDir>..\bin-int\Dist-windows-x86_64\NextCore\</IntDir>
     <TargetName>NextCore</TargetName>
     <TargetExt>.dll</TargetExt>
+    <IncludePath>..\vendor\glm;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>NEXTCORE_EXPORTS;NE_PLATFORM_WINDOWS;NE_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>include;;..\vendor\glm;;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>NE_PLATFORM_WINDOWS;NE_DEBUG;NEXTCORE_DLL;NEXTCORE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <MinimalRebuild>false</MinimalRebuild>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <IncludeInUnityFile>true</IncludeInUnityFile>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -103,8 +110,8 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>NEXTCORE_EXPORTS;NE_PLATFORM_WINDOWS;NE_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>include;;..\vendor\glm;;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>NE_PLATFORM_WINDOWS;NE_RELEASE;NEXTCORE_DLL;NEXTCORE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -114,6 +121,7 @@
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <IncludeInUnityFile>true</IncludeInUnityFile>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -131,8 +139,8 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>NEXTCORE_EXPORTS;NE_PLATFORM_WINDOWS;NE_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>include;;..\vendor\glm;;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>NE_PLATFORM_WINDOWS;NE_DIST;NEXTCORE_DLL;NEXTCORE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -154,6 +162,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="include\core\atomic.h" />
     <ClInclude Include="include\core\container.h" />
     <ClInclude Include="include\core\container\array.h" />
     <ClInclude Include="include\core\container\bitset.h" />
@@ -177,6 +186,7 @@
     <ClInclude Include="include\core\core.h" />
     <ClInclude Include="include\core\event.h" />
     <ClInclude Include="include\core\io\logger.h" />
+    <ClInclude Include="include\core\job_system\fiber.h" />
     <ClInclude Include="include\core\job_system\job.h" />
     <ClInclude Include="include\core\job_system\thread.h" />
     <ClInclude Include="include\core\job_system\work_stealing_queue.h" />
@@ -185,7 +195,6 @@
     <ClInclude Include="include\core\memory\linear_allocator.h" />
     <ClInclude Include="include\core\profiler.h" />
     <ClInclude Include="include\core\reflection.h" />
-    <ClInclude Include="include\core\reflection2.h" />
     <ClInclude Include="include\core\serializer.h" />
     <ClInclude Include="include\core\time.h" />
     <ClInclude Include="include\core\types.h" />
@@ -195,7 +204,8 @@
     <ClCompile Include="src\core\container\string_view.cpp" />
     <ClCompile Include="src\core\io\logger.cpp" />
     <ClCompile Include="src\core\job_system\job.cpp" />
-    <ClCompile Include="src\core\job_system\windows\fiber.cpp" />
+    <ClCompile Include="src\core\job_system\linux_fiber.cpp" />
+    <ClCompile Include="src\core\job_system\win_fiber.cpp" />
     <ClCompile Include="src\core\memory\allocator.cpp" />
     <ClCompile Include="src\core\profiler.cpp" />
     <ClCompile Include="src\core\reflection.cpp" />

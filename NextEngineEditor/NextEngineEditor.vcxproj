@@ -61,6 +61,7 @@
     <IntDir>..\bin-int\Debug-windows-x86_64\NextEngineEditor\</IntDir>
     <TargetName>NextEngineEditor</TargetName>
     <TargetExt>.dll</TargetExt>
+    <IncludePath>..\NextEngine\vendor;vendor;C:\VulkanSDK\1.2.154.1\Include;..\vendor\glm;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -68,6 +69,7 @@
     <IntDir>..\bin-int\Release-windows-x86_64\NextEngineEditor\</IntDir>
     <TargetName>NextEngineEditor</TargetName>
     <TargetExt>.dll</TargetExt>
+    <IncludePath>..\NextEngine\vendor;vendor;C:\VulkanSDK\1.2.154.1\Include;..\vendor\glm;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -75,14 +77,15 @@
     <IntDir>..\bin-int\Dist-windows-x86_64\NextEngineEditor\</IntDir>
     <TargetName>NextEngineEditor</TargetName>
     <TargetExt>.dll</TargetExt>
+    <IncludePath>..\NextEngine\vendor;vendor;C:\VulkanSDK\1.2.154.1\Include;..\vendor\glm;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>RENDER_API_VULKAN;NEXTENGINEEDITOR_EXPORTS;NE_PLATFORM_WINDOWS;NE_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>include;;C:\VulkanSDK\1.2.154.1\Include;;..\NextEngine\include;;..\NextCore\include;;..\vendor\glm;;..\NextEngine\vendor;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>RENDER_API_VULKAN;NE_PLATFORM_WINDOWS;NE_DEBUG;NEXTENGINEEDITOR_DLL;NEXTENGINEEDITOR_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <MinimalRebuild>false</MinimalRebuild>
@@ -105,8 +108,8 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>RENDER_API_VULKAN;NEXTENGINEEDITOR_EXPORTS;NE_PLATFORM_WINDOWS;NE_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>include;;C:\VulkanSDK\1.2.154.1\Include;;..\NextEngine\include;;..\NextCore\include;;..\vendor\glm;;..\NextEngine\vendor;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>RENDER_API_VULKAN;NE_PLATFORM_WINDOWS;NE_RELEASE;NEXTENGINEEDITOR_DLL;NEXTENGINEEDITOR_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -134,8 +137,8 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>RENDER_API_VULKAN;NEXTENGINEEDITOR_EXPORTS;NE_PLATFORM_WINDOWS;NE_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>include;;C:\VulkanSDK\1.2.154.1\Include;;..\NextEngine\include;;..\NextCore\include;;..\vendor\glm;;..\NextEngine\vendor;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>RENDER_API_VULKAN;NE_PLATFORM_WINDOWS;NE_DIST;NEXTENGINEEDITOR_DLL;NEXTENGINEEDITOR_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -179,8 +182,13 @@
     <ClInclude Include="include\picking.h" />
     <ClInclude Include="include\shaderGraph.h" />
     <ClInclude Include="include\terrain.h" />
+    <ClInclude Include="include\visualize_physics.h" />
     <ClInclude Include="include\visualize_profiler.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="vendor\ImGuizmo\ImCurveEdit.h" />
+    <ClInclude Include="vendor\ImGuizmo\ImGradient.h" />
+    <ClInclude Include="vendor\ImGuizmo\ImGuizmo.h" />
+    <ClInclude Include="vendor\ImGuizmo\ImSequencer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\assets\actions.cpp" />
@@ -203,9 +211,28 @@
     <ClCompile Include="src\objectGizmo.cpp" />
     <ClCompile Include="src\picking.cpp" />
     <ClCompile Include="src\terrain.cpp" />
+    <ClCompile Include="src\visualize_physics.cpp" />
     <ClCompile Include="src\visualize_profiler.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="vendor\ImGuizmo\ImCurveEdit.cpp">
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>Full</Optimization>
+    </ClCompile>
+    <ClCompile Include="vendor\ImGuizmo\ImGradient.cpp">
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>Full</Optimization>
     </ClCompile>
     <ClCompile Include="vendor\ImGuizmo\ImGuizmo.cpp">
       <IncludeInUnityFile>false</IncludeInUnityFile>
@@ -214,6 +241,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <IncludeInUnityFile>false</IncludeInUnityFile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>Full</Optimization>
     </ClCompile>
     <ClCompile Include="vendor\ImGuizmo\ImSequencer.cpp">
       <IncludeInUnityFile>false</IncludeInUnityFile>
@@ -222,6 +250,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <IncludeInUnityFile>false</IncludeInUnityFile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>Full</Optimization>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

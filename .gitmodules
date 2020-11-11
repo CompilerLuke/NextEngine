@@ -13,3 +13,6 @@
 [submodule "NextEngineEditor/vendor/ImGuizmo"]
 	path = NextEngineEditor/vendor/ImGuizmo
 	url = https://github.com/CompilerLuke/ImGuizmo.git
+[submodule "NextEngine/vendor/ImGui"]
+	path = NextEngine/vendor/ImGui
+	url = https://github.com/CompilerLuke/ImGui.git
