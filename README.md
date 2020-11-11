@@ -26,7 +26,7 @@ On MacOSX
 On Windows
 
 ```console
-vendor/premake/premake5.exe vs2017
+"vendor/premake/premake5.exe" vs2017
 ```
 
 3. Open generated solution

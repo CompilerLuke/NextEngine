@@ -9,7 +9,7 @@
 	url = https://github.com/CompilerLuke/glfw.git
 [submodule "NextEngine/vendor/bullet3"]
 	path = NextEngine/vendor/bullet3
-	url = https://github.com/bulletphysics/bullet3.git
+	url = https://github.com/CompilerLuke/bullet3.git
 [submodule "NextEngineEditor/vendor/ImGuizmo"]
 	path = NextEngineEditor/vendor/ImGuizmo
 	url = https://github.com/CompilerLuke/ImGuizmo.git

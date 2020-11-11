@@ -100,6 +100,7 @@ void fiber_main(void* data) {
 	//printf("Linear allocator %p on main fiber\n", &get_temporary_allocator());
 
 	Modules modules(app_name, level, engine_asset_path);
+    modules.window
     
 #ifdef NE_RELEASE
     const char* game_dll_path = "/Users/antonellacalvia/Desktop/Coding/NextEngine/bin/Release-macosx-x86_64/TheUnpluggingRunner/libTheUnpluggingGame.dylib";
