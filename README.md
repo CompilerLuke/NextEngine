@@ -58,9 +58,12 @@ Hopefully everything is working as expected and a window with the editor should 
 18. Built in, performant collections
 19. Compile time reflection/serialization based on header parser
 20. Simple frame-graph system which eliminates renderpass/framebuffer boilerplate
+21. Cascaded Shadow mapping
+22. Ray-marched volumetric lighting
+23. Tone mapping + fog
 
 # Goal
-This project serves as a test-bed for new ideas and developing my skills in computer graphics and low-level programming. The code is written in a variety of styles, ranging from OOP, with templated meta-programming thrown in, to low-level procedural routines manipulating memory at the byte level. As such the project is instrumental in determing the merit of various coding styles and best-practices, to filter out those which suit me the best. In terms of feature-set the engine is relatively far along and can be used for simple games/simulations. I plan on improving the lighting by adding spot-light support, global illumination as well as porting over the cascaded shadow map and volumetric lighting present in previous versions to vulkan. Moreover prefab support is currently missing and the physics system needs a little bit more love. Support for skeletal animation will be implemented soon. 
+This project serves as a test-bed for new ideas and developing my skills in computer graphics and low-level programming. The code is written in a variety of styles, ranging from OOP, with templated meta-programming thrown in, to low-level procedural routines manipulating memory at the byte level. As such the project is instrumental in determing the merit of various coding styles and best-practices, to filter out those which suit me the best. In terms of feature-set the engine is relatively far along, especially in terms of its graphical capabilities. The engine is designed around outdoor scenes though it can be used to create simulations as well. I plan on improving the lighting by adding spot-light support, global illumination and light/reflection probes as well as more post-processing effects. Moreover prefab support is currently missing and the physics system needs a little bit more love. Support for skeletal animation will be implemented soon. 
 
 # Skeleton
 
@@ -142,10 +145,23 @@ LOD Grass Rendering
 ![Terrain texture splatting + Editor Icons](https://media.discordapp.net/attachments/490868844760530944/770595325739401226/Screenshot_2020-10-27_at_11.25.30.png?width=2308&height=1350)
 Terrain texture splatting + Editor Icons
 
-![Volumetric Lighting + Shadows + Fog (currently not supported)](https://media.discordapp.net/attachments/490868844760530944/683654920368554017/TreesAnime.PNG)
-Volumetric Lighting + Shadows + Fog (currently not supported)
+# Latest Addition - Volumetric lighting + CSM + Fog
+![Volumetric Lighting + Shadows + Fog](https://media.discordapp.net/attachments/490868844760530944/683654920368554017/TreesAnime.PNG)
+Volumetric Lighting + Shadows + Fog
 
 ![Scene created using mega-scanned assets](https://media.discordapp.net/attachments/582610879808274442/648229569949728788/Screenshot_206.png?width=2400&height=1350)
 Scene created using mega-scanned assets
+
+![Rendering a forest](https://cdn.discordapp.com/attachments/582610879808274442/779998285821771806/Base_Profile_Screenshot_2020.11.22_-_10.03.36.68.png)
+
+![Rendering a forest](https://cdn.discordapp.com/attachments/582610879808274442/779998294284959744/Base_Profile_Screenshot_2020.11.22_-_10.04.33.98.png)
+
+![Rendering a forest](https://cdn.discordapp.com/attachments/582610879808274442/779999203501408276/house_between_trees.png)
+
+![Rendering a forest](https://cdn.discordapp.com/attachments/582610879808274442/779999437077872701/house_between_trees2.png)
+
+![Rendering a forest](https://cdn.discordapp.com/attachments/582610879808274442/779999524022255626/Base_Profile_Screenshot_2020.11.22_-_10.05.59.58.png)
+
+
 
 
