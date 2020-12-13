@@ -12,7 +12,6 @@
 #include "graphics/assets/model.h"
 #include "graphics/assets/texture.h"
 #include "core/time.h"
-#include "graphics/pass/render_pass.h"
 #include "graphics/renderer/ibl.h"
 #include "components/lights.h"
 #include "components/transform.h"
@@ -24,7 +23,8 @@
 #include "engine/vfs.h"
 #include "graphics/assets/material.h"
 #include "core/serializer.h"
-#include "terrain.h"
+#include "terrain_tools/terrain.h"
+#include "terrain_tools/gpu_generation.h"
 #include <ImGuizmo/ImGuizmo.h>
 #include "core/profiler.h"
 #include "graphics/renderer/renderer.h"
@@ -35,8 +35,6 @@
 
 #include "generated.h"
 #include "core/types.h"
-
-
 
 //theme by Derydoca 
 void set_darcula_theme() {
@@ -263,11 +261,21 @@ bool load_world(Editor& editor, DeserializerBuffer& buffer, const char** err) {
 		read_u64_from_buffer(buffer, arch);
 		read_ArchetypeStore_from_buffer(buffer, store);
 
+		//todo find bug that causes block count to wrap
+		if (store.block_count > 1000) {
+			store.block_count = 0;
+		}
+		
+		if (store.block_count == 0) {
+			continue;
+		}
+
 		uint entities = store.entity_count_last_block;
 
 		BlockHeader** next_block_chain = &store.blocks;
 
-		printf("Loading archetype %i\n", arch);
+		printf("=========\n");
+		printf("Loading archetype %i, Entities (%i), Block Header (%i)\n", arch, entities, store.block_count);
 
 		for (uint i = 0; i < store.block_count; i++) {
 			BlockHeader* block_header = world.alloc_block();
@@ -277,6 +285,8 @@ bool load_world(Editor& editor, DeserializerBuffer& buffer, const char** err) {
 
 			for (uint component_id = 0; component_id < MAX_COMPONENTS; component_id++) {
 				if (has_component(arch, component_id)) {
+					refl::Type* type = world.component_type[component_id];
+					printf("Component name %s\n", type ? type->name : "");
 					u8* base_component = data + store.offsets[component_id];
 					uint size = world.component_size[component_id];
 
@@ -356,9 +366,10 @@ bool load_scene(Editor& editor, const char** err) {
         auto [_,terrain] = *has_terrain;
 
         //todo remove adhoc initialization
-        default_terrain(terrain); //generate terrain from height points
+		default_terrain(terrain); //generate terrain from height points
+		init_terrain_editor_render_resources(editor.terrain_resources, renderer.terrain_render_resources, terrain);
         update_terrain_material(renderer.terrain_render_resources, terrain);
-        regenerate_terrain(world, renderer.terrain_render_resources, {EDITOR_ONLY});
+        regenerate_terrain(world, editor.terrain_resources, renderer.terrain_render_resources, {EDITOR_ONLY});
     }
 	
 	update_acceleration_structure(renderer.scene_partition, renderer.mesh_buckets, world);
@@ -387,17 +398,19 @@ bool save_world(Editor& editor, SerializerBuffer& buffer, const char** err) {
 
 	uint num_archetypes = 0;
 	for (int i = 0; i < ARCHETYPE_HASH; i++) {
-		if (world.arches.keys.is_full(i)) num_archetypes++;
+		if (world.arches.is_full(i) && world.arches.values[i].block_count > 0) num_archetypes++;
 	}
 
 	write_uint_to_buffer(buffer, num_archetypes);
 
 	//SAVE ECS
 	for (int i = 0; i < ARCHETYPE_HASH; i++) {
-		if (!world.arches.keys.is_full(i)) continue;
+		if (!world.arches.is_full(i)) continue;
 
-		Archetype arch = world.arches.keys.keys[i];
+		Archetype arch = world.arches.keys[i];
 		ArchetypeStore& store = world.arches.values[i];
+
+		if (store.block_count == 0) continue;
 
 		printf("Saving archetype %i\n", arch);
 
@@ -471,19 +484,9 @@ void register_callbacks(Editor& editor, Modules& engine) {
 	Window& window = *engine.window;
 	World& world = *engine.world;
 
-
 	register_on_inspect_callbacks();
 
 	editor.asset_tab.register_callbacks(window, editor);
-
-	editor.selected.listen([&engine, &world](ID id) {
-		auto rb = world.m_by_id<RigidBody>(id);
-		if (rb) {
-			rb->bt_rigid_body = NULL; //todo fix leak
-		}
-	});
-    
-
 	engine.window->override_key_callback(override_key_callback);
 	engine.window->override_char_callback(ImGui_ImplGlfw_CharCallback);
 	engine.window->override_mouse_button_callback(override_mouse_button_callback);
@@ -526,7 +529,7 @@ Editor::Editor(Modules& modules, const char* game_code) :
 
 	editor_viewport = {};
 	editor_viewport.input = Input();
-	editor_viewport.contents = renderer.scene_map;
+	editor_viewport.contents = get_output_map(renderer);
 	editor_viewport.type = EDITOR_VIEWPORT_TYPE_SCENE;
 	editor_viewport.name = "Scene";
 
@@ -564,7 +567,7 @@ void Editor::init_imgui() {
 	io.ConfigDockingWithShift = false;
     
     //TODO Save in config
-    scaling = 0.75;
+    scaling = 1.0;
     
 
 	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
@@ -590,7 +593,7 @@ void Editor::init_imgui() {
         
         //im_font_config.OversampleH = 5; im_font_config.OversampleV = 5;
 
-		shader_editor.font[i] = io.Fonts->AddFontFromFileTTF(font_path.c_str(), (i + 1) * 40.0f * scaling, &icons_config, io.Fonts->GetGlyphRangesDefault());
+		shader_editor.font[i] = io.Fonts->AddFontFromFileTTF(font_path.c_str(), (i + 1) * 10.0f * scaling, &icons_config, io.Fonts->GetGlyphRangesDefault());
 	}
 
 	set_darcula_theme();
@@ -663,8 +666,11 @@ void default_scene(Editor& editor) {
 	{
 		auto[e, trans, terrain] = world.make<Transform, Terrain>();
 
+
+		Renderer& renderer = editor.renderer;
 		default_terrain(terrain);
-		update_terrain_material(editor.renderer.terrain_render_resources, terrain);
+		init_terrain_editor_render_resources(editor.terrain_resources, renderer.terrain_render_resources, terrain);
+		update_terrain_material(renderer.terrain_render_resources, terrain);
 		clear_terrain(editor.renderer.terrain_render_resources);
 
 		register_entity(editor.lister, "Terrain", e.id);
@@ -724,12 +730,17 @@ void default_scene(Editor& editor) {
 	
 }
 
+using EnterPlayFunc = void(*)(void*, Modules&);
+
 void set_play_mode(Editor& editor, bool playing) {
     editor.playing_game = playing;
 
     if (playing) { //this will not fully serialize this
         editor.copy_of_world = editor.world;
-    }
+		//todo find less hideous syntax
+		EnterPlayFunc enter_play = (EnterPlayFunc)editor.game.get_func("enter_play_mode");
+		if (enter_play) enter_play(editor.game.application_state, editor.game.engine);
+	}
     else {
         editor.world = editor.copy_of_world;
         editor.editor_viewport.input.capture_mouse(false);
@@ -781,8 +792,8 @@ void render_frame(Editor& editor, World& world) {
 	GizmoRenderData gizmo_render_data = {};
 
 	{
-		update_camera_matrices(world, editor.playing_game ? mask : EntityQuery{EDITOR_ONLY}, viewport);
-		extract_render_data(renderer, viewport, frame_data, world, mask);
+		EntityQuery camera_mask = editor.playing_game ? mask : EntityQuery{ EDITOR_ONLY };
+		extract_render_data(renderer, viewport, frame_data, world, mask, camera_mask);
 		extract_render_data_special_gizmo(gizmo_render_data, world, mask);
 	}
     
@@ -801,8 +812,8 @@ void render_frame(Editor& editor, World& world) {
 		else if (receive_terrain == 1 && frame_index == 0) {
             if (auto has_terrain = world.first<Terrain>(); has_terrain) {
                 auto[_, terrain] = *has_terrain;
-                receive_generated_heightmap(renderer.terrain_render_resources, terrain);
-                regenerate_terrain(world, renderer.terrain_render_resources, EntityQuery{ EDITOR_ONLY }); //this should not be necessary
+                receive_generated_heightmap(editor.terrain_resources, terrain);
+                regenerate_terrain(world, editor.terrain_resources, renderer.terrain_render_resources, EntityQuery{ EDITOR_ONLY }); //this should not be necessary
             }
 			receive_terrain = 2;
 		}
@@ -843,7 +854,7 @@ void render_frame(Editor& editor, World& world) {
         ImGui::SetNextWindowPos(ImVec2(0,0));
         ImGui::SetNextWindowSize(ImVec2(viewport.width, viewport.height + title_bar_margin));
         if (ImGui::Begin("Playing Fullscreen")) {
-            ImGui::Image(editor.renderer.scene_map, ImVec2(viewport.width, viewport.height));
+            ImGui::Image(get_output_map(renderer), ImVec2(viewport.width, viewport.height));
         } else {
             set_play_mode(editor, false);
         }
@@ -998,6 +1009,35 @@ void render_Viewport(Editor& editor, EditorViewport& editor_viewport) {
 	ImGui::End();
 }
 
+#include "engine/types.h"
+
+void render_settings(Editor& editor) {
+	if (!editor.open_settings) return;
+	if (ImGui::Begin("Settings", &editor.open_settings)) {
+		if (ImGui::CollapsingHeader("Visibility")) {
+			if (ImGui::MenuItem("Toggle physics", "")) editor.visibility ^= SHOW_PHYSICS;
+			if (ImGui::MenuItem("Toggle camera", "")) editor.visibility ^= SHOW_CAMERA;
+		}
+
+		if (ImGui::CollapsingHeader("Graphics")) {
+			Renderer& renderer = editor.renderer;
+			RenderSettings& settings = renderer.settings;
+
+			ImGui::Checkbox("Hotreload shaders", &settings.hotreload_shaders);
+
+			if (ImGui::CollapsingHeader("Shadow")) {
+				ImGui::InputFloat("Resolution", &settings.shadow.shadow_resolution);
+				ImGui::InputFloat("Cascade split lambda", &settings.shadow.cascade_split_lambda);
+				ImGui::InputFloat("Constant depth bias", &settings.shadow.constant_depth_bias);
+				ImGui::InputFloat("Slope depth bias", &settings.shadow.slope_depth_bias);
+			}
+
+			render_fields(get_VolumetricSettings_type(), &settings.volumetric, "", editor);
+		}
+	}
+	ImGui::End();
+}
+
 void render_Editor(Editor& editor, RenderPass& ctx, RenderPass& scene) {
 	Input& input = editor.input;
 	
@@ -1040,6 +1080,7 @@ void render_Editor(Editor& editor, RenderPass& ctx, RenderPass& scene) {
 	}
 	
 	if (ImGui::BeginMenu("Edit")) {
+		if (ImGui::MenuItem("Settings")) editor.open_settings = true;
 		if (ImGui::MenuItem("Undo", "CTRL+Z")) undo_action(editor.actions);
 		if (ImGui::MenuItem("Redo", "CTRL+R")) redo_action(editor.actions);
 
@@ -1049,19 +1090,12 @@ void render_Editor(Editor& editor, RenderPass& ctx, RenderPass& scene) {
 		ImGui::EndMenu();
 	}
 
-	if (ImGui::BeginMenu("Settings")) {
-        if (ImGui::BeginMenu("Visibility")) {
-            if (ImGui::MenuItem("Toggle physics", "")) editor.visibility ^= SHOW_PHYSICS;
-            if (ImGui::MenuItem("Toggle camera", "")) editor.visibility ^= SHOW_CAMERA;
-            ImGui::EndMenu();
-        }
-		ImGui::EndMenu();
-	}
-
 	render_play(editor);
 
 	ImGui::EndMainMenuBar();
 	ImGui::PopStyleVar();
+
+	render_settings(editor);
 
 	ImGuiID dockspace_id = ImGui::GetID("MyDockspace");
 	ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
@@ -1163,10 +1197,16 @@ void respond_to_framediffs(Editor& editor) {
             ElementPtr element = diff->element[0];
             refl::Type* type = element.refl_type;
 
-            Archetype arch = world.arch_of_id(element.id);
+			ID id = get_id_of_component(diff->element);
+            Archetype arch = id != 0 ? world.arch_of_id(id) : 0;
             
 			if (has_component(arch, type_id<Transform>()) || has_component(arch, type_id<LocalTransform>())) {
 				rebuild_acceleration = true;
+			}
+
+			if (has_component(arch, type_id<Terrain>())) {
+				Terrain& terrain = *get_component_ptr<Terrain>(diff->element);
+				update_terrain_material(editor.renderer.terrain_render_resources, terrain);
 			}
 
 			if (type->name == "Materials") {
@@ -1234,7 +1274,7 @@ void respond_to_framediffs(Editor& editor) {
 	}
 
 	if (update_terrain) {
-		regenerate_terrain(editor.world, editor.renderer.terrain_render_resources, EntityQuery{EDITOR_ONLY});
+		regenerate_terrain(editor.world, editor.terrain_resources, editor.renderer.terrain_render_resources, EntityQuery{EDITOR_ONLY});
 	}
 
 	clear_stack(editor.actions.frame_diffs);

@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup><EnableUnitySupport>true</EnableUnitySupport></PropertyGroup>
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -20,27 +20,26 @@
     <IgnoreWarnCompileDuplicatedFilename>true</IgnoreWarnCompileDuplicatedFilename>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>NextEngineEditor</RootNamespace>
-    <LatestTargetPlatformVersion>$([Microsoft.Build.Utilities.ToolLocationHelper]::GetLatestSDKTargetPlatformVersion('Windows', '10.0'))</LatestTargetPlatformVersion>
-    <WindowsTargetPlatformVersion>$(LatestTargetPlatformVersion)</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -84,7 +83,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>RENDER_API_VULKAN;NE_PLATFORM_WINDOWS;NE_DEBUG;NEXTENGINEEDITOR_DLL;NEXTENGINEEDITOR_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;RENDER_API_VULKAN;NE_PLATFORM_WINDOWS;NE_DEBUG;NEXTENGINEEDITOR_DLL;NEXTENGINEEDITOR_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
@@ -108,7 +107,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>RENDER_API_VULKAN;NE_PLATFORM_WINDOWS;NE_RELEASE;NEXTENGINEEDITOR_DLL;NEXTENGINEEDITOR_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;RENDER_API_VULKAN;NE_PLATFORM_WINDOWS;NE_RELEASE;NEXTENGINEEDITOR_DLL;NEXTENGINEEDITOR_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Full</Optimization>
@@ -137,7 +136,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>RENDER_API_VULKAN;NE_PLATFORM_WINDOWS;NE_DIST;NEXTENGINEEDITOR_DLL;NEXTENGINEEDITOR_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;RENDER_API_VULKAN;NE_PLATFORM_WINDOWS;NE_DIST;NEXTENGINEEDITOR_DLL;NEXTENGINEEDITOR_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -181,7 +180,9 @@
     <ClInclude Include="include\objectGizmo.h" />
     <ClInclude Include="include\picking.h" />
     <ClInclude Include="include\shaderGraph.h" />
-    <ClInclude Include="include\terrain.h" />
+    <ClInclude Include="include\terrain_tools\gpu_generation.h" />
+    <ClInclude Include="include\terrain_tools\kriging.h" />
+    <ClInclude Include="include\terrain_tools\terrain.h" />
     <ClInclude Include="include\visualize_physics.h" />
     <ClInclude Include="include\visualize_profiler.h" />
     <ClInclude Include="stdafx.h" />
@@ -210,7 +211,9 @@
     <ClCompile Include="src\lister.cpp" />
     <ClCompile Include="src\objectGizmo.cpp" />
     <ClCompile Include="src\picking.cpp" />
-    <ClCompile Include="src\terrain.cpp" />
+    <ClCompile Include="src\terrain_tools\gpu_generation.cpp" />
+    <ClCompile Include="src\terrain_tools\kriging.cpp" />
+    <ClCompile Include="src\terrain_tools\terrain.cpp" />
     <ClCompile Include="src\visualize_physics.cpp" />
     <ClCompile Include="src\visualize_profiler.cpp" />
     <ClCompile Include="stdafx.cpp">

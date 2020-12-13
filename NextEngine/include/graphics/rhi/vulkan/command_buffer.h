@@ -6,7 +6,7 @@
 struct QueueSubmitInfo;
 struct Device;
 
-#define MAX_COMMAND_BUFFERS 30
+#define MAX_COMMAND_BUFFERS 50
 
 //Command Pool must be externally sychronized
 //including waiting for frames of command buffers to have completed

@@ -78,7 +78,7 @@ const char* destroy_component_popup_name(refl::Struct* type) {
 }
 
 bool render_fields_struct(refl::Struct* self, void* data, string_view prefix, Editor& editor) {
-	if (override_inspect.keys.index(self->name) != -1) {
+	if (override_inspect.index(self->name) != -1) {
 		return override_inspect[self->name](data, prefix, editor);
 	}
 	
@@ -201,7 +201,7 @@ bool render_fields_vector(refl::Array* self, void* data, string_view prefix, Edi
 }
 
 bool render_fields(refl::Type* type, void* data, string_view prefix, Editor& editor) {
-	if (override_inspect.keys.index(type->name) != -1) return override_inspect[type->name](data, prefix, editor);
+	if (override_inspect.index(type->name) != -1) return override_inspect[type->name](data, prefix, editor);
 
 	if (type->type == refl::Type::Struct) return render_fields_struct((refl::Struct*)type, data, prefix, editor);
 	//else if (type->kind == refl::Union_Kind) return render_fields_union((reflect::TypeDescriptor_Union*)type, data, prefix, editor);
@@ -242,9 +242,9 @@ void DisplayComponents::render(World& world, RenderPass& params, Editor& editor)
 			for (uint component_id = 0; component_id < MAX_COMPONENTS; component_id++) {
 				if (!has_component(arch, component_id)) continue;
 
+				ComponentKind kind = world.component_kind[component_id];
 				refl::Struct* type = world.component_type[component_id];
-				if (type == nullptr) continue; //ENTITY FLAGS DONT HAVE TYPES
-
+				if (kind != REGULAR_COMPONENT || !type) continue; //todo add editor support for component flags
 				void* data = world.id_to_ptr[component_id][selected_id];
 
 				ImGui::BeginGroup();

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "engine/engine.h"
 #include "engine/handle.h"
 #include "graphics/rhi/buffer.h"
 
@@ -14,7 +15,7 @@ struct Primitives {
 };
 
 ENGINE_API extern Primitives primitives;
-ENGINE_API void render_quad();
+ENGINE_API void draw_quad(struct CommandBuffer&);
 
 void init_primitives();
 

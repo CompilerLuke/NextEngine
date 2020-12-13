@@ -30,9 +30,8 @@ void free_fiber(Fiber* fiber) {
 	DeleteFiber(fiber);
 }
 
-
 FLS* make_FLS(void* ptr) {
-	FLS* fls = (FLS*)FlsAlloc(nullptr);
+	FLS* fls = (FLS*)(size_t)FlsAlloc(nullptr);
 	set_FLS(fls, ptr);
 	return fls;
 }

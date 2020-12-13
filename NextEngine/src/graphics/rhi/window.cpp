@@ -110,9 +110,9 @@ void Window::init() {
 }
 
 void* Window::get_native_window() {
-#ifdef NE_WINDOWS
+#ifdef NE_PLATFORM_WINDOWS
 	return (void*)glfwGetWin32Window(window_ptr);
-#else
+#elif NE_PLATFORM_MACOSX
     return (void*)glfwGetCocoaWindow(window_ptr);
 #endif
 }

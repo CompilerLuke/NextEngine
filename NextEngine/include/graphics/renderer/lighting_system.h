@@ -37,16 +37,17 @@ struct SkylightFiltered {
 
 struct LightingSystem {
 	texture_handle brdf_LUT = { INVALID_HANDLE };
-	UBOBuffer light_ubo;
+	UBOBuffer light_ubo[MAX_FRAMES_IN_FLIGHT];
 	SkylightFiltered skylight_filtered[MAX_SKYLIGHT_FILTERED];
-	descriptor_set_handle pbr_descriptor;
+	descriptor_set_handle pbr_descriptor[MAX_FRAMES_IN_FLIGHT];
 };
 
 struct RenderPass;
 struct LightUBO;
 struct SkyLight;
 struct World;
+struct ShadowResources;
 
-ENGINE_API void make_lighting_system(LightingSystem& system, SkyLight& skylight);
+ENGINE_API void make_lighting_system(LightingSystem& system, ShadowResources& shadow, SkyLight& skylight);
 void fill_light_ubo(LightUBO& ubo, World& world, Viewport& viewport, EntityQuery mask);
 void bind_color_pass_lighting(CommandBuffer& cmd_buffer, LightingSystem& system);

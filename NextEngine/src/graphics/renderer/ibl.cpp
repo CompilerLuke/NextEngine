@@ -10,7 +10,6 @@
 #include <stb_image.h>
 #include "components/camera.h"
 #include "components/lights.h"
-#include "graphics/pass/render_pass.h"
 #include "graphics/assets/material.h"
 #include "graphics/renderer/lighting_system.h"
 
@@ -228,10 +227,10 @@ void make_cubemap_render_target(CubemapRenderTarget& cubemap, VkFormat color_for
 pipeline_handle make_no_cull_pipeline(VkRenderPass render_pass, shader_handle shader, array<2, PushConstantRange> ranges) {
 	//CREATE PIPELINE AND DESCRIPTORS
     
-    PipelineDesc pipeline_desc = {};
+    GraphicsPipelineDesc pipeline_desc = {};
 	pipeline_desc.shader = shader;
 	pipeline_desc.state = Cull_None;
-	pipeline_desc.render_pass = { (u64)render_pass | NATIVE_RENDER_PASS };
+	pipeline_desc.render_pass = { (u64)render_pass };
 	memcpy_t(pipeline_desc.range, ranges.data, 2);
 
     return query_Pipeline(pipeline_desc);
@@ -338,9 +337,9 @@ cubemap_handle compute_reflection(CubemapPassResources& resources, cubemap_handl
 	update_descriptor_set(descriptor, descriptor_desc);
 
 	
-	PipelineDesc pipeline_desc = {};
+	GraphicsPipelineDesc pipeline_desc = {};
 	pipeline_desc.shader = load_Shader("shaders/prefilter.vert", "shaders/prefilter.frag");
-	pipeline_desc.render_pass = { (u64)resources.wait_after_render_pass | NATIVE_RENDER_PASS };
+	pipeline_desc.render_pass = { (u64)resources.wait_after_render_pass };
 	pipeline_desc.state = Cull_None;
 	pipeline_desc.range[0] = {0, sizeof(glm::mat4)};
 	pipeline_desc.range[1] = { sizeof(glm::mat4), sizeof(float) };
@@ -428,7 +427,7 @@ void recompute_lighting_from_cubemap(LightingSystem& lighting_system, SkyLight& 
 	add_combined_sampler(desc, FRAGMENT_STAGE, assets.cubemap_pass_resources->sampler, skylight.irradiance, 1);
 	add_combined_sampler(desc, FRAGMENT_STAGE, assets.cubemap_pass_resources->sampler, skylight.prefilter, 2);
 
-	update_descriptor_set(lighting_system.pbr_descriptor, desc);
+	update_descriptor_set(lighting_system.pbr_descriptor[get_frame_index()], desc);
 }
 
 ID make_default_Skybox(World& world, string_view filename) {
@@ -457,8 +456,8 @@ ID make_default_Skybox(World& world, string_view filename) {
 	
 	//mat_cubemap(mat, "environmentMap", sky.cubemap);
     
-    mat_vec3(mat, "skyhorizon", glm::vec3(55, 55, 55) / 255.0f);
-    mat_vec3(mat, "skytop", glm::vec3(0, 0, 0) / 255.0f);
+    mat_vec3(mat, "skyhorizon", glm::vec3(66, 188, 245) / 180.0f);
+    mat_vec3(mat, "skytop", glm::vec3(66, 188, 245) / 200.0f);
 
 	//mat_vec3(mat, "skyhorizon", glm::vec3(66, 188, 245) / 200.0f);
 	//mat_vec3(mat, "skytop", glm::vec3(66, 135, 245) / 300.0f);
@@ -481,7 +480,8 @@ void extract_skybox(SkyboxRenderData& data, World& world, EntityQuery layermask)
 
 void render_skybox(const SkyboxRenderData& data, RenderPass& ctx) {	
 	if (data.material.id == INVALID_HANDLE) return;
-	
+	return;
+
 	Transform trans{ data.position };
 	material_handle material_handle = data.material;
 	draw_mesh(ctx.cmd_buffer, primitives.cube, material_handle, trans);

@@ -18,18 +18,18 @@
 #include "core/memory/allocator.h"
 
 //could cache this result in viewport
-void extract_planes(const Viewport& viewport, glm::vec4 planes[6]) {
+void extract_planes(Viewport& viewport) {
 	glm::mat4 mat = viewport.proj * viewport.view;
 	
-	for (int i = 0; i < 4; i++) planes[0][i] = mat[i][3] + mat[i][0];
-	for (int i = 0; i < 4; i++) planes[1][i] = mat[i][3] - mat[i][0];
-	for (int i = 0; i < 4; i++) planes[2][i] = mat[i][3] + mat[i][1];
-	for (int i = 0; i < 4; i++) planes[3][i] = mat[i][3] - mat[i][1];
-	for (int i = 0; i < 4; i++) planes[4][i] = mat[i][3] + mat[i][2];
-	for (int i = 0; i < 4; i++) planes[5][i] = mat[i][3] - mat[i][2];
+	for (int i = 0; i < 4; i++) viewport.frustum_planes[0][i] = mat[i][3] + mat[i][0];
+	for (int i = 0; i < 4; i++) viewport.frustum_planes[1][i] = mat[i][3] - mat[i][0];
+	for (int i = 0; i < 4; i++) viewport.frustum_planes[2][i] = mat[i][3] + mat[i][1];
+	for (int i = 0; i < 4; i++) viewport.frustum_planes[3][i] = mat[i][3] - mat[i][1];
+	for (int i = 0; i < 4; i++) viewport.frustum_planes[4][i] = mat[i][3] + mat[i][2]; //front
+	for (int i = 0; i < 4; i++) viewport.frustum_planes[5][i] = mat[i][3] - mat[i][2]; //back
 }
 
-CullResult frustum_test(glm::vec4 planes[6], const AABB& aabb) {	
+CullResult frustum_test(const glm::vec4 planes[6], const AABB& aabb) {	
 	CullResult result = INSIDE;
 
 	for (int planeID = 0; planeID < 6; planeID++) {
@@ -171,7 +171,7 @@ void subdivide_BVH(SubdivideBVHJob& job) {
 	}
 }
 
-void assign_buckets_to_meshes(
+void assign_meshes_to_buckets(
     World& world,
     hash_set<MeshBucket, MAX_MESH_BUCKETS>& mesh_buckets,
     tvector<AABB>& aabbs,
@@ -188,22 +188,23 @@ void assign_buckets_to_meshes(
         for (int mesh_index = 0; mesh_index < model->meshes.length; mesh_index++) {
             Mesh& mesh = model->meshes[mesh_index]; //todo extend for lods
 
-            if (materials.materials.length <= mesh.material_id) { //todo add this as a preprocess pass
-                materials.materials.resize(mesh.material_id + 1);
-            }
-            material_handle mat_handle = materials.materials[mesh.material_id];
-            if (mat_handle.id == INVALID_HANDLE) mat_handle = default_materials.missing;
+			material_handle mat_handle = mat_by_index(materials, mesh.material_id);
 
             MeshBucket bucket;
-            bucket.model_id = model_renderer.model_id;
+            bucket.model = model_renderer.model_id;
             bucket.mesh_id = mesh_index;
-            bucket.mat_id = mat_handle;
+            bucket.mat = mat_handle;
             bucket.flags = CAST_SHADOWS;
 
             //todo support shadow passes RenderPass::ScenePassCount
 
-            bucket.depth_only_pipeline_id = query_pipeline(mat_handle, RenderPass::Scene, 0);
-            bucket.color_pipeline_id = query_pipeline(mat_handle, RenderPass::Scene, 1);
+			GraphicsPipelineDesc shadow_pipeline_desc;
+			mat_pipeline_desc(shadow_pipeline_desc, mat_handle, RenderPass::Shadow0, 0);
+			shadow_pipeline_desc.state = Cull_None | DynamicState_DepthBias;
+
+            bucket.depth_only_pipeline = query_Pipeline(shadow_pipeline_desc);
+			bucket.depth_prepass = query_pipeline(mat_handle, RenderPass::Scene, 0);
+            bucket.color_pipeline = query_pipeline(mat_handle, RenderPass::Scene, 1);
 
             aabbs.append(mesh.aabb.apply(model_m));
             meshes.append(mesh_buckets.add(bucket));
@@ -228,52 +229,9 @@ void build_acceleration_structure(ScenePartition& scene_partition, hash_set<Mesh
 	meshes.allocator = &temporary_allocator;
 	models_m.allocator = &temporary_allocator;
     
-    assign_buckets_to_meshes(world, mesh_buckets, aabbs, models_m, meshes, {STATIC});
+    assign_meshes_to_buckets(world, mesh_buckets, aabbs, models_m, meshes, {STATIC});
     
     for (AABB& aabb : aabbs) world_bounds.update_aabb(aabb);
-
-	/*
-	for (auto [e,trans,grass,materials] : world.filter<Transform, Grass, Materials>()) {
-		Model* model = get_Model(grass.placement_model);
-		
-		if (model == NULL) continue;
-
-		AABB aabb;
-		aabb.min = -0.5f * glm::vec3(grass.width, 0, grass.height);
-		aabb.max = 0.5f * glm::vec3(grass.width, grass.max_height, grass.height);
-		
-		aabb.min.x += trans.position.x;
-		aabb.min.z += trans.position.z;
-		aabb.max.x += trans.position.x;
-		aabb.max.z += trans.position.z;
-
-		world_bounds.update_aabb(aabb);
-
-		for (int mesh_index = 0; mesh_index < model->meshes.length; mesh_index++) {
-			Mesh& mesh = model->meshes[mesh_index];
-			material_handle mat_handle = materials.materials[mesh.material_id];
-
-			MeshBucket bucket;
-			bucket.model_id = grass.placement_model;
-			bucket.mesh_id = mesh_index;
-			bucket.mat_id = mat_handle;
-			bucket.flags = grass.cast_shadows ? CAST_SHADOWS : 0;
-
-			for (uint pass = 0; pass < 1; pass++) {
-				bucket.pipeline_id[pass] = query_pipeline(mat_handle, render_pass_by_id((RenderPass::ID)pass));
-			}
-			
-			int bucket_id = mesh_buckets.add(bucket);
-
-			for (Transform& trans : grass.transforms) {
-				glm::mat4 model_m = compute_model_matrix(trans);
-
-				aabbs.append(mesh.aabb.apply(model_m));
-				meshes.append(bucket_id);
-				models_m.append(model_m);
-			}
-		}
-	}*/
 
 	SubdivideBVHJob job = {&scene_partition, world_bounds};
 	job.depth = 0;
@@ -311,6 +269,7 @@ void update_acceleration_structure(ScenePartition& scene_partition, MeshBuckets&
 	}
 }
 
+/*
 void cull_dynamic_meshes(const ScenePartition& scene_partition, World& world, MeshBuckets& mesh_buckets, CulledMeshBucket* culled_mesh_bucket, glm::vec4 planes[6]) {
     
     tvector<AABB> aabbs;
@@ -328,17 +287,48 @@ void cull_dynamic_meshes(const ScenePartition& scene_partition, World& world, Me
 void cull_static_meshes(const ScenePartition& scene_partition, CulledMeshBucket* culled_mesh_bucket, glm::vec4 planes[6]) {
     cull_node(culled_mesh_bucket, scene_partition, scene_partition.nodes[0], 0, planes);
 }
+*/
 
-void cull_meshes(const ScenePartition& scene_partition, World& world, MeshBuckets& buckets, CulledMeshBucket* culled_mesh_bucket, const Viewport& viewport) {
-	glm::vec4 planes[6];
-	extract_planes(viewport, planes);
+struct CullMeshJob {
+	const ScenePartition* partition;
+	MeshBuckets* buckets;
+	slice<AABB> aabbs;
+	slice<glm::mat4> model_m;
+	slice<int> meshes;
+	glm::vec4* planes;
+	CulledMeshBucket* result;
+};
 
+void cull_mesh_job(CullMeshJob& job) {
 	for (int i = 0; i < MAX_MESH_BUCKETS; i++) {
-		culled_mesh_bucket[i].model_m.clear();
+		job.result[i].model_m.clear();
 	}
 
-    cull_static_meshes(scene_partition, culled_mesh_bucket, planes);
-    cull_dynamic_meshes(scene_partition, world, buckets, culled_mesh_bucket, planes);
+	for (uint i = 0; i < job.meshes.length; i++) {
+		if (frustum_test(job.planes, job.aabbs[i]) == OUTSIDE) continue;
+		job.result[job.meshes[i]].model_m.append(job.model_m[i]);
+	}
+
+	cull_node(job.result, *job.partition, job.partition->nodes[0], 0, job.planes);
+}
+
+void cull_meshes(const ScenePartition& scene_partition, World& world, MeshBuckets& buckets, uint count, CulledMeshBucket** culled_mesh_bucket, Viewport viewports[], EntityQuery query) {
+	tvector<AABB> aabbs;
+	tvector<glm::mat4> model_m;
+	tvector<int> meshes;
+	
+	assign_meshes_to_buckets(world, buckets, aabbs, model_m, meshes, query.with_none(STATIC));
+	
+	CullMeshJob job[10];
+	JobDesc desc[10];
+	assert(count <= 10);
+
+	for (uint pass = 0; pass < count; pass++) {
+		job[pass] = { &scene_partition, &buckets, aabbs, model_m, meshes, viewports[pass].frustum_planes, culled_mesh_bucket[pass] };
+		desc[pass] = { cull_mesh_job, job + pass };
+	}
+
+	wait_for_jobs(PRIORITY_HIGH, { desc, count });
 }
 
 void render_node(RenderPass& ctx, material_handle mat, model_handle cube, ScenePartition& scene_partition, uint node_index) {

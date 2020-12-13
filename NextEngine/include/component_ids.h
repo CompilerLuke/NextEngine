@@ -22,6 +22,7 @@ DEFINE_COMPONENT_ID(RigidBody, 18)
 DEFINE_COMPONENT_ID(CharacterController, 19)
 DEFINE_COMPONENT_ID(Materials, 20)
 DEFINE_COMPONENT_ID(ModelRenderer, 21)
+DEFINE_COMPONENT_ID(BtRigidBodyPtr, 22)
 DEFINE_COMPONENT_ID(Entity, 0)
 constexpr EntityFlags GAME_LAYER = 4194304;
 constexpr EntityFlags EDITOR_LAYER = 8388608;

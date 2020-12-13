@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ecs/id.h"
+#include "engine/handle.h"
 
 struct CommandBuffer;
 struct World;

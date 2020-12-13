@@ -20,7 +20,7 @@ void update_flyover(World& world, UpdateCtx& ctx) {
 		auto forward = glm::normalize(facing_rotation * glm::vec3(0, 0, -1));
 		auto right = glm::normalize(facing_rotation * glm::vec3(1, 0, 0));
 
-		float vertical_axis = ctx.input.get_vertical_axis();
+		float vertical_axis = ctx.input.get_vertical_axis() + 0.1*ctx.input.scroll_offset;
 		float horizontal_axis = ctx.input.get_horizontal_axis();
 
 		float speed = get_speed(self, ctx, trans.position.y);

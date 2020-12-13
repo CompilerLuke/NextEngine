@@ -25,7 +25,9 @@
 #include "core/container/hash_map.h"
 #include "graphics/assets/assets.h"
 
-const uint MAX_IMGUI_TEXTURES = 16;
+#include <imgui/misc/freetype/imgui_freetype.h>
+
+const uint MAX_IMGUI_TEXTURES = 32;
 const u64 MAX_IMGUI_VERTEX_BUFFER_SIZE = mb(1);
 const u64 MAX_IMGUI_INDEX_BUFFER_SIZE = mb(1);
 
@@ -231,7 +233,7 @@ void ImGui_ImplVulkan_RenderDrawData(CommandBuffer& draw_cmd_buffer, ImDrawData*
 					scissor.extent.width = clip_rect.z - clip_rect.x;
 					scissor.extent.height = clip_rect.w - clip_rect.y;
 
-					int tex_id = combined_samplers.keys.index((u64)pcmd->TextureId);
+					int tex_id = combined_samplers.index((u64)pcmd->TextureId);
 
 					vkCmdPushConstants(cmd_buffer, backend.pipeline_layout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(int), &tex_id);
 					vkCmdSetScissor(cmd_buffer, 0, 1, &scissor);

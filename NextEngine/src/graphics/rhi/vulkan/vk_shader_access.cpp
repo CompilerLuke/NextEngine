@@ -1,3 +1,4 @@
+#include "graphics/rhi/rhi.h"
 #include "graphics/rhi/vulkan/vulkan.h"
 #include "graphics/rhi/vulkan/shader_access.h"
 #include "graphics/rhi/shader_access.h"
@@ -302,6 +303,7 @@ VkDescriptorSet make_set(DescriptorPool& pool, slice<VkDescriptorSetLayout> set_
 
 void recycle_descriptor_set(periodically_updated_descriptor& set) {
 	//printf("CURRENT DESCRIPTOR %i\n", set.current.id);
+	/*
 	uint frame = rhi.frame_index;
 
 	descriptor_set_handle& handle = set.modified_in_frame[frame];
@@ -311,6 +313,7 @@ void recycle_descriptor_set(periodically_updated_descriptor& set) {
 
 
 	handle = { INVALID_HANDLE };
+	*/
 }
 
 void update_descriptor_set(periodically_updated_descriptor& set, DescriptorDesc& desc) {
@@ -318,6 +321,13 @@ void update_descriptor_set(periodically_updated_descriptor& set, DescriptorDesc&
 
 	set.modified_in_frame[set.updated_in_frame] = set.current;
 	
+	if (set.current.id) {
+		queue_for_destruction((void*)(size_t)set.current.id, [](void* ptr) {
+			descriptor_set_handle handle{ (uint)ptr };
+			destroy_descriptor_set(handle);
+		});
+	}
+
 	set.current = { INVALID_HANDLE };
 	update_descriptor_set(set.current, desc);
 

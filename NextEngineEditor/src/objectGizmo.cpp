@@ -7,6 +7,7 @@
 #include "graphics/renderer/renderer.h"
 #include "graphics/renderer/model_rendering.h"
 #include "ecs/ecs.h"
+#include "graphics/rhi/draw.h"
 
 ObjectGizmoSystem::ObjectGizmoSystem() {
 	this->dir_light_model =  load_Model("editor/dirLight.fbx");

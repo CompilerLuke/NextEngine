@@ -1,3 +1,4 @@
+#include "visualize_physics.h"
 #include "graphics/assets/assets.h"
 #include "graphics/assets/material.h"
 #include "graphics/rhi/primitives.h"
@@ -7,15 +8,9 @@
 #include "ecs/ecs.h"
 #include <glm/gtc/matrix_transform.hpp>
 
-
-struct PhysicsResources {
-    material_handle line;
-    material_handle solid;
-};
-
 void make_physics_resources(PhysicsResources& resources) {
     {
-        MaterialDesc desc{ global_shaders.gizmo };
+        MaterialDesc desc{ default_shaders.gizmo };
         desc.draw_state = DepthFunc_Always | PolyMode_Wireframe | (5 << WireframeLineWidth_Offset);
         mat_vec3(desc, "color", glm::vec3(1,0,1));
         
@@ -23,7 +18,7 @@ void make_physics_resources(PhysicsResources& resources) {
     }
     
     {
-        MaterialDesc desc{ global_shaders.gizmo };
+        MaterialDesc desc{ default_shaders.gizmo };
         desc.draw_state = PolyMode_Wireframe | (5 << WireframeLineWidth_Offset);
         mat_vec3(desc, "color", glm::vec3(1,0,1));
         

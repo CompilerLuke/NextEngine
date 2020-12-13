@@ -16,6 +16,7 @@
 
 struct ShaderManager;
 struct Assets;
+struct GraphicsPipelineDesc;
 
 REFL
 enum Param_Type {
@@ -28,7 +29,6 @@ enum Param_Type {
 	Param_Float,
 	Param_Channel3, Param_Channel2, Param_Channel1, Param_Channel4,
 };
-
 
 REFL
 struct ParamDesc {
@@ -43,8 +43,8 @@ struct ParamDesc {
 		glm::vec4  vec4;
 	};
 
-	REFL_FALSE ParamDesc() {}
-	REFL_FALSE ParamDesc(const ParamDesc& other) { memcpy(this, &other, sizeof(ParamDesc)); }
+	ParamDesc() {}
+	ParamDesc(const ParamDesc& other) { memcpy(this, &other, sizeof(ParamDesc)); }
 };
  
 REFL
@@ -76,6 +76,7 @@ ENGINE_API void mat_channel1(MaterialDesc&, string_view, float, texture_handle i
 ENGINE_API material_handle make_Material(MaterialDesc&, bool serialized = false);
 ENGINE_API void make_Material(material_handle, MaterialDesc&);
 ENGINE_API MaterialPipelineInfo material_pipeline_info(material_handle);
+ENGINE_API void mat_pipeline_desc(GraphicsPipelineDesc&, material_handle, RenderPass::ID, uint subpass);
 ENGINE_API pipeline_handle query_pipeline(material_handle, RenderPass::ID, uint subpass);
 ENGINE_API void update_Material(material_handle, MaterialDesc& from, MaterialDesc& to);
 
@@ -84,5 +85,6 @@ struct Materials {
 	array<8, material_handle> materials;
 };
 
+ENGINE_API material_handle mat_by_index(Materials&, uint material_id);
 material_handle make_SubstanceMaterial(string_view folder, string_view);
 

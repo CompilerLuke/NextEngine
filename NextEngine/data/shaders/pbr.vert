@@ -15,6 +15,7 @@ void main()
     vec3 B = cross(N, T);
 
     TBN = make_TBN(model, aNormal, aTangent, aBitangent);
+    NDC = gl_Position.xyz / gl_Position.w;
 
 	#endif
 }

@@ -8,6 +8,7 @@
 #pragma once
 
 #ifdef _MSC_VER
+#    include <atomic>
 #    include <windows.h>
 #    define TASK_YIELD() YieldProcessor()
 #    define TASK_COMPILER_BARRIER _ReadWriteBarrier();

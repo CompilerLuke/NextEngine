@@ -6,9 +6,10 @@
 #include "editor.h"
 #include "core/memory/linear_allocator.h"
 #include "core/io/logger.h"
-#include "terrain.h"
+#include "terrain_tools/terrain.h"
 #include "grass.h"
 #include "components/terrain.h"
+#include "graphics/rhi/primitives.h"
 
 
 string_buffer name_with_id(ID id, string_view name) {
@@ -91,9 +92,11 @@ struct EntityFilter {
 	Archetype archetype = 0;
 };
 
+const ID ROOT_NODE = 0;
+
 bool filter_hierarchy(EntityNode* result, EntityNode& top, World& world, EntityFilter& filter) {
 	Archetype arch = world.arch_of_id(top.id);
-	if (arch == 0) return false;
+	if (top.id != ROOT_NODE && arch == 0) return false;
 
 	bool has_archetype = (arch & filter.archetype) == filter.archetype;
 	bool name_meets_filter = string_view(top.name).starts_with_ignore_case(filter.filter);

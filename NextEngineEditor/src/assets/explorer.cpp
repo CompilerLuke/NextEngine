@@ -53,13 +53,15 @@ bool filtered(AssetExplorer& self, string_view name) {
 	return !name.starts_with_ignore_case(self.filter);
 }
 
+const float ASSET_ICON_SIZE = 128.0f;
+
 void render_asset(AssetExplorer& tab, AssetNode& node, texture_handle tex_handle, bool* deselect, float scaling, glm::vec2 uv0 = glm::vec2(0,0), glm::vec2 uv1 = glm::vec2(1,1)) {
 	if (filtered(tab, node.asset.name)) return;
 	
 	bool selected = node.handle.id == tab.selected.id;
 	if (selected) ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 3);
 
-    ImVec2 size(128.0f * scaling, 128.0f * scaling);
+    ImVec2 size(ASSET_ICON_SIZE * scaling, ASSET_ICON_SIZE * scaling);
     
 	ImGui::PushID(node.handle.id);
 	bool is_selected = ImGui::ImageButton(tex_handle, size, uv0, uv1);
@@ -129,7 +131,7 @@ void render_assets(Editor& editor, AssetExplorer& asset_tab, string_view filter,
 	ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.16, 0.16, 0.16, 1));
 
     float scaling = editor.scaling;
-	ImGui::Columns(8, 0, false);
+	ImGui::Columns(ImGui::GetContentRegionAvailWidth() / (ASSET_ICON_SIZE + 10) * scaling, 0, false);
 
 	MoveToFolder move_to_folder = {};
     
@@ -262,25 +264,21 @@ void AssetTab::render(World& world, Editor& editor, RenderPass& ctx) {
 
 		if (open_create_asset && deselect) ImGui::OpenPopup("CreateAsset");
 
-		if (ImGui::BeginPopup("CreateAsset"))
-		{
+		if (ImGui::BeginPopup("CreateAsset")) {
 			if (ImGui::MenuItem("Import")) {
 				string_buffer filename = open_dialog(window);
 				if (filename != "") import_filename(editor, world, *this, filename);
 			}
 
-			if (ImGui::MenuItem("New Material"))
-			{
+			if (ImGui::MenuItem("New Material")) {
 				make_new_material(*this, editor);
 			}
 
-			if (ImGui::MenuItem("New Shader"))
-			{
+			if (ImGui::MenuItem("New Shader")) {
 				make_new_shader(world, *this, editor);
 			}
 
-			if (ImGui::MenuItem("New Folder"))
-			{
+			if (ImGui::MenuItem("New Folder")) {
 				AssetNode asset(AssetNode::Folder);
 				asset.folder.name = "Empty folder";
 				asset.folder.owner = explorer.current_folder;
@@ -291,8 +289,7 @@ void AssetTab::render(World& world, Editor& editor, RenderPass& ctx) {
 			ImGui::EndPopup();
 		}
 
-		if (ImGui::BeginPopup("EditAsset"))
-		{
+		if (ImGui::BeginPopup("EditAsset")) {
 			if (ImGui::MenuItem("Delete")) { //todo right clicking will not select
 				AssetNode* node = get_asset(info, explorer.selected);
 				free_asset(explorer.preview_resources, *node);

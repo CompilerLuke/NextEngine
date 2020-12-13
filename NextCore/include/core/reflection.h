@@ -45,8 +45,6 @@ namespace refl {
 		Type* element;
 		int num;
 
-		int length_offset;
-
 		inline Array(ArrayType arr_type, uint size, const char* name, Type* element, uint num = 0)
 			: Type{ Type::Array, size, name }, element(element), arr_type(arr_type), num(num) {}
 	};
@@ -112,7 +110,7 @@ namespace refl {
         DiffOfType diff;
     };
 
-    DiffOfType diff_type(Type* a, Type* b) ;
+    CORE_API DiffOfType diff_type(Type* a, Type* b) ;
 }
 
 //todo some of these should return Struct

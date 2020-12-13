@@ -241,12 +241,13 @@ VkSampler make_TextureSampler(const SamplerDesc& sampler_desc) {
 	samplerInfo.maxAnisotropy = sampler_desc.max_anisotropy;
 	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 	samplerInfo.unnormalizedCoordinates = VK_FALSE;
-	samplerInfo.compareEnable = VK_FALSE;
-	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+	samplerInfo.compareEnable = sampler_desc.depth_compare;
+	samplerInfo.compareOp = VK_COMPARE_OP_GREATER;
 	samplerInfo.mipmapMode = to_vk_mipmap_mode[(uint)sampler_desc.mip_mode];
 	samplerInfo.mipLodBias = 0.0f;
 	samplerInfo.minLod = 0.0f;
 	samplerInfo.maxLod = FLT_MAX;
+
 
 	VkSampler texture_sampler;
 

@@ -22,13 +22,13 @@
 #include "core/profiler.h"
 
 Assets assets;
-DefaultTextures default_textures;
-DefaultMaterials default_materials;
-GlobalShaders global_shaders; //todo rename to default
+ENGINE_API DefaultTextures default_textures;
+ENGINE_API DefaultMaterials default_materials;
+ENGINE_API DefaultShaders default_shaders; 
 
 void make_AssetManager(string_view path, string_view engine_path) {
-	assets.asset_path = path;
-    assets.engine_asset_path = engine_path;
+	path_absolute(path, &assets.asset_path);
+    path_absolute(engine_path, &assets.engine_asset_path);
 
 	init_primitives();
 	assets.cubemap_pass_resources = make_cubemap_pass_resources();
@@ -43,19 +43,19 @@ void make_AssetManager(string_view path, string_view engine_path) {
 	load_Texture(default_textures.normal, "engine/normal.jpg");
 	load_Texture(default_textures.checker, "engine/checker.jpg");
 
-	global_shaders.pbr = { 1 }; 
-	global_shaders.tree = { 2 };
-	global_shaders.gizmo = { 3 }; 
-	global_shaders.grass = { 4 };
+	default_shaders.pbr = { 1 }; 
+	default_shaders.tree = { 2 };
+	default_shaders.gizmo = { 3 }; 
+	default_shaders.grass = { 4 };
 
-	load_Shader(global_shaders.pbr, "shaders/pbr.vert", "shaders/pbr.frag");
-	load_Shader(global_shaders.tree, "shaders/tree.vert", "shaders/tree.frag");
-	load_Shader(global_shaders.gizmo, "shaders/pbr.vert", "shaders/gizmo.frag");
-	load_Shader(global_shaders.grass, "shaders/grass.vert", "shaders/tree.frag");
+	load_Shader(default_shaders.pbr, "shaders/pbr.vert", "shaders/pbr.frag");
+	load_Shader(default_shaders.tree, "shaders/tree.vert", "shaders/tree.frag");
+	load_Shader(default_shaders.gizmo, "shaders/pbr.vert", "shaders/gizmo.frag");
+	load_Shader(default_shaders.grass, "shaders/grass.vert", "shaders/tree.frag");
 
 	default_materials.missing = { 1 };
 	{
-		MaterialDesc desc{ global_shaders.pbr };
+		MaterialDesc desc{ default_shaders.pbr };
 
 		mat_channel3(desc, "diffuse", glm::vec3(1.0), default_textures.checker);
 		mat_channel1(desc, "metallic", 0.0f);
@@ -108,8 +108,25 @@ string_view current_asset_path_folder() {
 }
 
 bool asset_path_rel(string_view filename, string_buffer* result) {
-	if (filename.starts_with(assets.asset_path)) {
-		*result = filename.sub(assets.asset_path.size(), filename.size());
+	//todo move functionality of creating absolute filepath and comparing files
+	string_view asset_path = assets.asset_path;
+
+	bool starts_with = filename.length >= asset_path.length;
+	if (!starts_with) return false;
+
+	for (uint i = 0; i < asset_path.length; i++) {
+		char a = asset_path[i];
+		char b = filename[i];
+
+		if ((a == '\\' || a == '/') && (b == '\\' || b == '/')) continue;
+		else if (a != b) {
+			starts_with = false;
+			break;
+		}
+	}
+
+	if (starts_with) {
+		*result = filename.sub(asset_path.size(), filename.size());
 		return true;
 	}
 
@@ -232,6 +249,8 @@ bool load_Shader(Shader& shader, string_buffer& err) {
 
 void load_Shader(Shader& shader) {
 	string_buffer err;
+
+
 	if (!load_Shader(shader, err)) throw "Could not compile shader";
 }
 
@@ -266,7 +285,7 @@ shader_handle load_Shader(string_view vfilename, string_view ffilename, slice<sh
 	
 	string_buffer merged = tformat(vfilename.sub(8, vfilename.length), ffilename.sub(8, ffilename.length));
 
-	int index = assets.path_to_handle.keys.index(merged.view());
+	int index = assets.path_to_handle.index(merged.view());
 	if (index != -1) return { assets.path_to_handle.values[index] }; //todo this assumes the shader permutations are the same! They may not be!
 
 	Shader shader;
@@ -300,7 +319,7 @@ bool reload_Shader(shader_handle handle) {
 	for (uint i = 0; i < MAX_PIPELINE; i++) {
 		if (!cache.keys.is_full(i)) continue;
 
-		PipelineDesc& desc = cache.keys.keys[i];
+		GraphicsPipelineDesc& desc = cache.keys.keys[i];
 		if (desc.shader.id != handle.id) continue;
 
         VkPipeline pipeline = cache.pipelines[i];
@@ -353,7 +372,7 @@ VertexBuffer get_vertex_buffer(model_handle model_handle, uint mesh_index, uint 
 model_handle load_Model(string_view path, bool serialized, const glm::mat4& trans) {
 	if (uint* cached = assets.path_to_handle.get(path)) return { *cached };
 
-	int index = assets.path_to_handle.keys.index(path);
+	int index = assets.path_to_handle.index(path);
 	if (index != -1) return { assets.path_to_handle.values[index] };
 
 	Model model;
@@ -437,7 +456,7 @@ void blit_image(CommandBuffer& cmd_buffer, Filter filter, texture_handle src_han
 static hash_map<SamplerDesc, Sampler, 13> sampler_cache;
 
 sampler_handle query_Sampler(const SamplerDesc& sampler_desc) {
-	int index = sampler_cache.keys.index(sampler_desc);
+	int index = sampler_cache.index(sampler_desc);
 	if (index == -1) {
 		Sampler sampler = make_TextureSampler(sampler_desc);
 		index = sampler_cache.set(sampler_desc, sampler);
@@ -589,10 +608,9 @@ MaterialPipelineInfo material_pipeline_info(material_handle handle) {
 	return {};
 }
 
-pipeline_handle query_pipeline(material_handle material, RenderPass::ID render_pass, uint subpass) {
+void mat_pipeline_desc(GraphicsPipelineDesc& desc, material_handle material, RenderPass::ID render_pass, uint subpass) {
 	MaterialPipelineInfo info = material_pipeline_info(material);
 
-	PipelineDesc desc = {};
 	desc.render_pass = render_pass;
 	desc.shader = info.shader;
 	desc.vertex_layout = VERTEX_LAYOUT_DEFAULT;
@@ -600,7 +618,11 @@ pipeline_handle query_pipeline(material_handle material, RenderPass::ID render_p
 	desc.shader_flags = render_pass_type_by_id(render_pass, subpass) == RenderPass::Color ? SHADER_INSTANCED : SHADER_INSTANCED | SHADER_DEPTH_ONLY;
 	desc.state = info.state;
 	desc.subpass = subpass;
+}
 
+pipeline_handle query_pipeline(material_handle material, RenderPass::ID render_pass, uint subpass) {
+	GraphicsPipelineDesc desc;
+	mat_pipeline_desc(desc, material, render_pass, subpass);
 	return query_Pipeline(desc);
 }
 

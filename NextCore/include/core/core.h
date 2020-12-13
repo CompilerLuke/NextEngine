@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#ifdef NE_WINDOWS
+#ifdef NE_PLATFORM_WINDOWS
 #ifdef NEXTCORE_EXPORTS
 #define CORE_API __declspec(dllexport)
 #endif
@@ -24,6 +24,7 @@ using u16 = uint16_t;
 #define mb(num) kb(num) * 1024
 #define gb(num) mb(num) * 1024l
 
+#define SYSTEM_COMP
 #define COMP
 #define REFL
 #define REFL_FALSE

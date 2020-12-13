@@ -1,7 +1,7 @@
 #pragma once
 #include "core/container/string_buffer.h"
 #include "core/container/string_view.h"
-#include "core/core.h"
+#include "engine/core.h"
 
 //THE ENTIRE IDEA BEHIND THE VFS SYSTEM, WAS TO IMPLEMENT IT IN SUCH A WAY THAT ASSET FILES COULD BE LOOKED UP IN A BINARY
 //FILE WHEN PACKING THE GAME. HOWEVER THE HANDLE SYSTEM COULD POTENTIALLY REPLACE THIS COMPLETEY
@@ -15,8 +15,13 @@ struct FS {
 void make_FS();
 void destroy_FS();
 
-CORE_API i64  io_time_modified(string_view path);
-CORE_API bool io_readf(string_view path, string_buffer* output);
-CORE_API bool io_readfb(string_view path, string_buffer* output);
-CORE_API bool io_writef(string_view path, string_view contents);
-CORE_API bool io_copyf(string_view src, string_view dst, bool fail_if_exists);
+ENGINE_API bool io_get_current_dir(string_buffer* output);
+ENGINE_API i64  io_time_modified(string_view path);
+ENGINE_API bool io_readf(string_view path, string_buffer* output);
+ENGINE_API bool io_readfb(string_view path, string_buffer* output);
+ENGINE_API bool io_writef(string_view path, string_view contents);
+ENGINE_API bool io_copyf(string_view src, string_view dst, bool fail_if_exists);
+
+ENGINE_API bool path_absolute(string_view path, string_buffer* output);
+
+

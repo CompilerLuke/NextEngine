@@ -32,7 +32,7 @@ struct sstring {
 
 	inline sstring(string_view str) {
 		assert(str.length <= N);
-		memcpy(data, str.data, str.length + 1);
+		memcpy(data, str.data, (size_t)str.length + 1);
 		length(str.length);
 	}
 
@@ -72,7 +72,7 @@ struct sstring {
 
 inline u64 hash_func(sstring& sstring) {
 	const char* str = sstring.data;
-	unsigned long hash = 5381;
+	u64 hash = 5381;
 	u64 c;
 
 	while (c = *str++)

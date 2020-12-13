@@ -17,6 +17,7 @@ struct VkPipelineDesc {
 
 	//Settings
 	VkPolygonMode polygon_mode = VK_POLYGON_MODE_FILL;
+	VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	float line_width = 1.0f;
 	VkCullModeFlags cull_mode = VK_CULL_MODE_NONE;
 	VkColorComponentFlags color_write_mask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -24,6 +25,7 @@ struct VkPipelineDesc {
 	bool depth_write_enable = VK_TRUE;
 	bool stencil_test_enable = VK_FALSE;
 	bool alpha_blend_enable = VK_FALSE;
+	bool depth_bias = VK_FALSE;
     VkStencilOpState front_stencil = {};
 	VkCompareOp depth_compare_op = VK_COMPARE_OP_LESS;
 	VkBlendOp blend_op;
@@ -32,19 +34,21 @@ struct VkPipelineDesc {
     VkSampleCountFlagBits sample_count = VK_SAMPLE_COUNT_1_BIT;
     
 	uint subpass = 0;
+	uint color_attachments = 1;
 };
 
 void make_GraphicsPipeline(VkDevice device, VkPipelineDesc& desc, VkPipelineLayout* pipeline_layout, VkPipeline* pipeline);
 
 #define MAX_PIPELINE 271
+#define MAX_ATTACHMENTS 5
 
 struct PipelineCache {
-	hash_set<PipelineDesc, MAX_PIPELINE> keys;
+	hash_set<GraphicsPipelineDesc, MAX_PIPELINE> keys;
 	VkPipeline pipelines[MAX_PIPELINE];
 	VkPipelineLayout layouts[MAX_PIPELINE];
 };
 
-pipeline_handle query_Pipeline(PipelineCache&, const PipelineDesc& desc);
+pipeline_handle query_Pipeline(PipelineCache&, const GraphicsPipelineDesc& desc);
 VkPipeline get_Pipeline(PipelineCache&, pipeline_handle handle);
 VkPipelineLayout get_pipeline_layout(PipelineCache&, pipeline_handle handle);
 VkPipelineLayout get_pipeline_layout(PipelineCache&, pipeline_layout_handle handle);

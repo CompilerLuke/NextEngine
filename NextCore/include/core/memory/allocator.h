@@ -68,7 +68,7 @@ void destruct(T* ptr) {
 }
 
 template<typename T>
-void memcpy_t(T* a, T* b, u64 count) {
+void memcpy_t(T* a, const T* b, u64 count) {
 	memcpy(a, b, count * sizeof(T));
 }
 
@@ -78,11 +78,11 @@ T* alloc_t(Allocator& allocator, uint num = 1) {
 }
 
 inline u64 align_offset(u64 offset, uint alignment) {
-	uint alignment_bytes_minus_one = alignment - 1;
+	u64 alignment_bytes_minus_one = alignment - 1;
 	return (offset + alignment_bytes_minus_one) & ~alignment_bytes_minus_one;
 }
 
-inline u64 aligned_incr(u64* occupied, uint size, uint alignment) {
+inline u64 aligned_incr(u64* occupied, u64 size, uint alignment) {
 	u64 offset = align_offset(*occupied, alignment);
 	*occupied = offset + size;
 	return offset;

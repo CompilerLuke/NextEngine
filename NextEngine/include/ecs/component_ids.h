@@ -20,9 +20,12 @@ DEFINE_COMPONENT_ID(BoxCollider, 16)
 DEFINE_COMPONENT_ID(PlaneCollider, 17)
 DEFINE_COMPONENT_ID(RigidBody, 18)
 DEFINE_COMPONENT_ID(CharacterController, 19)
+DEFINE_COMPONENT_ID(BtRigidBodyPtr, 24)
+DEFINE_COMPONENT_ID(CloudVolume, 25)
+DEFINE_COMPONENT_ID(FogVolume, 26)
 DEFINE_COMPONENT_ID(Materials, 20)
 DEFINE_COMPONENT_ID(ModelRenderer, 21)
 DEFINE_COMPONENT_ID(Entity, 0)
-constexpr EntityFlags STATIC = 4194304;
-constexpr EntityFlags EDITOR_ONLY = 8388608;
-constexpr EntityFlags MAIN_CAMERA = 16777216;
+constexpr EntityFlags STATIC = 1ull << 22;
+constexpr EntityFlags EDITOR_ONLY = 1ull << 23;
+constexpr EntityFlags MAIN_CAMERA = 1ull << 27;

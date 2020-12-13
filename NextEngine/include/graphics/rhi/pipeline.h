@@ -71,9 +71,20 @@ enum BlendMode : DrawCommandState {
 };
 
 enum DynamicState : DrawCommandState {
-	DynamicState_Offset = 30,
+	DynamicState_Offset = 32,
 	DynamicState_LineWidth = 1ull << (DynamicState_Offset + 0),
 	DynamicState_Viewport  = 1ull << (DynamicState_Offset + 1),
+	DynamicState_DepthBias = 1ull << (DynamicState_Offset + 2),
+};
+
+enum PrimitiveType : DrawCommandState {
+	PrimitiveType_Offset        = 36,
+	PrimitiveType_TriangleList  = 0ull << PrimitiveType_Offset,
+	PrimitiveType_TriangleStrip = 1ull << PrimitiveType_Offset,
+	PrimitiveType_TriangleFan   = 2ull << PrimitiveType_Offset,
+	PrimitiveType_PointList     = 3ull << PrimitiveType_Offset,
+	PrimitiveType_LineList      = 4ull << PrimitiveType_Offset,
+	PrimitiveType_LineStrip     = 5ull << PrimitiveType_Offset
 };
 
 inline uint decode_DrawState(u64 offset, DrawCommandState state, uint bits) {
@@ -117,7 +128,7 @@ struct PushConstantRange {
 	};
 };
 
-const u64 NATIVE_RENDER_PASS = 1ul << 63;
+//const u64 NATIVE_RENDER_PASS = 1ull << 63;
 
 struct PipelineDesc {
 	shader_handle shader;
@@ -126,7 +137,6 @@ struct PipelineDesc {
 	uint subpass = 0;
 	VertexLayout vertex_layout = VERTEX_LAYOUT_DEFAULT;
 	InstanceLayout instance_layout = INSTANCE_LAYOUT_MAT4X4;
-	DrawCommandState state = 0;
 	PushConstantRange range[2];
 
 	inline bool operator==(const PipelineDesc& other) const {
@@ -136,7 +146,6 @@ struct PipelineDesc {
 			&& subpass == other.subpass
 			&& vertex_layout == other.vertex_layout
 			&& instance_layout == other.instance_layout
-			&& state == other.state
 			&& range[0].packed == other.range[0].packed
 			&& range[1].packed == other.range[1].packed;
 	}
@@ -146,6 +155,21 @@ struct PipelineDesc {
 	}
 };
 
-ENGINE_API void reload_Pipeline(const PipelineDesc&);
+struct GraphicsPipelineDesc : PipelineDesc {
+	DrawCommandState state = 0;
+
+	inline bool operator==(const GraphicsPipelineDesc& other) const {
+		return *(PipelineDesc*)this == other && state == other.state;
+	}
+
+	inline bool operator!=(const GraphicsPipelineDesc& other) const {
+		return !(*this == other);
+	}
+};
+
+struct ComputePipelineDesc : PipelineDesc {};
+
+ENGINE_API void reload_Pipeline(const GraphicsPipelineDesc&);
 ENGINE_API pipeline_layout_handle query_Layout(slice<descriptor_set_handle> descriptors);
-ENGINE_API pipeline_handle query_Pipeline(const PipelineDesc&);
+ENGINE_API pipeline_handle query_Pipeline(const GraphicsPipelineDesc&);
+ENGINE_API pipeline_handle query_Pipeline(const ComputePipelineDesc&);

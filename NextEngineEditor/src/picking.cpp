@@ -18,6 +18,7 @@
 #include "graphics/culling/build_bvh.h"
 #include "core/profiler.h"
 #include "core/job_system/job.h"
+#include "graphics/rhi/primitives.h"
 
 #define MAX_ENTITIES_PER_NODE 10
 #define MAX_PICKING_DEPTH 6
@@ -36,77 +37,85 @@ struct SubdivideBVHJob {
 void subdivide_BVH(SubdivideBVHJob& job) {
 	PickingScenePartition& scene_partition = *job.scene_partition;
 	
-	if (job.mesh_count <= MAX_ENTITIES_PER_NODE || job.depth >= MAX_PICKING_DEPTH) {
-		Node& node = alloc_leaf_node(scene_partition, job.node_aabb, MAX_PICKING_INSTANCES, job.mesh_count);
+	LinearAllocator& temporary = get_thread_local_temporary_allocator();
+    //LinearRegion region(temporary);
+	//printf("=== Watermark(%i) === %i\n", job.depth, region.watermark);
+        
+	BranchNodeInfo info = alloc_branch_node(scene_partition, job.node_aabb);
+
+	tvector<AABB> subdivided_aabbs[2];
+	tvector<ID> subdivided_ids[2];
+	tvector<uint> subdivided_tags[2];
+
+	for (uint i = 0; i < 2; i++) {
+		subdivided_aabbs[i].allocator = &temporary;
+		subdivided_ids[i].allocator = &temporary;
+		subdivided_tags[i].allocator = &temporary;
+	}
+        
+    int* split_idx = alloc_t<int>(temporary, job.mesh_count);
+    uint offset = split_aabbs(scene_partition, info, {job.aabbs, job.mesh_count}, split_idx);
+        
+	for (uint i = 0; i < job.mesh_count; i++) {
+        int split_index = split_idx[i];
+        if (split_index == -1) {
+			scene_partition.aabbs[offset] = job.aabbs[i];
+			scene_partition.ids[offset] = job.ids[i];
+			scene_partition.tags[offset] = job.tags[i];
+            offset++;
+		}
+		else {
+			subdivided_aabbs[split_index].append(job.aabbs[i]);
+			subdivided_ids[split_index].append(job.ids[i]);
+			subdivided_tags[split_index].append(job.tags[i]);
+		}
+	}
+
+	JobDesc desc[2];
+    SubdivideBVHJob jobs[2];
+
+	uint child_count = 0;
+	uint job_count = 0;
+
+	for (int i = 0; i < 2; i++) {
+		if (subdivided_aabbs[i].length == 0) continue;
 		
-		copy_into_node(node, scene_partition.ids, job.ids);
-		copy_into_node(node, scene_partition.aabbs, job.aabbs);
-        
-        job.child_idx = &node - scene_partition.nodes;
+		if (subdivided_aabbs[i].length <= MAX_ENTITIES_PER_NODE || job.depth + 1 >= MAX_PICKING_DEPTH) {
+			Node& node = alloc_leaf_node(scene_partition, info.child_aabbs[i], MAX_PICKING_INSTANCES, subdivided_aabbs[i].length);
+
+			copy_into_node(node, scene_partition.ids, subdivided_ids[i].data);
+			copy_into_node(node, scene_partition.aabbs, subdivided_aabbs[i].data);
+
+			jobs[child_count].child_idx = &node - scene_partition.nodes;
+			jobs[child_count].node_aabb = info.child_aabbs[i];
+		}
+		else {
+			jobs[child_count].scene_partition = job.scene_partition;
+			jobs[child_count].node_aabb = info.child_aabbs[i];
+			jobs[child_count].depth = job.depth + 1;
+			jobs[child_count].mesh_count = subdivided_aabbs[i].length;
+			jobs[child_count].aabbs = subdivided_aabbs[i].data;
+			jobs[child_count].ids = subdivided_ids[i].data;
+			jobs[child_count].tags = subdivided_tags[i].data;
+
+			desc[job_count] = JobDesc{ subdivide_BVH, jobs + child_count };
+			job_count++;
+		}
+
+		child_count++;
 	}
-	else {
-		LinearAllocator& temporary = get_thread_local_temporary_allocator();
-        LinearRegion region(temporary);
-        
-		BranchNodeInfo info = alloc_branch_node(scene_partition, job.node_aabb);
 
-		tvector<AABB> subdivided_aabbs[2];
-		tvector<ID> subdivided_ids[2];
-		tvector<uint> subdivided_tags[2];
+	wait_for_jobs(PRIORITY_HIGH, { desc, job_count });
 
-		for (uint i = 0; i < 2; i++) {
-			subdivided_aabbs[i].allocator = &temporary;
-			subdivided_ids[i].allocator = &temporary;
-			subdivided_tags[i].allocator = &temporary;
-		}
-        
-        int* split_idx = alloc_t<int>(temporary, job.mesh_count);
-        uint offset = split_aabbs(scene_partition, info, {job.aabbs, job.mesh_count}, split_idx);
-        
-		for (uint i = 0; i < job.mesh_count; i++) {
-            int split_index = split_idx[i];
-            if (split_index == -1) {
-				scene_partition.aabbs[offset] = job.aabbs[i];
-				scene_partition.ids[offset] = job.ids[i];
-				scene_partition.tags[offset] = job.tags[i];
-                offset++;
-			}
-			else {
-				subdivided_aabbs[split_index].append(job.aabbs[i]);
-				subdivided_ids[split_index].append(job.ids[i]);
-				subdivided_tags[split_index].append(job.tags[i]);
-			}
-		}
-
-		JobDesc desc[2];
-        SubdivideBVHJob jobs[2];
-
-		uint count = 0;
-		for (int i = 0; i < 2; i++) {
-			if (subdivided_aabbs[i].length == 0) continue;
-			
-            jobs[count].scene_partition = job.scene_partition;
-            jobs[count].node_aabb = info.child_aabbs[i];
-			jobs[count].depth = job.depth + 1;
-			jobs[count].mesh_count = subdivided_aabbs[i].length;
-			jobs[count].aabbs = subdivided_aabbs[i].data;
-			jobs[count].ids = subdivided_ids[i].data;
-			jobs[count].tags = subdivided_tags[i].data;
-
-			desc[count] = JobDesc{ subdivide_BVH, jobs + count };
-			count++;
-		}
-
-		wait_for_jobs(PRIORITY_HIGH, { desc, count });
-
-		for (int i = 0; i < count; i++) {
-			uint child_idx = jobs[i].child_idx;
-			info.node.child[i] = child_idx;
-			info.node.aabb.update_aabb(scene_partition.nodes[child_idx].aabb);
-		}
-        info.node.child_count = count;
-		job.child_idx = &info.node - scene_partition.nodes;
+	for (int i = 0; i < child_count; i++) {
+		uint child_idx = jobs[i].child_idx;
+		info.node.child[i] = child_idx;
+		info.node.aabb.update_aabb(scene_partition.nodes[child_idx].aabb);
 	}
+    info.node.child_count = child_count;
+	job.child_idx = &info.node - scene_partition.nodes;
+
+	//printf("=== Resetting Watermark(%i) === %i\n", job.depth, region.watermark);
 }
 
 void build_acceleration_structure(PickingScenePartition& scene_partition, World& world) { 
@@ -194,11 +203,15 @@ void build_acceleration_structure(PickingScenePartition& scene_partition, World&
 				aabbs.append(aabb);
 				ids.append(e.id);
 				tags.append(0);
-
-
 			}
 		}
 	}
+
+	/*for (uint i = 0; i < aabbs.length; i++) {
+		if (aabbs[i].max.y > 30) {
+			printf("AABB with id %i is insanely tall\n", ids[i]);
+		}
+	}*/
 
 	SubdivideBVHJob job = {&scene_partition, world_bounds};
 	job.depth = 0;
@@ -207,7 +220,7 @@ void build_acceleration_structure(PickingScenePartition& scene_partition, World&
 	job.ids = ids.data;
 	job.tags = tags.data;
 
-	//subdivide_BVH(job);
+	subdivide_BVH(job);
 }
 
 Ray ray_from_mouse(Viewport& viewport, glm::vec2 mouse_position) {
@@ -378,16 +391,17 @@ void PickingSystem::visualize(Viewport& viewport, glm::vec2 position, RenderPass
 }
 
 void make_outline_render_state(OutlineRenderState& self) {
-	self.outline_shader = load_Shader("shaders/outline.vert", "shaders/outline.frag");
+	self.outline_shader = load_Shader("shaders/gizmo.vert", "shaders/outline.frag");
     
-    MaterialDesc outline_object_material{ global_shaders.gizmo };
+    MaterialDesc outline_object_material{ default_shaders.gizmo };
     mat_vec3(outline_object_material, "color", glm::vec3(0));
     outline_object_material.draw_state = StencilFunc_Always | (0xFF << StencilMask_Offset) | ColorMask_None | DepthFunc_None;
 
 	int outline_width = 3;
 
 	MaterialDesc outline_material{ self.outline_shader };
-	outline_material.draw_state = StencilFunc_Nequal | DepthFunc_Always | (outline_width << WireframeLineWidth_Offset);
+	//mat_vec3(outline_object_material, "color", glm::vec3());
+	outline_material.draw_state = StencilFunc_Nequal | DepthFunc_Always | PolyMode_Wireframe | ((u64)outline_width * 2 << WireframeLineWidth_Offset);
 
     self.object_material = make_Material(outline_object_material);
 	self.outline_material = make_Material(outline_material);

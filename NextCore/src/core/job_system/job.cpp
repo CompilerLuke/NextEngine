@@ -212,6 +212,7 @@ void run_worker(uint worker) {
 	run_fiber(nullptr);
 }
 
+
 FLS* fls_context;
 
 void make_job_system(uint num_fibers, uint num_workers) {
@@ -307,18 +308,18 @@ void wait_for_jobs(Priority priority, slice<JobDesc> jobs) {
 
 #include "core/context.h"
 
-static thread_local Context* thread_local_context;
+static thread_local Context thread_local_context;
 
 Context& get_context() {
 	Context* ctx = (Context*)get_FLS(fls_context);
     if (ctx) return *ctx;
-    assert(thread_local_context != nullptr);
-	return *thread_local_context; //Fallback setting thread local if not in fiber
+    //assert(thread_local_context != nullptr);
+	return thread_local_context; //Fallback setting thread local if not in fiber
 }
 
 void set_context(Context* context) {
 	if (!set_FLS(fls_context, context)) {
-		thread_local_context = context; //fallback setting thread local if not in fiber
+		thread_local_context = *context; //fallback setting thread local if not in fiber
 	}
 }
 
@@ -326,7 +327,7 @@ ScopedContext::ScopedContext(Context& current) {
 	this->current = current;
 
     if (Context* ctx = (Context*)get_FLS(fls_context)) this->previus = ctx;
-    else this->previus = thread_local_context;
+    else this->previus = &thread_local_context;
 
 	set_context(&current); 
 }

@@ -16,6 +16,12 @@ constexpr uint WORLD_SIZE = mb(50);
 
 const Archetype ANY_ARCHETYPE = ~0ull;
 
+enum DirtyComponent {
+	DIRTY_COMPONENT = 1,
+	ADDED_COMPONENT = 2,
+	REMOVED_COMPONENT = 3
+};
+
 struct EntityQuery {
 	Archetype all = 0;
 	Archetype some = 0;

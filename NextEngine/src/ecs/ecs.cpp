@@ -93,15 +93,16 @@ void World::register_components(slice<struct RegisterComponent> components) {
         component_lifetime_funcs[component_id] = component.funcs;
         component_size[component_id] = component.type->size;
         component_type[component_id] = (refl::Struct*)deep_copy(component.type, copied_type);
+        component_kind[component_id] = component.kind;
     }
     
     if (diff_mask == 0) return;
     
     //todo implement deep diff
     for (uint i = 0; i < ARCHETYPE_HASH; i++) {
-        if (!arches.keys.is_full(i)) continue;
+        if (!arches.is_full(i)) continue;
         
-        Archetype archetype = arches.keys.keys[i];
+        Archetype archetype = arches.keys[i];
         
         if (!(archetype & diff_mask)) continue;
         if (!arches.values[i].blocks) continue;
@@ -214,9 +215,9 @@ World& World::operator=(const World& from) {
     //COPY ARCHETYPES
     //todo replace 103 with constant
     for (uint i = 0; i < ARCHETYPE_HASH; i++) {
-        if (!from.arches.keys.is_full(i)) continue;
+        if (!from.arches.is_full(i)) continue;
 
-        Archetype arch = from.arches.keys.keys[i];
+        Archetype arch = from.arches.keys[i];
         const ArchetypeStore& from_arch_store = from.arches.values[i];
         ArchetypeStore& arch_store = arches.values[i];
 

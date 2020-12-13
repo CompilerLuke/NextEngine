@@ -32,6 +32,7 @@ void main()
 	*/
 	vec4 pos = model * vec4(aPos,1.0); // + vec4(disp, 0.0);
     gl_Position = projection * view * pos;
+	NDC = gl_Position.xyz / gl_Position.w;
 
 #ifndef IS_DEPTH_ONLY
 	FragPos = vec3(pos);

@@ -27,14 +27,14 @@ struct ShaderInfo {
 	u64 f_time_modified;
 };
 
-struct GlobalShaders {
+struct DefaultShaders {
 	shader_handle pbr;
 	shader_handle tree;
 	shader_handle grass;
 	shader_handle gizmo;
 };
 
-ENGINE_API extern GlobalShaders global_shaders;
+ENGINE_API extern DefaultShaders default_shaders;
 
 //ENGINE_API uniform_handle uniform_id(shader_handle shader, string_view name);
 ENGINE_API UniformInfo*   uniform_info(uniform_handle);

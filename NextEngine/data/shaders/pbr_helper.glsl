@@ -1,3 +1,5 @@
+#include shaders/shadow.glsl
+
 struct DirLight {
     vec3 direction;
     vec3 color;
@@ -37,6 +39,7 @@ vec3 _albedo;
 vec3 _normal;
 float _metallic;
 float _roughness;
+float _translucency;
 float _ao;
 
 vec3 fresnel_schlick(float cosTheta, vec3 F0)
@@ -85,7 +88,7 @@ float geometry_smith(vec3 N, vec3 V, vec3 L, float _roughness)
     return ggx1 * ggx2;
 }
 
-#define G_SCATTERING 0.1
+#define G_SCATTERING 0.9
 
 float compute_scattering(float light_dot_view) {
     float result = 1.0f - G_SCATTERING * G_SCATTERING;
@@ -109,6 +112,8 @@ vec3 calc_dir_light(vec3 N, vec3 V) {
 	float NDF = distribution_GGX(N, H, _roughness);
 	float G   = geometry_smith(N, V, L, _roughness);
 
+	float NdotL = max(dot(L,N), 0.0);
+
 	// float diffuse = max(0, dot(L, N)); float wrap_diffuse = max(0, (dot(L, N) + wrap) / (1 + wrap)); 
 
 // max(dot(N, L), 0.0)
@@ -124,8 +129,6 @@ vec3 calc_dir_light(vec3 N, vec3 V) {
 	kD *= 1.0 - _metallic;
 
 	const float PI = 3.14159265359;
-
-    float NdotL = max(dot(N, L), 0.0);
 
 	//float forward_scattering = ComputeScattering(dot(N, L)) * 0.2;
 
@@ -213,7 +216,8 @@ float noise(vec2 x) {
 	return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
 }
 
-vec4 pbr_frag(vec3 mat_albedo, vec3 mat_normal, float mat_metallic, float mat_roughness, float mat_ao) {
+
+vec4 pbr_frag(vec3 mat_albedo, vec3 mat_normal, float mat_metallic, float mat_roughness, float mat_translucency, float mat_ao) {
     vec3 viewDir = normalize(view_pos - FragPos);
     
     _albedo     = mat_albedo;
@@ -221,6 +225,7 @@ vec4 pbr_frag(vec3 mat_albedo, vec3 mat_normal, float mat_metallic, float mat_ro
     _metallic = mat_metallic;
     _roughness = mat_roughness;
     _ao = mat_ao;
+	_translucency = mat_translucency;
 
     vec3 Lo = vec3(0.0);
 	vec3 WorldPos = FragPos;
@@ -231,10 +236,11 @@ vec4 pbr_frag(vec3 mat_albedo, vec3 mat_normal, float mat_metallic, float mat_ro
     F0 = mix(F0, _albedo, _metallic);
 
     // phase 1: Directional lighting
-    float shadow = 0.0f; //texture(shadow_mask_map, vec2(gl_FragCoord) / resolution).r;
+    float shadow = calc_shadow(_normal, dir_light.direction, NDC.z, FragPos); //texture(shadow_mask_map, vec2(gl_FragCoord) / resolution).r;
     //shadow = 0.0f;
 
-    Lo += (1.0 - shadow) * calc_dir_light(_normal, V); // * (1.0 - shadow);
+    Lo += (1.0 - shadow) * calc_dir_light(_normal, V);
+	Lo += _translucency * dir_light.color * _albedo * compute_scattering(max(dot(V, dir_light.direction), 0.0));
 
     // phase 2: Point lights
     for(int i = 0; i < point_lights_count; i++) {
@@ -264,8 +270,9 @@ vec4 pbr_frag(vec3 mat_albedo, vec3 mat_normal, float mat_metallic, float mat_ro
 
 	vec3 color = ambient + Lo;
 
-	color = color / (color + vec3(1.0));
-	color = pow(color, vec3(1.0/2.2));
+	//color = color / (color + vec3(1.0));
+	//color = pow(color, vec3(1.0/2.2));
 
+	//return vec4(vec3(shadow), 1.0);
     return vec4(color, 1.0);
 }

@@ -64,7 +64,7 @@ void import_shader(Editor& editor, AssetTab& self, string_view filename) {
 void import_filename(Editor& editor, World& world, AssetTab& self, string_view filename) {
 	string_buffer asset_path;
 	if (!asset_path_rel(filename, &asset_path)) {
-#ifdef NE_WINDOWS
+#ifdef NE_PLATFORM_WINDOWS
 		asset_path = filename.sub(filename.find_last_of('\\') + 1, filename.size());
 #else
         asset_path = filename.sub(filename.find_last_of('/') + 1, filename.size());

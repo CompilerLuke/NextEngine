@@ -51,6 +51,9 @@ void MaterialAllocator::make(MaterialDesc& desc, Material* material) {
 
 	material->index = (material->index + 1) % MAX_FRAMES_IN_FLIGHT;
 
+	ShaderModules* depth_module = get_shader_config(desc.shader, SHADER_INSTANCED | SHADER_DEPTH_ONLY);
+	material->requires_depth_descriptor = depth_module->info.sets.length > MATERIAL_SET && depth_module->info.sets[MATERIAL_SET].bindings.length > 0;
+
 	for (int perm = 0; perm < 1; perm++) {
 		ShaderModules* module = get_shader_config(desc.shader, permutations[perm]);
 
@@ -136,7 +139,9 @@ void MaterialAllocator::make(MaterialDesc& desc, Material* material) {
 
 				if (ubo_field_info.name != name) {
 					fprintf(stderr, "Material Description and Shader Layout do not match!");
-					abort();
+					//abort();
+					uniform_index--;
+					continue;
 				}
 
 				//todo check that is the correct channel type!!!

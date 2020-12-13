@@ -5,7 +5,7 @@
 
 #pragma once
 
-#ifdef NE_WINDOWS
+#ifdef NE_PLATFORM_WINDOWS
     #define WIN32_LEAN_AND_MEAN
 
     #include <WinSock2.h>
@@ -14,7 +14,7 @@
     #define GLFW_EXPOSE_NATIVE_WIN32
 #endif
 
-#ifdef __APPLE__
+#ifdef NE_PLATFORM_MACOSX
     #define GLFW_EXPOSE_NATIVE_COCOA
 #endif
 

@@ -5,7 +5,7 @@
 string_buffer log_buffer;
 
 void log_string(string_view s) {
-	//fwrite(s.c_str(), s.length, 1, stdout);
+	fwrite(s.c_str(), s.length, 1, stdout);
 	return;
 
 	log_buffer += s;

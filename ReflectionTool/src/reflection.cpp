@@ -8,6 +8,8 @@
 
 #include "core/container/tvector.h"
 #include "core/container/string_view.h"
+#include "core/container/hash_map.h"
+#include "core/container/array.h"
 #include "core/memory/allocator.h"
 #include "core/memory/linear_allocator.h"
 #include "lexer.h"
@@ -39,9 +41,9 @@ namespace pixc::reflection::compiler {
     };
 
     struct Name {
-        const char* iden;
-        const char* type;
-        const char* full;
+        const char* iden = "";
+        const char* type = "";
+        const char* full = "";
     };
 
     struct StructRef : Type {
@@ -72,6 +74,7 @@ namespace pixc::reflection::compiler {
     const uint TAGGED_UNION_TAG = 1 << 5;
     const uint TRIVIAL_TAG = 1 << 6;
     const uint NON_TRIVIAL_TAG = 1 << 7;
+    const uint SYSTEM_COMPONENT_TAG = (1 << 8) | COMPONENT_TAG;
 
     struct Constant {
         const char* name;
@@ -81,27 +84,27 @@ namespace pixc::reflection::compiler {
     struct AliasType : Type {
         Name name;
         Type* aliasing;
-        uint flags;
+        uint flags = 0;
     };
 
     struct EnumType : Type {
         Name name;
         tvector<Constant> values;
-        bool is_class;
-        uint flags; //todo make is class a flag
+        bool is_class = false;
+        uint flags = 0; //todo make is class a flag
     };
 
     struct StructType : Type {
         Name name;
         tvector<Field> fields;
-        uint flags;
+        uint flags = 0;
         tvector<Type*> template_args;
     };
 
     struct UnionType : Type {
         Name name;
         tvector<Field> fields;
-        uint flags;
+        uint flags = 0;
     };
 
     struct Namespace {
@@ -113,7 +116,7 @@ namespace pixc::reflection::compiler {
         tvector<UnionType*> unions;
     };
 
-
+    const uint MAX_COMPONENTS = 64;
 
     struct Reflector {
         error::Error* err;
@@ -129,6 +132,7 @@ namespace pixc::reflection::compiler {
         const char* component;
         int component_id;
         LinearAllocator* allocator;
+        hash_map<sstring, uint, MAX_COMPONENTS> name_to_id;
     };
 
     void raise_error(Reflector& ref, error::ErrorID type, string mesg, lexer::Token token) {
@@ -553,9 +557,15 @@ namespace pixc::reflection::compiler {
         for (; ref.tokens[ref.i].type != lexer::Close_Bracket && ref.i < ref.tokens.length; ref.i++) {
             lexer::Token token = ref.tokens[ref.i];
             Type* type = nullptr;
-            
-            if (token.type == lexer::Static || token.value == "REFL_FALSE") {
-                struct_type->flags |= NON_TRIVIAL_TAG; //in some cases it may be the correct decision to not keep around the ignored fields in serialization data
+
+            bool is_constructor = token.value == name && ref.tokens[ref.i+1].type == lexer::Open_Paren;
+            bool is_static = token.type == lexer::Static;
+            bool is_refl_false = token.value == "REFL_FALSE";
+            bool ignore = is_constructor || is_static || is_refl_false;
+
+            if (ignore) {
+                if (is_refl_false) struct_type->flags |= NON_TRIVIAL_TAG; //in some cases it may be the correct decision to not keep around the ignored fields in serialization data
+                
                 uint bracket_count = 0;
                 while (ref.tokens[++ref.i].type != lexer::SemiColon || bracket_count > 0) {
                     if (ref.tokens[ref.i].type == lexer::Open_Bracket) bracket_count++;
@@ -721,7 +731,10 @@ namespace pixc::reflection::compiler {
                     flags |= COMPONENT_TAG;
                     reflect_struct = true;
                 }
-
+                if (token == "SYSTEM_COMP") {
+                    flags |= SYSTEM_COMPONENT_TAG;
+                    reflect_struct = true;
+                }
                 if (token == "REFL") reflect_struct = true;
                 if (token == "ENTITY_FLAG" && ref.tokens[ref.i - 1].type != lexer::Define) parse_entity_flag(ref);
             }
@@ -1313,6 +1326,34 @@ namespace pixc::reflection::compiler {
         for (StructType* type : space->structs) dump_struct_reflector(f, h, type, buffer, reflector, indent);
     }
 
+    void assign_components_ids(Reflector& ref) {
+        Namespace* space = ref.namespaces.last();
+
+        uint id_counter = string(ref.linking) == "ENGINE_API" ? 0 : 30; //todo get real number of components
+
+        //TODO save in file
+        ref.name_to_id["Entity"] = 0;
+        ref.name_to_id["Materials"] = 20;
+        ref.name_to_id["ModelRenderer"] = 21;
+        ref.name_to_id["STATIC"] = 22;
+        ref.name_to_id["EDITOR_ONLY"] = 23;
+
+        bool used_ids[MAX_COMPONENTS] = {};
+        for (auto [name, id] : ref.name_to_id) {
+            used_ids[id] = true;
+        }
+
+        for (StructType* type : space->structs) {
+            if (!(type->flags & COMPONENT_TAG || type->flags & ENTITY_FLAG_TAG)) continue;
+
+            uint* has_id = ref.name_to_id.get(type->name.iden);
+            if (!has_id) {
+                while (used_ids[id_counter++]) {}
+                ref.name_to_id.set(type->name.iden, id_counter - 1);
+            }
+        }
+    }
+
     void dump_register_components(Reflector& ref, FILE* f) {
         Namespace* space = ref.namespaces.last();
 
@@ -1327,25 +1368,20 @@ namespace pixc::reflection::compiler {
         }
 
         string_view linking = ref.linking;
-        uint base_id = linking == "ENGINE_API" ? 1 : 25; //todo get real number of components
-        uint id_counter = base_id;
 
         fprintf(h, "#pragma once\n");
         fprintf(h, "#include \"ecs/system.h\"\n\n");
 
         for (StructType* type : space->structs) {
             if (type->flags & COMPONENT_TAG) {
-
-                if (strcmp(type->name.iden, "Entity") == 0) fprintf(h, "DEFINE_COMPONENT_ID(Entity, 0)\n");
-                else fprintf(h, "DEFINE_COMPONENT_ID(%s, %i)\n", type->name.type, id_counter++);
+                uint id = ref.name_to_id[type->name.iden];
+                fprintf(h, "DEFINE_COMPONENT_ID(%s, %i)\n", type->name.type, id);
             }
             else if (type->flags & ENTITY_FLAG_TAG) {
-                fprintf(h, "constexpr EntityFlags %s = %llu;\n", type->name.type, 1ull << id_counter++);
+                uint id = ref.name_to_id[type->name.iden];
+                fprintf(h, "constexpr EntityFlags %s = 1ull << %i;\n", type->name.type, id);
             }
         }
-
-        id_counter = base_id;
-
 
         fprintf(f, "#include \"%s\"\n", header_path);
         fprintf(f, "#include \"ecs/ecs.h\"\n");
@@ -1365,28 +1401,32 @@ namespace pixc::reflection::compiler {
         for (StructType* type : space->structs) {
             if (!(type->flags & COMPONENT_TAG)) continue;
 
-            uint id;
-            if (strcmp(type->name.iden, "Entity") == 0) id = 0;
-            else id = id_counter++;
+            uint id = ref.name_to_id[type->name.iden];
 
             Name& name = type->name;
-            //bool trivial = is_trivially_copyable(ref, type);
 
-            fprintf(f, "    components[%i].component_id = %i;\n", count, id);
-            fprintf(f, "    components[%i].type = get_%s_type();\n", count, name.full);
-            if (type->flags & ENTITY_FLAG_TAG) continue;
+            char component[100];
+            snprintf(component, 100, "    components[%i]", count);
+
+            fprintf(f, "%s.component_id = %i;\n", component, id);
+            fprintf(f, "%s.type = get_%s_type();\n", component, name.full);
+            if ((type->flags & ENTITY_FLAG_TAG) == ENTITY_FLAG_TAG) {
+                fprintf(f, "%s.kind = FLAG_COMPONENT;\n", component);
+                continue;
+            }
+            else if ((type->flags & SYSTEM_COMPONENT_TAG) == SYSTEM_COMPONENT_TAG) {
+                fprintf(f, "%s.kind = SYSTEM_COMPONENT;\n", component);
+            }
             
-            //fprintf(f, "    components.type[%i].component_size[%i] = sizeof(%s);\n", id, name.type);
-            fprintf(f, "    components[%i].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((%s*)data + i) %s(); };\n", count, name.type, name.type);
+            fprintf(f, "%s.funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((%s*)data + i) %s(); };\n", component, name.type, name.type);
 
             if (!is_trivially_copyable(ref, type)) {
-                
-                fprintf(f, "    components[%i].funcs.copy = [](void* dst, void* src, uint count) { for (uint i=0; i<count; i++) new ((%s*)dst + i) %s(((%s*)src)[i]); };\n", count, name.type, name.type, name.type);
-                fprintf(f, "    components[%i].funcs.destructor = [](void* ptr, uint count) { for (uint i=0; i<count; i++) ((%s*)ptr)[i].~%s(); };\n", count, name.type, name.iden);
-                fprintf(f, "    components[%i].funcs.serialize = [](SerializerBuffer& buffer, void* data, uint count) {\n", count);
+                fprintf(f, "%s.funcs.copy = [](void* dst, void* src, uint count) { for (uint i=0; i<count; i++) new ((%s*)dst + i) %s(((%s*)src)[i]); };\n", component, name.type, name.type, name.type);
+                fprintf(f, "%s.funcs.destructor = [](void* ptr, uint count) { for (uint i=0; i<count; i++) ((%s*)ptr)[i].~%s(); };\n", component, name.type, name.iden);
+                fprintf(f, "%s.funcs.serialize = [](SerializerBuffer& buffer, void* data, uint count) {\n", component);
                 fprintf(f, "        for (uint i = 0; i < count; i++) write_%s_to_buffer(buffer, ((%s*)data)[i]);\n", name.full, name.type);
                 fprintf(f, "    };\n");
-                fprintf(f, "    components[%i].funcs.deserialize = [](DeserializerBuffer& buffer, void* data, uint count) {\n", count);
+                fprintf(f, "%s.funcs.deserialize = [](DeserializerBuffer& buffer, void* data, uint count) {\n", component);
                 fprintf(f, "        for (uint i = 0; i < count; i++) read_%s_from_buffer(buffer, ((%s*)data)[i]);\n", name.full, name.type);
                 fprintf(f, "    };\n");
                 fprintf(f, "\n\n");
@@ -1771,6 +1811,9 @@ namespace pixc::reflection::compiler {
         if (strcmp(ref.linking, "ENGINE_API") != 0) { //todo allow adding includes via command line
             fprintf(file, "#include \"engine/types.h\"\n");
         }
+        else {
+            fprintf(header_file, "#include \"engine/core.h\"\n");
+        }
 
         fprintf(header_file, "#include \"core/memory/linear_allocator.h\"\n");
         fprintf(header_file, "#include \"core/serializer.h\"\n");
@@ -1806,6 +1849,8 @@ namespace pixc::reflection::compiler {
             fclose(type_info_file);
         }
 
+        assign_components_ids(ref);
+
         dump_reflector(file, header_file, ref, space, "", 0);
 
         dump_register_components(ref, file);
@@ -1827,6 +1872,7 @@ namespace pixc::reflection::compiler {
             FILE* type_info_file = fopen(type_output_path, "w");
             if (!type_info_file) {
                 printf("Could not open type_info file");
+                return;
             }
 
             fwrite(buffer.data, sizeof(char), buffer.index, type_info_file);
@@ -1841,7 +1887,7 @@ namespace pixc::reflection::compiler {
 using namespace pixc;
 using namespace pixc::reflection::compiler;
 
-#ifdef NE_WINDOWS
+#ifdef NE_PLATFORM_WINDOWS
 #define WIN32_MEAN_AND_LEAN
 #include <windows.h>
 

@@ -28,11 +28,12 @@ Modules::Modules(const char* app_name, const char* level_path, const char* engin
 	register_default_components(*world);
 	physics_system->init(*world);
 
-    window->width = 2048;
-    window->height = 2048;
+    window->width = 3840;
+    window->height = 2160;
 	window->title = app_name;
+	//
 	window->full_screen = false;
-	window->vSync = false;
+	window->vSync = true;
 
 	window->init();
 	input->init(*window);
@@ -50,27 +51,25 @@ Modules::Modules(const char* app_name, const char* level_path, const char* engin
 	vk_desc.min_log_severity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
 	vk_desc.validation_layers = validation_layers;
 	
-/*#ifdef NDEBUG
-	vk_desc.num_validation_layers = 0;
+#ifdef NE_DEBUG
+	vk_desc.num_validation_layers = 1;
 #else
 	vk_desc.num_validation_layers = 1;
-#endif*/
+#endif
 
-    vk_desc.num_validation_layers = 1;
-    //vk_desc.num_validation_layers = 0;
-
+	//todo move into hardware layer
 	vk_desc.device_features.samplerAnisotropy = VK_TRUE;
 	vk_desc.device_features.multiDrawIndirect = VK_TRUE;
 	vk_desc.device_features.fillModeNonSolid = VK_TRUE;
-    //vk_desc.device_features.wideLines = VK_TRUE;
+    vk_desc.device_features.wideLines = VK_TRUE;
 
 	make_RHI(vk_desc, *window);
 	make_AssetManager(level_path, engine_asset_path);
 
 	RenderSettings settings = {};
-    settings.display_resolution_width = 2048;
-	settings.display_resolution_height = 2048;
-	settings.shadow_resolution = 512;
+    settings.display_resolution_width = 3840;
+	settings.display_resolution_height = 2160;
+	settings.shadow.shadow_resolution = 2048;
 
 	renderer = make_Renderer(settings, *world);
 }

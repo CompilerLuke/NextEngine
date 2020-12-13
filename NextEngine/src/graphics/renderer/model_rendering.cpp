@@ -76,6 +76,7 @@ bool bit_set(uint* bit_visible, int i) {
 
 void render_meshes(const MeshBucketCache& mesh_buckets, CulledMeshBucket* buckets, RenderPass& ctx) {
 	bool depth_only = ctx.type == RenderPass::Depth;
+	bool depth_prepass = depth_only && ctx.id == RenderPass::Scene; //probably want a way of quering this
 	CommandBuffer& cmd_buffer = ctx.cmd_buffer;
 
 	bind_vertex_buffer(cmd_buffer, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4);
@@ -89,12 +90,12 @@ void render_meshes(const MeshBucketCache& mesh_buckets, CulledMeshBucket* bucket
 		if (count == 0) continue;
 
 		//todo performance: this goes through three levels of indirection
-		VertexBuffer vertex_buffer = get_vertex_buffer(bucket.model_id, bucket.mesh_id);
+		VertexBuffer vertex_buffer = get_vertex_buffer(bucket.model, bucket.mesh_id);
 		InstanceBuffer instance_offset = frame_alloc_instance_buffer<glm::mat4>(INSTANCE_LAYOUT_MAT4X4, instances.model_m);
 
-		bind_pipeline(cmd_buffer, depth_only ? bucket.depth_only_pipeline_id :  bucket.color_pipeline_id);
+		bind_pipeline(cmd_buffer, depth_prepass ? bucket.depth_prepass : depth_only ? bucket.depth_only_pipeline :  bucket.color_pipeline);
 		
-		if (!depth_only) bind_material(cmd_buffer, bucket.mat_id);
+		if (!depth_only) bind_material(cmd_buffer, bucket.mat);
 		
 		draw_mesh(cmd_buffer, vertex_buffer, instance_offset);
 	}

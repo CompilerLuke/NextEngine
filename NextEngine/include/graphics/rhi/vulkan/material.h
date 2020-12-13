@@ -12,6 +12,7 @@ struct Material {
 	UBOBuffer ubos[MAX_FRAMES_IN_FLIGHT] = {};
 	descriptor_set_handle sets[MAX_FRAMES_IN_FLIGHT] = {};
 	uint index = 0;
+	bool requires_depth_descriptor = true;
 };
 
 struct MaterialAllocator {

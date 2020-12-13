@@ -11,7 +11,6 @@
 #include "ecs/ecs.h"
 #include "gizmo.h"
 #include "picking.h"
-#include "graphics/pass/render_pass.h"
 #include "graphics/rhi/frame_buffer.h"
 #include "shaderGraph.h"
 #include "visualize_profiler.h"
@@ -21,7 +20,7 @@
 #include "graphics/assets/shader.h"
 #include "visualize_physics.h"
 #include "diffUtil.h"
-
+#include "terrain_tools/gpu_generation.h"
 
 struct World;
 struct Time;
@@ -81,12 +80,11 @@ struct Editor {
 	bool playing_game = false;
 	bool game_fullscreen = false;
 	bool exit = false;
+	bool open_settings = false;
     
     float scaling = 1.0;
 
 	Application game;
-
-	Transform fly_trans;
 
 	vector<Icon> icons;
 
@@ -106,6 +104,7 @@ struct Editor {
 	GizmoResources gizmo_resources;
     PhysicsResources physics_resources;
 	EditorViewport editor_viewport;
+	TerrainEditorResources terrain_resources;
     
     EditorActions actions;
 	

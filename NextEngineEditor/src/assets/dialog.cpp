@@ -2,7 +2,7 @@
 #include "graphics/rhi/window.h"
 #include "graphics/assets/assets.h"
 
-#ifdef NE_WINDOWS
+#ifdef NE_PLATFORM_WINDOWS
 #include <Windows.h>
 #include <commdlg.h>
 
@@ -15,7 +15,7 @@ string_buffer open_dialog(Window& window) {
 	memset(&ofn, 0, sizeof(ofn));
 	ofn.lStructSize = sizeof(ofn);
 
-	ofn.hwndOwner = (HWND)window.get_win32_window();
+	ofn.hwndOwner = (HWND)window.get_native_window();
 	ofn.lpstrFilter = "All Files\0*.*\0";
 	ofn.lpstrFile = filename;
 	ofn.nMaxFile = MAX_PATH;

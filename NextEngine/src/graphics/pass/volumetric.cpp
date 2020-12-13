@@ -1,101 +1,121 @@
 #include "graphics/pass/volumetric.h"
 #include "graphics/assets/assets.h"
 #include "graphics/rhi/primitives.h"
-#include "graphics/renderer/renderer.h"
-#include "graphics/renderer/lighting_system.h"
+#include "graphics/rhi/frame_buffer.h"
+#include "graphics/rhi/pipeline.h"
 
 #include "components/lights.h"
 #include "components/transform.h"
 #include "components/camera.h"
 #include "core/io/logger.h"
+#include "graphics/pass/shadow.h"
+#include "ecs/ecs.h"
 
-FogMap::FogMap(unsigned int width, unsigned int height) {
-	FramebufferDesc desc{ width, height };		
-	add_color_attachment(desc, &map); //Should this really be creating a handle to the actuall resource
+#include "core/time.h"
+
+ENGINE_API uint get_frame_index();
+
+void make_volumetric_resources(VolumetricResources& resources, texture_handle depth_prepass, ShadowResources& shadow, uint width, uint height) {
+	resources.volume_shader = load_Shader("shaders/screenspace.vert", "shaders/volumetric.frag");
 	
-	SamplerDesc sampler_desc;
-	sampler_desc.min_filter = Filter::Linear;
-	sampler_desc.mag_filter = Filter::Linear;
-	sampler_desc.wrap_u = Wrap::ClampToBorder;
-	sampler_desc.wrap_v = Wrap::ClampToBorder;
+	FramebufferDesc desc{ width, height };
+	AttachmentDesc& volumetric_lighting = add_color_attachment(desc, &resources.volumetric_map);
+	volumetric_lighting.format = TextureFormat::HDR;
+
+	AttachmentDesc& cloud_lighting = add_color_attachment(desc, &resources.cloud_map);
+	cloud_lighting.format = TextureFormat::HDR;
+
+	add_dependency(desc, FRAGMENT_STAGE, RenderPass::Scene);
 
 	make_Framebuffer(RenderPass::Volumetric, desc);
+
+	sampler_handle depthprepass_sampler = query_Sampler({});
+
+	for (uint i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		resources.ubo[i] = alloc_ubo_buffer(sizeof(VolumetricUBO), UBO_PERMANENT_MAP);
+
+		DescriptorDesc desc;
+		add_ubo(desc, FRAGMENT_STAGE, resources.ubo[i], 0);
+		add_combined_sampler(desc, FRAGMENT_STAGE, depthprepass_sampler, depth_prepass, 1);
+		add_shadow_descriptors(desc, shadow, i);
+
+		update_descriptor_set(resources.descriptor[i], desc);
+	}
+
+	GraphicsPipelineDesc pipeline_desc;
+	pipeline_desc.shader = resources.volume_shader;
+	pipeline_desc.render_pass = RenderPass::Volumetric;
+
+	resources.pipeline = query_Pipeline(pipeline_desc);
 }
 
-VolumetricPass::VolumetricPass(glm::vec2 size, texture_handle depth_prepass)
-	: 
-	  calc_fog(size.x / 2, size.y / 2),
-	  depth_prepass(depth_prepass),
-	  volume_shader(load_Shader("shaders/screenspace.vert", "shaders/volumetric.frag")),
-	  upsample_shader(load_Shader("shaders/screenspace.vert", "shaders/volumetric_upsample.frag"))
-{
-}
-
-void VolumetricPass::clear() {
-	calc_fog.fbo.bind();
-	calc_fog.fbo.clear_color(glm::vec4(0, 0, 0, 1));
-	calc_fog.fbo.unbind();
-}
-
-struct VolumeUBO {
-	glm::vec4 cam_position;
-	glm::vec4 sun_color;
-	glm::vec4 sun_direction;
-	glm::vec4 sun_position;
-	glm::mat4 to_light;
-	glm::mat4 to_world;
-	int cascade_level;
-	int cascade_end;
-};
-
-void render_with_cascade(VolumetricPass& pass, glm::vec3 cam_trans, DirLightUBO& dir_light_ubo,  RenderPass& render_params, ShadowParams& params) {
-
-	//Shader* volume_shader = assets.shaders.get(this->volume_shader);
+void fill_volumetric_ubo(VolumetricUBO& ubo, World& world, VolumetricSettings& settings, Viewport& viewport, EntityQuery query) {
+	ubo = {};
 	
-	//volume_shader->bind();
+	auto some_camera = world.first<Transform, Camera>(query); //todo looked up redundantly
+	auto some_light = world.first<Transform, DirLight>();
+	auto some_fog = world.first<Transform, FogVolume>();
+	auto some_cloud = world.first<Transform, CloudVolume>();
 
-	pass.calc_fog.fbo.bind();
+	if (some_camera && some_light && (some_fog || some_cloud)) {
+		auto [e1, cam_trans, cam] = *some_camera;
+		auto [e2, light_trans, light] = *some_light;
+
+		ubo.to_world = glm::inverse(viewport.proj * viewport.view);
+		ubo.cam_position = cam_trans.position;
+		ubo.sun_direction = glm::normalize(light.direction);
+		ubo.sun_color = light.color;
+		ubo.sun_position = light_trans.position;
+
+		if (some_fog) {
+			auto [e3, trans, fog] = *some_fog;
+			ubo.fog_steps = settings.fog_steps;
+			ubo.scatterColor = fog.forward_scatter_color;
+			ubo.fog_coefficient = fog.coefficient;
+			ubo.intensity = fog.intensity;
+		}
+
+		if (some_cloud) {
+			auto [e4, trans, cloud] = *some_cloud;
+			ubo.cloud_steps = settings.cloud_steps;
+			ubo.cloud_shadow_steps = settings.cloud_shadow_steps;
+			ubo.fog_cloud_shadow_steps = settings.fog_cloud_shadow_steps;
+			
+			ubo.light_absorbtion_in_cloud = cloud.light_absorbtion_in_cloud;
+			ubo.light_absorbtion_towards_sun = cloud.light_absorbtion_towards_sun;
+			ubo.forward_intensity = cloud.forward_scatter_intensity;
+			ubo.cloud_phase = cloud.phase;
+			ubo.shadow_darkness_threshold = cloud.shadow_darkness_threshold;
+			ubo.cloud_bottom = trans.position.y - cloud.size.y;
+			ubo.cloud_top = trans.position.y + cloud.size.y;
+			ubo.wind = cloud.wind;
+		}
+
+		ubo.time = Time::now();
+	}
+}
+
+void render_volumetric_pass(VolumetricResources& resources, const VolumetricUBO& ubo) {
+	if (ubo.fog_steps == 0 && ubo.cloud_steps == 0) {
+		RenderPass render_pass = begin_render_pass(RenderPass::Volumetric, glm::vec4(0,0,0,1));
+		end_render_pass(render_pass);
+		return;
+	}
 	
-	//glDisable(GL_DEPTH_TEST);
-	//glEnable(GL_BLEND);
+	uint frame_index = get_frame_index();
+	memcpy_ubo_buffer(resources.ubo[frame_index], &ubo);
 
-	//glBlendFunc(GL_ONE, GL_ONE);
+	RenderPass render_pass = begin_render_pass(RenderPass::Volumetric);
+	bind_pipeline(render_pass.cmd_buffer, resources.pipeline);
+	bind_descriptor(render_pass.cmd_buffer, 1, resources.descriptor[frame_index]);
+	draw_quad(render_pass.cmd_buffer);
 
-
-	//gl_bind_to(assets.textures, depth_prepass, 0);
-	//volume_shader->set_int("depthPrepass", 0);
-
-	//gl_bind_to(assets.textures, params.depth_map, 1);
-	//volume_shader->set_int("depthMap", 1);
-
-	//volume_shader->set_vec3("camPosition", cam_trans->position);
-	//volume_shader->set_vec3("sunColor", dir_light->color);
-	//volume_shader->set_vec3("sunDirection", dir_light->direction);
-	//volume_shader->set_vec3("sunPosition", dir_light_trans->position);
-
-	//volume_shader->set_float("gCascadeEndClipSpace[0]", params.in_range.x);
-	//volume_shader->set_float("gCascadeEndClipSpace[1]", params.in_range.y);
-
-	//volume_shader->set_mat4("toLight", params.to_light);
-	//volume_shader->set_mat4("toWorld", params.to_world);
-
-	//volume_shader->set_int("cascadeLevel", params.cascade);
-	//volume_shader->set_int("endCascade", render_params.cam->far_plane);
-
-	//glm::mat4 ident(1.0);
-	//volume_shader->set_mat4("model", ident);
-
-	//render_quad();
-
-	//glDisable(GL_BLEND);
-	//glEnable(GL_DEPTH_TEST);
-
-	pass.calc_fog.fbo.unbind();
+	end_render_pass(render_pass);
 }
 
 #include "graphics/assets/material.h"
 
-
+/*
 void render_upsampled(VolumetricPass& self, World& world, texture_handle current_frame, glm::mat4& proj_matrix) {
 	glm::mat4 depth_proj = glm::inverse(proj_matrix);
 	
@@ -139,4 +159,4 @@ void render_upsampled(VolumetricPass& self, World& world, texture_handle current
 	//render_quad();
 
 	//glEnable(GL_DEPTH_TEST);
-}
+//}

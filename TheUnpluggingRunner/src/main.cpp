@@ -86,38 +86,18 @@ void fiber_main(void* data) {
 	permanent_allocator = LinearAllocator(mb(500));
 	temporary_allocator = LinearAllocator(mb(500));
 
-	Context context = {};
+	Context& context = get_context();
 	context.temporary_allocator = &get_thread_local_temporary_allocator();
 	context.allocator = &default_allocator;
 
-	ScopedContext scoped_context(context);
-
-	const char* level = "/Users/antonellacalvia/Desktop/Coding/NextEngine/TheUnpluggingGame/data/level1/";
-    const char* engine_asset_path = "/Users/antonellacalvia/Desktop/Coding/NextEngine/NextEngine/data/";
-	const char* app_name = "The Unplugging";
-
-	//assert(get_worker_id() == 0);
-	//printf("Linear allocator %p on main fiber\n", &get_temporary_allocator());
+	const char* level = "CFD/data/test1/";
+    const char* engine_asset_path = "NextEngine/data/";
+	const char* app_name = "CFD";
 
 	Modules modules(app_name, level, engine_asset_path);
-    modules.window
-    
-#ifdef NE_RELEASE
-    const char* game_dll_path = "/Users/antonellacalvia/Desktop/Coding/NextEngine/bin/Release-macosx-x86_64/TheUnpluggingRunner/libTheUnpluggingGame.dylib";
-    const char* editor_dll_path = "/Users/antonellacalvia/Desktop/Coding/NextEngine/bin/Release-macosx-x86_64/TheUnpluggingRunner/libNextEngineEditor.dylib";
-#else
-    const char* game_dll_path = "/Users/antonellacalvia/Desktop/Coding/NextEngine/bin/Debug-macosx-x86_64/TheUnpluggingRunner/libTheUnpluggingGame.dylib";
-    const char* editor_dll_path = "/Users/antonellacalvia/Desktop/Coding/NextEngine/bin/Debug-macosx-x86_64/TheUnpluggingRunner/libNextEngineEditor.dylib";
-#endif
 
-    /*
-#ifdef _DEBUG
-	const char* game_dll_path = "C:\\Users\\User\\source\\repos\\NextEngine\\x64\\Debug\\TheUnpluggingGame.dll";
-	const char* engine_dll_path = "C:\\Users\\User\\source\\repos\\NextEngine\\x64\\Debug\\NextEngineEditor.dll";
-#else
-	const char* game_dll_path = "C:\\Users\\User\\source\\repos\\NextEngine\\x64\\Release\\TheUnpluggingGame.dll";
-	const char* engine_dll_path = "C:\\Users\\User\\source\\repos\\NextEngine\\x64\\Release\\NextEngineEditor.dll";
-#endif*/
+    const char* game_dll_path = "bin/" NE_BUILD_DIR "/CFD/CFD.dll";
+    const char* editor_dll_path = "bin/" NE_BUILD_DIR "/TheUnpluggingRunner/NextEngineEditor.dll";
 
 #ifdef BUILD_STANDALONE
 	Application game(game_dll_path);
@@ -136,6 +116,10 @@ void init_workers(void*) {
 	//printf("Initialized worker %i\n", get_worker_id());
 	get_thread_local_permanent_allocator() = LinearAllocator(mb(10));
 	get_thread_local_temporary_allocator() = LinearAllocator(mb(100));
+
+	Context& ctx = get_context();
+	ctx.allocator = &default_allocator;
+	ctx.temporary_allocator = &get_thread_local_temporary_allocator();
 
 	//printf("Linear allocator %p on fiber %i\n", &get_thread_local_temporary_allocator(), get_worker_id());
 }

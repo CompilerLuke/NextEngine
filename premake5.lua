@@ -3,7 +3,7 @@
 require "premake_extension"
 
 workspace "NextEngine"
-	architecture "x64"
+	architecture "x86_64"
 	startproject "TheUnpluggingRunner"
 
 	configurations {
@@ -16,6 +16,9 @@ workspace "NextEngine"
 		"MultiProcessorCompile"
 	}
 
+	runtime "Release"
+	defines "_CRT_SECURE_NO_WARNINGS"
+
 	filter "system:windows"
 		staticruntime "Off"
 		systemversion "latest"
@@ -24,6 +27,7 @@ workspace "NextEngine"
         systemversion "10.15.5"
 
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
+freetype = false
 
 function pch()
 	pchheader "stdafx.h"
@@ -73,7 +77,6 @@ function default_config()
 
     filter "system:windows"
     		staticruntime "Off"
-    		runtime "Release"
             unitybuild "on"
 
     		defines {
@@ -118,6 +121,37 @@ project "NextCore"
 	dll_config()
 
 
+project "ReflectionTool"
+	location "ReflectionTool"
+	kind "ConsoleApp"
+
+	includedirs {
+		"NextCore/include",
+		"vendor/glm",
+	}
+
+	if os.istarget("macosx") then
+	    postbuildcommands {
+	        "cp ../bin/" .. outputdir .. "/NextCore/libNextCore.dylib ../bin/" .. outputdir .. "/%{prj.name}/libNextCore.dylib",
+        }
+	    reflection_exe = "../bin/" .. outputdir .. "/ReflectionTool/ReflectionTool"
+	else
+		postbuildcommands {
+			"{COPY} ../bin/" .. outputdir .. "/NextCore/NextCore.dll ../bin/" .. outputdir .. "/%{prj.name}",
+        }
+	    reflection_exe = '"../bin/' .. outputdir .. '/ReflectionTool/ReflectionTool.exe"'
+    end
+
+	links 
+	{
+		"NextCore",
+	}
+
+	-- $(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) lister.h -d assets -o src\generatedts/terrain.h components/lights.h components/grass.h graphics\rhi\forward.h engine/handle.h physics/physics.h -h engine/types -c ecs/component_ids.h -o src/generated -l ENGINE_API
+
+	default_config()
+	set_rpath()
+
 VULKAN_SDK = os.getenv("VULKAN_SDK")
 
 project "NextEngine"
@@ -126,9 +160,16 @@ project "NextEngine"
 	files {
 		"%{prj.name}/vendor/spirv-reflect/*.cpp",
 		"%{prj.name}/vendor/spirv-reflect/*.h",
-		"%{prj.name}/vendor/imgui/**.cpp",
-		"%{prj.name}/vendor/imgui/**.h",
+		"%{prj.name}/vendor/imgui/*.cpp",
+		"%{prj.name}/vendor/imgui/*.h",
 	}
+
+	if freetype then
+		files {
+			"%{prj.name}/vendor/imgui/misc/freetype/*.cpp",
+			"%{prj.name}/vendor/imgui/misc/freetype/*.h",
+		}
+	end 
 	
 	includedirs {
 		"NextCore/include"
@@ -155,10 +196,14 @@ project "NextEngine"
 		"LinearMath"
 	}
 
+	print(reflection_exe)
 
-	-- $(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) -d graphics/assets -d ecs components/transform.h components/camera.h components/flyover.h components/skybox.h components/terrain.h components/lights.h components/grass.h graphics\rhi\forward.h engine/handle.h physics/physics.h -h engine/types -c ecs/component_ids.h -o src/generated -l ENGINE_API
+	prebuildcommands (reflection_exe .. ' -b "." -i "include" -d graphics/assets -d ecs components/transform.h components/camera.h components/flyover.h components/skybox.h components/terrain.h components/lights.h components/grass.h graphics/rhi/forward.h engine/handle.h physics/physics.h graphics/pass/volumetric.h -h engine/types -c ecs/component_ids.h -o src/generated -l ENGINE_API')
 
 	defines "RENDER_API_VULKAN"
+	if freetype then 
+	    defines "IMGUI_FREETYPE"
+	end 
 
 	dll_config()
 	
@@ -170,11 +215,14 @@ project "NextEngine"
         sysincludedirs "/usr/local/Cellar/freetype/2.10.2/include/freetype2"
         libdirs {
             VULKAN_SDK .. "/lib/",
-            "/usr/local/Cellar/freetype/2.10.2/lib" --maybe it is better to include freetype through git submodules
         }
+
+		if freetype then 
+			libdirs { "/usr/local/Cellar/freetype/2.10.2/lib" } --maybe it is better to include freetype through git submodules
+		end 
+
         links {"shaderc_shared", "freetype" }
         linkoptions {"-framework Foundation", "-framework Cocoa", "-framework IOKit"}
-        defines "IMGUI_FREETYPE"
 
     filter "system:windows"
         links "%{VULKAN_SDK}/lib/shaderc_combined.lib"
@@ -215,35 +263,6 @@ project "NextEngineEditor"
 	    optimize "Full"
 		dontincludeinunity "On"
 
-project "ReflectionTool"
-	location "ReflectionTool"
-	kind "ConsoleApp"
-	entrypoint "main"
-
-	includedirs {
-		"NextCore/include",
-		"vendor/glm",
-	}
-
-	if os.istarget("macosx") then
-	    postbuildcommands {
-	        "cp ../bin/" .. outputdir .. "/NextCore/libNextCore.dylib ../bin/" .. outputdir .. "/%{prj.name}/libNextCore.dylib",
-        }
-	    reflection_exe = "../bin/" .. outputdir .. "/ReflectionTool/ReflectionTool"
-	else
-	    reflection_exe = "../bin/" .. outputdir .. "/ReflectionTool/ReflectionTool.exe"
-    end
-
-	links 
-	{
-		"NextCore",
-	}
-
-	-- $(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) lister.h -d assets -o src\generatedts/terrain.h components/lights.h components/grass.h graphics\rhi\forward.h engine/handle.h physics/physics.h -h engine/types -c ecs/component_ids.h -o src/generated -l ENGINE_API
-
-	default_config()
-	set_rpath()
-
 project "ChemistryProject"
 	location "ChemistryProject"
 
@@ -256,7 +275,24 @@ project "ChemistryProject"
 	includedirs { "NextEngine/include", "NextCore/include" }
 	links { "NextCore", "NextEngine" }
 
-	prebuildcommands (reflection_exe .. ' -b "." -i "include" -d "" -c "chemistry_component_ids.h" -o src/generated')
+	prebuildcommands (reflection_exe .. ' -b "." -i "include" rotating.h gold_foil.h emission.h -c "chemistry_component_ids.h" -o src/generated')
+
+	-- $(SolutionDir)x64\Release\ReflectionTool.exe  -b $(ProjectDir) -i "" -d "" -o generated
+	dll_config()
+
+project "CFD"
+	location "CFD"
+
+	files {
+	    "%{prj.name}/include/generated.h",
+	    "%{prj.name}/include/cfd_ids.h",
+	    "%{prj.name}/src/generated.cpp"
+	}
+
+	includedirs { "NextEngine/include", "NextCore/include" }
+	links { "NextCore", "NextEngine" }
+
+	prebuildcommands (reflection_exe .. ' -b "." -i "include" components.h -c "cfd_ids.h" -o src/generated')
 
 	-- $(SolutionDir)x64\Release\ReflectionTool.exe  -b $(ProjectDir) -i "" -d "" -o generated
 	dll_config()
@@ -295,8 +331,7 @@ project "TheUnpluggingGame"
 
 project "TheUnpluggingRunner"
 	location "TheUnpluggingRunner" 
-	kind "WindowedApp"
-	entrypoint "main"
+	kind "ConsoleApp"
 
 	includedirs {
         "NextEngine/include",
@@ -314,11 +349,12 @@ project "TheUnpluggingRunner"
 		"NextEngine",
 	}
 
+	defines ('NE_BUILD_DIR="' .. outputdir .. '"')
+
 	--$(SolutionDir)x64\Release\ReflectionTool.exe -b $(ProjectDir) lister.h -d assets -o src\generatedts/terrain.h components/lights.h components/grass.h graphics\rhi\forward.h engine/handle.h physics/physics.h -h engine/types -c ecs/component_ids.h -o src/generated -l ENGINE_API
 
     pch()
 	default_config()
-
 
 group "Dependencies"
 	include "NextEngine/vendor/assimp"

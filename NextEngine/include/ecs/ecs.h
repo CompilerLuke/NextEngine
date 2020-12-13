@@ -85,6 +85,17 @@ struct maybe {
 struct SerializerBuffer;
 struct DeserializerBuffer;
 
+using DirtyComponentHierarchyMask = uint;
+const DirtyComponentHierarchyMask DIRTY_COMPONENT_HIERARCHY = 1 << 0;
+const DirtyComponentHierarchyMask ADDED_COMPONENT_HIERARCHY = 1 << 1;
+const DirtyComponentHierarchyMask REMOVED_COMPONENT_HIERARCHY = 1 << 2;
+
+enum ComponentKind {
+	REGULAR_COMPONENT,
+	FLAG_COMPONENT,
+	SYSTEM_COMPONENT
+};
+
 namespace refl {
 	struct Struct;
     struct Type;
@@ -108,17 +119,20 @@ struct RegisterComponent {
     uint component_id;
     refl::Type* type;
     ComponentLifetimeFunc funcs;
+	ComponentKind kind;
 };
-
 
 struct World {
 	Archetype id_to_arch[MAX_ENTITIES] = {};
 	void* id_to_ptr[MAX_COMPONENTS][MAX_ENTITIES] = {};
+	uint dirty_components[MAX_COMPONENTS][MAX_ENTITIES / 16];
 	hash_map<Archetype, ArchetypeStore, ARCHETYPE_HASH> arches;
 
 	refl::Struct* component_type[MAX_COMPONENTS] = {};
 	u64 component_size[MAX_COMPONENTS] = {};
 	ComponentLifetimeFunc component_lifetime_funcs[MAX_COMPONENTS] = {};
+	ComponentKind component_kind[MAX_COMPONENTS] = {};
+	Archetype system_component_mask = 0;
 
 	u8* world_memory = NULL;
 	u64 world_memory_offset = 0;
@@ -126,17 +140,16 @@ struct World {
 
 	BlockHeader* block_free_list = NULL;
 
-	//todo recycle entities
 	array<MAX_ENTITIES, ID> free_ids;
 
 	World(u64 memory) : world_memory(new u8[memory]), world_memory_size(memory) {
-		for (int i = MAX_ENTITIES - 1; i >= 0; i--) {
+		for (int i = MAX_ENTITIES - 1; i > 0; i--) {
 			free_ids.append(i);
 		}
 	}
     
-    void register_components(slice<struct RegisterComponent> components);
-    ID clone(ID id);
+    ENGINE_API void register_components(slice<struct RegisterComponent> components);
+    ENGINE_API ID clone(ID id);
 
 	void clear() {
 		world_memory_offset = 0;
@@ -147,37 +160,7 @@ struct World {
 	}
 
 	World(const World& world) = delete;
-
-    World& operator=(const World& from);
-
-	/*template<typename T>
-	void add_component() {
-		int component_id = type_id<T>();
-
-		component_type[component_id] = (refl::Struct*)refl_type(T);
-		component_size[component_id] = sizeof(T);
-
-		component_lifetime_funcs[component_id].constructor = [](void* ptr) { new (ptr) T(); };
-
-		if constexpr (!std::is_trivially_copyable<T>::value) {
-			component_lifetime_funcs[component_id].copy = [](void* dst, void* src) { new (dst) T(*(T*)src); };
-			component_lifetime_funcs[component_id].destructor = [](void* ptr) { ((T*)ptr)->~T(); };
-		}
-
-		component_lifetime_funcs[component_id].serialize = [](SerializerBuffer& buffer, void* data, uint count) {
-			for (uint i = 0; i < count; i++) {
-				write_to_buffer<T>(buffer, ((T*)data)[i]);
-			}
-		};
-
-		component_lifetime_funcs[component_id].deserialize = [](DeserializerBuffer& buffer, void* data, uint count) {
-			for (uint i = 0; i < count; i++) {
-
-				read_from_buffer<T>(buffer, &((T*)data)[i]);
-			}
-		};
-	}*/
-
+    ENGINE_API World& operator=(const World& from);
 
 	BlockHeader* alloc_block() {
 		BlockHeader* block = (BlockHeader*)(world_memory + world_memory_offset);
@@ -228,9 +211,7 @@ struct World {
 	}
 
 	ArchetypeStore& make_archetype(Archetype arch) {
-		int index = arches.keys.add(arch);
-
-		ArchetypeStore& store = arches.values[index];
+		ArchetypeStore& store = arches[arch];
 		store = {};
 
 		add_block(store);
@@ -239,8 +220,6 @@ struct World {
 		for (uint i = 0; i < MAX_COMPONENTS; i++) {
 			if (arch & (1ull << i)) combined_size += component_size[i];
 		}
-
-		//combined_size++; //reserve enough space for change list, wastes a little bit
 
 		u64 max_entities_per_block = (BLOCK_SIZE - sizeof(BlockHeader)) / combined_size;
 		store.max_per_block = max_entities_per_block;
@@ -269,7 +248,7 @@ struct World {
 	}
 
 	ArchetypeStore& find_archetype(Archetype arch) {
-		int index = arches.keys.index(arch);
+		int index = arches.index(arch);
 
 		if (index == -1) return make_archetype(arch);
 		else return arches.values[index];
@@ -408,6 +387,7 @@ struct World {
             release_block(block);
 
             store.blocks = previous_block;
+			assert(store.block_count != 0);
 			store.block_count--; /* todo why does this field exist! */
 		}
 	}
@@ -468,9 +448,8 @@ struct World {
 
 		if (new_store) {
 			assert(new_store->entity_count_last_block != 0);
-			printf("ADDING ENTITY TO ARCHETYPE %ul count: %i\n", to, new_store ? new_store->entity_count_last_block : 0);
+			//printf("ADDING ENTITY TO ARCHETYPE %ul count: %i\n", to, new_store ? new_store->entity_count_last_block : 0);
 		}
-
 
 		for (uint i = 0; i < MAX_COMPONENTS; i++) {
 			Archetype flag = 1ull << i;
@@ -496,7 +475,8 @@ struct World {
 
 	void free_by_id(ID id, bool call_destructor = true) { //todo handle id not existing!
 		Archetype arch = id_to_arch[id];
-		change_archetype(id, arch, 0, call_destructor);
+		assert(arch != 0);
+		change_archetype(id, arch, system_component_mask, call_destructor); //keep system components alive
         free_ids.append(id);
 	}
 
@@ -574,7 +554,7 @@ struct World {
 			auto& arches = world.arches;
 
 			while (store_index < ARCHETYPE_HASH) {
-				Archetype arch = arches.keys.keys[store_index];
+				Archetype arch = arches.keys[store_index];
 				bool not_empty = arches.values[store_index].blocks;
 				
 				if (not_empty && (arch & query.all) == query.all && (query.some == 0 || (arch & query.some) != 0) && (arch & query.none) == 0) { // || !world.arches.values[store_index].blocks
@@ -672,7 +652,7 @@ struct World {
 
 	void begin_frame() {
 		for (uint i = 0; i < ARCHETYPE_HASH; i++) {
-			if (!arches.keys.is_full(i)) continue;
+			if (!arches.is_full(i)) continue;
 
 			ArchetypeStore& store = arches.values[i];
 			uint count = store.entity_count_last_block;

@@ -8,6 +8,9 @@
 
 #include "components/camera.h"
 #include "graphics/rhi/draw.h"
+#include "graphics/pass/shadow.h"
+
+ENGINE_API uint get_frame_index();
 
 //env_probe_handle make_EnvironmentProbe(cubemap_handle cubemap_handle) {
 //	EnvProbe env_probe;
@@ -24,27 +27,33 @@ void bake_scene_lighting(LightingSystem& lighting_system, World& world, EntityQu
 }
 
 
-void make_lighting_system(LightingSystem& system, SkyLight& skylight) {
-	system.light_ubo = alloc_ubo_buffer(sizeof(LightUBO), UBO_PERMANENT_MAP);
+
+void make_lighting_system(LightingSystem& system, ShadowResources& shadow, SkyLight& skylight) {
 	system.brdf_LUT = compute_brdf_lut(512);
 
-	DescriptorDesc desc;
-	add_ubo(desc, FRAGMENT_STAGE, system.light_ubo, 0);
+	SamplerDesc linear_sampler_desc;
+	linear_sampler_desc.mag_filter = Filter::Linear;
+	linear_sampler_desc.min_filter = Filter::Linear;
+	linear_sampler_desc.mip_mode = Filter::Linear;
+	linear_sampler_desc.wrap_u = Wrap::ClampToBorder;
+	linear_sampler_desc.wrap_v = Wrap::ClampToBorder;
 
-	SamplerDesc sampler_desc;
-	sampler_desc.mag_filter = Filter::Linear;
-	sampler_desc.min_filter = Filter::Linear;
-	sampler_desc.mip_mode = Filter::Linear;
-	sampler_desc.wrap_u = Wrap::ClampToBorder;
-	sampler_desc.wrap_v = Wrap::ClampToBorder;
+	sampler_handle linear_sampler = query_Sampler(linear_sampler_desc);
 
-	sampler_handle sampler = query_Sampler(sampler_desc);
+	for (uint i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		system.light_ubo[i] = alloc_ubo_buffer(sizeof(LightUBO), UBO_PERMANENT_MAP);
 
-	add_combined_sampler(desc, FRAGMENT_STAGE, sampler, skylight.irradiance, 1);
-	add_combined_sampler(desc, FRAGMENT_STAGE, sampler, skylight.prefilter, 2);
-	add_combined_sampler(desc, FRAGMENT_STAGE, sampler, system.brdf_LUT, 3);
+		DescriptorDesc desc;
+		add_ubo(desc, FRAGMENT_STAGE, system.light_ubo[i], 0);
 
-	update_descriptor_set(system.pbr_descriptor, desc);
+		add_combined_sampler(desc, FRAGMENT_STAGE, linear_sampler, skylight.irradiance, 1);
+		add_combined_sampler(desc, FRAGMENT_STAGE, linear_sampler, skylight.prefilter, 2);
+		add_combined_sampler(desc, FRAGMENT_STAGE, linear_sampler, system.brdf_LUT, 3);
+
+		add_shadow_descriptors(desc, shadow, i);
+
+		update_descriptor_set(system.pbr_descriptor[i], desc);
+	}
 }
 
 void fill_light_ubo(LightUBO& light_ubo, World& world, Viewport& viewport, EntityQuery mask) {
@@ -71,5 +80,5 @@ void fill_light_ubo(LightUBO& light_ubo, World& world, Viewport& viewport, Entit
 }
 
 void bind_color_pass_lighting(CommandBuffer& cmd_buffer, LightingSystem& system) {
-	bind_descriptor(cmd_buffer, 2, system.pbr_descriptor);
+	bind_descriptor(cmd_buffer, 2, system.pbr_descriptor[get_frame_index()]);
 }

@@ -1,8 +1,19 @@
 //ASYNC COPY
 
-#include "graphics/rhi/vulkan/async_cpu_copy.h"
 #include "graphics/rhi/vulkan/vulkan.h"
+#include "graphics/rhi/async_cpu_copy.h"
 #include "graphics/assets/assets.h"
+#include "graphics/rhi/vulkan/volk.h"
+#include "graphics/rhi/vulkan/buffer.h"
+#include "graphics/rhi/vulkan/draw.h"
+
+struct AsyncCopyResources {
+	VkDevice device;
+	VkPhysicalDevice physical_device;
+	HostVisibleBuffer host_visible;
+	VkFence fence;
+	int transfer_frame = -1;
+};
 
 AsyncCopyResources* make_async_copy_resources(uint size) {
     AsyncCopyResources& resources = *PERMANENT_ALLOC(AsyncCopyResources);
@@ -21,8 +32,8 @@ void destroy_async_copy_resources(AsyncCopyResources& resources) {
 	vkDestroyFence(device, resources.fence, nullptr);
 }
 
-//this is somewhat hacky but it will only send a transfer once the last one has been received
-void async_copy_image(VkCommandBuffer cmd_buffer, texture_handle image_handle, AsyncCopyResources& copy) {
+//it will only send a transfer once the last one has been received
+void async_copy_image(CommandBuffer& cmd_buffer, texture_handle image_handle, AsyncCopyResources& copy) {
 	if (copy.transfer_frame != -1) return;
 
 	Texture& texture = *get_Texture(image_handle);

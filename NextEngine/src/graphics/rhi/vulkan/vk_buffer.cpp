@@ -571,7 +571,7 @@ void make_VertexStreaming(VertexStreaming& self, VkDevice device, VkPhysicalDevi
 	}
 
 	//Allocate Buffers
-	self.staging_buffer = make_HostVisibleBuffer(device, self.physical_device, 0, mb(50));
+	self.staging_buffer = make_HostVisibleBuffer(device, self.physical_device, 0, mb(200));
 
 	make_Buffer(device, physical_device, vertex_offset, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, self.vertex_buffer, self.vertex_buffer_memory);
 	make_Buffer(device, physical_device, index_offset, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, self.index_buffer, self.index_buffer_memory);

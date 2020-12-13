@@ -36,7 +36,7 @@ RenderPass begin_preview_pass(AssetPreviewResources& self, Camera& camera, Trans
 	bind_vertex_buffer(render_pass.cmd_buffer, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4);
 	bind_pipeline_layout(render_pass.cmd_buffer, self.pipeline_layout);
 	bind_descriptor(render_pass.cmd_buffer, 0, self.pass_descriptor[frame_index]);
-	bind_descriptor(render_pass.cmd_buffer, 1, self.pbr_descriptor);
+	bind_descriptor(render_pass.cmd_buffer, 1, self.pbr_descriptor[frame_index]);
 
 	update_camera_matrices(trans, camera, render_pass.viewport);
 
@@ -157,14 +157,15 @@ void generate_free_atlas_slots(array<MAX_ASSETS, glm::vec2>& free_atlas_slots) {
 }
 
 void make_AssetPreviewRenderData(AssetPreviewResources& resources, Renderer& renderer) {
-	resources.pbr_descriptor = renderer.lighting_system.pbr_descriptor;
-
 	{
 		FramebufferDesc desc{ 512, 512 };
 		AttachmentDesc& color_attachment = add_color_attachment(desc, &resources.preview_map);
 		color_attachment.final_layout = TextureLayout::ColorAttachmentOptimal;
 		color_attachment.usage |= TextureUsage::TransferSrc;
 
+		for (uint i = 0; i < MAX_SHADOW_CASCADES; i++) {
+			add_dependency(desc, FRAGMENT_STAGE, (RenderPass::ID)(RenderPass::Shadow0 + i));
+		}
 
 		make_Framebuffer(PreviewPass, desc);
 	}
@@ -176,6 +177,7 @@ void make_AssetPreviewRenderData(AssetPreviewResources& resources, Renderer& ren
 	}
 
 	for (uint i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		resources.pbr_descriptor[i] = renderer.lighting_system.pbr_descriptor[i]; //todo make a copy of the descriptor
 		resources.pass_ubo[i] = alloc_ubo_buffer(sizeof(PassUBO), UBO_PERMANENT_MAP);
 		resources.simulation_ubo[i] = alloc_ubo_buffer(sizeof(SimulationUBO), UBO_PERMANENT_MAP);
 		//todo wouldn't the renderer simulation ubo suffice, no need to allocate a second one
@@ -186,7 +188,7 @@ void make_AssetPreviewRenderData(AssetPreviewResources& resources, Renderer& ren
 		update_descriptor_set(resources.pass_descriptor[i], descriptor_desc);
 	}
 
-	array<2, descriptor_set_handle> descriptor_layouts = { resources.pass_descriptor[0], resources.pbr_descriptor };
+	array<2, descriptor_set_handle> descriptor_layouts = { resources.pass_descriptor[0], resources.pbr_descriptor[0] };
 	resources.pipeline_layout = query_Layout(descriptor_layouts);
 
 	generate_free_atlas_slots(resources.free_atlas_slot);

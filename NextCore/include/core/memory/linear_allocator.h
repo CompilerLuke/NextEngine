@@ -81,7 +81,7 @@ CORE_API LinearAllocator& get_thread_local_permanent_allocator();
 
 #define TEMPORARY_ALLOC(name, ...) new (get_temporary_allocator().allocate(sizeof(name))) name(__VA_ARGS__)
 #define TEMPORARY_ARRAY(name, num) new (get_temporary_allocator().allocate(sizeof(name) * num)) name[num]
-#define TEMPORARY_ZEROED_ARRAY(name, num) new (get_temporary_allocator().allocate(sizeof(name) * num)) name[num]{0}
+#define TEMPORARY_ZEROED_ARRAY(name, num) new (get_temporary_allocator().allocate(sizeof(name) * num)) name[num]()
 
 #define PERMANENT_ALLOC(name, ...) new (get_permanent_allocator().allocate(sizeof(name))) name(__VA_ARGS__)
 #define PERMANENT_ARRAY(name, num) new (get_permanent_allocator().allocate(sizeof(name) * num)) name[num]

@@ -3,7 +3,6 @@
 #ifndef IS_DEPTH_ONLY
 layout (location = 0) out vec4 FragColor;
 
-
 #include shaders/pbr_helper.glsl
 
 //todo not a big fan of putting tiling in the fragment shader
@@ -21,6 +20,7 @@ struct Material {
 };
 
 #endif
+
 
 void main() {
 	#ifndef IS_DEPTH_ONLY
@@ -40,4 +40,3 @@ void main() {
 
 	#endif 
 }
-

@@ -14,12 +14,12 @@ struct string_buffer {
 		return length;
 	}
 
-	inline void reserve(unsigned int amount) {
-		if (amount > this->capacity) {
-			char* data = (char*)allocator->allocate(sizeof(char) * (amount + 1));
+	inline void reserve(uint amount) {
+		if (amount > capacity) {
+			char* data = (char*)allocator->allocate(sizeof(char) * ((size_t)amount + 1));
 
 			if (this->length > 0) {
-				memcpy(data, this->data, sizeof(char) * (this->length + 1));
+				memcpy(data, this->data, sizeof(char) * ((size_t)length + 1));
 				allocator->deallocate(this->data);
 			}
 
@@ -29,11 +29,11 @@ struct string_buffer {
 	}
 
 	inline string_buffer(const char* str) {
-		unsigned int length = strlen(str);
+		uint length = (uint)strlen(str);
 		if (length == 0) return;
 		this->reserve(length);
 		this->length = length;
-		memcpy(this->data, str, sizeof(char) * (length + 1));
+		memcpy(this->data, str, sizeof(char) * ((size_t)length + 1));
 	}
 
 	inline string_buffer(string_view str) {
@@ -154,7 +154,7 @@ struct string_buffer {
 		string_buffer new_str;
 		new_str.reserve(length);
 
-		for (int i = 0; i < length; i++) {
+		for (uint i = 0; i < length; i++) {
 			new_str.data[i] = to_lower_case(data[i]);
 		}
 

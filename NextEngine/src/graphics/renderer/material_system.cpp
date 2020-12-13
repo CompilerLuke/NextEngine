@@ -111,3 +111,12 @@ void mat_channel4(MaterialDesc& desc, string_view name, glm::vec4 value, texture
 
 	desc.params.append(param);
 }
+
+material_handle mat_by_index(Materials& materials, uint material_id) {
+	if (materials.materials.length <= material_id) { //todo add this as a preprocess pass
+		materials.materials.resize(material_id + 1);
+	}
+	material_handle mat_handle = materials.materials[material_id];
+	if (mat_handle.id == INVALID_HANDLE) mat_handle = default_materials.missing;
+	return mat_handle;
+}

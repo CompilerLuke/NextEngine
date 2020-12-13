@@ -31,8 +31,7 @@ VkCompareOp vk_depth_compare_op(DrawCommandState state) {
 VkColorComponentFlags vk_color_mask(DrawCommandState state) {
 	VkColorComponentFlags color_masks[2] = { VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, 0 };
 	
-    return color_masks[0]; //Investigate why 0 isn't supported
-    //return color_masks[decode_DrawState(ColorMask_Offset, state, 2)];
+    return color_masks[decode_DrawState(ColorMask_Offset, state, 1)];
 }
 
 bool vk_alpha_blend(DrawCommandState state) {
@@ -53,6 +52,20 @@ VkBlendFactor vk_src_alpha_blend_factor(DrawCommandState state) {
 VkBlendFactor vk_dst_alpha_blend_factor(DrawCommandState state) {
 	VkBlendFactor factor[] = { VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA };
 	return factor[decode_DrawState(BlendMode_Offset, state, 2)];
+}
+
+VkPrimitiveTopology vk_primitive_topology(DrawCommandState state) {
+	VkPrimitiveTopology topology[] = {
+		VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+		VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
+		VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN,
+		VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
+		VK_PRIMITIVE_TOPOLOGY_LINE_LIST,
+		VK_PRIMITIVE_TOPOLOGY_LINE_STRIP
+	};
+	VkPrimitiveTopology result = topology[decode_DrawState(PrimitiveType_Offset, state, 3)];
+	assert(result == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST || result == VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+	return result;
 }
 
 bool vk_depth_write(DrawCommandState state) {
@@ -114,6 +127,8 @@ VkPipelineLayout get_pipeline_layout(PipelineCache& cache, pipeline_layout_handl
 
 //todo generate graphics pipeline directly from PipelineDesc, instead of first converting to VkPipelineDesc
 void make_GraphicsPipeline(VkDevice device, VkPipelineDesc& desc, VkPipelineLayout* pipeline_layout, VkPipeline* pipeline) {
+	VkPhysicalDeviceFeatures& device_features = rhi.device.device_features; //todo take in as parameter
+	
 	VkPipelineShaderStageCreateInfo vertShaderStageInfo = {};
 	vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
@@ -139,7 +154,7 @@ void make_GraphicsPipeline(VkDevice device, VkPipelineDesc& desc, VkPipelineLayo
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAssembly.topology = desc.topology;
 	inputAssembly.primitiveRestartEnable = VK_FALSE;
 
 	VkViewport viewport = {};
@@ -166,10 +181,10 @@ void make_GraphicsPipeline(VkDevice device, VkPipelineDesc& desc, VkPipelineLayo
 	rasterizer.depthClampEnable = VK_FALSE;
 	rasterizer.rasterizerDiscardEnable = VK_FALSE;
 	rasterizer.polygonMode = desc.polygon_mode;
-    rasterizer.lineWidth = 1.0; //todo add check for device support desc.line_width;
-	rasterizer.cullMode = desc.cull_mode; // VK_CULL_MODE_BACK_BIT;
+    rasterizer.lineWidth = device_features.wideLines ? desc.line_width : 1.0; 
+	rasterizer.cullMode = desc.cull_mode;
 	rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
-	rasterizer.depthBiasEnable = VK_FALSE;
+	rasterizer.depthBiasEnable = desc.depth_bias;
 	rasterizer.depthBiasConstantFactor = 0;
 	rasterizer.depthBiasClamp = 0.0f;
 	rasterizer.depthBiasSlopeFactor = 0.0f;
@@ -183,21 +198,24 @@ void make_GraphicsPipeline(VkDevice device, VkPipelineDesc& desc, VkPipelineLayo
 	multisampling.alphaToCoverageEnable = VK_FALSE;
 	multisampling.alphaToOneEnable = VK_FALSE;
 
-	VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
-	colorBlendAttachment.colorWriteMask = desc.color_write_mask;
-	colorBlendAttachment.blendEnable = desc.alpha_blend_enable;
-	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;   //VK_BLEND_FACTOR_ONE;
-	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA; //VK_BLEND_FACTOR_ZERO;
-	colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD; //VK_BLEND_OP_ADD;
-	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA; //desc.src_blend_factor;
-	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; //desc.dst_blend_factor;
-	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD; //desc.blend_op;
+
+	VkPipelineColorBlendAttachmentState colorBlendAttachment[MAX_ATTACHMENTS] = {};
+	for (uint i = 0; i < desc.color_attachments; i++) {
+		colorBlendAttachment[i].colorWriteMask = desc.color_write_mask;
+		colorBlendAttachment[i].blendEnable = desc.alpha_blend_enable;
+		colorBlendAttachment[i].srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+		colorBlendAttachment[i].dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		colorBlendAttachment[i].colorBlendOp = VK_BLEND_OP_ADD;
+		colorBlendAttachment[i].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA; //desc.src_blend_factor;
+		colorBlendAttachment[i].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; //desc.dst_blend_factor;
+		colorBlendAttachment[i].alphaBlendOp = VK_BLEND_OP_ADD; //desc.blend_op;
+	}
 
 	VkPipelineColorBlendStateCreateInfo colorBlending = {};
 	colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	colorBlending.logicOpEnable = VK_FALSE;
-	colorBlending.attachmentCount = 1;
-	colorBlending.pAttachments = &colorBlendAttachment;
+	colorBlending.attachmentCount = desc.color_attachments;
+	colorBlending.pAttachments = colorBlendAttachment;
 	colorBlending.blendConstants[0] = 1.0f;
 	colorBlending.blendConstants[1] = 1.0f;
 	colorBlending.blendConstants[2] = 1.0f;
@@ -205,7 +223,7 @@ void make_GraphicsPipeline(VkDevice device, VkPipelineDesc& desc, VkPipelineLayo
 
 	VkPipelineDepthStencilStateCreateInfo depthStencil = {};
 	depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-	depthStencil.depthTestEnable = desc.depth_test_enable; // VK_TRUE;
+	depthStencil.depthTestEnable = desc.depth_test_enable; 
 	depthStencil.depthWriteEnable = desc.depth_write_enable;
 	depthStencil.depthCompareOp = desc.depth_compare_op;
 	depthStencil.depthBoundsTestEnable = VK_FALSE;
@@ -216,16 +234,20 @@ void make_GraphicsPipeline(VkDevice device, VkPipelineDesc& desc, VkPipelineLayo
     depthStencil.back = desc.front_stencil;
 
 	//todo add ability to choose!
-	VkDynamicState dynamicStates[] = {
+	array<5, VkDynamicState> dynamicStates = {
 		VK_DYNAMIC_STATE_VIEWPORT,
 		VK_DYNAMIC_STATE_SCISSOR,
         //VK_DYNAMIC_STATE_LINE_WIDTH,
 	};
 
+	if (desc.depth_bias) {
+		dynamicStates.append(VK_DYNAMIC_STATE_DEPTH_BIAS);
+	}
+
 	VkPipelineDynamicStateCreateInfo dynamicState = {};
 	dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-	dynamicState.dynamicStateCount = 2;
-	dynamicState.pDynamicStates = dynamicStates;
+	dynamicState.dynamicStateCount = dynamicStates.length;
+	dynamicState.pDynamicStates = dynamicStates.data;
 
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
@@ -274,7 +296,7 @@ void make_GraphicsPipeline(VkDevice device, VkPipelineDesc& desc, VkPipelineLayo
 }
 
 //todo implement actual hash function 
-u64 hash_func(PipelineDesc& pipeline_desc) {
+u64 hash_func(GraphicsPipelineDesc& pipeline_desc) {
 	return (pipeline_desc.vertex_layout << 0)
 		| (pipeline_desc.instance_layout << 4)
 		| (pipeline_desc.render_pass << 8)
@@ -291,7 +313,7 @@ VkPipelineLayout get_pipeline_layout(PipelineCache& cache, pipeline_handle handl
 	return cache.layouts[handle.id - 1];
 }
 
-pipeline_handle make_Pipeline(PipelineCache& cache, const PipelineDesc& desc) {
+pipeline_handle make_Pipeline(PipelineCache& cache, const GraphicsPipelineDesc& desc) {
 	//todo get actuall shader config
 
 	//ENGINE_API Viewport render_pass_viewport_by_id(RenderPass::ID id);
@@ -299,13 +321,16 @@ pipeline_handle make_Pipeline(PipelineCache& cache, const PipelineDesc& desc) {
 	Viewport viewport{}; // = render_pass_viewport_by_id(desc.render_pass);
     VkRenderPass render_pass;
     VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT;
+
+	VkPipelineDesc pipeline_desc = {};
     
-    if (desc.render_pass & NATIVE_RENDER_PASS) {
-        render_pass = (VkRenderPass)(desc.render_pass & ((1ull << 63) - 1));
+    if (desc.render_pass > 10000) { //todo find alternative flagging method
+        render_pass = (VkRenderPass)(desc.render_pass);
     } else {
         render_pass = (VkRenderPass)render_pass_by_id((RenderPass::ID)desc.render_pass).id;
         samples = (VkSampleCountFlagBits)render_pass_samples_by_id((RenderPass::ID)desc.render_pass);
-    }
+		pipeline_desc.color_attachments = render_pass_num_color_attachments_by_id((RenderPass::ID)desc.render_pass, desc.subpass);
+	}
     
 	ShaderModules* shader_module = get_shader_config(desc.shader, desc.shader_flags);
 
@@ -313,7 +338,6 @@ pipeline_handle make_Pipeline(PipelineCache& cache, const PipelineDesc& desc) {
     auto binding_descriptions = input_bindings(rhi.vertex_layouts, desc.vertex_layout, desc.instance_layout);
     auto attribute_descriptions = input_attributes(rhi.vertex_layouts, desc.vertex_layout, desc.instance_layout);
     
-	VkPipelineDesc pipeline_desc = {};
 	pipeline_desc.subpass = desc.subpass;
 	pipeline_desc.vert_shader = shader_module->vert;
 	pipeline_desc.frag_shader = shader_module->frag;
@@ -324,13 +348,15 @@ pipeline_handle make_Pipeline(PipelineCache& cache, const PipelineDesc& desc) {
 	pipeline_desc.descriptor_layouts = shader_module->set_layouts; 
 	
 	pipeline_desc.polygon_mode = vk_polygon_mode(desc.state);
-    pipeline_desc.color_write_mask = vk_color_mask(desc.state);
+	pipeline_desc.topology = vk_primitive_topology(desc.state);
+	pipeline_desc.color_write_mask = vk_color_mask(desc.state);
 	pipeline_desc.line_width = vk_line_width(desc.state);
 	pipeline_desc.cull_mode = vk_cull_mode(desc.state);
 	pipeline_desc.depth_test_enable = vk_depth_test(desc.state);
 	pipeline_desc.depth_write_enable = vk_depth_write(desc.state);
 	pipeline_desc.depth_compare_op = vk_depth_compare_op(desc.state);
 	
+
 	pipeline_desc.alpha_blend_enable = vk_alpha_blend(desc.state);
 	pipeline_desc.src_blend_factor = vk_src_alpha_blend_factor(desc.state);
 	pipeline_desc.dst_blend_factor = vk_dst_alpha_blend_factor(desc.state);
@@ -338,6 +364,7 @@ pipeline_handle make_Pipeline(PipelineCache& cache, const PipelineDesc& desc) {
     pipeline_desc.stencil_test_enable = vk_stencil_test(desc.state);
     pipeline_desc.front_stencil = vk_front_stencil_op(desc.state);
     pipeline_desc.sample_count = samples;
+	pipeline_desc.depth_bias = desc.state & DynamicState_DepthBias;
 
 	array<2, VkPushConstantRange> ranges = {};
 
@@ -367,7 +394,7 @@ pipeline_handle make_Pipeline(PipelineCache& cache, const PipelineDesc& desc) {
 	return { index + 1 };
 }
 
-pipeline_handle query_Pipeline(PipelineCache& cache, const PipelineDesc& desc) {
+pipeline_handle query_Pipeline(PipelineCache& cache, const GraphicsPipelineDesc& desc) {
 	int index = cache.keys.index(desc);
 	if (index == -1) {
 		static uint count = 0;
@@ -384,10 +411,10 @@ VkPipeline get_Pipeline(pipeline_handle handle) {
 	return get_Pipeline(rhi.pipeline_cache, handle);
 }
 
-pipeline_handle query_Pipeline(const PipelineDesc& desc) {
+pipeline_handle query_Pipeline(const GraphicsPipelineDesc& desc) {
 	return query_Pipeline(rhi.pipeline_cache, desc);
 }
 
-void reload_Pipeline(const PipelineDesc& desc) {
+void reload_Pipeline(const GraphicsPipelineDesc& desc) {
 	make_Pipeline(rhi.pipeline_cache, desc);
 }

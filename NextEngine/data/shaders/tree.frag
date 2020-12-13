@@ -1,7 +1,3 @@
-#ifndef IS_DEPTH_ONLY
-layout (location = 0) out vec4 FragColor;
-#endif 
-
 #include shaders/vert_helper.glsl
 
 struct Material {
@@ -12,9 +8,10 @@ struct Material {
 	float cutoff;
 };
 
-#include shaders/pbr_helper.glsl
-
 #ifndef IS_DEPTH_ONLY
+layout (location = 0) out vec4 FragColor;
+
+#include shaders/pbr_helper.glsl
 
 float wrap_max(float d, float wrap) {
     return max(0, (d + wrap) / (1 + wrap));
@@ -41,7 +38,6 @@ void main()
 	#ifndef IS_DEPTH_ONLY
 
 
-
 	albedo = pow(albedo, vec3(2.2));
 
     // properties
@@ -53,11 +49,13 @@ void main()
 
 	//vec3(0,1,0);
 
+
     FragColor = pbr_frag(
 		albedo,
 		norm,
 		texture(metallic, TexCoords).r,
 		texture(roughness, TexCoords).r,
+		1.0,
 		1.0
 	);
 

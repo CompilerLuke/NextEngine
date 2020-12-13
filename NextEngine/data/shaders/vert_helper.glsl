@@ -1,6 +1,7 @@
 INTER(0) vec2 TexCoords; 
 INTER(1) vec3 FragPos; 
-INTER(2) mat3 TBN;
+INTER(2) vec3 NDC;
+INTER(3) mat3 TBN;
 
 #ifdef VERTEX_SHADER
 layout (location = 0) in vec3 aPos; 

@@ -10,7 +10,7 @@ layout (push_constant) uniform TexID {
     int tex_id;
 };
 
-layout (set = 0, binding = 1) uniform sampler2D Textures[16];
+layout (set = 0, binding = 1) uniform sampler2D Textures[32];
 
 void main()
 {

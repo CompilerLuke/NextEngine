@@ -15,6 +15,8 @@
 struct AssetTab;
 struct Editor;
 
+__declspec(dllimport) extern DefaultTextures default_textures;
+
 bool edit_color(glm::vec4& color, string_view name, glm::vec2 size) {
 
 	ImVec4 col(color.x, color.y, color.z, color.w);
@@ -89,7 +91,7 @@ void texture_properties(TextureAsset* tex, Editor& editor) {
     }
 }
 
-MaterialDesc base_shader_desc(shader_handle shader) {
+MaterialDesc base_shader_desc(shader_handle shader, bool tiling) {
 	MaterialDesc desc{ shader };
 	desc.draw_state = Cull_None;
 
@@ -97,8 +99,7 @@ MaterialDesc base_shader_desc(shader_handle shader) {
 	mat_channel1(desc, "metallic", 0.0f);
 	mat_channel1(desc, "roughness", 0.5f);
 	mat_channel1(desc, "normal", 1.0f, default_textures.normal);
-	mat_vec2(desc, "tiling", glm::vec2(5.0f));
-	//mat_vec2(desc, "tiling", glm::vec2(1, 1));
+	if (tiling) mat_vec2(desc, "tiling", glm::vec2(5.0f));
 
 	return desc;
 }
@@ -235,7 +236,7 @@ void material_properties(MaterialAsset* mat_asset, Editor& editor, AssetTab& ass
 
 	if (ImGui::BeginPopup("StandardShaders")) {
 		if (ImGui::Button("shaders/pbr.frag")) {
-			shader_handle new_shad = global_shaders.pbr;
+			shader_handle new_shad = default_shaders.pbr;
 			if (new_shad.id != desc.shader.id) {
 				desc = base_shader_desc(new_shad);
 				//set_base_shader_params(assets, desc, new_shad);
@@ -244,11 +245,11 @@ void material_properties(MaterialAsset* mat_asset, Editor& editor, AssetTab& ass
 		}
 
 		if (ImGui::Button("shaders/tree.frag")) {
-			shader_handle new_shad = global_shaders.grass;
+			shader_handle new_shad = default_shaders.grass;
 			if (new_shad.id != desc.shader.id) {
 				//todo enable undo/redo for switching shaders
 
-				desc = base_shader_desc(new_shad);
+				desc = base_shader_desc(new_shad, false);
 				desc.draw_state = Cull_None;
 				mat_float(desc, "cutoff", 0.5f);
 			}

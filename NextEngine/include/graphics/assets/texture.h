@@ -52,6 +52,7 @@ struct SamplerDesc {
 	Wrap wrap_u = Wrap::ClampToBorder;
 	Wrap wrap_v = Wrap::ClampToBorder;
 	uint max_anisotropy = 4;
+	bool depth_compare = false;
 
 	//Could write meta program to generate POD equality
 	bool operator==(const SamplerDesc& other) const {
@@ -60,7 +61,9 @@ struct SamplerDesc {
 			&& mip_mode == other.mip_mode
 			&& wrap_u == other.wrap_u
 			&& wrap_v == other.wrap_v
-			&& max_anisotropy == other.max_anisotropy;
+			&& max_anisotropy == other.max_anisotropy
+			&& depth_compare == other.depth_compare
+			;
 	}
 	
 	bool operator!=(const SamplerDesc& other) const {

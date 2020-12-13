@@ -237,8 +237,9 @@ void make_RHI(const VulkanDesc& desc, Window& window) {
 
 	make_vk_CommandPool(rhi.transfer_cmd_pool, device, Queue_AsyncTransfer);
 
-	u64 vertex_max_memory[VERTEX_LAYOUT_COUNT] = { mb(50) };
-	u64 index_max_memory[VERTEX_LAYOUT_COUNT] = { mb(50) };
+	//todo make this tweakable
+	u64 vertex_max_memory[VERTEX_LAYOUT_COUNT] = { mb(500) };
+	u64 index_max_memory[VERTEX_LAYOUT_COUNT] = { mb(500) };
 	u64 instance_max_memory[INSTANCE_LAYOUT_COUNT] = { mb(0), mb(100), mb(5) };
 	u64 ubo_max_memory[UBO_UPDATE_MODE_COUNT] = { mb(5), mb(5), mb(5) };
 
@@ -251,13 +252,13 @@ void make_RHI(const VulkanDesc& desc, Window& window) {
 	rhi.material_allocator.init();
 
 	make_InstanceAllocator(render_thread.instance_allocator, device, device, &rhi.vertex_layouts.instance_layouts, instance_max_memory);
-	make_CommandPool(render_thread.command_pool, device, Queue_Graphics, 10);
+	make_CommandPool(render_thread.command_pool, device, Queue_Graphics, 15);
 	make_CommandPool(rhi.background_graphics, device, Queue_Graphics, 3);
 
 	DescriptorCount max_descriptor = {};
-	max_descriptor.max_samplers = 50;
-	max_descriptor.max_ubos = 50;
-	max_descriptor.max_sets = 50;
+	max_descriptor.max_samplers = 100;
+	max_descriptor.max_ubos = 100;
+	max_descriptor.max_sets = 100;
 
 	make_DescriptorPool(rhi.descriptor_pool, device, device, max_descriptor);
 
@@ -342,8 +343,6 @@ void vk_destroy() {
 
 	destroy_Device(device);
 }
-
-#include "graphics/pass/render_pass.h"
 
 void vk_begin_frame() {
 	uint current_frame = rhi.swapchain.current_frame;

@@ -1,6 +1,6 @@
+#include "graphics/rhi/frame_buffer.h"
 #include "graphics/pass/shadow.h"
 #include "graphics/assets/assets.h"
-#include "graphics/pass/render_pass.h"
 #include "components/lights.h"
 #include "components/transform.h"
 #include "components/camera.h"
@@ -10,331 +10,224 @@
 #include "core/io/logger.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/glm.hpp>
+#include "ecs/ecs.h"
+#include "graphics/culling/culling.h"
 
-DepthMap::DepthMap(unsigned int width, unsigned int height, bool stencil) {
-	FramebufferDesc desc{ width, height };	
-	add_depth_attachment(desc, &depth_map);
+// shadow ubo 272
+
+void make_shadow_resources(ShadowResources& resources, UBOBuffer simulation_ubo[MAX_FRAMES_IN_FLIGHT], const ShadowSettings& settings) {
+	SamplerDesc shadow_sampler_desc;
+	shadow_sampler_desc.mag_filter = Filter::Linear;
+	shadow_sampler_desc.min_filter = Filter::Linear;
+	shadow_sampler_desc.wrap_u = Wrap::ClampToBorder;
+	shadow_sampler_desc.wrap_v = Wrap::ClampToBorder;
+	shadow_sampler_desc.depth_compare = true;
+
+	resources.shadow_sampler = query_Sampler(shadow_sampler_desc);
+
+	for (uint frame = 0; frame < MAX_FRAMES_IN_FLIGHT; frame++) {
+		resources.shadow_ubos[frame] = alloc_ubo_buffer(sizeof(ShadowUBO), UBO_PERMANENT_MAP);
+	}
 	
-	//if (stencil) settings.stencil_buffer = StencilComponent8;
-	
-	make_Framebuffer(RenderPass::Scene, desc);
-	depth_shader = load_Shader("shaders/gizmo.vert", "shaders/depth.frag");
+	for (uint i = 0; i < MAX_SHADOW_CASCADES; i++) {
+		FramebufferDesc desc{ settings.shadow_resolution, settings.shadow_resolution };
+		add_depth_attachment(desc, &resources.cascade_maps[i]);
+
+		make_Framebuffer((RenderPass::ID)(RenderPass::Shadow0 + i), desc);
+		
+		for (uint frame = 0; frame < MAX_FRAMES_IN_FLIGHT; frame++) {
+			resources.cascade_ubos[frame][i] = alloc_ubo_buffer(sizeof(PassUBO), UBO_PERMANENT_MAP);
+			
+			DescriptorDesc desc;
+			add_ubo(desc, VERTEX_STAGE, resources.cascade_ubos[frame][i], 0);
+			add_ubo(desc, VERTEX_STAGE | FRAGMENT_STAGE, simulation_ubo[frame], 1);
+
+			update_descriptor_set(resources.cascade_descriptors[frame][i], desc);
+		}
+	}
+
+	resources.cascade_layout = query_Layout(resources.cascade_descriptors[0][0]);
 }
 
-ShadowPass::ShadowPass(Renderer& renderer, glm::vec2 size, texture_handle depth_prepass) :
-	renderer(renderer),
-	deffered_map_cascade(4096, 4096),
-	ping_pong_shadow_mask(size),
-	shadow_mask(size),
-	depth_prepass(depth_prepass),
-	volumetric(size * 2.0f, depth_prepass),
-	screenspace_blur_shader(load_Shader("shaders/screenspace.vert", "shaders/blur.frag")),
-	shadow_mask_shader(load_Shader("shaders/screenspace.vert", "shaders/shadowMask.frag"))
-{}
+void add_shadow_descriptors(DescriptorDesc& desc, ShadowResources& shadow, uint frame) {
+	CombinedSampler* cascade_samplers = TEMPORARY_ARRAY(CombinedSampler, MAX_SHADOW_CASCADES);
+	for (uint i = 0; i < MAX_SHADOW_CASCADES; i++) {
+		cascade_samplers[i] = { shadow.shadow_sampler, shadow.cascade_maps[i] };
+	}
 
-ShadowMask::ShadowMask(glm::vec2 size) {
-	FramebufferDesc desc{ (uint)size.x, (uint)size.y };
-
-	AttachmentDesc& color_attachment = add_color_attachment(desc, &shadow_mask_map);
-
-	make_Framebuffer(RenderPass::Shadow0, desc);
+	add_ubo(desc, FRAGMENT_STAGE, shadow.shadow_ubos[frame], 4);
+	add_combined_sampler(desc, FRAGMENT_STAGE, { cascade_samplers, MAX_SHADOW_CASCADES }, 5);
 }
 
-void ShadowMask::set_shadow_params(ShaderConfig& config, RenderPass& ctx) {
-	//auto bind_to = ctx.command_buffer.next_texture_index();
-
-	//gl_bind_to(assets.textures, shadow_mask_map, bind_to);
-	//config.set_int("shadowMaskMap", bind_to);
+glm::mat4 calc_dir_light_view_matrix(const Transform& trans, const DirLight& dir_light) {
+	return glm::lookAt(trans.position, trans.position + dir_light.direction, glm::vec3(0, 1, 0));
 }
 
-void ShadowPass::set_shadow_params(ShaderConfig& config, RenderPass& params) {
-	this->shadow_mask.set_shadow_params(config, params);
-}
+//modified https://www.gamedev.net/forums/topic/673197-cascaded-shadow-map-shimmering-effect/
 
-struct OrthoProjInfo {
-	float endClipSpace;
-	glm::mat4 toLight;
-	glm::mat4 toWorld;
-	glm::mat4 lightProjection;
-	glm::mat4 round;
-};
+//for (uint i = 0; i < 8; i++) {
+//	assert(glm::min(aabb.min, glm::vec3(frustumCorners[i])) == aabb.min);
+//	assert(glm::max(aabb.max, glm::vec3(frustumCorners[i])) == aabb.max);
+//}
 
-constexpr int num_cascades = 4;
+void calc_shadow_cascades(ShadowCascadeProj cascades[MAX_SHADOW_CASCADES], const ShadowSettings& settings, Viewport viewports[MAX_SHADOW_CASCADES], const Camera& camera, glm::vec3 lightDir, Viewport& viewport) {
+	float nearClip = camera.near_plane;
+	float farClip = camera.far_plane;
+	float clipRange = farClip - nearClip;
 
-void calc_ortho_proj(Viewport& viewport, const Camera& camera, glm::mat4& light_m, float width, float height, OrthoProjInfo shadowOrthoProjInfo[num_cascades]) {
-	auto& cam_m = viewport.view;
-	auto cam_inv_m = glm::inverse(cam_m);
-	auto& proj_m = viewport.proj;
+	float minZ = nearClip;
+	float maxZ = nearClip + clipRange;
 
-	float cascadeEnd[] = {
-		camera.near_plane,
-		5.0f,
-		30.0f,
-		90.0f,
-		camera.far_plane,
-	};
+	float range = maxZ - minZ;
+	float ratio = maxZ / minZ;
 
-	for (int i = 0; i < num_cascades; i++) {
-		auto proj = glm::perspective(
-			glm::radians(camera.fov),
-			(float)viewport.width / (float)viewport.height,
-			cascadeEnd[i],
-			cascadeEnd[i + 1]
-		);
+	float cascadeSplitLambda = settings.cascade_split_lambda;
 
-		auto frust_to_world = glm::inverse(proj * cam_m);
+	float cascadeSplits[MAX_SHADOW_CASCADES];
 
-		glm::vec4 frustumCorners[8] = {
-			glm::vec4(1,1,1,1), //back frustum
-			glm::vec4(-1,1,1,1),
-			glm::vec4(1,-1,1,1),
-			glm::vec4(-1,-1,1,1),
+	// Calculate split depths based on view camera frustum
+	// Based on method presented in https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch10.html
+	for (uint32_t i = 0; i < MAX_SHADOW_CASCADES; i++) {
+		float p = (i + 1) / static_cast<float>(MAX_SHADOW_CASCADES);
+		float log = minZ * std::pow(ratio, p);
+		float uniform = minZ + range * p;
+		float d = cascadeSplitLambda * (log - uniform) + uniform;
+		cascadeSplits[i] = (d - nearClip) / clipRange;
+	}
 
-			glm::vec4(1,1,-1,1), //front frustum
-			glm::vec4(-1,1,-1,1),
-			glm::vec4(1,-1,-1,1),
-			glm::vec4(-1,-1,-1,1),
+	// Calculate orthographic projection matrix for each cascade
+	float lastSplitDist = 0.0;
+	for (uint32_t i = 0; i < MAX_SHADOW_CASCADES; i++) {
+		float splitDist = cascadeSplits[i];
+
+		glm::vec3 frustumCorners[8] = {
+			glm::vec3(-1.0f,  1.0f, 0.0f),
+			glm::vec3(1.0f,  1.0f, 0.0f),
+			glm::vec3(1.0f, -1.0f, 0.0f),
+			glm::vec3(-1.0f, -1.0f, 0.0f),
+			glm::vec3(-1.0f,  1.0f,  1.0f),
+			glm::vec3(1.0f,  1.0f,  1.0f),
+			glm::vec3(1.0f, -1.0f,  1.0f),
+			glm::vec3(-1.0f, -1.0f,  1.0f),
 		};
 
-		//modified https://www.gamedev.net/forums/topic/673197-cascaded-shadow-map-shimmering-effect/
-		//CONVERT TO WORLD SPACE
-		for (int j = 0; j < 8; j++) {
-			auto vW = frust_to_world * frustumCorners[j];
-			vW /= vW.w;
-
-			frustumCorners[j] = vW;
+		// Project frustum corners into world space
+		glm::mat4 invCam = glm::inverse(viewport.proj * viewport.view);
+		for (uint32_t i = 0; i < 8; i++) {
+			glm::vec4 invCorner = invCam * glm::vec4(frustumCorners[i], 1.0f);
+			frustumCorners[i] = invCorner / invCorner.w;
 		}
 
-		glm::vec4 centroid = (frustumCorners[0] + frustumCorners[7]) / 2.0f;
+		for (uint32_t i = 0; i < 4; i++) {
+			glm::vec3 dist = frustumCorners[i + 4] - frustumCorners[i];
+			frustumCorners[i + 4] = frustumCorners[i] + (dist * splitDist);
+			frustumCorners[i] = frustumCorners[i] + (dist * lastSplitDist);
+		}
 
-		
-		float radius = glm::length(centroid - frustumCorners[7]);
-		for (unsigned int i = 0; i < 8; i++) {
-			float distance = glm::length(frustumCorners[i] - centroid);
+		// Get frustum center
+		glm::vec3 frustumCenter = glm::vec3(0.0f);
+		for (uint32_t i = 0; i < 8; i++) {
+			frustumCenter += frustumCorners[i];
+		}
+		frustumCenter /= 8.0f;
+
+		float radius = 0.0f;
+		for (uint32_t i = 0; i < 8; i++) {
+			float distance = glm::length(frustumCorners[i] - frustumCenter);
 			radius = glm::max(radius, distance);
 		}
+
+		int round = (MAX_SHADOW_CASCADES - i);
+		radius = std::ceil(radius * round) / round;
+
+
+		//float world_space_per_texel = radius*2 / settings.shadow_resolution;
+		//glm::vec3 frustumCenterSnapped = frustumCenter / world_space_per_texel;
+		//frustumCenterSnapped = glm::floor(frustumCenterSnapped);
+		//frustumCenterSnapped *= world_space_per_texel;
 		
+		//frustumCenter
 
-		//radius = glm::ceil(radius);
+		glm::vec3 maxExtents = glm::vec3(radius);
+		glm::vec3 minExtents = -maxExtents;
 
-		//Create the AABB from the radius
-		AABB aabb;
-		aabb.max = glm::vec3(centroid) + glm::vec3(radius);
-		aabb.min = glm::vec3(centroid) + glm::vec3(radius);
+		//maxExtents += (frustumCenterSnapped - frustumCenter);
+		//minExtents += (frustumCenterSnapped - frustumCenter);
 
-		aabb.min = glm::vec3(centroid) - glm::vec3(radius);
-		aabb.max = glm::vec3(centroid) + glm::vec3(radius);
+		glm::mat4 lightViewMatrix = glm::lookAt(frustumCenter - lightDir * -minExtents.z, frustumCenter, glm::vec3(0.0f, 1.0f, 0.0f));
+		glm::mat4 lightOrthoMatrix = glm::ortho(minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f, maxExtents.z - minExtents.z);
 
-		aabb.max = glm::vec3(light_m*glm::vec4(aabb.max, 1.0f));
-		aabb.min = glm::vec3(light_m*glm::vec4(aabb.min, 1.0f));
+		glm::vec3 ndc_per_texel = glm::vec3(2.0, 2.0, 1.0) / settings.shadow_resolution;
+		glm::vec4 quantOrigin = lightOrthoMatrix * lightViewMatrix * glm::vec4(0, 0, 0, 1.0);
+		glm::vec3 quantOriginRounded = quantOrigin;
+		quantOriginRounded /= ndc_per_texel;
+		quantOriginRounded = glm::floor(quantOriginRounded);
+		quantOriginRounded *= ndc_per_texel;
 
-		aabb.min.z = 1;
-		aabb.max.z = 200;
+		lightOrthoMatrix[3].x += quantOriginRounded.x - quantOrigin.x;
+		lightOrthoMatrix[3].y += quantOriginRounded.y - quantOrigin.y;
+		lightOrthoMatrix[3].z += quantOriginRounded.z - quantOrigin.z;
 
-		float diagonal_length = glm::length(aabb.max - aabb.min);
-
-		//radius = diagonal_length / 2.0f;
-		
-		// Create the rounding matrix, by projecting the world-space origin and determining
-		// the fractional offset in texel space
-
-		// Create the rounding matrix, by projecting the world-space origin and determining
-		// the fractional offset in texel space
-		
-		/*
-		glm::mat4 shadowMatrix = lightOrthoMatrix * light_m;
-		glm::vec4 shadowOrigin = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-		shadowOrigin = shadowMatrix * shadowOrigin;
-		GLfloat storedW = shadowOrigin.w;
-		shadowOrigin = shadowOrigin * width / 2.0f;
-
-		glm::vec4 roundedOrigin = glm::round(shadowOrigin);
-		glm::vec4 roundOffset = roundedOrigin - shadowOrigin;
-		roundOffset = roundOffset * 2.0f / width;
-		roundOffset.z = 0.0f;
-		roundOffset.w = 0.0f;
-
-		glm::mat4 shadowProj = lightOrthoMatrix;
-		shadowProj[3] += roundOffset;
-		lightOrthoMatrix = shadowProj;
-		*/
-		
-		glm::vec3 worldsUnitsPerTexel = (aabb.max - aabb.min) / width; //(radius * 2) / width;
-
-		aabb.min /= worldsUnitsPerTexel;
-		aabb.min = glm::floor(aabb.min);
-		aabb.min *= worldsUnitsPerTexel;
-
-		aabb.max /= worldsUnitsPerTexel;
-		aabb.max = glm::floor(aabb.max);
-		aabb.max *= worldsUnitsPerTexel;
-
-		glm::mat4 lightOrthoMatrix = glm::ortho(aabb.min.x, aabb.max.x, aabb.min.y, aabb.max.y, aabb.min.z, aabb.max.z);
-
-
-		glm::vec4 endClipSpace = proj_m * glm::vec4(0, 0, -cascadeEnd[i + 1], 1.0);
+		float endDistance = splitDist * clipRange;
+		glm::vec4 endClipSpace = viewport.proj * glm::vec4(0, 0, -endDistance, 1.0);
 		endClipSpace /= endClipSpace.w;
 
-		shadowOrthoProjInfo[i].toWorld = glm::inverse(proj_m * cam_m);
-		shadowOrthoProjInfo[i].toLight = lightOrthoMatrix * light_m ;
-		shadowOrthoProjInfo[i].lightProjection = lightOrthoMatrix;
-		//shadowOrthoProjInfo[i].round = roundMatrix;
+		//cascades[i].splitDepth = (camera.getNearClip() + splitDist * clipRange) * -1.0f;
 
-		shadowOrthoProjInfo[i].endClipSpace = endClipSpace.z;
+		// Store split distance and matrix in cascade
+		//cascades[i].end_clip_space = splitDist; // (splitDist * clipRange) * -1.0f;
+
+		//cascades[i].ndc_to_light = glm::inverse(proj_m * cam_m);
+		cascades[i].to_light = lightOrthoMatrix * lightViewMatrix;
+		cascades[i].light_projection = lightOrthoMatrix;
+		cascades[i].light_view = lightViewMatrix;
+		cascades[i].end_clip_space = endClipSpace.z;
+		cascades[i].end_distance = endDistance;
+
+		viewports[i].proj = lightOrthoMatrix;
+		viewports[i].view = lightViewMatrix;
+		viewports[i].cam_pos = frustumCenter;
+		extract_planes(viewports[i]);
+
+		lastSplitDist = splitDist;
 	}
 }
 
-/*
-void render_scene_to_depth(Renderer& renderer, Framebuffer& depth_map, World& world, RenderPass& ctx, glm::mat4 projection_m, glm::mat4 view_m, RenderPass::PassID pass_id) {
-	Viewport viewport = {};
-	viewport.width = depth_map_FBO.width;
-	viewport.height = depth_map_FBO.height;
-	viewport.proj = projection_m;
-	viewport.view = view_m;
+void extract_shadow_cascades(ShadowCascadeProj cascades[MAX_SHADOW_CASCADES], Viewport viewports[], const ShadowSettings& settings, World& world, Viewport& viewport, EntityQuery query) {
+	auto some_camera = world.first<Camera>(query);
+	auto some_dir_light = world.first<Transform, DirLight>();
+	if (some_camera && some_dir_light) {
+		auto [e1, camera] = *some_camera;
+		auto [e2, dir_light_trans, dir_light] = *some_dir_light;
+		glm::mat4 light_m = calc_dir_light_view_matrix(dir_light_trans, dir_light);
 
-	//todo render pass, needs to be associated with depth_map_fbo
-	RenderPass new_ctx = begin_render_pass(pass_id, RenderPass::Depth_Only, viewport); //ctx, is_shadow_pass ? cmd_buffer : ctx.command_buffer, this);
-	
-	if (pass_id != RenderPass::Scene) {
-		//RENDER VIEW
-		//renderer.render_view(world, new_ctx);
+		calc_shadow_cascades(cascades, settings, viewports, camera, dir_light.direction, viewport);
 	}
-
-	depth_map_FBO.bind();
-	depth_map_FBO.clear_depth(glm::vec4(0, 0, 0, 1));
-
-
-	depth_map_FBO.unbind();
-
-	end_render_pass(new_ctx);
+	
 }
-*/
 
-struct ShaderUBO {
-	glm::mat4 to_world;
-	glm::mat4 to_light;
-	float end_clip_space[2];
-};
-
-
-void ShadowPass::render(World& world, RenderPass& params) {
-	/*auto dir_light = (DirLight*)NULL; //get_dir_light(world, params.layermask);
-	if (!dir_light) return;
-	auto dir_light_id = world.id_of(dir_light);
-
-	auto dir_light_trans = world.by_id<Transform>(dir_light_id);
-	if (!dir_light_trans) return;
-
-	glm::mat4 view_matrix = glm::lookAt(dir_light_trans->position, dir_light_trans->position + dir_light->direction, glm::vec3(0, 1, 0));
-
-	auto width = this->deffered_map_cascade.depth_map_FBO.width;
-	auto height = this->deffered_map_cascade.depth_map_FBO.height;
-
-	OrthoProjInfo info[num_cascades];
-	//calc_ortho_proj(params, view_matrix, (float)width, (float)height, info);
-
-	//shadow_mask.shadow_mask_map_fbo.bind();
-	//shadow_mask.shadow_mask_map_fbo.clear_color(glm::vec4(0, 0, 0, 1));
-
-	SamplerDesc sampler_desc;
-	sampler_desc.mag_filter = Filter::Linear;
-	sampler_desc.min_filter = Filter::Linear;
-	sampler_desc.wrap_u = Wrap::Repeat;
-	sampler_desc.wrap_v = Wrap::Repeat;
-
-	float last_clip_space = -1.0f;
-
-	this->volumetric.clear();
-
-	for (int i = 0; i < 4; i++) {
-		auto& proj_info = info[i];
-
-		//deffered_map_cascade.id = (RenderPass::PassID)(RenderPass::Shadow0 + i);
-		//deffered_map_cascade.render_maps(renderer, world, params, proj_info.toLight, glm::mat4(1.0f), true);
-
-		//shadow_mask.shadow_mask_map_fbo.bind();
-
-		//glDisable(GL_DEPTH_TEST);
-
-		Shader* shadow_mask_shader = assets.shaders.get(this->shadow_mask_shader);
-
-		shadow_mask_shader->bind();
-
-		gl_bind_to(assets.textures, depth_prepass, 0);
-		shadow_mask_shader->set_int("depthPrepass", 0);
-
-		gl_bind_to(assets.textures, deffered_map_cascade.depth_map, 1);
-		shadow_mask_shader->set_int("depthMap", 1);
-
-		shadow_mask_shader->set_float("gCascadeEndClipSpace[0]", last_clip_space);
-		shadow_mask_shader->set_float("gCascadeEndClipSpace[1]", proj_info.endClipSpace);
-
-		shadow_mask_shader->set_mat4("toWorld", proj_info.toWorld);
-		shadow_mask_shader->set_mat4("toLight", proj_info.toLight);
-	
-		glm::mat4 ident_matrix(1.0);
-		shadow_mask_shader->set_mat4("model", ident_matrix);
-
-		shadow_mask_shader->set_int("cascadeLevel", i);
-
-		glm::vec2 in_range(last_clip_space, proj_info.endClipSpace);
-
-		last_clip_space = proj_info.endClipSpace;
-
-		//render_quad();
-
-		//glEnable(GL_DEPTH_TEST);
-
-		//shadow_mask.shadow_mask_map_fbo.unbind();
-
-		//compute volumetric scattering for cascade
-		ShadowParams shadow_params;
-		shadow_params.in_range = in_range;
-		shadow_params.to_light = proj_info.toLight;
-		shadow_params.to_world = proj_info.toWorld;
-		shadow_params.cascade = i;
-		shadow_params.depth_map = deffered_map_cascade.depth_map;
-
-		//volumetric.render_with_cascade(world, params, shadow_params);
+void fill_shadow_ubo(ShadowUBO& shadow_ubo, const ShadowCascadeProj info[MAX_SHADOW_CASCADES]) {
+	for (uint i = 0; i < MAX_SHADOW_CASCADES; i++) {
+		shadow_ubo.cascade_end_clipspace[i].x = info[i].end_clip_space;
+		shadow_ubo.cascade_end_clipspace[i].y = info[i].end_distance;
+		shadow_ubo.to_light_space[i] = info[i].to_light;
 	}
+}
 
-	//render blur
-	bool horizontal = true;
-	bool first_iteration = true;
-
-	//glDisable(GL_DEPTH_TEST);
-
-	constexpr int amount = 0;
-
+void bind_cascade_viewports(ShadowResources& resources, RenderPass render_pass[MAX_SHADOW_CASCADES], const ShadowSettings& settings, const ShadowCascadeProj info[MAX_SHADOW_CASCADES]) {
+	uint frame_index = get_frame_index();
 	
-	for (int i = 0; i < amount; i++) {
-		//if (!horizontal) shadow_mask.shadow_mask_map_fbo.bind();
-		//else ping_pong_shadow_mask.shadow_mask_map_fbo.bind();
+	for (uint i = 0; i < MAX_SHADOW_CASCADES; i++) {
+		PassUBO pass_ubo = {};
+		pass_ubo.resolution = glm::vec4(settings.shadow_resolution);
+		pass_ubo.proj = info[i].light_projection;
+		pass_ubo.view = info[i].light_view;
 
-		Shader* screenspace_blur_shader = assets.shaders.get(this->screenspace_blur_shader);
+		memcpy_ubo_buffer(resources.cascade_ubos[frame_index][i], &pass_ubo);
 
-		screenspace_blur_shader->bind();
-		
-		if (first_iteration)
-			gl_bind_to(assets.textures, shadow_mask.shadow_mask_map, 0);
-		else
-			gl_bind_to(assets.textures, ping_pong_shadow_mask.shadow_mask_map, 0);
-
-		screenspace_blur_shader->set_int("image", 0);
-		screenspace_blur_shader->set_int("horizontal", horizontal);
-
-		glm::mat4 m(1.0);
-		screenspace_blur_shader->set_mat4("model", m);
-
-		//render_quad();
-
-		horizontal = !horizontal;
-		first_iteration = false;
-		
+		CommandBuffer& cmd_buffer = render_pass[i].cmd_buffer;
+		bind_pipeline_layout(cmd_buffer, resources.cascade_layout);
+		bind_descriptor(cmd_buffer, 0, resources.cascade_descriptors[frame_index][i]);
+		set_depth_bias(cmd_buffer, settings.constant_depth_bias, settings.slope_depth_bias);
 	}
-
-	//shadow_mask.shadow_mask_map_fbo.unbind();
-	//glEnable(GL_DEPTH_TEST);
-
-	*/
 }

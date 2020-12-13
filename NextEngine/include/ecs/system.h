@@ -2,17 +2,16 @@
 
 #include "id.h"
 
+struct World;
+struct Time;
+struct Input;
+
 struct ENGINE_API UpdateCtx {
 	EntityQuery layermask = EntityQuery();
 	struct Input& input;
 	double delta_time = 0;
 
-	UpdateCtx(struct Time&, struct Input&);
-};
-
-struct ENGINE_API System {
-	virtual void update(struct World& world, struct UpdateCtx& ctx) = 0;
-	virtual ~System() {}
+	UpdateCtx(Time&, Input&);
 };
 
 void ENGINE_API register_default_components(World& world);

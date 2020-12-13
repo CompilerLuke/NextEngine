@@ -134,3 +134,22 @@ void redo_action(EditorActions&);
 
 void* get_ptr(slice<ElementPtr> elements);
 
+inline ID get_id_of_component(slice<ElementPtr> ptr) {
+    for (uint i = 0; i < ptr.length; i++) {
+        if (ptr[i].type == ElementPtr::Component) return ptr[i].id;
+    }
+
+    return 0;
+}
+
+template<typename T>
+T* get_component_ptr(slice<ElementPtr> ptr) {
+    for (uint i = 0; i < ptr.length; i++) {
+        if (ptr[i].type == ElementPtr::Component) {
+            if (ptr[i].component_id != type_id<T>()) return nullptr;
+            return (T*)get_ptr({ ptr.data + i, ptr.length - i });
+        }
+    }
+
+    return nullptr;
+}

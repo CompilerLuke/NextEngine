@@ -37,9 +37,6 @@
     <Filter Include="include\physics">
       <UniqueIdentifier>{1BC405E5-874F-73A9-9060-F69DFC6ACFA9}</UniqueIdentifier>
     </Filter>
-    <Filter Include="include\terrain">
-      <UniqueIdentifier>{0DE46F11-796F-DDD5-8280-60CAEE8A39D6}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src">
       <UniqueIdentifier>{2DAB880B-99B4-887C-2230-9F7C8E38947C}</UniqueIdentifier>
     </Filter>
@@ -87,9 +84,6 @@
     </Filter>
     <Filter Include="src\physics">
       <UniqueIdentifier>{BF23DBB5-2BD9-53AB-B4CD-4D8220824AAF}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\terrain">
-      <UniqueIdentifier>{B14345E2-1DF9-BDD7-A6ED-B7AE12A2B4DB}</UniqueIdentifier>
     </Filter>
     <Filter Include="vendor">
       <UniqueIdentifier>{B3738122-9F15-ACF8-88D0-BF4C74113349}</UniqueIdentifier>
@@ -192,13 +186,10 @@
     <ClInclude Include="include\graphics\culling\scene_partition.h">
       <Filter>include\graphics\culling</Filter>
     </ClInclude>
+    <ClInclude Include="include\graphics\pass\composite.h">
+      <Filter>include\graphics\pass</Filter>
+    </ClInclude>
     <ClInclude Include="include\graphics\pass\pass.h">
-      <Filter>include\graphics\pass</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\pass\render_graph.h">
-      <Filter>include\graphics\pass</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\pass\render_pass.h">
       <Filter>include\graphics\pass</Filter>
     </ClInclude>
     <ClInclude Include="include\graphics\pass\shadow.h">
@@ -234,7 +225,13 @@
     <ClInclude Include="include\graphics\renderer\transforms.h">
       <Filter>include\graphics\renderer</Filter>
     </ClInclude>
+    <ClInclude Include="include\graphics\rhi\async_cpu_copy.h">
+      <Filter>include\graphics\rhi</Filter>
+    </ClInclude>
     <ClInclude Include="include\graphics\rhi\buffer.h">
+      <Filter>include\graphics\rhi</Filter>
+    </ClInclude>
+    <ClInclude Include="include\graphics\rhi\compute.h">
       <Filter>include\graphics\rhi</Filter>
     </ClInclude>
     <ClInclude Include="include\graphics\rhi\device.h">
@@ -263,9 +260,6 @@
     </ClInclude>
     <ClInclude Include="include\graphics\rhi\shader_access.h">
       <Filter>include\graphics\rhi</Filter>
-    </ClInclude>
-    <ClInclude Include="include\graphics\rhi\vulkan\async_cpu_copy.h">
-      <Filter>include\graphics\rhi\vulkan</Filter>
     </ClInclude>
     <ClInclude Include="include\graphics\rhi\vulkan\buffer.h">
       <Filter>include\graphics\rhi\vulkan</Filter>
@@ -317,9 +311,6 @@
     </ClInclude>
     <ClInclude Include="include\physics\physics.h">
       <Filter>include\physics</Filter>
-    </ClInclude>
-    <ClInclude Include="include\terrain\kriging.h">
-      <Filter>include\terrain</Filter>
     </ClInclude>
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="vendor\imgui\imconfig.h">
@@ -432,6 +423,9 @@
     <ClCompile Include="src\graphics\culling\culling.cpp">
       <Filter>src\graphics\culling</Filter>
     </ClCompile>
+    <ClCompile Include="src\graphics\pass\composite.cpp">
+      <Filter>src\graphics\pass</Filter>
+    </ClCompile>
     <ClCompile Include="src\graphics\pass\render_pass.cpp">
       <Filter>src\graphics\pass</Filter>
     </ClCompile>
@@ -527,9 +521,6 @@
     </ClCompile>
     <ClCompile Include="src\physics\physics.cpp">
       <Filter>src\physics</Filter>
-    </ClCompile>
-    <ClCompile Include="src\terrain\kriging.cpp">
-      <Filter>src\terrain</Filter>
     </ClCompile>
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="vendor\imgui\imgui.cpp">

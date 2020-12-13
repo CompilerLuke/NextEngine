@@ -15,6 +15,8 @@
 #include "physics/physics.h"
 #include "components/transform.h"
 
+#include "components/flyover.h"
+
 struct Time;
 struct World;
 
@@ -35,6 +37,7 @@ APPLICATION_API void update(Game& game, Modules& modules) {
 	modules.input->capture_mouse(true);
 	update_player_input(world, ctx);
 	update_fps_controllers(world, ctx);
+	update_flyover(world, ctx);
 	update_bows(world, ctx);
 
 	update_local_transforms(world, ctx);

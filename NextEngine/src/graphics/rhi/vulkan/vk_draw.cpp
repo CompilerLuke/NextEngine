@@ -101,11 +101,19 @@ void bind_pipeline(CommandBuffer& cmd_buffer, pipeline_handle pipeline_handle) {
 	cmd_buffer.bound_material = { INVALID_HANDLE };
 }
 
+void bind_material_and_pipeline(CommandBuffer& cmd_buffer, material_handle mat_handle) {
+	pipeline_handle pipeline_handle = query_pipeline(mat_handle, cmd_buffer.render_pass, cmd_buffer.subpass);
+	bind_pipeline(cmd_buffer, pipeline_handle);
+	bind_material(cmd_buffer, mat_handle);
+}
+
 void bind_material(CommandBuffer& cmd_buffer, material_handle mat_handle) {
 	if (cmd_buffer.bound_material.id == mat_handle.id) return;
 	cmd_buffer.bound_material = mat_handle;
 
 	Material* mat = get_Material(mat_handle);
+	bool is_depth = render_pass_type_by_id(cmd_buffer.render_pass, cmd_buffer.subpass) == RenderPass::Depth;
+	if (is_depth && !mat->requires_depth_descriptor) return;
 
 	descriptor_set_handle set_handle = mat->sets[mat->index];
 
@@ -129,6 +137,14 @@ void push_constant(CommandBuffer& cmd_buffer, Stage stage, uint offset, uint siz
 	VkPipelineLayout pipeline_layout = get_pipeline_layout(rhi.pipeline_cache, cmd_buffer.bound_pipeline_layout);
 
 	vkCmdPushConstants(cmd_buffer, pipeline_layout, to_vk_stage(stage), offset, size, ptr);
+}
+
+void set_depth_bias(CommandBuffer& cmd_buffer, float constant, float slope) {	
+	vkCmdSetDepthBias(
+		cmd_buffer,
+		constant,
+		0.0f,
+		slope);
 }
 
 #endif

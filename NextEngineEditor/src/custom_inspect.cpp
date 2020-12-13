@@ -182,10 +182,8 @@ bool Grass_inspect(void* data, string_view prefix, Editor& editor) {
 	World& world = editor.world;
 	Grass* grass = (Grass*)data;
 
-	static glm::vec2 density_range(0, 0.1);
-
-	ID id = editor.selected_id; //todo get correct ID!  // world.id_of<Grass>(grass);
-
+	static glm::vec2 density_range(0, 0.1); 
+	ID id = editor.selected_id; //todo get correct ID!
 	
 	if (ImGui::CollapsingHeader("Grass")) {
 		Grass* grass = (Grass*)data;
@@ -240,14 +238,30 @@ void terrain_material_image(const char* name, texture_handle& handle) {
 	accept_drop("DRAG_AND_DROP_IMAGE", &handle, sizeof(texture_handle));
 }
 
+#include "diffUtil.h"
+
+ENGINE_API refl::Struct* get_TerrainMaterial_type();
+ENGINE_API refl::Struct* get_Terrain_type();
+
 bool TerrainMaterials_inspect(void* data, string_view prefix, Editor& editor) {
 	ImGui::Dummy(ImVec2(20, 10));
 	
 	if (ImGui::CollapsingHeader("Materials")) {
 		vector<TerrainMaterial>& materials = *(vector<TerrainMaterial>*)data;
 
-		for (TerrainMaterial& material : materials) {
+		for (uint i = 0; i < materials.length; i++) {
+			TerrainMaterial& material = materials[i];
 			ImGui::InputText("name", material.name);
+
+			ElementPtr element[4];
+			element[0] = {ElementPtr::VectorElement, i, get_TerrainMaterial_type() };
+			element[1] = {ElementPtr::Offset, offsetof(Terrain, materials), nullptr };
+			element[2] = {ElementPtr::Component, (ID)editor.selected_id, type_id<Terrain>(), get_Terrain_type() };
+			element[3] = {ElementPtr::StaticPointer, &editor.world };
+
+			TerrainMaterial copy;
+			DiffUtil diff;
+			begin_diff(diff, { element,4 }, &copy);
 
 			terrain_material_image("diffuse", material.diffuse);
 			terrain_material_image("metallic", material.metallic);
@@ -255,6 +269,9 @@ bool TerrainMaterials_inspect(void* data, string_view prefix, Editor& editor) {
 			terrain_material_image("normal", material.normal);
 			terrain_material_image("height", material.height);
 			terrain_material_image("ao", material.ao);
+
+
+			end_diff(editor.actions, diff, "Edited Terrain Material");
 		}
 
 		if (ImGui::Button("Add Material")) {

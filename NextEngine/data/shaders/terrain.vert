@@ -18,7 +18,6 @@ layout (std140, set = 2, binding = 0) uniform UBO {
 
 layout (set = 2, binding = 1) uniform sampler2D displacement;
 
-
 void main()
 {
     TexCoords = vec2(aTexCoords.x, aTexCoords.y) * ubo.transformUVs;
@@ -49,6 +48,7 @@ void main()
 
     vec3 pos = aPos*vec3(1 + bias);
     gl_Position = projection * view * model * vec4(pos + vec3(0,height,0), 1.0);
+    NDC = gl_Position.xyz / gl_Position.w;
 
 #ifndef IS_DEPTH_ONLY
     Debug = vec3(lod); //vec3(edge_lod * 0.33);

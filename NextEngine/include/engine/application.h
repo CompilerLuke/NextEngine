@@ -4,7 +4,7 @@
 #include "core/container/string_buffer.h"
 #include "ecs/system.h"
 
-#ifdef NE_WINDOWS
+#ifdef NE_PLATFORM_WINDOWS
 #define APPLICATION_API extern "C" _declspec(dllexport)
 #else
 #define APPLICATION_API extern "C"
@@ -26,7 +26,6 @@ using RegisterComponents = void(*)(World& world);
 
 class Application {
 	string_buffer path;
-	void* application_state;
 	void* dll_handle;
 	u64 time_modified;
 	
@@ -43,6 +42,7 @@ class Application {
 	void load_functions();
 
 public:
+	void* application_state;
 	struct Modules& engine;
 
 	ENGINE_API Application(Modules& engine, string_view);
@@ -58,4 +58,6 @@ public:
 	bool ENGINE_API is_running();
 	
 	void ENGINE_API run();
+
+	ENGINE_API void* get_func(string_view name);
 };

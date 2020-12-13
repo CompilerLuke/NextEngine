@@ -64,14 +64,36 @@ i64 io_time_modified(string_view filename) {
 	return buffer.st_mtime;
 }
 
-#ifdef NE_WINDOWS
+#ifdef NE_PLATFORM_WINDOWS
 #include <Windows.h>
 
 bool io_copyf(string_view src, string_view dst, bool fail_if_exists) {
-    return CopyFileA(src.c_str(), dst.c_str(), true)
+	return CopyFileA(src.c_str(), dst.c_str(), true);
 }
 
-#elif __APPLE__
+bool io_get_current_dir(string_buffer* output) {
+	char buffer[100];
+	uint len = GetCurrentDirectoryA(100, buffer);
+	*output = buffer;
+	return len > 0;
+}
+
+bool path_absolute(string_view path, string_buffer* abs) {
+	if (!io_get_current_dir(abs)) return false;
+	
+	bool is_absolute = path.starts_with(*abs);
+	if (is_absolute) {
+		*abs = path;
+	}
+	else {
+		*abs += "\\";
+		*abs += path;
+	}
+
+	return true;
+}
+
+#elif NE_PLATFORM_MACOSX
 #include <copyfile.h>
 
 bool io_copyf(string_view src, string_view dst, bool fail_if_exists) {

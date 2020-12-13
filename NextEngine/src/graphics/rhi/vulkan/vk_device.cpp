@@ -339,6 +339,7 @@ VkPhysicalDevice pick_physical_devices(VkInstance instance, VkSurfaceKHR surface
 void make_logical_device(Device& device, const VulkanDesc& desc, VkSurfaceKHR surface) {	
 	QueueFamilyIndices queue_families = find_queue_families(device.physical_device, surface);
 	device.queue_families = queue_families;
+	device.device_features = desc.device_features;
 
 	//VkPhysicalDeviceTimelineSemaphoreFeatures semaphore_features = {};
 	//semaphore_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES;

@@ -1,5 +1,4 @@
 #include "components/terrain.h"
-
 #include "physics/physics.h"
 #include "ecs/ecs.h"
 #include "components/transform.h"
@@ -14,6 +13,7 @@
 #include "graphics/assets/model.h"
 
 #include "core/io/logger.h"
+#include "ecs/component_ids.h"
 
 struct BulletWrapper {
 	btDefaultCollisionConfiguration* collisionConfiguration;
@@ -257,122 +257,124 @@ PhysicsSystem::~PhysicsSystem() {
 	free_BulletWrapper(bt_wrapper);
 }
 
+btVector3 to_bt_vec3(glm::vec3 vec) {
+	return { vec.x, vec.y, vec.z };
+}
+
+glm::vec3 from_bt_vec3(btVector3 vec) {
+	return {vec.getX(), vec.getY(), vec.getZ() };
+}
+
+RigidBodySettings default_rb_settings(Entity e, Transform& trans, RigidBody& rb) {
+	RigidBodySettings settings;
+	settings.id = e.id;
+	settings.mass = rb.mass;
+	settings.lock_rotation = rb.override_rotation;
+
+	return settings;
+}
+
 void PhysicsSystem::update(World& world, UpdateCtx& params) {
 	step_BulletWrapper(bt_wrapper, params.delta_time);
 
-	for (auto [e,rb,trans]: world.filter<RigidBody, Transform>(params.layermask)) {
-		ID id = e.id;
+	EntityQuery to_be_initialized = params.layermask.with_none<BtRigidBodyPtr>();
+
+	for (auto [e, trans, collider, rb] : world.filter<Transform, SphereCollider, RigidBody>(to_be_initialized)) {
+		RigidBodySettings settings = default_rb_settings(e, trans, rb);
+		settings.shape = make_SphereShape(collider.radius * trans.scale.x);
+		if (rb.continous) settings.sweep_radius = collider.radius * trans.scale.x;
 		
-		if (!rb.bt_rigid_body) {
-			RigidBodySettings settings;
-			settings.origin.x = trans.position.x;
-			settings.origin.y = trans.position.y;
-			settings.origin.z = trans.position.z;
-			settings.velocity.x = rb.velocity.x;
-			settings.velocity.y = rb.velocity.y;
-			settings.velocity.z = rb.velocity.z;
+		world.add<BtRigidBodyPtr>(e.id)->bt_rigid_body = make_RigidBody(bt_wrapper, &settings);
+	}
 
-			btCollisionShape* shape = NULL;
-			if (world.by_id<SphereCollider>(e.id)) {
-				auto collider = world.by_id<SphereCollider>(e.id);
-				shape = make_SphereShape(collider->radius * trans.scale.x);
-				if (rb.continous) {
-					settings.sweep_radius = collider->radius * trans.scale.x;
-				}
-			}
-			else if (world.by_id<BoxCollider>(e.id)) {
-				auto collider = world.by_id<BoxCollider>(e.id);
-				glm::vec3 size = collider->scale * trans.scale;
-				shape = make_BoxShape(size);
-				if (rb.continous) {
-					settings.sweep_radius = glm::max(size.z, glm::max(size.x, size.y));
-				}
-			}
-			else if (world.by_id<CapsuleCollider>(e.id)) {
-				auto collider = world.by_id<CapsuleCollider>(id);
-				shape = make_CapsuleShape(collider->radius * trans.scale.x, collider->height * trans.scale.y);
-				if (rb.continous) {
-					settings.sweep_radius = collider->radius * trans.scale.x + collider->height * trans.scale.y;
-				}
-			}
-			else if (world.by_id<PlaneCollider>(id)) {
-				auto collider = world.by_id<PlaneCollider>(id);
-				shape = make_PlaneShape(collider->normal);
-			}
-			else if (world.by_id<Terrain>(id)) {
-				auto collider = world.by_id<Terrain>(id);
-				int width = collider->width * 32;
-				int height = collider->height * 32;
+	for (auto [e, trans, collider, rb] : world.filter<Transform, BoxCollider, RigidBody>(to_be_initialized)) {
+		RigidBodySettings settings = default_rb_settings(e, trans, rb);
 
-				float size_per_quad = collider->size_of_block / 32.0f;
+		glm::vec3 size = collider.scale * trans.scale;
+		settings.shape = make_BoxShape(size);
+		if (rb.continous) settings.sweep_radius = glm::max(size.z, glm::max(size.x, size.y));
 
-				//glm::vec3* data = new glm::vec3[width * height]; //todo fix leak
+		world.add<BtRigidBodyPtr>(e.id)->bt_rigid_body = make_RigidBody(bt_wrapper, &settings);
+	}
 
-				/*
-				for (int h = 0; h < height; h++) {
-					for (int w = 0; w < width; w++) {
-						auto pos = trans->position + (glm::vec3(w, 0, h) * size_per_quad);
+	for (auto [e, trans, collider, rb] : world.filter<Transform, CapsuleCollider, RigidBody>(to_be_initialized)) {
+		RigidBodySettings settings = default_rb_settings(e, trans, rb);
+		settings.shape = make_CapsuleShape(collider.radius * trans.scale.x, collider.height * trans.scale.y);
+		if (rb.continous) settings.sweep_radius = collider.radius * trans.scale.x + collider.height * trans.scale.y;
 
-						float height_at_point = collider->heightmap_points[h * height + w] * collider->max_height;
+		world.add<BtRigidBodyPtr>(e.id)->bt_rigid_body = make_RigidBody(bt_wrapper, &settings);
+	}
 
-						data[h * height + w] = pos + glm::vec3(0, height_at_point, 0);
-					}
-				}
-				*/
+	for (auto [e, trans, collider, rb] : world.filter<Transform, PlaneCollider, RigidBody>(to_be_initialized)) {
+		RigidBodySettings settings = default_rb_settings(e, trans, rb);
+		settings.shape = make_PlaneShape(collider.normal);
 
-				//settings.origin += glm::vec3(0.5 * size_per_quad * width, 0, -0.5 * size_per_quad * height);
-				settings.origin = glm::vec3(0);
+		world.add<BtRigidBodyPtr>(e.id)->bt_rigid_body = make_RigidBody(bt_wrapper, &settings);
+	}
 
-				shape = make_PlaneShape(glm::vec3(0, 1, 0));
-				//shape = make_ConvexHull(data, width * height);
+	for (auto [e, trans, collider, rb] : world.filter<Transform, Terrain, RigidBody>(to_be_initialized)) {
+		RigidBodySettings settings = default_rb_settings(e, trans, rb);
+		int width = collider.width * 32;
+		int height = collider.height * 32;
 
-				//settings.origin = glm::vec3(0);
+		float size_per_quad = collider.size_of_block / 32.0f;
 
-				//shape = new btHeightfieldTerrainShape(height, width, data,
-				//	100, 0.0f, 100.0, 1, PHY_FLOAT, true);
+		//glm::vec3* data = new glm::vec3[width * height]; //todo fix leak
 
-				//shape->setLocalScaling(btVector3(100.0f, 100.f, 100.0f));
+		/*
+		for (int h = 0; h < height; h++) {
+			for (int w = 0; w < width; w++) {
+				auto pos = trans->position + (glm::vec3(w, 0, h) * size_per_quad);
 
-				//shape->setLocalScaling(btVector3(size_per_quad, size_per_quad, size_per_quad));
-			}
+				float height_at_point = collider->heightmap_points[h * height + w] * collider->max_height;
 
-			settings.id = id;
-			settings.mass = rb.mass;
-			settings.lock_rotation = rb.override_rotation;
-			settings.shape = shape;
-
-			if (shape != NULL) {
-				rb.bt_rigid_body = make_RigidBody(bt_wrapper, &settings);
+				data[h * height + w] = pos + glm::vec3(0, height_at_point, 0);
 			}
 		}
+		*/
 
-		if (rb.mass == 0 || rb.bt_rigid_body == nullptr) continue;
+		//settings.origin += glm::vec3(0.5 * size_per_quad * width, 0, -0.5 * size_per_quad * height);
+		settings.origin = glm::vec3(0);
+		settings.shape = make_PlaneShape(glm::vec3(0, 1, 0));
+		//shape = make_ConvexHull(data, width * height);
 
+		//settings.origin = glm::vec3(0);
+
+		//shape = new btHeightfieldTerrainShape(height, width, data,
+		//	100, 0.0f, 100.0, 1, PHY_FLOAT, true);
+
+		//shape->setLocalScaling(btVector3(100.0f, 100.f, 100.0f));
+
+		//shape->setLocalScaling(btVector3(size_per_quad, size_per_quad, size_per_quad));
+
+		world.add<BtRigidBodyPtr>(e.id)->bt_rigid_body = make_RigidBody(bt_wrapper, &settings);
+	}
+
+	for (auto [e, ptr] : world.filter<BtRigidBodyPtr>(params.layermask.with_none<RigidBody>())) {
+		free_RigidBody(bt_wrapper, ptr.bt_rigid_body);
+	}
+
+	for (auto [e,trans,ptr,rb]: world.filter<Transform, BtRigidBodyPtr, RigidBody>(params.layermask)) {
+		if (rb.mass == 0) continue;
+
+		btRigidBody* bt_rigid_body = ptr.bt_rigid_body;
 		BulletWrapperTransform trans_of_rb;
 
-		transform_of_RigidBody(rb.bt_rigid_body, &trans_of_rb);
+		transform_of_RigidBody(bt_rigid_body, &trans_of_rb);
 
-		if (!rb.override_position) 
-			trans.position = trans_of_rb.position;
-		else 
-			trans_of_rb.position = trans.position;
+		if (!rb.override_position) trans.position = trans_of_rb.position;
+		else trans_of_rb.position = trans.position;
 		
-		if (!rb.override_velocity_x)
-			rb.velocity.x = trans_of_rb.velocity.x;
-		else
-			trans_of_rb.velocity.x = rb.velocity.x;
+		if (!rb.override_velocity_x) rb.velocity.x = trans_of_rb.velocity.x;
+		else trans_of_rb.velocity.x = rb.velocity.x;
 
-		if (!rb.override_velocity_y)
-			rb.velocity.y = trans_of_rb.velocity.y;
-		else
-			trans_of_rb.velocity.y = rb.velocity.y;
+		if (!rb.override_velocity_y) rb.velocity.y = trans_of_rb.velocity.y;
+		else trans_of_rb.velocity.y = rb.velocity.y;
 
-		if (!rb.override_velocity_z)
-			rb.velocity.z = trans_of_rb.velocity.z;
-		else
-			trans_of_rb.velocity.z = rb.velocity.z;
+		if (!rb.override_velocity_z) rb.velocity.z = trans_of_rb.velocity.z;
+		else trans_of_rb.velocity.z = rb.velocity.z;
 
-		set_transform_of_RigidBody(rb.bt_rigid_body, &trans_of_rb);
+		set_transform_of_RigidBody(bt_rigid_body, &trans_of_rb);
 	}
 
 	auto terrains = world.first<Terrain, Transform>();

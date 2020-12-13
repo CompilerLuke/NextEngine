@@ -23,7 +23,7 @@ struct DeviceFeatures {
 ENGINE_API void make_RHI(AppInfo& info, DeviceFeatures&);
 void ENGINE_API begin_gpu_upload();
 void ENGINE_API end_gpu_upload();
-void ENGINE_API queue_for_destruction(void*, void(*)(void*));
+void ENGINE_API queue_for_destruction(void*, void(*)(void*)); //may be worth using std::function instead
 
 template<typename T>
 void queue_t_for_destruction(T data, void(*func)(T)) {

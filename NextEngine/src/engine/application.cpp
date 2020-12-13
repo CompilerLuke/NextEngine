@@ -4,7 +4,7 @@
 #include "engine/input.h"
 #include "graphics/rhi/window.h"
 
-#ifdef NE_WINDOWS
+#ifdef NE_PLATFORM_WINDOWS
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
@@ -12,14 +12,25 @@ void destroy_DLL(void* dll) {
 	FreeLibrary((HINSTANCE)dll);
 }
 
-void* load_DLL(string_view path) {
+void* load_DLL(string_view path, bool* dll_is_locked = nullptr) {
 	char dest[100];
 	int insert_at = path.length - 4;
 	memcpy(dest, path.data, insert_at);
 	memcpy(dest + insert_at, "copy.dll", 9);
 
+	printf("Making a copy of the dll %s\n", path.data);
+
+
 	bool result = CopyFileA(path.c_str(), dest, false);
-	if (!result) throw "Could not copy DLL!";
+	if (!result) {
+		printf("Could not copy DLL!\n");
+		if (dll_is_locked) *dll_is_locked = true;
+		return nullptr;
+	}
+
+	if (dll_is_locked) *dll_is_locked = false;
+
+	printf("Loading the dll %s\n", dest);
 
 	HINSTANCE dll = LoadLibraryA(dest);
 	if (!dll) throw "Could not load DLL!";
@@ -31,7 +42,7 @@ void* get_Func(void* dll, const char* name) {
 }
 #endif
 
-#ifdef __APPLE__
+#ifdef NE_PLATFORM_MACOSX
 #include <dlfcn.h>
 #include <sys/stat.h>
 #define _stat stat
@@ -67,9 +78,25 @@ u64 timestamp_of(const char* path) {
 	return info.st_mtime;
 }
 
+void* Application::get_func(string_view name) {
+	return get_Func(dll_handle, name.c_str());
+}
+
 void Application::load_functions() {
 	time_modified = timestamp_of(path.c_str());
-	dll_handle = load_DLL(path);
+
+	bool locked = false;
+	for (uint i = 0; i < 10; i++) {
+		dll_handle = load_DLL(path, &locked);
+		if (!locked) break;
+
+		Sleep(100);
+	}
+
+	if (!dll_handle) {
+		fprintf(stderr, "Failed to load dll!\n");
+		return;
+	}
 
 	init_func = (InitFunction)get_Func(dll_handle, "init");
 	update_func = (UpdateFunction)get_Func(dll_handle, "update");
@@ -103,6 +130,7 @@ void Application::update() {
 }
 
 void Application::extract_render_data(FrameData& data) {
+	if (!extract_render_func) return;
     extract_render_func(application_state, engine, data);
 }
 
@@ -122,7 +150,7 @@ void Application::reload_if_modified() {
 void Application::run() {
 	while (is_running()) {
         if (engine.window && !engine.window->is_visible()) {
-            sleep(1);
+        //    thread_sleep(1);
         }
         
 		engine.begin_frame();

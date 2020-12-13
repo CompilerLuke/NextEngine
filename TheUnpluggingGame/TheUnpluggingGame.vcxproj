@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup><EnableUnitySupport>true</EnableUnitySupport></PropertyGroup>
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -20,27 +20,26 @@
     <IgnoreWarnCompileDuplicatedFilename>true</IgnoreWarnCompileDuplicatedFilename>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>TheUnpluggingGame</RootNamespace>
-    <LatestTargetPlatformVersion>$([Microsoft.Build.Utilities.ToolLocationHelper]::GetLatestSDKTargetPlatformVersion('Windows', '10.0'))</LatestTargetPlatformVersion>
-    <WindowsTargetPlatformVersion>$(LatestTargetPlatformVersion)</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -84,7 +83,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>NE_PLATFORM_WINDOWS;NE_DEBUG;THEUNPLUGGINGGAME_DLL;THEUNPLUGGINGGAME_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NE_PLATFORM_WINDOWS;NE_DEBUG;THEUNPLUGGINGGAME_DLL;THEUNPLUGGINGGAME_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
@@ -100,7 +99,7 @@
       <ImportLibrary>..\bin\Debug-windows-x86_64\TheUnpluggingGame\TheUnpluggingGame.lib</ImportLibrary>
     </Link>
     <PreBuildEvent>
-      <Command>../bin/Debug-windows-x86_64/ReflectionTool/ReflectionTool.exe -b "." -i "" -d "" -o generated</Command>
+      <Command>"../bin/Debug-windows-x86_64/ReflectionTool/ReflectionTool.exe" -b "." -i "" -d "" -o generated</Command>
     </PreBuildEvent>
     <PostBuildEvent>
       <Command>IF EXIST ..\bin\Debug-windows-x86_64\TheUnpluggingGame\TheUnpluggingGame.dll\ (xcopy /Q /E /Y /I ..\bin\Debug-windows-x86_64\TheUnpluggingGame\TheUnpluggingGame.dll ..\bin\Debug-windows-x86_64\TheUnpluggingRunner &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Debug-windows-x86_64\TheUnpluggingGame\TheUnpluggingGame.dll ..\bin\Debug-windows-x86_64\TheUnpluggingRunner &gt; nul)</Command>
@@ -111,7 +110,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>NE_PLATFORM_WINDOWS;NE_RELEASE;THEUNPLUGGINGGAME_DLL;THEUNPLUGGINGGAME_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NE_PLATFORM_WINDOWS;NE_RELEASE;THEUNPLUGGINGGAME_DLL;THEUNPLUGGINGGAME_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Full</Optimization>
@@ -132,7 +131,7 @@
       <ImportLibrary>..\bin\Release-windows-x86_64\TheUnpluggingGame\TheUnpluggingGame.lib</ImportLibrary>
     </Link>
     <PreBuildEvent>
-      <Command>../bin/Release-windows-x86_64/ReflectionTool/ReflectionTool.exe -b "." -i "" -d "" -o generated</Command>
+      <Command>"../bin/Release-windows-x86_64/ReflectionTool/ReflectionTool.exe" -b "." -i "" -d "" -o generated</Command>
     </PreBuildEvent>
     <PostBuildEvent>
       <Command>IF EXIST ..\bin\Release-windows-x86_64\TheUnpluggingGame\TheUnpluggingGame.dll\ (xcopy /Q /E /Y /I ..\bin\Release-windows-x86_64\TheUnpluggingGame\TheUnpluggingGame.dll ..\bin\Release-windows-x86_64\TheUnpluggingRunner &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Release-windows-x86_64\TheUnpluggingGame\TheUnpluggingGame.dll ..\bin\Release-windows-x86_64\TheUnpluggingRunner &gt; nul)</Command>
@@ -143,7 +142,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>NE_PLATFORM_WINDOWS;NE_DIST;THEUNPLUGGINGGAME_DLL;THEUNPLUGGINGGAME_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NE_PLATFORM_WINDOWS;NE_DIST;THEUNPLUGGINGGAME_DLL;THEUNPLUGGINGGAME_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -162,7 +161,7 @@
       <ImportLibrary>..\bin\Dist-windows-x86_64\TheUnpluggingGame\TheUnpluggingGame.lib</ImportLibrary>
     </Link>
     <PreBuildEvent>
-      <Command>../bin/Dist-windows-x86_64/ReflectionTool/ReflectionTool.exe -b "." -i "" -d "" -o generated</Command>
+      <Command>"../bin/Dist-windows-x86_64/ReflectionTool/ReflectionTool.exe" -b "." -i "" -d "" -o generated</Command>
     </PreBuildEvent>
     <PostBuildEvent>
       <Command>IF EXIST ..\bin\Dist-windows-x86_64\TheUnpluggingGame\TheUnpluggingGame.dll\ (xcopy /Q /E /Y /I ..\bin\Dist-windows-x86_64\TheUnpluggingGame\TheUnpluggingGame.dll ..\bin\Dist-windows-x86_64\TheUnpluggingRunner &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Dist-windows-x86_64\TheUnpluggingGame\TheUnpluggingGame.dll ..\bin\Dist-windows-x86_64\TheUnpluggingRunner &gt; nul)</Command>

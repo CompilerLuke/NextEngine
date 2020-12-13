@@ -3,7 +3,6 @@
 #include "graphics/rhi/vulkan/draw.h"
 #include "graphics/rhi/vulkan/swapchain.h"
 #include "graphics/rhi/vulkan/frame_buffer.h"
-#include "graphics/pass/render_pass.h"
 #include "graphics/assets/assets_store.h"
 
 AttachmentDesc& add_color_attachment(FramebufferDesc& desc, texture_handle* handle) {
@@ -58,6 +57,14 @@ Viewport render_pass_viewport_by_id(RenderPass::ID pass_id) {
 	viewport.width = framegraph.info[pass_id].width;
 	viewport.height = framegraph.info[pass_id].height;
 	return viewport;
+}
+
+ENGINE_API uint render_pass_num_color_attachments_by_id(RenderPass::ID id, uint subpass) {
+	uint count = 0;
+	for (Attachment& desc : framegraph.info[id].attachments) {
+		if (desc.aspect == VK_IMAGE_ASPECT_COLOR_BIT) count++;
+	}
+	return count;
 }
 
 const uint MAX_DEP_CHAIN_LENGTH = 5;
@@ -542,7 +549,8 @@ VkRenderPass make_RenderPass(VkDevice device, VkPhysicalDevice physical_device, 
 		depth_attachment_desc.stencilLoadOp = desc.stencil_buffer == StencilBufferFormat::None ? VK_ATTACHMENT_LOAD_OP_DONT_CARE : VK_ATTACHMENT_LOAD_OP_CLEAR;
 		depth_attachment_desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; 
 		depth_attachment_desc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		depth_attachment_desc.finalLayout = store_depth_buffer ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		depth_attachment_desc.finalLayout = store_depth_buffer ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+		//todo VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
 
 		depth_attachment_ref.attachment = attachments_desc.length;
 		depth_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -769,7 +777,7 @@ VkFramebuffer make_Framebuffer(VkDevice device, VkPhysicalDevice physical_device
         alloc_and_bind_memory(rhi.texture_allocator, attachment.image);
         
 		//make_alloc_Image(device, physical_device, desc.width, desc.height, depth_format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | (store_depth ? VK_IMAGE_USAGE_SAMPLED_BIT : 0), VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &attachment.image, &attachment.memory);
-		attachment.view = make_ImageView(device, attachment.image, depth_format, aspect);
+		attachment.view = make_ImageView(device, attachment.image, depth_format, VK_IMAGE_ASPECT_DEPTH_BIT);
         attachment.samples = samples;
         attachment.aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
     

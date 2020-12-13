@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/core.h"
+#include <assert.h>
 
 using hash_meta = uint;
 
@@ -16,14 +17,21 @@ inline uint hash_func(const char* str) {
 	return hash;
 }
 
-template<typename K, int N>
-struct hash_set {
-	hash_meta meta[N] = {};
-	K keys[N];
+template<typename K>
+struct hash_set_base {
+	uint capacity;
+	hash_meta* meta = {};
+	K* keys;
+
+	hash_set_base(uint capacity, hash_meta* meta, K* keys)
+	: capacity(capacity), meta(meta), keys(keys) {}
 
 	void clear() {
-		meta[N] = {};
-		keys[N] = {};
+		uint length = meta.length();
+		for (uint i = 0; i < length; i++) {
+			meta[i] = {};
+			keys[i] = {};
+		}
 	}
 
 	bool matches(uint hash, const K& key, uint probe_hash) const {
@@ -38,13 +46,15 @@ struct hash_set {
 
 	int add(K key) {
 		const u64 hash = hash_func(key);
-		uint probe_hash = hash % N;
-
+		uint probe_hash = hash % capacity;
+		uint it = 0;
 		while (is_full(probe_hash)) {
+			assert(it != capacity);
 			if (matches(hash, key, probe_hash)) return probe_hash; //Already exists
 
 			probe_hash++;
-			probe_hash %= N;
+			it++;
+			probe_hash %= capacity;
 		}
 
 		meta[probe_hash] = hash << 1 | 0x1;
@@ -55,11 +65,11 @@ struct hash_set {
 
 	int index(K key) {
 		const u64 hash = hash_func(key);
-		uint probe_hash = hash % N;
+		uint probe_hash = hash % capacity;
 
 		while (is_full(probe_hash) && !matches(hash, key, probe_hash)) {
 			probe_hash++;
-			probe_hash %= N;
+			probe_hash %= capacity;
 		}
 
 		if (is_full(probe_hash)) return probe_hash;
@@ -74,14 +84,13 @@ struct key_value {
 };
 
 
-
 template<typename K, typename V>
 struct hash_map_it {
 	hash_meta* meta;
 	K* keys;
 	V* values;
-	int length;
-	int i;
+	uint length;
+	uint i;
 
 	void skip_empty() {
 		while (i < length && !(meta[i] & 0x1))  {
@@ -107,10 +116,14 @@ struct hash_map_it {
 	}
 };
 
-template<typename K, typename V, int N>
-struct hash_map {
-	hash_set<K, N> keys = {};
-	V values[N] = {};
+template<typename K, typename V>
+struct hash_map_base : hash_set_base<K> {
+	V* values = {};
+
+	hash_map_base(uint capacity, hash_meta* meta, K* keys, V* values)
+	: hash_set_base(capacity, meta, keys), values(values) {
+
+	}
 
 	uint set(K key, const V& value) {
 		int index = keys.add(key);
@@ -119,30 +132,94 @@ struct hash_map {
 	}
 
 	V& operator[](K key) {
-		return values[keys.add(key)];
+		return values[add(key)];
 	}
 
 	const V& operator[](K key) const {
-		return values[keys.index(key)];
-	}
-
-	void clear() {
-		keys.clear();
+		return values[index(key)];
 	}
 
 	hash_map_it<K, V> begin() {
-		hash_map_it<K,V> it{ keys.meta, keys.keys, values, N, 0 };
+		hash_map_it<K,V> it{ meta, keys, values, capacity, 0 };
 		it.skip_empty();
 		return it;
 	}
 
 	hash_map_it<K, V> end() {
-		return { keys.meta, keys.keys, values, N, N };
+		return { meta, keys, values, capacity, capacity };
 	}
 
 	V* get(K key) {
 		int index = keys.index(key);
 		if (index != -1) return &values[index];
+		else return nullptr;
+	}
+};
+
+template <typename K, uint N>
+struct hash_set {
+	hash_meta meta[N] = {};
+	K keys[N] = {};
+
+	uint capacity() { return N; }
+
+	void clear() {
+		for (uint i = 0; i < N; i++) {
+			meta[i] = {};
+			keys[i] = {};
+		}
+	}
+
+	bool matches(uint hash, const K& key, uint probe_hash) const { 
+		return hash_set_base(N, meta, keys).matches(hash, key, probe_hash);
+	}
+
+	bool is_full(uint probe_hash) const { return meta[probe_hash] & 0x1; }
+	int add(K key) { return hash_set_base(N, meta, keys).add(key); }
+	int index(K key) { return hash_set_base(N, meta, keys).index(key); }
+};
+
+template <typename K, typename V, uint N>
+struct hash_map : hash_set<K, N> {
+	V values[N] = {};
+	
+	uint capacity() { return N;}
+
+	void clear() {
+		for (uint i = 0; i < N; i++) {
+			meta[i] = {};
+			keys[i] = {};
+			values[i] = {};
+		}
+	}
+
+	uint set(K key, const V& value) {
+		int index = add(key);
+		values[index] = value;
+		return index;
+	}
+
+	V& operator[](K key) {
+		return values[add(key)];
+	}
+
+	const V& operator[](K key) const {
+		return values[index(key)];
+	}
+
+	hash_map_it<K, V> begin() {
+		hash_map_it<K, V> it{ meta, keys, values, N, 0 };
+		it.skip_empty();
+		return it;
+	}
+
+	hash_map_it<K, V> end() {
+		return { meta, keys, values, N, N };
+	}
+
+	V* get(K key) {
+		int i = index(key);
+		if (i != -1) return &values[i];
 		else return nullptr;
 	}
 };

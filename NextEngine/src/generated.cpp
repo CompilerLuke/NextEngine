@@ -1,26 +1,26 @@
 #include "engine/types.h"
-#include "components/transform.h"
-#include "components/camera.h"
-#include "components/flyover.h"
-#include "components/skybox.h"
-#include "components/terrain.h"
-#include "components/lights.h"
-#include "components/grass.h"
-#include "graphics/rhi/forward.h"
-#include "engine/handle.h"
-#include "physics/physics.h"
-#include "graphics/assets/assets.h"
-#include "graphics/assets/assets_store.h"
-#include "graphics/assets/material.h"
-#include "graphics/assets/model.h"
-#include "graphics/assets/shader.h"
-#include "graphics/assets/texture.h"
-#include "ecs/component_ids.h"
-#include "ecs/ecs.h"
-#include "ecs/flags.h"
-#include "ecs/id.h"
-#include "ecs/system.h"
-#include <glm/vec2.hpp>
+#include "./components/transform.h"
+#include "./components/camera.h"
+#include "./components/flyover.h"
+#include "./components/skybox.h"
+#include "./components/terrain.h"
+#include "./components/lights.h"
+#include "./components/grass.h"
+#include "./graphics/rhi/forward.h"
+#include "./engine/handle.h"
+#include "./physics/physics.h"
+#include "./graphics/pass/volumetric.h"
+#include "./graphics/assets/assets.h"
+#include "./graphics/assets/assets_store.h"
+#include "./graphics/assets/material.h"
+#include "./graphics/assets/model.h"
+#include "./graphics/assets/shader.h"
+#include "./graphics/assets/texture.h"
+#include "./ecs/component_ids.h"
+#include "./ecs/ecs.h"
+#include "./ecs/flags.h"
+#include "./ecs/id.h"
+#include "./ecs/system.h"
 
 refl::Enum init_MaterialDesc_Mode() {
 	refl::Enum type("Mode", sizeof(MaterialDesc::Mode));
@@ -207,7 +207,7 @@ refl::Struct init_Flyover() {
 	type.fields.append({"movement_speed", offsetof(Flyover, movement_speed), get_float_type()});
 	type.fields.append({"yaw", offsetof(Flyover, yaw), get_float_type()});
 	type.fields.append({"pitch", offsetof(Flyover, pitch), get_float_type()});
-	type.fields.append({"past_movement_speed", offsetof(Flyover, past_movement_speed), make_array_type(3, sizeof(array<3, glm::vec2>), get_vec2_type())});
+	type.fields.append({"past_movement_speed", offsetof(Flyover, past_movement_speed), make_array_type(3, sizeof(array<3, struct glm::vec2>), get_vec2_type())});
 	return type;
 }
 
@@ -827,6 +827,7 @@ refl::Struct init_RigidBody() {
 	type.fields.append({"override_velocity_y", offsetof(RigidBody, override_velocity_y), get_bool_type()});
 	type.fields.append({"override_velocity_z", offsetof(RigidBody, override_velocity_z), get_bool_type()});
 	type.fields.append({"continous", offsetof(RigidBody, continous), get_bool_type()});
+	type.fields.append({"dummy_ptr", offsetof(RigidBody, dummy_ptr), get_int_type()});
 	return type;
 }
 
@@ -836,7 +837,6 @@ void write_RigidBody_to_buffer(SerializerBuffer& buffer, RigidBody& data) {
 
 void read_RigidBody_from_buffer(DeserializerBuffer& buffer, RigidBody& data) {
     read_n_from_buffer(buffer, &data, sizeof(RigidBody));
-    data.bt_rigid_body = nullptr;
 }
 
 refl::Struct* get_RigidBody_type() {
@@ -862,6 +862,96 @@ void read_CharacterController_from_buffer(DeserializerBuffer& buffer, CharacterC
 
 refl::Struct* get_CharacterController_type() {
 	static refl::Struct type = init_CharacterController();
+	return &type;
+}
+
+refl::Struct init_BtRigidBodyPtr() {
+	refl::Struct type("BtRigidBodyPtr", sizeof(BtRigidBodyPtr));
+	type.fields.append({"bt_rigid_body", offsetof(BtRigidBodyPtr, bt_rigid_body), get_int_type()});
+	return type;
+}
+
+void write_BtRigidBodyPtr_to_buffer(SerializerBuffer& buffer, BtRigidBodyPtr& data) {
+    write_n_to_buffer(buffer, &data, sizeof(BtRigidBodyPtr));
+}
+
+void read_BtRigidBodyPtr_from_buffer(DeserializerBuffer& buffer, BtRigidBodyPtr& data) {
+    read_n_from_buffer(buffer, &data, sizeof(BtRigidBodyPtr));
+}
+
+refl::Struct* get_BtRigidBodyPtr_type() {
+	static refl::Struct type = init_BtRigidBodyPtr();
+	return &type;
+}
+
+refl::Struct init_VolumetricSettings() {
+	refl::Struct type("VolumetricSettings", sizeof(VolumetricSettings));
+	type.fields.append({"fog_steps", offsetof(VolumetricSettings, fog_steps), get_uint_type()});
+	type.fields.append({"fog_cloud_shadow_steps", offsetof(VolumetricSettings, fog_cloud_shadow_steps), get_uint_type()});
+	type.fields.append({"cloud_steps", offsetof(VolumetricSettings, cloud_steps), get_uint_type()});
+	type.fields.append({"cloud_shadow_steps", offsetof(VolumetricSettings, cloud_shadow_steps), get_uint_type()});
+	return type;
+}
+
+void write_VolumetricSettings_to_buffer(SerializerBuffer& buffer, VolumetricSettings& data) {
+    write_n_to_buffer(buffer, &data, sizeof(VolumetricSettings));
+}
+
+void read_VolumetricSettings_from_buffer(DeserializerBuffer& buffer, VolumetricSettings& data) {
+    read_n_from_buffer(buffer, &data, sizeof(VolumetricSettings));
+}
+
+refl::Struct* get_VolumetricSettings_type() {
+	static refl::Struct type = init_VolumetricSettings();
+	return &type;
+}
+
+refl::Struct init_CloudVolume() {
+	refl::Struct type("CloudVolume", sizeof(CloudVolume));
+	type.fields.append({"size", offsetof(CloudVolume, size), get_vec3_type()});
+	type.fields.append({"phase", offsetof(CloudVolume, phase), get_float_type()});
+	type.fields.append({"light_absorbtion_in_cloud", offsetof(CloudVolume, light_absorbtion_in_cloud), get_float_type()});
+	type.fields.append({"light_absorbtion_towards_sun", offsetof(CloudVolume, light_absorbtion_towards_sun), get_float_type()});
+	type.fields.append({"forward_scatter_intensity", offsetof(CloudVolume, forward_scatter_intensity), get_float_type()});
+	type.fields.append({"shadow_darkness_threshold", offsetof(CloudVolume, shadow_darkness_threshold), get_float_type()});
+	type.fields.append({"wind", offsetof(CloudVolume, wind), get_vec3_type()});
+	return type;
+}
+
+void write_CloudVolume_to_buffer(SerializerBuffer& buffer, CloudVolume& data) {
+    write_n_to_buffer(buffer, &data, sizeof(CloudVolume));
+}
+
+void read_CloudVolume_from_buffer(DeserializerBuffer& buffer, CloudVolume& data) {
+    read_n_from_buffer(buffer, &data, sizeof(CloudVolume));
+}
+
+refl::Struct* get_CloudVolume_type() {
+	static refl::Struct type = init_CloudVolume();
+	return &type;
+}
+
+refl::Struct init_FogVolume() {
+	refl::Struct type("FogVolume", sizeof(FogVolume));
+	type.fields.append({"size", offsetof(FogVolume, size), get_vec3_type()});
+	type.fields.append({"coefficient", offsetof(FogVolume, coefficient), get_float_type()});
+	type.fields.append({"forward_scatter_color", offsetof(FogVolume, forward_scatter_color), get_vec3_type()});
+	type.fields.append({"intensity", offsetof(FogVolume, intensity), get_float_type()});
+	type.fields.append({"fog_color", offsetof(FogVolume, fog_color), get_vec3_type()});
+	type.fields.append({"fog_begin", offsetof(FogVolume, fog_begin), get_float_type()});
+	return type;
+}
+
+void write_FogVolume_to_buffer(SerializerBuffer& buffer, FogVolume& data) {
+    write_n_to_buffer(buffer, &data, sizeof(FogVolume));
+}
+
+void read_FogVolume_from_buffer(DeserializerBuffer& buffer, FogVolume& data) {
+    read_n_from_buffer(buffer, &data, sizeof(FogVolume));
+}
+
+refl::Struct* get_FogVolume_type() {
+	static refl::Struct type = init_FogVolume();
 	return &type;
 }
 
@@ -1003,11 +1093,33 @@ refl::Struct init_ArchetypeStore() {
 }
 
 void write_ArchetypeStore_to_buffer(SerializerBuffer& buffer, ArchetypeStore& data) {
-    write_n_to_buffer(buffer, &data, sizeof(ArchetypeStore));
+	for (uint i = 0; i < 64; i++) {
+         write_n_to_buffer(buffer, &data.offsets[i], sizeof(uint));
+    }
+	for (uint i = 0; i < 3; i++) {
+         write_n_to_buffer(buffer, &data.dirty_hierarchy_offset[i], sizeof(uint));
+    }
+	for (uint i = 0; i < 3; i++) {
+         write_n_to_buffer(buffer, &data.dirty_hierarchy_count[i], sizeof(uint));
+    }
+    write_n_to_buffer(buffer, &data.block_count, sizeof(uint));
+    write_n_to_buffer(buffer, &data.max_per_block, sizeof(uint));
+    write_n_to_buffer(buffer, &data.entity_count_last_block, sizeof(uint));
 }
 
 void read_ArchetypeStore_from_buffer(DeserializerBuffer& buffer, ArchetypeStore& data) {
-    read_n_from_buffer(buffer, &data, sizeof(ArchetypeStore));
+	for (uint i = 0; i < 64; i++) {
+         read_n_from_buffer(buffer, &data.offsets[i], sizeof(uint));
+    }
+	for (uint i = 0; i < 3; i++) {
+         read_n_from_buffer(buffer, &data.dirty_hierarchy_offset[i], sizeof(uint));
+    }
+	for (uint i = 0; i < 3; i++) {
+         read_n_from_buffer(buffer, &data.dirty_hierarchy_count[i], sizeof(uint));
+    }
+    read_n_from_buffer(buffer, &data.block_count, sizeof(uint));
+    read_n_from_buffer(buffer, &data.max_per_block, sizeof(uint));
+    read_n_from_buffer(buffer, &data.entity_count_last_block, sizeof(uint));
 }
 
 refl::Struct* get_ArchetypeStore_type() {
@@ -1015,97 +1127,109 @@ refl::Struct* get_ArchetypeStore_type() {
 	return &type;
 }
 
-#include "ecs/component_ids.h"
+#include "./include/ecs/component_ids.h"
 #include "ecs/ecs.h"
 #include "engine/application.h"
 
 
 void register_default_components(World& world) {
-    world.component_type[1] = get_Transform_type();
-    world.component_size[1] = sizeof(Transform);
-    world.component_lifetime_funcs[1].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((Transform*)data + i) Transform(); };
-    world.component_type[2] = get_StaticTransform_type();
-    world.component_size[2] = sizeof(StaticTransform);
-    world.component_lifetime_funcs[2].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((StaticTransform*)data + i) StaticTransform(); };
-    world.component_type[3] = get_LocalTransform_type();
-    world.component_size[3] = sizeof(LocalTransform);
-    world.component_lifetime_funcs[3].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((LocalTransform*)data + i) LocalTransform(); };
-    world.component_type[4] = get_Camera_type();
-    world.component_size[4] = sizeof(Camera);
-    world.component_lifetime_funcs[4].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((Camera*)data + i) Camera(); };
-    world.component_type[5] = get_Flyover_type();
-    world.component_size[5] = sizeof(Flyover);
-    world.component_lifetime_funcs[5].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((Flyover*)data + i) Flyover(); };
-    world.component_type[6] = get_Skybox_type();
-    world.component_size[6] = sizeof(Skybox);
-    world.component_lifetime_funcs[6].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((Skybox*)data + i) Skybox(); };
-    world.component_type[7] = get_TerrainControlPoint_type();
-    world.component_size[7] = sizeof(TerrainControlPoint);
-    world.component_lifetime_funcs[7].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((TerrainControlPoint*)data + i) TerrainControlPoint(); };
-    world.component_type[8] = get_TerrainSplat_type();
-    world.component_size[8] = sizeof(TerrainSplat);
-    world.component_lifetime_funcs[8].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((TerrainSplat*)data + i) TerrainSplat(); };
-    world.component_type[9] = get_Terrain_type();
-    world.component_size[9] = sizeof(Terrain);
-    world.component_lifetime_funcs[9].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((Terrain*)data + i) Terrain(); };
-    world.component_lifetime_funcs[9].copy = [](void* dst, void* src, uint count) { for (uint i=0; i<count; i++) new ((Terrain*)dst + i) Terrain(((Terrain*)src)[i]); };
-    world.component_lifetime_funcs[9].destructor = [](void* ptr, uint count) { for (uint i=0; i<count; i++) ((Terrain*)ptr)[i].~Terrain(); };
-    world.component_lifetime_funcs[9].serialize = [](SerializerBuffer& buffer, void* data, uint count) {
+    RegisterComponent components[25] = {};
+    components[0].component_id = 1;
+    components[0].type = get_Transform_type();
+    components[0].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((Transform*)data + i) Transform(); };
+    components[1].component_id = 2;
+    components[1].type = get_StaticTransform_type();
+    components[1].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((StaticTransform*)data + i) StaticTransform(); };
+    components[2].component_id = 3;
+    components[2].type = get_LocalTransform_type();
+    components[2].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((LocalTransform*)data + i) LocalTransform(); };
+    components[3].component_id = 4;
+    components[3].type = get_Camera_type();
+    components[3].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((Camera*)data + i) Camera(); };
+    components[4].component_id = 5;
+    components[4].type = get_Flyover_type();
+    components[4].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((Flyover*)data + i) Flyover(); };
+    components[5].component_id = 6;
+    components[5].type = get_Skybox_type();
+    components[5].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((Skybox*)data + i) Skybox(); };
+    components[6].component_id = 7;
+    components[6].type = get_TerrainControlPoint_type();
+    components[6].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((TerrainControlPoint*)data + i) TerrainControlPoint(); };
+    components[7].component_id = 8;
+    components[7].type = get_TerrainSplat_type();
+    components[7].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((TerrainSplat*)data + i) TerrainSplat(); };
+    components[8].component_id = 9;
+    components[8].type = get_Terrain_type();
+    components[8].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((Terrain*)data + i) Terrain(); };
+    components[8].funcs.copy = [](void* dst, void* src, uint count) { for (uint i=0; i<count; i++) new ((Terrain*)dst + i) Terrain(((Terrain*)src)[i]); };
+    components[8].funcs.destructor = [](void* ptr, uint count) { for (uint i=0; i<count; i++) ((Terrain*)ptr)[i].~Terrain(); };
+    components[8].funcs.serialize = [](SerializerBuffer& buffer, void* data, uint count) {
         for (uint i = 0; i < count; i++) write_Terrain_to_buffer(buffer, ((Terrain*)data)[i]);
     };
-    world.component_lifetime_funcs[9].deserialize = [](DeserializerBuffer& buffer, void* data, uint count) {
+    components[8].funcs.deserialize = [](DeserializerBuffer& buffer, void* data, uint count) {
         for (uint i = 0; i < count; i++) read_Terrain_from_buffer(buffer, ((Terrain*)data)[i]);
     };
 
 
-    world.component_type[10] = get_DirLight_type();
-    world.component_size[10] = sizeof(DirLight);
-    world.component_lifetime_funcs[10].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((DirLight*)data + i) DirLight(); };
-    world.component_type[11] = get_PointLight_type();
-    world.component_size[11] = sizeof(PointLight);
-    world.component_lifetime_funcs[11].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((PointLight*)data + i) PointLight(); };
-    world.component_type[12] = get_SkyLight_type();
-    world.component_size[12] = sizeof(SkyLight);
-    world.component_lifetime_funcs[12].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((SkyLight*)data + i) SkyLight(); };
-    world.component_type[13] = get_Grass_type();
-    world.component_size[13] = sizeof(Grass);
-    world.component_lifetime_funcs[13].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((Grass*)data + i) Grass(); };
-    world.component_lifetime_funcs[13].copy = [](void* dst, void* src, uint count) { for (uint i=0; i<count; i++) new ((Grass*)dst + i) Grass(((Grass*)src)[i]); };
-    world.component_lifetime_funcs[13].destructor = [](void* ptr, uint count) { for (uint i=0; i<count; i++) ((Grass*)ptr)[i].~Grass(); };
-    world.component_lifetime_funcs[13].serialize = [](SerializerBuffer& buffer, void* data, uint count) {
+    components[9].component_id = 10;
+    components[9].type = get_DirLight_type();
+    components[9].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((DirLight*)data + i) DirLight(); };
+    components[10].component_id = 11;
+    components[10].type = get_PointLight_type();
+    components[10].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((PointLight*)data + i) PointLight(); };
+    components[11].component_id = 12;
+    components[11].type = get_SkyLight_type();
+    components[11].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((SkyLight*)data + i) SkyLight(); };
+    components[12].component_id = 13;
+    components[12].type = get_Grass_type();
+    components[12].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((Grass*)data + i) Grass(); };
+    components[12].funcs.copy = [](void* dst, void* src, uint count) { for (uint i=0; i<count; i++) new ((Grass*)dst + i) Grass(((Grass*)src)[i]); };
+    components[12].funcs.destructor = [](void* ptr, uint count) { for (uint i=0; i<count; i++) ((Grass*)ptr)[i].~Grass(); };
+    components[12].funcs.serialize = [](SerializerBuffer& buffer, void* data, uint count) {
         for (uint i = 0; i < count; i++) write_Grass_to_buffer(buffer, ((Grass*)data)[i]);
     };
-    world.component_lifetime_funcs[13].deserialize = [](DeserializerBuffer& buffer, void* data, uint count) {
+    components[12].funcs.deserialize = [](DeserializerBuffer& buffer, void* data, uint count) {
         for (uint i = 0; i < count; i++) read_Grass_from_buffer(buffer, ((Grass*)data)[i]);
     };
 
 
-    world.component_type[14] = get_CapsuleCollider_type();
-    world.component_size[14] = sizeof(CapsuleCollider);
-    world.component_lifetime_funcs[14].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((CapsuleCollider*)data + i) CapsuleCollider(); };
-    world.component_type[15] = get_SphereCollider_type();
-    world.component_size[15] = sizeof(SphereCollider);
-    world.component_lifetime_funcs[15].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((SphereCollider*)data + i) SphereCollider(); };
-    world.component_type[16] = get_BoxCollider_type();
-    world.component_size[16] = sizeof(BoxCollider);
-    world.component_lifetime_funcs[16].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((BoxCollider*)data + i) BoxCollider(); };
-    world.component_type[17] = get_PlaneCollider_type();
-    world.component_size[17] = sizeof(PlaneCollider);
-    world.component_lifetime_funcs[17].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((PlaneCollider*)data + i) PlaneCollider(); };
-    world.component_type[18] = get_RigidBody_type();
-    world.component_size[18] = sizeof(RigidBody);
-    world.component_lifetime_funcs[18].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((RigidBody*)data + i) RigidBody(); };
-    world.component_type[19] = get_CharacterController_type();
-    world.component_size[19] = sizeof(CharacterController);
-    world.component_lifetime_funcs[19].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((CharacterController*)data + i) CharacterController(); };
-    world.component_type[20] = get_Materials_type();
-    world.component_size[20] = sizeof(Materials);
-    world.component_lifetime_funcs[20].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((Materials*)data + i) Materials(); };
-    world.component_type[21] = get_ModelRenderer_type();
-    world.component_size[21] = sizeof(ModelRenderer);
-    world.component_lifetime_funcs[21].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((ModelRenderer*)data + i) ModelRenderer(); };
-    world.component_type[0] = get_Entity_type();
-    world.component_size[0] = sizeof(Entity);
-    world.component_lifetime_funcs[0].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((Entity*)data + i) Entity(); };
+    components[13].component_id = 14;
+    components[13].type = get_CapsuleCollider_type();
+    components[13].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((CapsuleCollider*)data + i) CapsuleCollider(); };
+    components[14].component_id = 15;
+    components[14].type = get_SphereCollider_type();
+    components[14].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((SphereCollider*)data + i) SphereCollider(); };
+    components[15].component_id = 16;
+    components[15].type = get_BoxCollider_type();
+    components[15].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((BoxCollider*)data + i) BoxCollider(); };
+    components[16].component_id = 17;
+    components[16].type = get_PlaneCollider_type();
+    components[16].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((PlaneCollider*)data + i) PlaneCollider(); };
+    components[17].component_id = 18;
+    components[17].type = get_RigidBody_type();
+    components[17].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((RigidBody*)data + i) RigidBody(); };
+    components[18].component_id = 19;
+    components[18].type = get_CharacterController_type();
+    components[18].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((CharacterController*)data + i) CharacterController(); };
+    components[19].component_id = 24;
+    components[19].type = get_BtRigidBodyPtr_type();
+    components[19].kind = SYSTEM_COMPONENT;
+    components[19].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((BtRigidBodyPtr*)data + i) BtRigidBodyPtr(); };
+    components[20].component_id = 25;
+    components[20].type = get_CloudVolume_type();
+    components[20].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((CloudVolume*)data + i) CloudVolume(); };
+    components[21].component_id = 26;
+    components[21].type = get_FogVolume_type();
+    components[21].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((FogVolume*)data + i) FogVolume(); };
+    components[22].component_id = 20;
+    components[22].type = get_Materials_type();
+    components[22].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((Materials*)data + i) Materials(); };
+    components[23].component_id = 21;
+    components[23].type = get_ModelRenderer_type();
+    components[23].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((ModelRenderer*)data + i) ModelRenderer(); };
+    components[24].component_id = 0;
+    components[24].type = get_Entity_type();
+    components[24].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((Entity*)data + i) Entity(); };
+    world.register_components({components, 25});
 
 };

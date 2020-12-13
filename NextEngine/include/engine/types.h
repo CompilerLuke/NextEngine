@@ -1,7 +1,7 @@
 #pragma once
+#include "core/core.h"
 
 #include "engine/core.h"
-
 #include "core/memory/linear_allocator.h"
 #include "core/serializer.h"
 #include "core/reflection.h"
@@ -129,6 +129,18 @@ ENGINE_API refl::Struct* get_RigidBody_type();
 ENGINE_API void write_CharacterController_to_buffer(struct SerializerBuffer& buffer, struct CharacterController& data); 
 ENGINE_API void read_CharacterController_from_buffer(struct DeserializerBuffer& buffer, struct CharacterController& data); 
 ENGINE_API refl::Struct* get_CharacterController_type();
+ENGINE_API void write_BtRigidBodyPtr_to_buffer(struct SerializerBuffer& buffer, struct BtRigidBodyPtr& data); 
+ENGINE_API void read_BtRigidBodyPtr_from_buffer(struct DeserializerBuffer& buffer, struct BtRigidBodyPtr& data); 
+ENGINE_API refl::Struct* get_BtRigidBodyPtr_type();
+ENGINE_API void write_VolumetricSettings_to_buffer(struct SerializerBuffer& buffer, struct VolumetricSettings& data); 
+ENGINE_API void read_VolumetricSettings_from_buffer(struct DeserializerBuffer& buffer, struct VolumetricSettings& data); 
+ENGINE_API refl::Struct* get_VolumetricSettings_type();
+ENGINE_API void write_CloudVolume_to_buffer(struct SerializerBuffer& buffer, struct CloudVolume& data); 
+ENGINE_API void read_CloudVolume_from_buffer(struct DeserializerBuffer& buffer, struct CloudVolume& data); 
+ENGINE_API refl::Struct* get_CloudVolume_type();
+ENGINE_API void write_FogVolume_to_buffer(struct SerializerBuffer& buffer, struct FogVolume& data); 
+ENGINE_API void read_FogVolume_from_buffer(struct DeserializerBuffer& buffer, struct FogVolume& data); 
+ENGINE_API refl::Struct* get_FogVolume_type();
 ENGINE_API void write_ParamDesc_to_buffer(struct SerializerBuffer& buffer, struct ParamDesc& data); 
 ENGINE_API void read_ParamDesc_from_buffer(struct DeserializerBuffer& buffer, struct ParamDesc& data); 
 ENGINE_API refl::Struct* get_ParamDesc_type();

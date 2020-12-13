@@ -13,7 +13,7 @@ struct AssetInfo;
 struct AssetPreviewResources {
 	pipeline_layout_handle pipeline_layout;
 	descriptor_set_handle pass_descriptor[MAX_FRAMES_IN_FLIGHT];
-	descriptor_set_handle pbr_descriptor;
+	descriptor_set_handle pbr_descriptor[MAX_FRAMES_IN_FLIGHT];
 	UBOBuffer pass_ubo[MAX_FRAMES_IN_FLIGHT];
 	UBOBuffer simulation_ubo[MAX_FRAMES_IN_FLIGHT];
 	Framebuffer preview_fbo;

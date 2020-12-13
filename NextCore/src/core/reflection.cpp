@@ -202,7 +202,7 @@ DiffOfType diff_type(Type* a, Type* b) {
         
         bool edited = false;
         
-        for (int i = 0; i < a_struct->fields.length; i++) {
+        for (uint i = 0; i < a_struct->fields.length; i++) {
             Field* field_a = &a_struct->fields[i];
             Field* field_b = find_field(b_struct->fields, field_a->name);
             

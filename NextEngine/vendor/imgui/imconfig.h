@@ -72,6 +72,14 @@ namespace ImGui
 }
 */
 
+#ifdef NE_PLATFORM_WINDOWS
+	#ifdef NEXTENGINE_EXPORTS
+	#define IMGUI_API __declspec( dllexport )
+	#else
+	#define IMGUI_API __declspec( dllimport )
+	#endif
+#endif
+
 #include "engine/handle.h"
 #include <glm/vec2.hpp>
 

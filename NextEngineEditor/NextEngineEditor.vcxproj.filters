@@ -7,6 +7,9 @@
     <Filter Include="include\assets">
       <UniqueIdentifier>{6B16CE41-57E4-C147-4078-326E2CE59DAC}</UniqueIdentifier>
     </Filter>
+    <Filter Include="include\terrain_tools">
+      <UniqueIdentifier>{9DEC8BD5-0959-47D0-D24C-DF2D3E786938}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src">
       <UniqueIdentifier>{2DAB880B-99B4-887C-2230-9F7C8E38947C}</UniqueIdentifier>
     </Filter>
@@ -15,6 +18,9 @@
     </Filter>
     <Filter Include="src\assets\shader_graph">
       <UniqueIdentifier>{8680AE87-F2B7-F61E-FBC1-5A4267781D18}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\terrain_tools">
+      <UniqueIdentifier>{4177FB5E-AD8D-F9F4-F604-8516625ACA7C}</UniqueIdentifier>
     </Filter>
     <Filter Include="vendor">
       <UniqueIdentifier>{B3738122-9F15-ACF8-88D0-BF4C74113349}</UniqueIdentifier>
@@ -87,8 +93,14 @@
     <ClInclude Include="include\shaderGraph.h">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="include\terrain.h">
-      <Filter>include</Filter>
+    <ClInclude Include="include\terrain_tools\gpu_generation.h">
+      <Filter>include\terrain_tools</Filter>
+    </ClInclude>
+    <ClInclude Include="include\terrain_tools\kriging.h">
+      <Filter>include\terrain_tools</Filter>
+    </ClInclude>
+    <ClInclude Include="include\terrain_tools\terrain.h">
+      <Filter>include\terrain_tools</Filter>
     </ClInclude>
     <ClInclude Include="include\visualize_physics.h">
       <Filter>include</Filter>
@@ -168,8 +180,14 @@
     <ClCompile Include="src\picking.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="src\terrain.cpp">
-      <Filter>src</Filter>
+    <ClCompile Include="src\terrain_tools\gpu_generation.cpp">
+      <Filter>src\terrain_tools</Filter>
+    </ClCompile>
+    <ClCompile Include="src\terrain_tools\kriging.cpp">
+      <Filter>src\terrain_tools</Filter>
+    </ClCompile>
+    <ClCompile Include="src\terrain_tools\terrain.cpp">
+      <Filter>src\terrain_tools</Filter>
     </ClCompile>
     <ClCompile Include="src\visualize_physics.cpp">
       <Filter>src</Filter>

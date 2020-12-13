@@ -20,7 +20,7 @@ struct string_view {
 	inline string_view(const char* data) {
 		if (data == NULL) data = "";
 		this->data = data;
-		this->length = strlen(data);
+		this->length = (uint)strlen(data);
 	}
 
 	inline bool starts_with(string_view pre) {
@@ -30,7 +30,7 @@ struct string_view {
 	inline bool starts_with_ignore_case(string_view pre) {
 		if (length < pre.length) return false;
 
-		for (int i = 0; i < pre.length; i++) {
+		for (uint i = 0; i < pre.length; i++) {
 			if (to_lower_case(pre.data[i]) != to_lower_case(data[i])) return false;
 		}
 
@@ -49,7 +49,7 @@ struct string_view {
 	}
 
 	inline int find(char c) const {
-		for (int i = 0; i < this->length; i++) {
+		for (uint i = 0; i < this->length; i++) {
 			if (this->data[i] == c) return i;
 		}
 		return -1;

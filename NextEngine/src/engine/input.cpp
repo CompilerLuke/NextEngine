@@ -149,9 +149,7 @@ void Input::clear() {
 	}
 
 	for (auto pair : this->keys) {
-		if (pair.value == GLFW_PRESS) {
-			this->keys[pair.key] = GLFW_REPEAT; 
-		}
+		if (pair.value == GLFW_PRESS) pair.value = GLFW_REPEAT; 
 	}
 
 	for (unsigned int i = 0; i < 3; i++) {

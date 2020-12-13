@@ -1,7 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
+# Visual Studio Version 16
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TheUnpluggingRunner", "TheUnpluggingRunner\TheUnpluggingRunner.vcxproj", "{A0134B36-0C75-2844-95E2-6EF601435F03}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CFD", "CFD\CFD.vcxproj", "{32D9870B-9EE2-877C-275E-9E7C9366937C}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ChemistryProject", "ChemistryProject\ChemistryProject.vcxproj", "{74C382EC-60BC-A13E-89EE-86C37546814A}"
 EndProject
@@ -46,6 +48,12 @@ Global
 		{A0134B36-0C75-2844-95E2-6EF601435F03}.Dist|x64.Build.0 = Dist|x64
 		{A0134B36-0C75-2844-95E2-6EF601435F03}.Release|x64.ActiveCfg = Release|x64
 		{A0134B36-0C75-2844-95E2-6EF601435F03}.Release|x64.Build.0 = Release|x64
+		{32D9870B-9EE2-877C-275E-9E7C9366937C}.Debug|x64.ActiveCfg = Debug|x64
+		{32D9870B-9EE2-877C-275E-9E7C9366937C}.Debug|x64.Build.0 = Debug|x64
+		{32D9870B-9EE2-877C-275E-9E7C9366937C}.Dist|x64.ActiveCfg = Dist|x64
+		{32D9870B-9EE2-877C-275E-9E7C9366937C}.Dist|x64.Build.0 = Dist|x64
+		{32D9870B-9EE2-877C-275E-9E7C9366937C}.Release|x64.ActiveCfg = Release|x64
+		{32D9870B-9EE2-877C-275E-9E7C9366937C}.Release|x64.Build.0 = Release|x64
 		{74C382EC-60BC-A13E-89EE-86C37546814A}.Debug|x64.ActiveCfg = Debug|x64
 		{74C382EC-60BC-A13E-89EE-86C37546814A}.Debug|x64.Build.0 = Debug|x64
 		{74C382EC-60BC-A13E-89EE-86C37546814A}.Dist|x64.ActiveCfg = Dist|x64

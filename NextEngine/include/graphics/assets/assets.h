@@ -35,8 +35,8 @@ struct DefaultMaterials {
 	material_handle missing;
 };
 
-extern ENGINE_API DefaultTextures default_textures;
-extern ENGINE_API DefaultMaterials default_materials;
+ENGINE_API extern DefaultTextures default_textures;
+ENGINE_API extern DefaultMaterials default_materials;
 
 void make_AssetManager(string_view path, string_view engine_path);
 void destroy_AssetManager();

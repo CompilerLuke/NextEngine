@@ -36,12 +36,7 @@ COMP struct RigidBody {
 
 	bool continous = false;
 
-	REFL_FALSE btRigidBody* bt_rigid_body = NULL;
-    REFL_FALSE RigidBody() = default;
-    REFL_FALSE RigidBody(const RigidBody& other) {
-        memcpy(this, &other, sizeof(RigidBody));
-        bt_rigid_body = nullptr;
-    }
+	void* dummy_ptr = nullptr; //needs to be the same size
 };
 
 COMP struct CharacterController {
@@ -51,12 +46,16 @@ COMP struct CharacterController {
 	float feet_height = 1;
 };
 
-struct PhysicsSystem : System {
+SYSTEM_COMP struct BtRigidBodyPtr {
+	btRigidBody* bt_rigid_body = nullptr;
+};
+
+struct PhysicsSystem {
 	struct BulletWrapper* bt_wrapper;
 
 	PhysicsSystem();
 	void init(struct World&);
 	~PhysicsSystem();
 
-	void update(struct World&, UpdateCtx&) override;
+	ENGINE_API void update(struct World&, UpdateCtx&);
 };

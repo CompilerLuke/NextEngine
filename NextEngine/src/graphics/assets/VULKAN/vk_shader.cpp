@@ -73,6 +73,8 @@ enum class MaterialInputType {
 	None,
 };
 
+string_buffer preprocess_source(string_view, Stage stage, shader_flags flags);
+
 string_buffer preprocess_gen(slice<string_view> tokens, Stage stage, shader_flags flags) {
 	vector<string_view> already_included;
 	vector<string_view> channels;
@@ -80,7 +82,7 @@ string_buffer preprocess_gen(slice<string_view> tokens, Stage stage, shader_flag
 	string_buffer output;
 	string_buffer in_struct_prefix;
 	//output.allocator = &get_temporary_allocator();
-	output = "#version 450\n#extension GL_ARB_separate_shader_objects : enable\n";
+	if (stage != 0) output = "#version 450\n#extension GL_ARB_separate_shader_objects : enable\n";
 
 	/*
 	#ifdef VERTEX_SHADER
@@ -117,8 +119,10 @@ string_buffer preprocess_gen(slice<string_view> tokens, Stage stage, shader_flag
 					return "";
 				}
 
+				output += preprocess_source(src, (Stage)0, 0);
+
 				//todo recursively apply the transformation
-				output += src;
+				//output += src;
 				output += tformat("\n#line ", line_count, "\n");
 			}
 		}
@@ -441,7 +445,7 @@ void reflect_module(ShaderModuleInfo& info, string_view vert_spirv, string_view 
 	write_joint_ref(&info, VK_SHADER_STAGE_FRAGMENT_BIT, frag);
 
 	//log("===========\n");
-	//print_module(info);
+	print_module(info);
 
 	spvReflectDestroyShaderModule(&vert_module);
 	spvReflectDestroyShaderModule(&frag_module);

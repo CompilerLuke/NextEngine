@@ -26,7 +26,7 @@ material_handle make_icon_material(string_view path, bool billboard = true) {
 void make_special_gizmo_resources(GizmoResources& resources) {
 	{
 		MaterialDesc mat_desc{ load_Shader("shaders/pbr.vert", "shaders/gizmo.frag") };
-		mat_desc.draw_state = DepthMask_None;
+		//mat_desc.draw_state = DepthFunc_Always;
 		mat_vec3(mat_desc, "color", glm::vec3(1, 1, 0));
 
 		resources.terrain_control_point_material = make_Material(mat_desc);

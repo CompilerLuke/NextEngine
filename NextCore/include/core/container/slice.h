@@ -4,12 +4,12 @@
 #include <assert.h>
 
 #define ARRAY_INDEXING \
-	T& operator[](int i) { \
+	T& operator[](uint i) { \
 		assert(i < length); \
 		return data[i]; \
 	} \
 \
-	const T& operator[](int i) const { \
+	const T& operator[](uint i) const { \
 		assert(i < length); \
 		return data[i]; \
 	} \

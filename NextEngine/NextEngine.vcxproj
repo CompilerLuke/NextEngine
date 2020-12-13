@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup><EnableUnitySupport>true</EnableUnitySupport></PropertyGroup>
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -20,27 +20,26 @@
     <IgnoreWarnCompileDuplicatedFilename>true</IgnoreWarnCompileDuplicatedFilename>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>NextEngine</RootNamespace>
-    <LatestTargetPlatformVersion>$([Microsoft.Build.Utilities.ToolLocationHelper]::GetLatestSDKTargetPlatformVersion('Windows', '10.0'))</LatestTargetPlatformVersion>
-    <WindowsTargetPlatformVersion>$(LatestTargetPlatformVersion)</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -84,7 +83,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>RENDER_API_VULKAN;NE_PLATFORM_WINDOWS;NE_DEBUG;NEXTENGINE_DLL;NEXTENGINE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;RENDER_API_VULKAN;NE_PLATFORM_WINDOWS;NE_DEBUG;NEXTENGINE_DLL;NEXTENGINE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
@@ -100,6 +99,9 @@
       <AdditionalDependencies>C:\VulkanSDK\1.2.154.1\lib\shaderc_combined.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImportLibrary>..\bin\Debug-windows-x86_64\NextEngine\NextEngine.lib</ImportLibrary>
     </Link>
+    <PreBuildEvent>
+      <Command>"../bin/Debug-windows-x86_64/ReflectionTool/ReflectionTool.exe" -b "." -i "include" -d graphics/assets -d ecs components/transform.h components/camera.h components/flyover.h components/skybox.h components/terrain.h components/lights.h components/grass.h graphics/rhi/forward.h engine/handle.h physics/physics.h graphics/pass/volumetric.h -h engine/types -c ecs/component_ids.h -o src/generated -l ENGINE_API</Command>
+    </PreBuildEvent>
     <PostBuildEvent>
       <Command>IF EXIST ..\bin\Debug-windows-x86_64\NextEngine\NextEngine.dll\ (xcopy /Q /E /Y /I ..\bin\Debug-windows-x86_64\NextEngine\NextEngine.dll ..\bin\Debug-windows-x86_64\TheUnpluggingRunner &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Debug-windows-x86_64\NextEngine\NextEngine.dll ..\bin\Debug-windows-x86_64\TheUnpluggingRunner &gt; nul)</Command>
     </PostBuildEvent>
@@ -109,7 +111,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>RENDER_API_VULKAN;NE_PLATFORM_WINDOWS;NE_RELEASE;NEXTENGINE_DLL;NEXTENGINE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;RENDER_API_VULKAN;NE_PLATFORM_WINDOWS;NE_RELEASE;NEXTENGINE_DLL;NEXTENGINE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Full</Optimization>
@@ -130,6 +132,9 @@
       <AdditionalDependencies>C:\VulkanSDK\1.2.154.1\lib\shaderc_combined.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImportLibrary>..\bin\Release-windows-x86_64\NextEngine\NextEngine.lib</ImportLibrary>
     </Link>
+    <PreBuildEvent>
+      <Command>"../bin/Release-windows-x86_64/ReflectionTool/ReflectionTool.exe" -b "." -i "include" -d graphics/assets -d ecs components/transform.h components/camera.h components/flyover.h components/skybox.h components/terrain.h components/lights.h components/grass.h graphics/rhi/forward.h engine/handle.h physics/physics.h graphics/pass/volumetric.h -h engine/types -c ecs/component_ids.h -o src/generated -l ENGINE_API</Command>
+    </PreBuildEvent>
     <PostBuildEvent>
       <Command>IF EXIST ..\bin\Release-windows-x86_64\NextEngine\NextEngine.dll\ (xcopy /Q /E /Y /I ..\bin\Release-windows-x86_64\NextEngine\NextEngine.dll ..\bin\Release-windows-x86_64\TheUnpluggingRunner &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Release-windows-x86_64\NextEngine\NextEngine.dll ..\bin\Release-windows-x86_64\TheUnpluggingRunner &gt; nul)</Command>
     </PostBuildEvent>
@@ -139,7 +144,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>RENDER_API_VULKAN;NE_PLATFORM_WINDOWS;NE_DIST;NEXTENGINE_DLL;NEXTENGINE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;RENDER_API_VULKAN;NE_PLATFORM_WINDOWS;NE_DIST;NEXTENGINE_DLL;NEXTENGINE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -158,6 +163,9 @@
       <AdditionalDependencies>C:\VulkanSDK\1.2.154.1\lib\shaderc_combined.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImportLibrary>..\bin\Dist-windows-x86_64\NextEngine\NextEngine.lib</ImportLibrary>
     </Link>
+    <PreBuildEvent>
+      <Command>"../bin/Dist-windows-x86_64/ReflectionTool/ReflectionTool.exe" -b "." -i "include" -d graphics/assets -d ecs components/transform.h components/camera.h components/flyover.h components/skybox.h components/terrain.h components/lights.h components/grass.h graphics/rhi/forward.h engine/handle.h physics/physics.h graphics/pass/volumetric.h -h engine/types -c ecs/component_ids.h -o src/generated -l ENGINE_API</Command>
+    </PreBuildEvent>
     <PostBuildEvent>
       <Command>IF EXIST ..\bin\Dist-windows-x86_64\NextEngine\NextEngine.dll\ (xcopy /Q /E /Y /I ..\bin\Dist-windows-x86_64\NextEngine\NextEngine.dll ..\bin\Dist-windows-x86_64\TheUnpluggingRunner &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Dist-windows-x86_64\NextEngine\NextEngine.dll ..\bin\Dist-windows-x86_64\TheUnpluggingRunner &gt; nul)</Command>
     </PostBuildEvent>
@@ -193,9 +201,8 @@
     <ClInclude Include="include\graphics\culling\build_bvh.h" />
     <ClInclude Include="include\graphics\culling\culling.h" />
     <ClInclude Include="include\graphics\culling\scene_partition.h" />
+    <ClInclude Include="include\graphics\pass\composite.h" />
     <ClInclude Include="include\graphics\pass\pass.h" />
-    <ClInclude Include="include\graphics\pass\render_graph.h" />
-    <ClInclude Include="include\graphics\pass\render_pass.h" />
     <ClInclude Include="include\graphics\pass\shadow.h" />
     <ClInclude Include="include\graphics\pass\volumetric.h" />
     <ClInclude Include="include\graphics\renderer\frame.h" />
@@ -207,7 +214,9 @@
     <ClInclude Include="include\graphics\renderer\renderer.h" />
     <ClInclude Include="include\graphics\renderer\terrain.h" />
     <ClInclude Include="include\graphics\renderer\transforms.h" />
+    <ClInclude Include="include\graphics\rhi\async_cpu_copy.h" />
     <ClInclude Include="include\graphics\rhi\buffer.h" />
+    <ClInclude Include="include\graphics\rhi\compute.h" />
     <ClInclude Include="include\graphics\rhi\device.h" />
     <ClInclude Include="include\graphics\rhi\draw.h" />
     <ClInclude Include="include\graphics\rhi\forward.h" />
@@ -217,7 +226,6 @@
     <ClInclude Include="include\graphics\rhi\render_passh.h" />
     <ClInclude Include="include\graphics\rhi\rhi.h" />
     <ClInclude Include="include\graphics\rhi\shader_access.h" />
-    <ClInclude Include="include\graphics\rhi\vulkan\async_cpu_copy.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\buffer.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\command_buffer.h" />
     <ClInclude Include="include\graphics\rhi\vulkan\core.h" />
@@ -235,7 +243,6 @@
     <ClInclude Include="include\graphics\rhi\vulkan\vulkan.h" />
     <ClInclude Include="include\graphics\rhi\window.h" />
     <ClInclude Include="include\physics\physics.h" />
-    <ClInclude Include="include\terrain\kriging.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="vendor\imgui\imconfig.h" />
     <ClInclude Include="vendor\imgui\imgui.h" />
@@ -275,6 +282,7 @@
     <ClCompile Include="src\graphics\assets\assets.cpp" />
     <ClCompile Include="src\graphics\assets\assimp_model_loader.cpp" />
     <ClCompile Include="src\graphics\culling\culling.cpp" />
+    <ClCompile Include="src\graphics\pass\composite.cpp" />
     <ClCompile Include="src\graphics\pass\render_pass.cpp" />
     <ClCompile Include="src\graphics\pass\shadow.cpp" />
     <ClCompile Include="src\graphics\pass\volumetric.cpp" />
@@ -307,7 +315,6 @@
     <ClCompile Include="src\graphics\rhi\window.cpp" />
     <ClCompile Include="src\physics\btWrapper.cpp" />
     <ClCompile Include="src\physics\physics.cpp" />
-    <ClCompile Include="src\terrain\kriging.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>

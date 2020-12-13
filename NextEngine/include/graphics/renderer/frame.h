@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics/pass/render_pass.h"
+#include "graphics/pass/pass.h"
 
 struct GPUSubmission {
     RenderPass render_passes[RenderPass::ScenePassCount];

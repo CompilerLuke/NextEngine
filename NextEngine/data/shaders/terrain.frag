@@ -25,7 +25,6 @@ layout (set = 2, binding = 7) uniform sampler2D normal_textures[MAX_TERRAIN_TEXT
 layout (set = 2, binding = 8) uniform sampler2D height_textures[MAX_TERRAIN_TEXTURES];
 //layout (set = 2, binding = 9) uniform sampler2D ao_textures[MAX_TERRAIN_TEXTURES];
 
-
 #include shaders/pbr_helper.glsl
 
 /*uniform int steps;
@@ -79,6 +78,7 @@ vec2 parallax_uv(vec2 texCoords, vec3 viewDir)
 #endif
 
 #define BLEND_TAP(textures, tex_coords) (blend.r * texture(textures[idx.x], tex_coords) + blend.g * texture(textures[idx.y], tex_coords) + blend.b * texture(textures[idx.z], tex_coords))
+
 
 void main()
 {
