@@ -1078,10 +1078,10 @@ CFDVolume generate_mesh(World& world, CFDMeshError& err) {
 
 		//glm::vec3 position = mesh_trans.position - domain_bounds.min;
 
-		float initial = 0.01;
+		float initial = 0.1;
 		float a = 1.2;
 
-		uint n = 2;
+		uint n = 4;
 		uint extruded_vertice_watermark = 0;
 		uint extruded_cells_watermark = 0;
 		create_boundary(result, extruded_vertice_watermark, model->meshes[0], model_m, initial);
@@ -1093,9 +1093,9 @@ CFDVolume generate_mesh(World& world, CFDMeshError& err) {
 
 		Front front(result.vertices, result.cells, domain_bounds);
 
-		for (uint i = 0; i < 2; i++) {
-			advancing_front_triangulation(result, front, extruded_vertice_watermark, extruded_cells_watermark, 0.1);
-		}
+		//for (uint i = 0; i < 2; i++) {
+		//	advancing_front_triangulation(result, front, extruded_vertice_watermark, extruded_cells_watermark, 0.1);
+		//}
 	}
 	else {
 		err.type = CFDMeshError::NoMeshOrDomain;
