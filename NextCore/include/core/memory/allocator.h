@@ -74,7 +74,7 @@ void memcpy_t(T* a, const T* b, u64 count) {
 
 template<typename T, typename Allocator>
 T* alloc_t(Allocator& allocator, uint num = 1) {
-    return (T*)allocator.allocate(num * sizeof(T));
+    return new (allocator.allocate(num * sizeof(T))) T();
 }
 
 inline u64 align_offset(u64 offset, uint alignment) {

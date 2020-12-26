@@ -28,8 +28,8 @@ Modules::Modules(const char* app_name, const char* level_path, const char* engin
 	register_default_components(*world);
 	physics_system->init(*world);
 
-    window->width = 3840;
-    window->height = 2160;
+    window->width = 1080;
+    window->height = 920;
 	window->title = app_name;
 	//
 	window->full_screen = false;
@@ -61,15 +61,15 @@ Modules::Modules(const char* app_name, const char* level_path, const char* engin
 	vk_desc.device_features.samplerAnisotropy = VK_TRUE;
 	vk_desc.device_features.multiDrawIndirect = VK_TRUE;
 	vk_desc.device_features.fillModeNonSolid = VK_TRUE;
-    vk_desc.device_features.wideLines = VK_TRUE;
+    //vk_desc.device_features.wideLines = VK_TRUE;
 
 	make_RHI(vk_desc, *window);
 	make_AssetManager(level_path, engine_asset_path);
 
 	RenderSettings settings = {};
-    settings.display_resolution_width = 3840;
-	settings.display_resolution_height = 2160;
-	settings.shadow.shadow_resolution = 2048;
+    settings.display_resolution_width = window->width;
+	settings.display_resolution_height = window->height;
+	settings.shadow.shadow_resolution = 1024;
 
 	renderer = make_Renderer(settings, *world);
 }

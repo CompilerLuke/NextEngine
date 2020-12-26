@@ -10,6 +10,7 @@ struct ShadowProjInfo;
 struct ShadowResources;
 struct World;
 struct Viewport;
+struct CompositeUBO;
 
 REFL
 struct VolumetricSettings {
@@ -81,5 +82,5 @@ struct VolumetricResources {
 };
 
 void make_volumetric_resources(VolumetricResources&, texture_handle depthprepass_map, ShadowResources& shadow, uint width, uint height);
-void fill_volumetric_ubo(VolumetricUBO&, World&, VolumetricSettings& settings, Viewport& viewport, EntityQuery);
+void fill_volumetric_ubo(VolumetricUBO&, CompositeUBO& composite, World&, VolumetricSettings& settings, Viewport& viewport, EntityQuery);
 void render_volumetric_pass(VolumetricResources&, const VolumetricUBO& ubo);

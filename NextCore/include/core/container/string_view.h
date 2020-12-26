@@ -85,3 +85,13 @@ struct string_view {
 
 bool CORE_API string_to_uint(string_view str, unsigned int* number);
 bool CORE_API string_to_int(string_view str, int* number);
+
+
+inline u64 hash_func(string_view str) {
+    u64 hash = 5381;
+
+    for (uint i = 0; i < str.length; i++)
+        hash = ((hash << 5) + hash) + str.data[i]; /* hash * 33 + c */
+
+    return hash;
+}

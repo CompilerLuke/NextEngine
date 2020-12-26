@@ -73,6 +73,16 @@ void bind_descriptor(CommandBuffer& cmd_buffer, uint binding, slice<descriptor_s
 	vkCmdBindDescriptorSets(cmd_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, binding, sets.length, vk_sets, 0, nullptr);
 }
 
+void bind_vertex_buffer(CommandBuffer& cmd_buffer, buffer_handle buffer, u64 offset) {
+    VkBuffer vertex_buffer = get_buffer(buffer);
+    vkCmdBindVertexBuffers(cmd_buffer, 0, 1, &vertex_buffer, &offset);
+}
+
+void bind_index_buffer(CommandBuffer& cmd_buffer, buffer_handle buffer, u64 offset) {
+    VkBuffer index_buffer = get_buffer(buffer);
+    vkCmdBindIndexBuffer(cmd_buffer, index_buffer, offset, VK_INDEX_TYPE_UINT32);
+}
+
 void bind_vertex_buffer(CommandBuffer& cmd_buffer, VertexLayout vertex_layout, InstanceLayout instance_layout) {		
 	if (cmd_buffer.bound_vertex_layout != vertex_layout) {
 		bind_vertex_buffer(rhi.vertex_streaming, cmd_buffer.cmd_buffer, vertex_layout);		
@@ -145,6 +155,16 @@ void set_depth_bias(CommandBuffer& cmd_buffer, float constant, float slope) {
 		constant,
 		0.0f,
 		slope);
+}
+
+void set_scissor(CommandBuffer& cmd_buffer, Rect2D clip_rect) {
+    VkRect2D scissor;
+    scissor.offset.x = clip_rect.pos.x;
+    scissor.offset.y = clip_rect.pos.y;
+    scissor.extent.width = clip_rect.size.x;
+    scissor.extent.height = clip_rect.size.y;
+    
+    vkCmdSetScissor(cmd_buffer, 0, 1, &scissor);
 }
 
 #endif

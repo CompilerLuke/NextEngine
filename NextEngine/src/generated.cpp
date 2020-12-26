@@ -10,17 +10,17 @@
 #include "./engine/handle.h"
 #include "./physics/physics.h"
 #include "./graphics/pass/volumetric.h"
-#include "./graphics/assets/assets.h"
-#include "./graphics/assets/assets_store.h"
-#include "./graphics/assets/material.h"
-#include "./graphics/assets/model.h"
 #include "./graphics/assets/shader.h"
+#include "./graphics/assets/material.h"
+#include "./graphics/assets/assets_store.h"
+#include "./graphics/assets/assets.h"
+#include "./graphics/assets/model.h"
 #include "./graphics/assets/texture.h"
-#include "./ecs/component_ids.h"
-#include "./ecs/ecs.h"
 #include "./ecs/flags.h"
 #include "./ecs/id.h"
+#include "./ecs/ecs.h"
 #include "./ecs/system.h"
+#include "./ecs/component_ids.h"
 
 refl::Enum init_MaterialDesc_Mode() {
 	refl::Enum type("Mode", sizeof(MaterialDesc::Mode));
@@ -207,7 +207,7 @@ refl::Struct init_Flyover() {
 	type.fields.append({"movement_speed", offsetof(Flyover, movement_speed), get_float_type()});
 	type.fields.append({"yaw", offsetof(Flyover, yaw), get_float_type()});
 	type.fields.append({"pitch", offsetof(Flyover, pitch), get_float_type()});
-	type.fields.append({"past_movement_speed", offsetof(Flyover, past_movement_speed), make_array_type(3, sizeof(array<3, struct glm::vec2>), get_vec2_type())});
+	type.fields.append({"past_movement_speed", offsetof(Flyover, past_movement_speed), make_array_type(3, sizeof(array<3, glm::vec2>), get_vec2_type())});
 	return type;
 }
 
@@ -955,6 +955,28 @@ refl::Struct* get_FogVolume_type() {
 	return &type;
 }
 
+refl::Struct init_ShaderInfo() {
+	refl::Struct type("ShaderInfo", sizeof(ShaderInfo));
+	type.fields.append({"vfilename", offsetof(ShaderInfo, vfilename), get_sstring_type()});
+	type.fields.append({"ffilename", offsetof(ShaderInfo, ffilename), get_sstring_type()});
+	type.fields.append({"v_time_modified", offsetof(ShaderInfo, v_time_modified), get_u64_type()});
+	type.fields.append({"f_time_modified", offsetof(ShaderInfo, f_time_modified), get_u64_type()});
+	return type;
+}
+
+void write_ShaderInfo_to_buffer(SerializerBuffer& buffer, ShaderInfo& data) {
+    write_n_to_buffer(buffer, &data, sizeof(ShaderInfo));
+}
+
+void read_ShaderInfo_from_buffer(DeserializerBuffer& buffer, ShaderInfo& data) {
+    read_n_from_buffer(buffer, &data, sizeof(ShaderInfo));
+}
+
+refl::Struct* get_ShaderInfo_type() {
+	static refl::Struct type = init_ShaderInfo();
+	return &type;
+}
+
 refl::Struct init_ParamDesc() {
 	refl::Struct type("ParamDesc", sizeof(ParamDesc));
 	type.fields.append({"type", offsetof(ParamDesc, type), get_Param_Type_type()});
@@ -1040,28 +1062,6 @@ refl::Struct* get_ModelRenderer_type() {
 	return &type;
 }
 
-refl::Struct init_ShaderInfo() {
-	refl::Struct type("ShaderInfo", sizeof(ShaderInfo));
-	type.fields.append({"vfilename", offsetof(ShaderInfo, vfilename), get_sstring_type()});
-	type.fields.append({"ffilename", offsetof(ShaderInfo, ffilename), get_sstring_type()});
-	type.fields.append({"v_time_modified", offsetof(ShaderInfo, v_time_modified), get_u64_type()});
-	type.fields.append({"f_time_modified", offsetof(ShaderInfo, f_time_modified), get_u64_type()});
-	return type;
-}
-
-void write_ShaderInfo_to_buffer(SerializerBuffer& buffer, ShaderInfo& data) {
-    write_n_to_buffer(buffer, &data, sizeof(ShaderInfo));
-}
-
-void read_ShaderInfo_from_buffer(DeserializerBuffer& buffer, ShaderInfo& data) {
-    read_n_from_buffer(buffer, &data, sizeof(ShaderInfo));
-}
-
-refl::Struct* get_ShaderInfo_type() {
-	static refl::Struct type = init_ShaderInfo();
-	return &type;
-}
-
 refl::Struct init_Entity() {
 	refl::Struct type("Entity", sizeof(Entity));
 	type.fields.append({"id", offsetof(Entity, id), get_ID_type()});
@@ -1133,7 +1133,7 @@ refl::Struct* get_ArchetypeStore_type() {
 
 
 void register_default_components(World& world) {
-    RegisterComponent components[25] = {};
+    struct RegisterComponent components[25] = {};
     components[0].component_id = 1;
     components[0].type = get_Transform_type();
     components[0].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((Transform*)data + i) Transform(); };

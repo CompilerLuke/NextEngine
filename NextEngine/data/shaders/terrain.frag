@@ -106,6 +106,7 @@ void main()
 		normal_from_texture(TBN, normal),
    		metallic,
    		roughness,
+        0.0,
     	ao
 	);
 

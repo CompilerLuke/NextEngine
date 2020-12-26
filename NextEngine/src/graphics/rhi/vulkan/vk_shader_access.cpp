@@ -323,7 +323,7 @@ void update_descriptor_set(periodically_updated_descriptor& set, DescriptorDesc&
 	
 	if (set.current.id) {
 		queue_for_destruction((void*)(size_t)set.current.id, [](void* ptr) {
-			descriptor_set_handle handle{ (uint)ptr };
+			descriptor_set_handle handle{ (uint)(size_t)ptr };
 			destroy_descriptor_set(handle);
 		});
 	}

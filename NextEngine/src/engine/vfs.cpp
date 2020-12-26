@@ -65,6 +65,27 @@ i64 io_time_modified(string_view filename) {
 }
 
 #ifdef NE_PLATFORM_WINDOWS
+const char* SEPERATOR = "\\";
+#elif NE_PLATFORM_MACOSX
+const char* SEPERATOR = "/";
+#endif
+
+bool path_absolute(string_view path, string_buffer* abs) {
+    if (!io_get_current_dir(abs)) return false;
+    
+    bool is_absolute = path.starts_with(*abs);
+    if (is_absolute) {
+        *abs = path;
+    }
+    else {
+        *abs += SEPERATOR;
+        *abs += path;
+    }
+
+    return true;
+}
+
+#ifdef NE_PLATFORM_WINDOWS
 #include <Windows.h>
 
 bool io_copyf(string_view src, string_view dst, bool fail_if_exists) {
@@ -72,26 +93,12 @@ bool io_copyf(string_view src, string_view dst, bool fail_if_exists) {
 }
 
 bool io_get_current_dir(string_buffer* output) {
-	char buffer[100];
+    char buffer[100] = {0};
 	uint len = GetCurrentDirectoryA(100, buffer);
 	*output = buffer;
 	return len > 0;
 }
 
-bool path_absolute(string_view path, string_buffer* abs) {
-	if (!io_get_current_dir(abs)) return false;
-	
-	bool is_absolute = path.starts_with(*abs);
-	if (is_absolute) {
-		*abs = path;
-	}
-	else {
-		*abs += "\\";
-		*abs += path;
-	}
-
-	return true;
-}
 
 #elif NE_PLATFORM_MACOSX
 #include <copyfile.h>
@@ -104,6 +111,14 @@ bool io_copyf(string_view src, string_view dst, bool fail_if_exists) {
     
     return result;
 }
+
+bool io_get_current_dir(string_buffer* output) {
+    char buffer[100] = {0};
+    if (!getcwd(buffer, 100)) return false;
+    *output = buffer;
+    return true;
+}
+
 #endif
 
 wchar_t* to_wide_char(const char* orig);

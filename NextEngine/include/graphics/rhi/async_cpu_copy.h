@@ -1,6 +1,7 @@
 #pragma once
 
 #include "engine/handle.h"
+#include "core/core.h"
 
 struct AsyncCopyResources;
 struct CommandBuffer;

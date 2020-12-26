@@ -144,4 +144,5 @@ struct array {
 	inline T& last() { return data[length - 1]; }
 
     operator slice<T>() & { return { data, length }; }
+    operator const slice<T>() const& { return { data, length }; }
 };

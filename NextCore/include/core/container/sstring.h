@@ -69,14 +69,3 @@ struct sstring {
 		return { data, length() };
 	}
 };
-
-inline u64 hash_func(sstring& sstring) {
-	const char* str = sstring.data;
-	u64 hash = 5381;
-	u64 c;
-
-	while (c = *str++)
-		hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-
-	return hash;
-}

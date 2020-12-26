@@ -70,8 +70,8 @@ void Input::init(Window& window) {
 	
 	this->window_ptr = window.window_ptr;
 
-	this->region_min = glm::vec2(0, 0);
-	this->region_max = glm::vec2(window.width, window.height);
+	//this->region_min = glm::vec2(0, 0);
+	//this->region_max = glm::vec2(window.width, window.height);
 }
 
 bool is_mod_key(Key key) {
@@ -104,7 +104,7 @@ bool Input::key_mod_pressed(Key key, Key mod) {
 bool Input::key_pressed(Key key, ModKeys allow_mod) {
 	if (!is_mod_key(key) && is_mod_down(this, allow_mod)) return false;
 
-	return this->keys[(int)key] == GLFW_PRESS;
+	return keys[(uint)key] == GLFW_PRESS;
 }
 
 bool Input::mouse_button_down(MouseButton button) {
@@ -144,12 +144,12 @@ void Input::clear() {
 	scroll_offset = 0.0f;
 
 	if (!active) {
-		this->keys.clear();
+        for (uint i = 0; i < (uint)Key::Last; i++) keys[i] = 0;
 		return;
 	}
 
-	for (auto pair : this->keys) {
-		if (pair.value == GLFW_PRESS) pair.value = GLFW_REPEAT; 
+    for (uint i = 0; i < (uint)Key::Last; i++) {
+		if (keys[i] == GLFW_PRESS) keys[i] = GLFW_REPEAT;
 	}
 
 	for (unsigned int i = 0; i < 3; i++) {

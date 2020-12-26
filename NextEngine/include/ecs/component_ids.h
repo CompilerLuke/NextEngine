@@ -25,7 +25,7 @@ DEFINE_COMPONENT_ID(CloudVolume, 25)
 DEFINE_COMPONENT_ID(FogVolume, 26)
 DEFINE_COMPONENT_ID(Materials, 20)
 DEFINE_COMPONENT_ID(ModelRenderer, 21)
-DEFINE_COMPONENT_ID(Entity, 0)
 constexpr EntityFlags STATIC = 1ull << 22;
 constexpr EntityFlags EDITOR_ONLY = 1ull << 23;
 constexpr EntityFlags MAIN_CAMERA = 1ull << 27;
+DEFINE_COMPONENT_ID(Entity, 0)

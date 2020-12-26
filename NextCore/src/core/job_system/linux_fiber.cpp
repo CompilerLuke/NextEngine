@@ -8,7 +8,7 @@
 struct Fiber;
 static thread_local Fiber* currently_executing_fiber = nullptr;
 
-Fiber* make_fiber(u64 stack_size, void(*func)()) {
+Fiber* make_fiber(u64 stack_size, void(*func)(void*)) {
 	/* Create a context */
 
 	void* memory = malloc(stack_size + sizeof(ucontext_t));
@@ -18,7 +18,7 @@ Fiber* make_fiber(u64 stack_size, void(*func)()) {
 	ctx->uc_stack.ss_sp = memory;
 	ctx->uc_stack.ss_size = stack_size;
 	ctx->uc_link = 0;
-	makecontext(ctx, func, 0);
+	makecontext(ctx, (void(*)())func, 0);
 
 	return (Fiber*)ctx;
 }

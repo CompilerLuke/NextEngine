@@ -30,13 +30,14 @@ texture_handle get_output_map(Renderer& renderer) {
 Renderer* make_Renderer(const RenderSettings& settings, World& world) {
 	Renderer* renderer = PERMANENT_ALLOC(Renderer);
 	renderer->settings = settings;
+    
+    return renderer;
 
 	ID skybox = make_default_Skybox(world, "engine/Tropical_Beach_3k.hdr");
 	SkyLight* skylight = world.m_by_id<SkyLight>(skybox);
-
+    
 	extract_lighting_from_cubemap(renderer->lighting_system, *skylight);
-
-
+    
 	for (uint i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		renderer->scene_pass_ubo[i] = alloc_ubo_buffer(sizeof(PassUBO), UBO_PERMANENT_MAP);
 		renderer->simulation_ubo[i] = alloc_ubo_buffer(sizeof(SimulationUBO), UBO_PERMANENT_MAP);
@@ -140,7 +141,7 @@ void extract_render_data(Renderer& renderer, Viewport& viewport, FrameData& fram
 	fill_pass_ubo(frame.pass_ubo, viewport);
 	fill_light_ubo(frame.light_ubo, world, viewport, layermask);
 	extract_shadow_cascades(frame.shadow_proj_info, viewports + 1, renderer.settings.shadow, world, viewport, camera_layermask);
-	fill_volumetric_ubo(frame.volumetric_ubo, world, renderer.settings.volumetric, viewport, camera_layermask);
+	fill_volumetric_ubo(frame.volumetric_ubo, frame.composite_ubo, world, renderer.settings.volumetric, viewport, camera_layermask);
 	fill_composite_ubo(frame.composite_ubo, viewport);
 
 	cull_meshes(renderer.scene_partition, world, renderer.mesh_buckets, RenderPass::ScenePassCount, frame.culled_mesh_bucket, viewports, layermask);
@@ -244,7 +245,7 @@ void submit_frame(Renderer& renderer, GPUSubmission& submission) {
 		end_render_pass(submission.render_passes[i]);
 	}
 
-	end_render_frame(submission.render_passes[RenderPass::Screen]);
+	end_render_frame(submission.screen_render_pass);
 }
 
 /*

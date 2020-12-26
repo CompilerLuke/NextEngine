@@ -18,9 +18,7 @@ struct Material {
 	channel1 normal;
 	vec2 tiling;
 };
-
 #endif
-
 
 void main() {
 	#ifndef IS_DEPTH_ONLY
@@ -33,7 +31,7 @@ void main() {
 		norm,
 		texture(metallic, TiledTexCoords).r,
 		texture(roughness, TiledTexCoords).r,
-		1.0
+        0.0, 1.0
 	);
 
 	//FragColor = vec4(norm, 1.0);

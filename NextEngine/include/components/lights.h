@@ -25,4 +25,5 @@ struct SkyLight {
 	cubemap_handle prefilter;
 };
 
+
 ENGINE_API DirLight* get_dir_light(struct World&, EntityQuery layermask);

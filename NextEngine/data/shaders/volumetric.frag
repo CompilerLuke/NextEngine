@@ -1,4 +1,4 @@
-#include shaders/shadow.glsl
+//#include shaders/shadow.glsl
 
 layout (location = 0) out vec4 VolumeColor;
 layout (location = 1) out vec4 CloudColor;
@@ -167,7 +167,8 @@ vec3 getWorldPosition(float fragDepth) {
 }
 
 float inShadow(float fragDepth, vec3 worldSpace) {
-    int cascade;
+    return 0.0;
+    /*int cascade;
     for(cascade = 0; cascade < MAX_CASCADES; cascade++) {
         if (fragDepth <= cascade_end[cascade].y) break;
     } 
@@ -184,7 +185,7 @@ float inShadow(float fragDepth, vec3 worldSpace) {
     float bias = 0.0003; //max(0.03 * (1.0 - dot(normal, dirLightDirection)), 0.003);
     float currentDepth = projCoords.z - bias;
 
-    return textureProj(shadow_map[cascade], vec4(projCoords.xy, currentDepth,  1.0));
+    return textureProj(shadow_map[cascade], vec4(projCoords.xy, currentDepth,  1.0));*/
 }
 
 /*float cloudBoxIntersection() {

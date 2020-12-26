@@ -1,3 +1,22 @@
+#include <glm/vec3.hpp>
+#include "core/core.h"
+
+//found on https://cs.stackexchange.com/questions/37952/hash-function-floating-point-inputs-for-genetic-algorithm
+u64 hash_func(glm::vec3 position) {
+    int h = 1;
+    for (int i = 0; i < 3; i++) {
+        union {
+            float as_float;
+            int as_int;
+        } value = { position[i] };
+        
+        h = 31 * h + value.as_int;
+    }
+    h ^= (h >> 20) ^ (h >> 12);
+    return h ^ (h >> 7) ^ (h >> 4);
+}
+
+#include "cfd_ids.h"
 #include "mesh.h"
 #include "ecs/ecs.h"
 #include "components/transform.h"
@@ -6,20 +25,7 @@
 #include "graphics/assets/model.h"
 #include <algorithm>
 
-//found on https://cs.stackexchange.com/questions/37952/hash-function-floating-point-inputs-for-genetic-algorithm
-u64 hash_func(glm::vec3 position) {
-	int h = 1;
-	for (int i = 0; i < 3; i++) {
-		union {
-			float as_float;
-			int as_int;
-		} value = { position[i] };
-		
-		h = 31 * h + value.as_int;
-	}
-	h ^= (h >> 20) ^ (h >> 12);
-	return h ^ (h >> 7) ^ (h >> 4);
-}
+
 
 void get_positions(slice<CFDVertex> vertices, const CFDPolygon& polygon, vec3* positions) {
 	uint verts = polygon.type;
@@ -759,7 +765,7 @@ struct Front {
 
 	uint centroid_to_index(glm::vec3 centroid, glm::vec3 min, glm::vec3 half_size) {
 		glm::vec3 vec = (centroid - min) / half_size;
-		assert(vec > 0.0f && vec < 2.0f);
+		//assert(vec > 0.0f && vec < 2.0f);
 		return (int)vec.x + 4 * (int)vec.y + 2 * (int)vec.z;
 	}
 
