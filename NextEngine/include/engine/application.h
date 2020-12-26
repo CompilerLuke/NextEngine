@@ -17,7 +17,7 @@ struct Modules;
 using InitFunction      = void* (*)(void*, Modules&);
 using UpdateFunction    = void  (*)(void*, Modules&);
 using ExtractRenderFunction = void (*)(void*, Modules&, FrameData&);
-using RenderFunction    = void  (*)(void*, Modules&, GPUSubmission&);
+using RenderFunction    = void  (*)(void*, Modules&, GPUSubmission&, FrameData&);
 using DeinitFunction    = void  (*)(void*, Modules&);
 using UnloadFunction    = void  (*)(void*, Modules&);
 using ReloadFunction    = void  (*)(void*, Modules&);
@@ -54,7 +54,7 @@ public:
 	void ENGINE_API init(void* = NULL);
 	void ENGINE_API update();
     void ENGINE_API extract_render_data(FrameData&);
-	void ENGINE_API render(GPUSubmission&);
+	void ENGINE_API render(GPUSubmission&, FrameData&);
 	bool ENGINE_API is_running();
 	
 	void ENGINE_API run();

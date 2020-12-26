@@ -157,7 +157,7 @@ void calc_shadow_cascades(ShadowCascadeProj cascades[MAX_SHADOW_CASCADES], const
 		glm::mat4 lightViewMatrix = glm::lookAt(frustumCenter - lightDir * -minExtents.z, frustumCenter, glm::vec3(0.0f, 1.0f, 0.0f));
 		glm::mat4 lightOrthoMatrix = glm::ortho(minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.0f, maxExtents.z - minExtents.z);
 
-		glm::vec3 ndc_per_texel = glm::vec3(2.0, 2.0, 1.0) / settings.shadow_resolution;
+		glm::vec3 ndc_per_texel = glm::vec3(2.0, 2.0, 1.0) / (float)settings.shadow_resolution;
 		glm::vec4 quantOrigin = lightOrthoMatrix * lightViewMatrix * glm::vec4(0, 0, 0, 1.0);
 		glm::vec3 quantOriginRounded = quantOrigin;
 		quantOriginRounded /= ndc_per_texel;

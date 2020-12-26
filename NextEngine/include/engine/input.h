@@ -133,7 +133,6 @@ enum class Key {
 	Last = Menu,
 };
 
-
 enum class ModKeys {
 	None = 0,
 	Shift = 1 << 0,
@@ -147,8 +146,8 @@ inline uint operator&(ModKeys a, ModKeys b) { return ((uint)a & (uint)b); }
 struct Input {
 	bool active = true;
 
-	glm::vec2 region_min;
-	glm::vec2 region_max;
+	glm::vec2 region_min = glm::vec2(0,0);
+	glm::vec2 region_max = glm::vec2(FLT_MAX,FLT_MAX);
 	
 	bool first_mouse = true;
 
@@ -158,7 +157,7 @@ struct Input {
 
 	float scroll_offset = 0;
 
-	hash_map<int, int, 103> keys;
+    int keys[(uint)Key::Last] = {};
 
 	bool mouse_captured = false;
 
@@ -168,8 +167,8 @@ struct Input {
 	bool ENGINE_API key_pressed(Key, ModKeys allow_mod = ModKeys::None);
 	bool ENGINE_API key_mod_pressed(Key key, Key mod = Key::Control);
 
-	bool ENGINE_API mouse_button_down(MouseButton);
-	bool ENGINE_API mouse_button_pressed(MouseButton);
+	bool ENGINE_API mouse_button_down(MouseButton button = MouseButton::Left);
+	bool ENGINE_API mouse_button_pressed(MouseButton button = MouseButton::Left);
 
 	float ENGINE_API get_vertical_axis();
 	float ENGINE_API get_horizontal_axis();

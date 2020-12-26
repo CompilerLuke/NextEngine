@@ -37,16 +37,6 @@ struct StagingQueue {
 
 void transfer_queue_dependencies(StagingQueue&, QueueSubmitInfo&, uint transfer_frame_index);
 
-struct VertexAttrib {
-	enum Kind {
-		Float, Int, Unorm
-	};
-
-	unsigned int length;
-	Kind kind;
-	unsigned int offset;
-};
-
 using ArrayVertexInputs = array<20, VkVertexInputAttributeDescription>;
 using ArrayVertexBindings = array<2, VkVertexInputBindingDescription>;
 
@@ -68,24 +58,6 @@ struct LayoutVertexInputs {
 	VkVertexInputBindingDescription binding_desc;
 };
 
-struct Arena {
-	int capacity;
-	int base_offset;
-	int offset;
-};
-
-struct VertexLayoutDesc {
-	VertexLayout layout;
-	array<20, VertexAttrib> attribs;
-	int elem_size;
-};
-
-struct InstanceLayoutDesc {
-	InstanceLayout layout;
-	array<20, VertexAttrib> attribs;
-	int elem_size;
-};
-
 struct HostVisibleBuffer {
 	VkBuffer buffer;
 	VkDeviceMemory buffer_memory;
@@ -104,8 +76,10 @@ struct HostVisibleBuffer {
 //as instance allocation is quite different to vertex buffers
 
 struct VertexLayouts {
-	LayoutVertexInputs vertex_layouts[VERTEX_LAYOUT_COUNT] = {};
-	LayoutVertexInputs instance_layouts[VERTEX_LAYOUT_COUNT][INSTANCE_LAYOUT_COUNT] = {};
+	LayoutVertexInputs vertex_layouts[VERTEX_LAYOUT_MAX] = {};
+	LayoutVertexInputs instance_layouts[VERTEX_LAYOUT_MAX][INSTANCE_LAYOUT_MAX] = {};
+    uint vertex_layout_count = VERTEX_LAYOUT_COUNT;
+    uint instance_layout_count = INSTANCE_LAYOUT_COUNT;
 };
 
 struct VertexStreaming {
@@ -129,7 +103,7 @@ struct InstanceAllocator {
 	VkDevice device;
 	VkPhysicalDevice physical_device;
 
-	using Layouts = LayoutVertexInputs[VERTEX_LAYOUT_COUNT][INSTANCE_LAYOUT_COUNT];
+	using Layouts = LayoutVertexInputs[VERTEX_LAYOUT_MAX][INSTANCE_LAYOUT_MAX];
 
 	Layouts* layouts;
 
@@ -147,6 +121,9 @@ struct UBOAllocator {
 	HostVisibleBuffer ubo_memory;
 	Arena arenas[UBO_UPDATE_MODE_COUNT];
 };
+
+VkBuffer get_buffer(buffer_handle);
+VkDeviceMemory get_device_memory(device_memory_handle);
 
 //CREATION AND DESTRUCTION
 StagingQueue make_StagingQueue(VkDevice device, VkPhysicalDevice physical_device, VkCommandPool pool, VkQueue queue, int queue_family, int dst_queue_family);

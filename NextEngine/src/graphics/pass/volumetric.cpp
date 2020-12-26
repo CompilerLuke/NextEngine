@@ -9,6 +9,7 @@
 #include "components/camera.h"
 #include "core/io/logger.h"
 #include "graphics/pass/shadow.h"
+#include "graphics/pass/composite.h"
 #include "ecs/ecs.h"
 
 #include "core/time.h"
@@ -49,7 +50,7 @@ void make_volumetric_resources(VolumetricResources& resources, texture_handle de
 	resources.pipeline = query_Pipeline(pipeline_desc);
 }
 
-void fill_volumetric_ubo(VolumetricUBO& ubo, World& world, VolumetricSettings& settings, Viewport& viewport, EntityQuery query) {
+void fill_volumetric_ubo(VolumetricUBO& ubo, CompositeUBO& composite, World& world, VolumetricSettings& settings, Viewport& viewport, EntityQuery query) {
 	ubo = {};
 	
 	auto some_camera = world.first<Transform, Camera>(query); //todo looked up redundantly
@@ -73,6 +74,9 @@ void fill_volumetric_ubo(VolumetricUBO& ubo, World& world, VolumetricSettings& s
 			ubo.scatterColor = fog.forward_scatter_color;
 			ubo.fog_coefficient = fog.coefficient;
 			ubo.intensity = fog.intensity;
+            
+            composite.fog_color = fog.fog_color;
+            composite.fog_begin = fog.fog_begin;
 		}
 
 		if (some_cloud) {
@@ -112,51 +116,3 @@ void render_volumetric_pass(VolumetricResources& resources, const VolumetricUBO&
 
 	end_render_pass(render_pass);
 }
-
-#include "graphics/assets/material.h"
-
-/*
-void render_upsampled(VolumetricPass& self, World& world, texture_handle current_frame, glm::mat4& proj_matrix) {
-	glm::mat4 depth_proj = glm::inverse(proj_matrix);
-	
-	/*RenderPass pass = begin_render_pass(RenderPass::Screen, RenderPass::Standard, self.calc_fog.fbo);
-	
-	MaterialDesc upsample_material_desc{ self.upsample_shader };
-	mat_image(upsample_material_desc, "depthPrepass", self.depth_prepass);
-	mat_image(upsample_material_desc, "volumetricMap", self.calc_fog.map);
-	mat_image(upsample_material_desc, "frameMap", current_frame);
-	mat_mat4(upsample_material_desc, "depthProj", depth_proj);
-
-	material_handle upsample_material = make_Material(upsample_material_desc);
-
-	draw_mesh(pass.cmd_buffer, primitives.quad, upsample_material, glm::mat4(1.0));
-
-	end_render_pass(pass);
-	*/
-	
-	//Shader* upsample_shader = assets.shaders.get(this->upsample_shader);
-
-	//glDisable(GL_DEPTH_TEST);
-
-	/*upsample_shader->bind();
-
-	upsample_shader->set_int("depthPrepass", 0);
-	gl_bind_to(assets.textures, depth_prepass, 0);
-
-	upsample_shader->set_int("volumetricMap", 1);
-	gl_bind_to(assets.textures, volumetric_map, 1);
-
-	upsample_shader->set_int("frameMap", 2);
-	gl_bind_to(assets.textures, current_frame, 2);
-
-	glm::mat4 ident(1.0);
-	upsample_shader->set_mat4("model", ident);
-
-	glm::mat4 depth_proj = glm::inverse(proj_matrix);
-
-	upsample_shader->set_mat4("depthProj", depth_proj);*/
-
-	//render_quad();
-
-	//glEnable(GL_DEPTH_TEST);
-//}

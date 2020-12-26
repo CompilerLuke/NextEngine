@@ -181,16 +181,16 @@ void input_attributes(ArrayVertexInputs& vertex_inputs, slice<VertexAttrib> attr
 		input_attribute_desc.location = vertex_inputs.length;
 		input_attribute_desc.offset = attrib.offset;
 
-		if (attrib.kind == VertexAttrib::Float) {
-			VkFormat format[4] = { VK_FORMAT_R32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32A32_SFLOAT };
+		if (attrib.type == VertexAttrib::Float) {
+			VkFormat format[4] = { VK_FORMAT_R32_SFLOAT, VK_FORMAT_R32G32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32A32_SFLOAT };
 			input_attribute_desc.format = format[attrib.length - 1];
 		}
-		else if (attrib.kind == VertexAttrib::Int) {
+		else if (attrib.type == VertexAttrib::Int) {
 			VkFormat format[4] = { VK_FORMAT_R32_SINT, VK_FORMAT_R32G32_SINT, VK_FORMAT_R32G32B32_SINT, VK_FORMAT_R32G32B32A32_SINT };
 			input_attribute_desc.format = format[attrib.length - 1];
 		}
 
-		else if (attrib.kind == VertexAttrib::Unorm) {
+		else if (attrib.type == VertexAttrib::Unorm) {
 			VkFormat format[4] = { VK_FORMAT_R8_UNORM, VK_FORMAT_R8G8_UNORM, VK_FORMAT_R8G8B8_UNORM, VK_FORMAT_R8G8B8A8_UNORM };
 			input_attribute_desc.format = format[attrib.length - 1];
 		}
@@ -216,7 +216,10 @@ ArrayVertexInputs input_attributes(VertexLayouts& layouts, VertexLayout layout, 
 }
 
 ArrayVertexBindings input_bindings(VertexLayouts& layouts, VertexLayout layout, InstanceLayout instance_layout) {
-	return {
+    if (instance_layout == INSTANCE_LAYOUT_NONE) {
+        return {layouts.vertex_layouts[layout].binding_desc};
+    }
+    return {
 		layouts.vertex_layouts[layout].binding_desc,
 		layouts.instance_layouts[layout][instance_layout].binding_desc
 	};
@@ -232,13 +235,13 @@ void fill_layout(LayoutVertexInputs& layout, VkVertexInputRate rate, slice<Verte
 	input_attributes(layout.input_desc, attribs, 0);
 }
 
-void fill_vertex_layouts(VertexLayouts& layouts, VertexLayoutDesc& vertex_desc) {
-	LayoutVertexInputs& layout = layouts.vertex_layouts[vertex_desc.layout];
+void fill_vertex_layouts(VertexLayouts& layouts, VertexLayout vertex_layout, VertexLayoutDesc& vertex_desc) {
+	LayoutVertexInputs& layout = layouts.vertex_layouts[vertex_layout];
 	fill_layout(layout, VK_VERTEX_INPUT_RATE_VERTEX, vertex_desc.attribs, vertex_desc.elem_size, 0);
 }
 
-void fill_instance_layouts(VertexLayouts& layouts, VertexLayoutDesc& vert_desc, InstanceLayoutDesc& instance_desc) {
-	LayoutVertexInputs& layout = layouts.instance_layouts[vert_desc.layout][instance_desc.layout];
+void fill_instance_layouts(VertexLayouts& layouts, VertexLayout vertex_layout, InstanceLayout instance_layout, VertexLayoutDesc& vert_desc, InstanceLayoutDesc& instance_desc) {
+	LayoutVertexInputs& layout = layouts.instance_layouts[vertex_layout][instance_layout];
 	fill_layout(layout, VK_VERTEX_INPUT_RATE_INSTANCE, vert_desc.attribs, instance_desc.elem_size, 1);
 	input_attributes(layout.input_desc, instance_desc.attribs, 1);
 }
@@ -460,9 +463,26 @@ void bind_instance_buffer(InstanceAllocator& self, VkCommandBuffer cmd_buffer, I
 	vkCmdBindVertexBuffers(cmd_buffer, 1, 1, &self.instance_memory.buffer, &offset);
 }
 
-void render_vertex_buffer(VertexStreaming& self, VertexBuffer& buffer) {
-	/**/
+CPUVisibleBuffer alloc_cpu_visibile_buffer(u64 size, BufferUsageFlags usage) {
+    CPUVisibleBuffer buffer;
+    buffer.buffer = alloc_buffer_and_memory(size, usage, &buffer.memory, MEMORY_CPU_WRITEABLE);
+    buffer.mapped = map_memory(buffer.memory, 0, size);
+    buffer.capacity = size;
+    
+    return buffer;
 }
+
+void dealloc_buffer(buffer_handle handle) {
+    VkBuffer buffer = get_buffer(handle);
+    vkDestroyBuffer(rhi.device, buffer, 0);
+}
+
+void dealloc_cpu_visibile_buffer(CPUVisibleBuffer& buffer) {
+    unmap_memory(buffer.memory);
+    dealloc_buffer(buffer.buffer);
+    dealloc_device_memory(buffer.memory);
+}
+
 
 HostVisibleBuffer make_HostVisibleBuffer(VkDevice device, VkPhysicalDevice physical_device, uint usage, uint size) {
 	HostVisibleBuffer buffer = {};
@@ -473,7 +493,6 @@ HostVisibleBuffer make_HostVisibleBuffer(VkDevice device, VkPhysicalDevice physi
 
 void make_Layouts(VertexLayouts& layouts) {
 	VertexLayoutDesc vertex_layout_desc;
-	vertex_layout_desc.layout = VERTEX_LAYOUT_DEFAULT;
 	vertex_layout_desc.elem_size = sizeof(Vertex);
 	vertex_layout_desc.attribs = {
 		{ 3, VertexAttrib::Float, offsetof(Vertex, position) },
@@ -484,7 +503,6 @@ void make_Layouts(VertexLayouts& layouts) {
 	};
 
 	InstanceLayoutDesc layout_desc_mat4x4;
-	layout_desc_mat4x4.layout = INSTANCE_LAYOUT_MAT4X4;
 	layout_desc_mat4x4.elem_size = sizeof(glm::mat4);
 	layout_desc_mat4x4.attribs = {
 		{ 4, VertexAttrib::Float, sizeof(float) * 0 },
@@ -494,17 +512,16 @@ void make_Layouts(VertexLayouts& layouts) {
 	};
 
 	InstanceLayoutDesc layout_desc_terrain_chunk;
-	layout_desc_terrain_chunk.layout = INSTANCE_LAYOUT_TERRAIN_CHUNK;
 	layout_desc_terrain_chunk.elem_size = sizeof(ChunkInfo);
 	layout_desc_terrain_chunk.attribs = layout_desc_mat4x4.attribs;
 	layout_desc_terrain_chunk.attribs.append({ 2, VertexAttrib::Float, offsetof(ChunkInfo, displacement_offset) });
 	layout_desc_terrain_chunk.attribs.append({ 1, VertexAttrib::Float, offsetof(ChunkInfo, lod) });
 	layout_desc_terrain_chunk.attribs.append({ 1, VertexAttrib::Float, offsetof(ChunkInfo, edge_lod) });
 
-	fill_vertex_layouts(layouts, vertex_layout_desc);
+	fill_vertex_layouts(layouts, VERTEX_LAYOUT_DEFAULT, vertex_layout_desc);
 
-	fill_instance_layouts(layouts, vertex_layout_desc, layout_desc_mat4x4);
-	fill_instance_layouts(layouts, vertex_layout_desc, layout_desc_terrain_chunk);
+	fill_instance_layouts(layouts, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_MAT4X4, vertex_layout_desc, layout_desc_mat4x4);
+	fill_instance_layouts(layouts, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_TERRAIN_CHUNK, vertex_layout_desc, layout_desc_terrain_chunk);
 }
 
 void make_InstanceAllocator(InstanceAllocator& self, VkDevice device, VkPhysicalDevice physical_device, InstanceAllocator::Layouts* layouts, u64* instance_size_per_layout) {
@@ -598,8 +615,119 @@ void destroy_InstanceAllocator(InstanceAllocator& self) {
 	vkFreeMemory(device, self.instance_memory.buffer_memory, nullptr);
 }
 
-
 //GLOBAL RHI API
+struct HandlesToVK {
+    VkBuffer buffer[100];
+    VkDeviceMemory memory[100];
+    uint buffer_count;
+    uint memory_count;
+};
+
+static HandlesToVK handles;
+
+VkDeviceMemory get_device_memory(device_memory_handle handle) { return handles.memory[handle.id - 1]; }
+VkBuffer get_buffer(buffer_handle handle) { return handles.buffer[handle.id - 1]; }
+
+device_memory_handle alloc_device_memory(uint size, uint resource_type, DeviceMemoryFlags flags) {
+    VkMemoryPropertyFlags properties;
+    if (flags == MEMORY_GPU_NATIVE) properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    if (flags == MEMORY_CPU_READABLE) properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+    if (flags == MEMORY_CPU_WRITEABLE) properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    
+    VkMemoryAllocateInfo allocInfo = {};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = size;
+    allocInfo.memoryTypeIndex = find_memory_type(rhi.device, resource_type, properties);
+
+    uint index = handles.memory_count++;
+
+    if (vkAllocateMemory(rhi.device, &allocInfo, nullptr, handles.memory + index) != VK_SUCCESS) {
+        fprintf(stderr, "failed to allocate buffer memory!");
+        return {INVALID_HANDLE};
+    }
+
+    return {index + 1};
+}
+
+
+void dealloc_device_memory(device_memory_handle handle) {
+    //todo
+}
+
+void* map_memory(device_memory_handle handle, u64 offset, u64 size) {
+    void* mapped = nullptr;
+    vkMapMemory(rhi.device, get_device_memory(handle), offset, size, 0, &mapped);
+    return mapped;
+}
+
+void unmap_memory(device_memory_handle handle) {
+    vkUnmapMemory(rhi.device, get_device_memory(handle));
+}
+
+MemoryRequirements query_buffer_memory_requirements(buffer_handle buffer) {
+    VkMemoryRequirements vk_requirements;
+    vkGetBufferMemoryRequirements(rhi.device, get_buffer(buffer), &vk_requirements);
+    
+    MemoryRequirements result;
+    result.size = vk_requirements.size;
+    result.resource_type = vk_requirements.memoryTypeBits;
+    result.alignment = vk_requirements.alignment;
+    
+    return result;
+}
+
+buffer_handle alloc_buffer(u64 size, BufferUsageFlags usage) {
+    VkBufferUsageFlags vk_usage = 0;
+    if (usage == BUFFER_VERTEX) vk_usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    if (usage == BUFFER_INDEX) vk_usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+    if (usage == BUFFER_UBO) vk_usage |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    
+    VkBufferCreateInfo buffer_info = {};
+    buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    buffer_info.size = size;
+    buffer_info.usage = vk_usage;
+    buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    uint index = handles.buffer_count++;
+    
+    if (vkCreateBuffer(rhi.device, &buffer_info, nullptr, handles.buffer + index) != VK_SUCCESS) {
+        throw "failed to make buffer!";
+    }
+    
+    return {index + 1};
+}
+
+void bind_buffer_memory(buffer_handle buffer, device_memory_handle memory, u64 offset) {
+    vkBindBufferMemory(rhi.device, get_buffer(buffer), get_device_memory(memory), offset);
+}
+
+buffer_handle alloc_buffer(u64 size, BufferUsageFlags usage, device_memory_handle memory, u64 offset) {
+    buffer_handle handle = alloc_buffer(size, usage);
+    bind_buffer_memory(handle, memory, offset);
+    return handle;
+}
+
+buffer_handle alloc_buffer_and_memory(u64 size, BufferUsageFlags usage, device_memory_handle* memory, DeviceMemoryFlags memory_flags) {
+    buffer_handle handle = alloc_buffer(size, usage);
+    
+    MemoryRequirements requirements = query_buffer_memory_requirements(handle);
+    *memory = alloc_device_memory(requirements.size, requirements.resource_type, memory_flags);
+    
+    bind_buffer_memory(handle, *memory, 0);
+    return handle;
+}
+
+VertexLayout register_vertex_layout(VertexLayoutDesc& desc) {
+    VertexLayout vertex_layout = (VertexLayout)(rhi.vertex_layouts.vertex_layout_count++);
+    
+    InstanceLayoutDesc layout_desc_none = {};
+    
+    fill_vertex_layouts(rhi.vertex_layouts, vertex_layout, desc);
+    fill_instance_layouts(rhi.vertex_layouts, vertex_layout, INSTANCE_LAYOUT_NONE, desc, layout_desc_none);
+    
+    return vertex_layout;
+}
+
 VertexBuffer alloc_vertex_buffer(VertexLayout vertex_layout, int vertices_length, void* vertices, int indices_length, uint* indices) {		
 	return alloc_vertex_buffer(rhi.vertex_streaming, vertex_layout, vertices_length, vertices, indices_length, indices);
 }
@@ -616,5 +744,7 @@ UBOBuffer alloc_ubo_buffer(uint size, UBOUpdateFlags flags) {
 void memcpy_ubo_buffer(UBOBuffer& buffer, uint size, void* data) {
 	memcpy_ubo_buffer(rhi.ubo_allocator, buffer, size, data);
 }
+
+
 
 #endif

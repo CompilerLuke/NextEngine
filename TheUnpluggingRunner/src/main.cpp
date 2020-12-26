@@ -79,6 +79,8 @@ void job_system_test_main() {
 	destroy_job_system(); 
 }
 
+#define BUILD_STANDALONE
+
 void fiber_main(void* data) {
 	LinearAllocator& permanent_allocator = get_thread_local_permanent_allocator(); 
 	LinearAllocator& temporary_allocator = get_thread_local_temporary_allocator();
@@ -96,11 +98,20 @@ void fiber_main(void* data) {
 
 	Modules modules(app_name, level, engine_asset_path);
 
-    const char* game_dll_path = "bin/" NE_BUILD_DIR "/CFD/CFD.dll";
+    const char* game_dll_path = "bin/" NE_BUILD_DIR "/CFD/libCFD.dylib";
     const char* editor_dll_path = "bin/" NE_BUILD_DIR "/TheUnpluggingRunner/NextEngineEditor.dll";
 
+    //convert_thread_to_fiber();
+    
+    {
+        Context& context = get_context();
+        context.temporary_allocator = &get_thread_local_temporary_allocator();
+        context.allocator = &default_allocator;
+    }
+
+    
 #ifdef BUILD_STANDALONE
-	Application game(game_dll_path);
+	Application game(modules, game_dll_path);
 	game.init();
 	game.run();
 #else
@@ -110,6 +121,8 @@ void fiber_main(void* data) {
 	editor.run();
 
 #endif
+    
+    //convert_fiber_to_thread();
 }
 
 void init_workers(void*) {
@@ -136,14 +149,10 @@ int main() {
 		init_jobs_on[i] = i + 1;
 	}
 
-    convert_thread_to_fiber();
 	atomic_counter counter = 0;
 	schedule_jobs_on({ init_jobs_on, num_workers }, { init_jobs, num_workers - 1 }, &counter);
 	
-    convert_thread_to_fiber();
-    wait_for_counter(&counter, 0);
     fiber_main(nullptr);
-    convert_fiber_to_thread();
 
 	destroy_job_system();
 

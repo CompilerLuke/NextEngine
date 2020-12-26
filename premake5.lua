@@ -27,7 +27,7 @@ workspace "NextEngine"
         systemversion "10.15.5"
 
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
-freetype = false
+freetype = true
 
 function pch()
 	pchheader "stdafx.h"
@@ -219,9 +219,10 @@ project "NextEngine"
 
 		if freetype then 
 			libdirs { "/usr/local/Cellar/freetype/2.10.2/lib" } --maybe it is better to include freetype through git submodules
-		end 
+		    links "freetype"
+		end
 
-        links {"shaderc_shared", "freetype" }
+        links {"shaderc_shared"}
         linkoptions {"-framework Foundation", "-framework Cocoa", "-framework IOKit"}
 
     filter "system:windows"
@@ -291,6 +292,12 @@ project "CFD"
 
 	includedirs { "NextEngine/include", "NextCore/include" }
 	links { "NextCore", "NextEngine" }
+ 
+     if freetype then
+        sysincludedirs { "/usr/local/Cellar/freetype/2.10.2/include/freetype2" }
+        libdirs { "/usr/local/Cellar/freetype/2.10.2/lib" } --maybe it is better to include freetype through git submodules
+        links "freetype"
+    end
 
 	prebuildcommands (reflection_exe .. ' -b "." -i "include" components.h -c "cfd_ids.h" -o src/generated')
 

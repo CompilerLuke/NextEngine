@@ -1,4 +1,4 @@
-#include shaders/shadow.glsl
+//#include shaders/shadow.glsl
 
 struct DirLight {
     vec3 direction;
@@ -236,7 +236,7 @@ vec4 pbr_frag(vec3 mat_albedo, vec3 mat_normal, float mat_metallic, float mat_ro
     F0 = mix(F0, _albedo, _metallic);
 
     // phase 1: Directional lighting
-    float shadow = calc_shadow(_normal, dir_light.direction, NDC.z, FragPos); //texture(shadow_mask_map, vec2(gl_FragCoord) / resolution).r;
+    float shadow = 0.0; //calc_shadow(_normal, dir_light.direction, NDC.z, FragPos); //texture(shadow_mask_map, vec2(gl_FragCoord) / resolution).r;
     //shadow = 0.0f;
 
     Lo += (1.0 - shadow) * calc_dir_light(_normal, V);

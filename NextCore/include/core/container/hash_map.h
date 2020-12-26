@@ -27,8 +27,7 @@ struct hash_set_base {
 	: capacity(capacity), meta(meta), keys(keys) {}
 
 	void clear() {
-		uint length = meta.length();
-		for (uint i = 0; i < length; i++) {
+		for (uint i = 0; i < capacity; i++) {
 			meta[i] = {};
 			keys[i] = {};
 		}
@@ -121,36 +120,38 @@ struct hash_map_base : hash_set_base<K> {
 	V* values = {};
 
 	hash_map_base(uint capacity, hash_meta* meta, K* keys, V* values)
-	: hash_set_base(capacity, meta, keys), values(values) {
-
+	: hash_set_base<K>::hash_set_base(capacity, meta, keys), values(values) {
+        
+        
 	}
 
+    
 	uint set(K key, const V& value) {
-		int index = keys.add(key);
+		int index = this->keys.add(key);
 		values[index] = value;
 		return index;
 	}
 
 	V& operator[](K key) {
-		return values[add(key)];
+		return values[this->add(key)];
 	}
 
 	const V& operator[](K key) const {
-		return values[index(key)];
+		return values[this->index(key)];
 	}
 
 	hash_map_it<K, V> begin() {
-		hash_map_it<K,V> it{ meta, keys, values, capacity, 0 };
+		hash_map_it<K,V> it{ this->meta, this->keys, this->values, this->capacity, 0 };
 		it.skip_empty();
 		return it;
 	}
 
 	hash_map_it<K, V> end() {
-		return { meta, keys, values, capacity, capacity };
+		return { this->meta, this->keys, this->values, this->capacity, this->capacity };
 	}
 
 	V* get(K key) {
-		int index = keys.index(key);
+		int index = this->keys.index(key);
 		if (index != -1) return &values[index];
 		else return nullptr;
 	}
@@ -171,12 +172,12 @@ struct hash_set {
 	}
 
 	bool matches(uint hash, const K& key, uint probe_hash) const { 
-		return hash_set_base(N, meta, keys).matches(hash, key, probe_hash);
+		return hash_set_base<K>::hash_set_base(N, meta, keys).matches(hash, key, probe_hash);
 	}
 
 	bool is_full(uint probe_hash) const { return meta[probe_hash] & 0x1; }
-	int add(K key) { return hash_set_base(N, meta, keys).add(key); }
-	int index(K key) { return hash_set_base(N, meta, keys).index(key); }
+	int add(K key) { return hash_set_base<K>(N, meta, keys).add(key); }
+	int index(K key) { return hash_set_base<K>(N, meta, keys).index(key); }
 };
 
 template <typename K, typename V, uint N>
@@ -187,38 +188,39 @@ struct hash_map : hash_set<K, N> {
 
 	void clear() {
 		for (uint i = 0; i < N; i++) {
-			meta[i] = {};
-			keys[i] = {};
-			values[i] = {};
+			this->meta[i] = {};
+			this->keys[i] = {};
+			this->values[i] = {};
 		}
 	}
 
 	uint set(K key, const V& value) {
-		int index = add(key);
+		int index = this->add(key);
 		values[index] = value;
 		return index;
 	}
+    
+    const V& operator[](K key) const {
+        return values[this->index(key)];
+    }
 
 	V& operator[](K key) {
-		return values[add(key)];
+		return values[this->add(key)];
 	}
 
-	const V& operator[](K key) const {
-		return values[index(key)];
-	}
 
 	hash_map_it<K, V> begin() {
-		hash_map_it<K, V> it{ meta, keys, values, N, 0 };
+		hash_map_it<K, V> it{ this->meta, this->keys, this->values, N, 0 };
 		it.skip_empty();
 		return it;
 	}
 
 	hash_map_it<K, V> end() {
-		return { meta, keys, values, N, N };
+		return { this->meta, this->keys, values, N, N };
 	}
 
 	V* get(K key) {
-		int i = index(key);
+		int i = this->index(key);
 		if (i != -1) return &values[i];
 		else return nullptr;
 	}

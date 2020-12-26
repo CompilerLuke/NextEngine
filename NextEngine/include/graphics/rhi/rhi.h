@@ -20,10 +20,12 @@ struct DeviceFeatures {
 	bool multi_draw_indirect = true;
 };
 
+
 ENGINE_API void make_RHI(AppInfo& info, DeviceFeatures&);
-void ENGINE_API begin_gpu_upload();
-void ENGINE_API end_gpu_upload();
-void ENGINE_API queue_for_destruction(void*, void(*)(void*)); //may be worth using std::function instead
+ENGINE_API void begin_gpu_upload();
+ENGINE_API void end_gpu_upload();
+ENGINE_API void queue_for_destruction(void*, void(*)(void*)); //may be worth using std::function instead
+ENGINE_API uint get_frame_index();
 
 template<typename T>
 void queue_t_for_destruction(T data, void(*func)(T)) {

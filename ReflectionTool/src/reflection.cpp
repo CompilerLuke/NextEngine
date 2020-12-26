@@ -552,12 +552,12 @@ namespace pixc::reflection::compiler {
         Namespace* space = push_Namespace(ref, name);
         
         ref.i++;
-        
 
         for (; ref.tokens[ref.i].type != lexer::Close_Bracket && ref.i < ref.tokens.length; ref.i++) {
             lexer::Token token = ref.tokens[ref.i];
             Type* type = nullptr;
 
+            
             bool is_constructor = token.value == name && ref.tokens[ref.i+1].type == lexer::Open_Paren;
             bool is_static = token.type == lexer::Static;
             bool is_refl_false = token.value == "REFL_FALSE";
@@ -1934,7 +1934,7 @@ void listdir(const char* base, const char *path, int indent, tvector<const char*
 }
 #endif
 
-#ifdef NE_MACOSX
+#ifdef NE_PLATFORM_MACOSX
 #include <dirent.h>
 
 void listdir(const char* base, const char *path, int indent, tvector<const char*>& header_paths) {

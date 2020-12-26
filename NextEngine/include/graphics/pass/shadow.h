@@ -35,7 +35,7 @@ struct ShadowUBO {
 };
 
 struct ShadowSettings {
-	float shadow_resolution;
+	uint shadow_resolution;
 	float cascade_split_lambda = 0.96;
 	float constant_depth_bias = 1.5;
 	float slope_depth_bias = 2.5;

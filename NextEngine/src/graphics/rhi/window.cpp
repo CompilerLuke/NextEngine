@@ -125,6 +125,46 @@ void Window::get_framebuffer_size(int* width, int* height) {
 	glfwGetFramebufferSize(window_ptr, width, height);
 }
 
+void Window::get_window_size(int* width, int* height) {
+    glfwGetWindowSize(window_ptr, width, height);
+}
+
+void Window::get_dpi(int* horizontal, int* vertical) {
+    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+    
+    int width_mm, height_mm;
+    glfwGetMonitorPhysicalSize(monitor, &width_mm, &height_mm);
+    
+    float xscale, yscale;
+    glfwGetMonitorContentScale(monitor, &xscale, &yscale);
+    
+    const GLFWvidmode * mode = glfwGetVideoMode(monitor);
+    
+    float width_px = mode->width;
+    float height_px = mode->height;
+    
+    float width_i = width_mm / 25.4;
+    float height_i = height_mm / 25.4;
+    
+    *horizontal = roundf(width_px  * xscale / width_i);
+    *vertical = roundf(height_px * yscale / height_i);
+}
+
+void Window::set_cursor(CursorShape shape) {
+    if (shape == cursor_shape) return;
+    
+    //todo implement caching if this is slow
+    
+    int cursor_shapes[] = {GLFW_ARROW_CURSOR, GLFW_IBEAM_CURSOR, GLFW_CROSSHAIR_CURSOR, GLFW_HAND_CURSOR, GLFW_HRESIZE_CURSOR, GLFW_VRESIZE_CURSOR};
+    
+    if (current_cursor) glfwDestroyCursor(current_cursor);
+    
+    current_cursor = glfwCreateStandardCursor(cursor_shapes[(uint)shape]);
+    glfwSetCursor(window_ptr, current_cursor);
+    
+    cursor_shape = shape;
+}
+
 bool Window::is_visible() {
     return glfwGetWindowAttrib(window_ptr, GLFW_FOCUSED);
 }

@@ -1,0 +1,73 @@
+#pragma once
+
+#include "core/container/hash_map.h"
+#include "core/container/tvector.h"
+#include "font.h"
+#include "ui.h"
+#include "draw.h"
+#include "engine/input.h"
+
+#include <ft2build.h>
+#include FT_FREETYPE_H
+
+struct LinearAllocator;
+struct Input;
+
+struct FontCache {
+    FT_Library ft;
+    HandleManager<FT_Face, font_handle> fonts;
+    hash_map<FontDesc, Font, 103> cached;
+};
+
+struct ScrollState {
+    float offset;
+};
+
+struct PanelState {
+    glm::vec2 position = glm::vec2(0);
+    glm::vec2 size = glm::vec2(0);
+    bool open = false;
+    bool first = true;
+    int active_edge = -1;
+};
+
+struct SplitterState {
+    BoxConstraint last_constraint;
+    float splitter_offset;
+    bool dragging = false;
+    bool first = true;
+};
+
+constexpr uint MAX_SCROLL_BARS = 13;
+constexpr uint MAX_PANELS = 23;
+constexpr uint MAX_SPLITTERS = 13;
+
+using UI_ID = u64;
+
+struct UI {
+    FontCache font_cache;
+    UIRenderer* renderer;
+    LinearAllocator* allocator;
+    tvector<UIContainer*> container_stack;
+    Input input;
+    UIDrawData draw_data;
+    font_handle default_font;
+    CursorShape cursor_shape;
+    UITheme theme;
+    
+    uint dpi_v;
+    uint dpi_h;
+    
+    float max_font_size;
+    
+    hash_map<u64, ScrollState, MAX_SCROLL_BARS> scrolls;
+    hash_map<u64, PanelState, MAX_PANELS> panels;
+    hash_map<u64, SplitterState, MAX_SPLITTERS> splitters;
+    
+    char buffer[100];
+    UI_ID active;
+    UI_ID dragging;
+    int dragging_edge;
+    int cursor_pos;
+    LayedOutUIView* active_input;
+};

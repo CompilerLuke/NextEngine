@@ -42,3 +42,5 @@ inline constexpr uint max(uint a, uint b) {
 inline constexpr uint min(uint a, uint b) {
 	return a < b ? a : b;
 }
+
+#define assert_mesg(cond, mesg) if (!(cond)) { fprintf(stderr, mesg); exit(1); }

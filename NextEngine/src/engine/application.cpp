@@ -3,6 +3,8 @@
 #include "core/profiler.h"
 #include "engine/input.h"
 #include "graphics/rhi/window.h"
+#include "core/job_system/thread.h"
+#include "graphics/renderer/renderer.h"
 
 #ifdef NE_PLATFORM_WINDOWS
 #define WIN32_LEAN_AND_MEAN
@@ -51,7 +53,7 @@ void destroy_DLL(void* dll) {
     dlclose(dll);
 }
 
-void* load_DLL(string_view path) {
+void* load_DLL(string_view path, bool* locked) {
     void* dll = dlopen(path.c_str(), RTLD_NOW);
     if (!dll) throw "Could not load DLL!";
     return (void*)dll;
@@ -90,7 +92,7 @@ void Application::load_functions() {
 		dll_handle = load_DLL(path, &locked);
 		if (!locked) break;
 
-		Sleep(100);
+		thread_sleep(100);
 	}
 
 	if (!dll_handle) {
@@ -123,6 +125,7 @@ void Application::reload() {
     if (register_components_func) register_components_func(*engine.world);
 	if (reload_func) reload_func(application_state, engine); //RELOAD may want to use static data from the previous dll, i.e for diffing
 
+    printf("Reloading!\n");
 }
 
 void Application::update() {
@@ -134,8 +137,8 @@ void Application::extract_render_data(FrameData& data) {
     extract_render_func(application_state, engine, data);
 }
 
-void Application::render(GPUSubmission& submission) {
-	render_func(application_state, engine, submission);
+void Application::render(GPUSubmission& submission, FrameData& data) {
+	render_func(application_state, engine, submission, data);
 }
 
 bool Application::is_running() {
@@ -150,7 +153,7 @@ void Application::reload_if_modified() {
 void Application::run() {
 	while (is_running()) {
         if (engine.window && !engine.window->is_visible()) {
-        //    thread_sleep(1);
+            thread_sleep(16000);
         }
         
 		engine.begin_frame();
@@ -164,7 +167,11 @@ void Application::run() {
 		
 		{
 			Profile profile("Render");
-			render(*(struct GPUSubmission*)nullptr); //todo implement render callbacks
+            
+            FrameData frame = {};
+            
+            extract_render_data(frame);
+			render(*(struct GPUSubmission*)nullptr, frame); //todo implement render callbacks
 		}
 
 		engine.end_frame();

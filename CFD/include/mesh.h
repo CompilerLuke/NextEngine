@@ -3,8 +3,10 @@
 #include "core/core.h"
 #include "core/container/vector.h"
 #include "core/container/array.h"
-#include "core/math/vec3.h"
+//#include "core/math/vec3.h"
 #include "graphics/culling/aabb.h"
+
+using namespace glm;
 
 struct vertex_handle {
 	int id = -1;

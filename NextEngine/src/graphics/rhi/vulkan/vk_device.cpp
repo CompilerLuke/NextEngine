@@ -35,7 +35,10 @@ bool check_validation_layer_support(const VulkanDesc& desc) {
 }
 
 const char* device_extensions[] = {
-	VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+	VK_KHR_SWAPCHAIN_EXTENSION_NAME
+#ifdef PLATFORM_MACOSX
+    , VK_KHR_portability_subset
+#endif
 };
 
 QueueFamilyIndices find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface) {

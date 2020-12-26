@@ -161,6 +161,11 @@ void make_Framebuffer(RenderPass::ID id, FramebufferDesc& desc) {
 void make_wsi_pass(slice<Dependency> dependency) {
 	framegraph.info[RenderPass::Screen].dependencies = dependency;
 	framegraph.info[RenderPass::Screen].types.append(RenderPass::Color);
+    
+    Attachment attachment;
+    attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    
+    framegraph.info[RenderPass::Screen].attachments.append(attachment);
 	//todo add support for dependencies
 
 }
@@ -170,6 +175,11 @@ void register_wsi_pass(VkRenderPass render_pass, uint width, uint height) {
 	framegraph.info[RenderPass::Screen].width = width;
 	framegraph.info[RenderPass::Screen].height = height;
 	framegraph.render_pass[RenderPass::Screen] = render_pass;
+    
+    Attachment attachment;
+    attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    
+    framegraph.info[RenderPass::Screen].attachments.append(attachment);
 }
 
 RenderPass::Type render_pass_type_by_id(RenderPass::ID id, uint subpass) {

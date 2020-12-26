@@ -6,6 +6,15 @@
 #include "core/container/tvector.h"
 #include "graphics/rhi/shader_access.h"
 
+struct Rect2D {
+    glm::vec2 pos;
+    glm::vec2 size;
+    
+    bool intersects(glm::vec2 point) {
+        return point.x >= pos.x && point.y >= pos.y && point.x <= pos.x + size.x && point.y <= pos.y + size.y;
+    }
+};
+
 struct CommandBuffer;
 
 ENGINE_API CommandBuffer& begin_draw_cmds();
@@ -23,6 +32,8 @@ void push_constant(CommandBuffer& cmd_buffer, Stage stage, uint offset, const T*
 }
 
 ENGINE_API void bind_vertex_buffer(CommandBuffer&, VertexLayout, InstanceLayout);
+ENGINE_API void bind_vertex_buffer(CommandBuffer&, buffer_handle, u64 base);
+ENGINE_API void bind_index_buffer(CommandBuffer&, buffer_handle, u64 base);
 ENGINE_API void bind_descriptor(CommandBuffer&, uint, slice<descriptor_set_handle>);
 ENGINE_API void bind_pipeline_layout(CommandBuffer&, pipeline_layout_handle);
 ENGINE_API void bind_pipeline(CommandBuffer&, pipeline_handle);
@@ -31,6 +42,7 @@ ENGINE_API void bind_material_and_pipeline(CommandBuffer&, material_handle);
 ENGINE_API void draw_mesh(CommandBuffer&, VertexBuffer, InstanceBuffer);
 ENGINE_API void draw_mesh(CommandBuffer&, VertexBuffer);
 ENGINE_API void set_depth_bias(CommandBuffer&, float constant, float slope);
+ENGINE_API void set_scissor(CommandBuffer&, Rect2D);
 
 
 //void begin_render_pass(CommandBuffer&, render_pass_handle);
