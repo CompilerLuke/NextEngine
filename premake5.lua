@@ -27,7 +27,7 @@ workspace "NextEngine"
         systemversion "10.15.5"
 
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
-freetype = true
+freetype = false
 
 function pch()
 	pchheader "stdafx.h"
@@ -293,11 +293,14 @@ project "CFD"
 	includedirs { "NextEngine/include", "NextCore/include" }
 	links { "NextCore", "NextEngine" }
  
-     if freetype then
-        sysincludedirs { "/usr/local/Cellar/freetype/2.10.2/include/freetype2" }
-        libdirs { "/usr/local/Cellar/freetype/2.10.2/lib" } --maybe it is better to include freetype through git submodules
+    --if freetype then
+	    sysincludedirs { "C:/Users/User/Desktop/Game Engine/freetype-windows-binaries/include"}
+        libdirs { "C:/Users/User/Desktop/Game Engine/freetype-windows-binaries/win64"}
+
+		--sysincludedirs { "/usr/local/Cellar/freetype/2.10.2/include/freetype2" }
+        --libdirs { "/usr/local/Cellar/freetype/2.10.2/lib" } --maybe it is better to include freetype through git submodules
         links "freetype"
-    end
+    --end
 
 	prebuildcommands (reflection_exe .. ' -b "." -i "include" components.h -c "cfd_ids.h" -o src/generated')
 

@@ -15,7 +15,13 @@ CORE_API uint worker_thread_count();
 
 #ifdef __APPLE__
 #include <unistd.h>
-#define thread_sleep usleep
+inline void thread_sleep(u64 time) {
+	usleep(time);
+}
 #else
-#define thread_sleep Sleep
+#include <Windows.h>
+inline void thread_sleep(u64 time) {
+	Sleep(time / 1000);
+}
 #endif
+

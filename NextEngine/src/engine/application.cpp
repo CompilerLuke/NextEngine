@@ -35,7 +35,11 @@ void* load_DLL(string_view path, bool* dll_is_locked = nullptr) {
 	printf("Loading the dll %s\n", dest);
 
 	HINSTANCE dll = LoadLibraryA(dest);
-	if (!dll) throw "Could not load DLL!";
+	
+	if (!dll) {
+		printf("Error Code: %i\n", GetLastError());
+		throw "Could not load DLL!";
+	}
 	return (void*)dll;
 }
 

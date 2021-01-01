@@ -396,6 +396,21 @@ struct EdgeInfo {
 	uint neighbor_edge;
 };
 
+
+vec3 triangle_normal(vec3 positions[3]) {
+	vec3 dir1 = normalize(positions[0] - positions[1]);
+	vec3 dir2 = normalize(positions[0] - positions[2]);
+	return normalize(cross(dir1, dir2));
+}
+
+vec3 quad_normal(vec3 positions[4]) {
+	vec3 triangle1[3] = { positions[0], positions[1], positions[2] };
+	vec3 triangle2[3] = { positions[0], positions[2], positions[3] };
+	vec3 normal1 = triangle_normal(triangle1);
+	vec3 normal2 = triangle_normal(triangle2);
+	return normalize((normal1 + normal2) / 2.0f);
+}
+
 CFDSurface surface_from_mesh(vector<CFDVertex>& vertices, const glm::mat4& mat, Mesh& mesh) {
 	uint lod = 0;
 	slice<uint> mesh_indices = mesh.indices[lod];
@@ -407,12 +422,12 @@ CFDSurface surface_from_mesh(vector<CFDVertex>& vertices, const glm::mat4& mat, 
 	spatial_hash_map<EdgeInfo> edge_hash_map = make_t_hash_map<EdgeInfo>(hash_map_size);
 
 	uint vertex_id = 0;
-
+	float tolerance = 0.001;
 
 	vector<CFDPolygon> triangles;
 	triangles.reserve(mesh_indices.length / 3);
 
-	for (uint i = 0; i < mesh_indices.length - 2; i += 3) {
+	for (uint i = 0; i < mesh_indices.length; i += 3) {
 		uint* indices = mesh_indices.data + i;
 		uint triangle_id = i / 3;
 
@@ -423,7 +438,12 @@ CFDSurface surface_from_mesh(vector<CFDVertex>& vertices, const glm::mat4& mat, 
 		for (uint j = 0; j < 3; j++) {
 			Vertex vertex = mesh.vertices[lod][indices[j]];
 
-			VertexInfo& info = vertex_hash_map[vertex.position];
+			glm::vec3 position = vertex.position;
+			position /= tolerance;
+			position = glm::ceil(position);
+			position *= tolerance;
+
+			VertexInfo& info = vertex_hash_map[position];
 			uint previous_count = info.count++;
 			if (previous_count == 0) { //assign the vertex an ID
 				info.id = vertex_id++;
@@ -471,24 +491,10 @@ CFDSurface surface_from_mesh(vector<CFDVertex>& vertices, const glm::mat4& mat, 
 
 	for (auto [position, info] : vertex_hash_map) {
 		vertices[info.id].position = glm::vec3(mat * glm::vec4(glm::vec3(position),1.0));
-		vertices[info.id].normal = glm::normalize(info.normal * glm::mat3(mat));
+		vertices[info.id].normal = glm::normalize(glm::mat3(mat) * info.normal);
 	}
 
 	return {std::move(triangles), vertices};
-}
-
-vec3 triangle_normal(vec3 positions[3]) {
-	vec3 dir1 = normalize(positions[0] - positions[1]);
-	vec3 dir2 = normalize(positions[0] - positions[2]);
-	return normalize(cross(dir1, dir2));
-}
-
-vec3 quad_normal(vec3 positions[4]) {
-	vec3 triangle1[3] = { positions[0], positions[1], positions[2] };
-	vec3 triangle2[3] = { positions[0], positions[2], positions[3] };
-	vec3 normal1 = triangle_normal(triangle1);
-	vec3 normal2 = triangle_normal(triangle2);
-	return normalize((normal1 + normal2) / 2.0f);
 }
 
 
@@ -700,7 +706,6 @@ struct Front {
 		free_payload = free_next;
 	}
 
-	//note: will return squared distance to avoid sqrt
 	Result find_closest(Subdivision& subdivision, AABB& aabb) {
 		Result result;
 		if (!aabb.intersects(subdivision.aabb)) return result;
@@ -764,9 +769,10 @@ struct Front {
 	}
 
 	uint centroid_to_index(glm::vec3 centroid, glm::vec3 min, glm::vec3 half_size) {
-		glm::vec3 vec = (centroid - min) / half_size;
-		//assert(vec > 0.0f && vec < 2.0f);
-		return (int)vec.x + 4 * (int)vec.y + 2 * (int)vec.z;
+		glm::vec3 vec = (centroid - min + FLT_EPSILON) / (half_size + 2*FLT_EPSILON);
+		assert(vec.x >= 0.0f && vec.x <= 2.0f);
+		assert(vec.y >= 0.0f && vec.y <= 2.0f);
+		return (int)floorf(vec.x) + 4 * (int)floorf(vec.y) + 2 * (int)floorf(vec.z);
 	}
 
 	void add_cell_to_leaf(Subdivision& subdivision, cell_handle handle, const AABB& aabb) {
@@ -786,9 +792,7 @@ struct Front {
 		add_cell_to_leaf(divisions[index], cell, aabb);
 	}
 
-	void add_cell(Subdivision& subdivision, cell_handle handle, const AABB& aabb) {
-		glm::vec3 centroid = aabb.centroid();
-
+	void add_cell(Subdivision& subdivision, cell_handle handle, glm::vec3 centroid, const AABB& aabb) {
 		bool leaf = is_leaf(subdivision);
 
 		glm::vec3 half_size = 0.5f * subdivision.aabb_division.size();
@@ -830,15 +834,15 @@ struct Front {
 
 				memcpy_t(subdivision.p->children, divisions, 8);
 				subdivision.count++;
-				add_cell(subdivision, handle, aabb); //todo use loop instead of recursion
+				add_cell(subdivision, handle, centroid, aabb); //todo use loop instead of recursion
 				subdivision.count--;
 			}
 		}
 		else {
 			uint index = centroid_to_index(centroid, min, half_size);
 
-			add_cell(subdivision.p->children[index], handle, aabb);
-			subdivision.aabb.update_aabb(subdivision.p->children[index].aabb);
+			add_cell(subdivision.p->children[index], handle, centroid, aabb);
+			subdivision.aabb.update_aabb(aabb);
 			subdivision.count++;
 		}
 	}
@@ -849,17 +853,17 @@ struct Front {
 		CFDCell& cell = cells[handle.id];
 
 		AABB aabb = {};
-		for (uint i = 0; i < cell.type; i++) {
+		for (uint i = 0; i < shapes[cell.type].num_verts; i++) {
 			vec3 position = vertices[cell.vertices[i].id].position;
 			aabb.update(position);
 		}
 
-		Subdivision* start_from = last_visited;
-		while (!aabb.inside(start_from->aabb_division)) {
-			start_from = start_from->parent;
-		}
+		//Subdivision* start_from = last_visited;
+		//while (!aabb.inside(start_from->aabb_division)) {
+		//	start_from = start_from->parent;
+		//}
 
-		add_cell(*start_from, handle, aabb);
+		add_cell(root, handle, aabb.centroid(), aabb);
 	}
 
 	void remove_cell(cell_handle handle) {
@@ -922,18 +926,41 @@ struct Front {
 	}
 };
 
+void test_front() {
+	vector<CFDVertex> vertices;
+	vector<CFDCell> cells;
+
+	AABB root_aabb{ glm::vec3(-10), glm::vec3(10) };
+	Front front(vertices, cells, root_aabb);
+
+	vertices.append({ glm::vec3(-0.5,0,-0.5) });
+	vertices.append({ glm::vec3(-0.5,0,0.5) });
+	vertices.append({ glm::vec3(0.5,0,0.5) });
+	vertices.append({ glm::vec3(0.5,0,-0.5) });
+	vertices.append({ glm::vec3(0.0,1.0,0.0) });
+
+	CFDCell cell;
+	cell.type = CFDCell::PENTAHEDRON;
+	for (int i = 0; i < 5; i++) cell.vertices[i] = { i };
+	cells.append(cell);
+
+	front.add_cell({ 0 });
+
+	Front::Result result = front.find_closest(glm::vec3(0,1.0,0.0), 0.8);
+	assert(result.cell.id == 0);
+	assert(result.vertex.id == 4);
+}
+
 void swap_vertex(vertex_handle& a, vertex_handle& b) {
 	vertex_handle tmp = a;
 	a = b;
 	b = tmp;
 }
 
-void sort4_vertices(vertex_handle verts[4]) {
+void sort3_vertices(vertex_handle verts[3]) {
 	if (verts[0].id > verts[1].id) swap_vertex(verts[0], verts[1]);
-	if (verts[2].id > verts[3].id) swap_vertex(verts[2], verts[3]);
-	if (verts[0].id > verts[2].id) swap_vertex(verts[0], verts[2]);
-	if (verts[1].id > verts[3].id) swap_vertex(verts[1], verts[3]);
 	if (verts[1].id > verts[2].id) swap_vertex(verts[1], verts[2]);
+	if (verts[0].id > verts[1].id) swap_vertex(verts[0], verts[1]);
 }
 
 bool verts4_match(const vertex_handle a[4], const vertex_handle b[4]) {
@@ -958,12 +985,14 @@ void create_isotropic_cell(CFDVolume& mesh, Front& front, CFDCell& cell, vec3* p
 	for (uint i = 0; i < base_sides; i++) centroid += positions[i];
 	centroid /= base_sides;
 
+	//length(positions[i] - positions[(i + 1) % base_sides])
+	float r_h = sqrtf(3.0) / 2.0;
 	float r = 0.0f;
-	for (uint i = 0; i < base_sides; i++) r += 0.5f*length(positions[i] - positions[(i + 1) % base_sides]);
+	for (uint i = 0; i < base_sides; i++) r += r_h*length(positions[i] - centroid);
 	r /= base_sides;
 
 
-	glm::vec3 position = centroid + normal * r;
+	glm::vec3 position = centroid + glm::normalize(normal) * r;
 
 	Front::Result result = front.find_closest(position, r);
 	vertex_handle vertex = result.vertex;
@@ -982,28 +1011,28 @@ void create_isotropic_cell(CFDVolume& mesh, Front& front, CFDCell& cell, vec3* p
 		cell.vertices[base_sides] = vertex;
 		CFDCell& neighbor = mesh.cells[result.cell.id];
 
-		vertex_handle faces_cell[4][6];
-		vertex_handle faces_neighbor[4][6];
+		vertex_handle faces_cell[6][3];
+		vertex_handle faces_neighbor[6][3];
 
 		for (uint i = 1; i < shape.num_faces; i++) {
-			for (uint j = 0; j < shape.faces[i].num_verts; j++) {
+			for (uint j = 0; j < 3; j++) {
 				faces_cell[i][j] = cell.vertices[shape.faces[i].verts[j]];
 			}
-			sort4_vertices(faces_cell[i]);
+			sort3_vertices(faces_cell[i]);
 		}
 
 		const ShapeDesc& neighbor_shape = shapes[neighbor.type];
 
 		for (uint i = 0; i < neighbor_shape.num_faces; i++) {
-			for (uint j = 0; j < neighbor_shape.faces[i].num_verts; j++) {
+			for (uint j = 0; j < 3; j++) {
 				faces_cell[i][j] = neighbor.vertices[neighbor_shape.faces[i].verts[j]];
 			}
-			sort4_vertices(faces_cell[i]);
+			sort3_vertices(faces_cell[i]);
 		}
 
 		for (uint i = 0; i < shape.num_faces; i++) {
 			for (uint j = 0; j < neighbor_shape.num_faces; j++) {
-				if (memcmp(faces_cell + i, faces_neighbor + j, sizeof(vertex_handle) * 4) == 0) {
+				if (memcmp(faces_cell + i, faces_neighbor + j, sizeof(vertex_handle) * 3) == 0) {
 					cell.faces[i].neighbor = result.cell;
 					neighbor.faces[i].neighbor = { cell_id };
 					goto add_cell;
@@ -1058,20 +1087,20 @@ void advancing_front_triangulation(CFDVolume& mesh, Front& front, uint& extruded
 }
 
 CFDVolume generate_mesh(World& world, CFDMeshError& err) {
-	auto some_mesh = world.first<Transform, ModelRenderer, CFDMesh>();
+	auto some_mesh = world.first<Transform, CFDMesh>();
 	auto some_domain = world.first<Transform, CFDDomain>();
 
 	CFDVolume result;
 
 	if (some_domain && some_mesh) {
-		auto [mesh_entity, mesh_trans, model_renderer, mesh] = *some_mesh;
+		auto [mesh_entity, mesh_trans, mesh] = *some_mesh;
 		auto [domain_entity, domain_trans, domain] = *some_domain;
 
 		AABB domain_bounds;
 		domain_bounds.min = domain_trans.position - domain.size;
 		domain_bounds.max = domain_trans.position + domain.size;
 
-		Model* model = get_Model(model_renderer.model_id);
+		Model* model = get_Model(mesh.model);
 		glm::mat4 model_m = compute_model_matrix(mesh_trans);
 
 		AABB mesh_bounds = model->aabb.apply(model_m);
@@ -1084,24 +1113,24 @@ CFDVolume generate_mesh(World& world, CFDMeshError& err) {
 
 		//glm::vec3 position = mesh_trans.position - domain_bounds.min;
 
-		float initial = 0.1;
-		float a = 1.2;
+		float initial = domain.contour_initial_thickness;
+		float a = domain.contour_thickness_expontent;
 
-		uint n = 4;
+		uint n = domain.contour_layers;
 		uint extruded_vertice_watermark = 0;
 		uint extruded_cells_watermark = 0;
 		create_boundary(result, extruded_vertice_watermark, model->meshes[0], model_m, initial);
 
 		for (uint i = 1; i < n; i++) {
 			float dist = initial * pow(a, i);
-			//extrude_contour_mesh(result, extruded_vertice_watermark, extruded_cells_watermark, dist);
+			extrude_contour_mesh(result, extruded_vertice_watermark, extruded_cells_watermark, dist);
 		}
 
 		Front front(result.vertices, result.cells, domain_bounds);
 
-		//for (uint i = 0; i < 2; i++) {
-		//	advancing_front_triangulation(result, front, extruded_vertice_watermark, extruded_cells_watermark, 0.1);
-		//}
+		for (uint i = 0; i < domain.tetrahedron_layers; i++) {
+			advancing_front_triangulation(result, front, extruded_vertice_watermark, extruded_cells_watermark, 0.1);
+		}
 	}
 	else {
 		err.type = CFDMeshError::NoMeshOrDomain;

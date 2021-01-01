@@ -4,12 +4,39 @@
     <Filter Include="include">
       <UniqueIdentifier>{89AF369E-F58E-B539-FEA6-40106A051C9B}</UniqueIdentifier>
     </Filter>
+    <Filter Include="include\UI">
+      <UniqueIdentifier>{1642B8DA-02FA-F927-6B01-D38357D89418}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src">
       <UniqueIdentifier>{2DAB880B-99B4-887C-2230-9F7C8E38947C}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\UI">
+      <UniqueIdentifier>{3A4B661C-26ED-90F2-0FA8-A446FBE81743}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\UI\draw.h">
+      <Filter>include\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="include\UI\event.h">
+      <Filter>include\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="include\UI\font.h">
+      <Filter>include\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="include\UI\internal.h">
+      <Filter>include\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="include\UI\layout.h">
+      <Filter>include\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="include\UI\ui.h">
+      <Filter>include\UI</Filter>
+    </ClInclude>
     <ClInclude Include="include\cfd_ids.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\collision.h">
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="include\components.h">
@@ -28,9 +55,26 @@
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="stdafx.h" />
-    <ClInclude Include="include\collision.h" />
+    <ClInclude Include="include\editor\inspector.h" />
+    <ClInclude Include="include\editor\lister.h" />
+    <ClInclude Include="include\editor\selection.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\UI\backend.cpp">
+      <Filter>src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="src\UI\draw.cpp">
+      <Filter>src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="src\UI\font.cpp">
+      <Filter>src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="src\UI\layout.cpp">
+      <Filter>src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="src\UI\ui.cpp">
+      <Filter>src\UI</Filter>
+    </ClCompile>
     <ClCompile Include="src\application.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -47,5 +91,7 @@
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="stdafx.cpp" />
+    <ClCompile Include="src\editor\lister.cpp" />
+    <ClCompile Include="src\editor\inspector.cpp" />
   </ItemGroup>
 </Project>

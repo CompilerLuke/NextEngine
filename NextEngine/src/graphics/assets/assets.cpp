@@ -154,6 +154,17 @@ Shader* get_Shader(shader_handle handle) {
 	return assets.shaders.get(handle);
 }
 
+string_buffer tcache_filename(string_view filename, shader_flags flags) {
+	string_view base = "shaders/cache/";
+	filename = filename.sub(strlen("shaders/"), filename.length);
+	string_buffer result = tformat(base, filename, flags, ".spirv");
+	for (uint i = base.length; i < result.length; i++) {
+		if (result[i] == '\\') result.data[i] = '_';
+		if (result[i] == '/') result.data[i] = '_';
+	}
+	return result;
+}
+
 bool load_Shader(Shader& shader, string_buffer& err) {
 	//std::scoped_lock scoped_lock(shader.mutex);
 	
@@ -184,8 +195,8 @@ bool load_Shader(Shader& shader, string_buffer& err) {
 		shader_flags flags = shader.config_flags[i];
 
 		//todo use just the end of the filename
-		string_buffer vert_cache_file = tformat("shaders/cache/", flags, vfilename.sub(strlen("shaders/"), vfilename.length), ".spirv");
-		string_buffer frag_cache_file = tformat("shaders/cache/", flags, ffilename.sub(strlen("shaders/"), ffilename.length), ".spirv");
+		string_buffer vert_cache_file = tcache_filename(vfilename, flags);
+		string_buffer frag_cache_file = tcache_filename(ffilename, flags);
 
 		i64 vert_time_cached = io_time_modified(vert_cache_file);
 		i64 frag_time_cached = io_time_modified(frag_cache_file);
@@ -249,7 +260,6 @@ bool load_Shader(Shader& shader, string_buffer& err) {
 
 void load_Shader(Shader& shader) {
 	string_buffer err;
-
 
 	if (!load_Shader(shader, err)) throw "Could not compile shader";
 }

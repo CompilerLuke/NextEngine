@@ -14,6 +14,8 @@ struct CompositeResources {
 
 struct CompositeUBO {
 	glm::mat4 depth_proj;
+	glm::vec3 fog_color;
+	float fog_begin;
 };
 
 void make_composite_resources(CompositeResources&, texture_handle depth, texture_handle scene, texture_handle volumetric, texture_handle cloud, uint width, uint height);

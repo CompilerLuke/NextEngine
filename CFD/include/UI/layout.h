@@ -30,9 +30,11 @@ struct TextLayout : FontInfo {
 };
 
 struct LayedOutUIView {
+    UI_GUID id;
     UIElementGeo geo;
     BgStyle bg;
-    virtual bool render(UI&, LayedOutUIView& parent) {}
+    Events events;
+    virtual bool render(UI&, LayedOutUIView& parent) { return false; }
     virtual void loose_focus(UI&) {}
 };
 
@@ -58,21 +60,18 @@ struct LayedOutImage : LayedOutUIView {
 };
 
 struct LayedOutScrollView : LayedOutUIContainer {
-    u64 hash;
     bool render(UI&, LayedOutUIView& parent) override;
 };
 
 using PanelFlags = uint;
 
 struct LayedOutPanel : LayedOutUIContainer {
-    u64 hash;
     PanelFlags flags;
     glm::vec2 min_size;
     bool render(UI& ui, LayedOutUIView& parent) override;
 };
 
 struct LayedOutSplitter : LayedOutUIView {
-    u64 hash;
     LayedOutUIView* children[2];
     bool axis;
     float thickness;

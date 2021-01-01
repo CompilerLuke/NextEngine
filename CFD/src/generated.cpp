@@ -5,6 +5,8 @@
 refl::Struct init_CFDMesh() {
 	refl::Struct type("CFDMesh", sizeof(CFDMesh));
 	type.fields.append({"concave", offsetof(CFDMesh, concave), get_bool_type()});
+	type.fields.append({"model", offsetof(CFDMesh, model), get_model_handle_type()});
+	type.fields.append({"color", offsetof(CFDMesh, color), get_vec4_type()});
 	return type;
 }
 
@@ -25,7 +27,9 @@ refl::Struct init_CFDDomain() {
 	refl::Struct type("CFDDomain", sizeof(CFDDomain));
 	type.fields.append({"size", offsetof(CFDDomain, size), get_vec3_type()});
 	type.fields.append({"contour_layers", offsetof(CFDDomain, contour_layers), get_int_type()});
-	type.fields.append({"contour_thickness", offsetof(CFDDomain, contour_thickness), get_float_type()});
+	type.fields.append({"contour_initial_thickness", offsetof(CFDDomain, contour_initial_thickness), get_float_type()});
+	type.fields.append({"contour_thickness_expontent", offsetof(CFDDomain, contour_thickness_expontent), get_float_type()});
+	type.fields.append({"tetrahedron_layers", offsetof(CFDDomain, tetrahedron_layers), get_int_type()});
 	return type;
 }
 

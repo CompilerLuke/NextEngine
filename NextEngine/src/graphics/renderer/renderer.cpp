@@ -27,66 +27,67 @@ texture_handle get_output_map(Renderer& renderer) {
 	return renderer.composite_resources.composite_map;
 }
 
+void make_scene_pass(Renderer& renderer, uint width, uint height, uint msaa) {
+	for (uint i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		renderer.scene_pass_ubo[i] = alloc_ubo_buffer(sizeof(PassUBO), UBO_PERMANENT_MAP);
+		renderer.simulation_ubo[i] = alloc_ubo_buffer(sizeof(SimulationUBO), UBO_PERMANENT_MAP);
+
+		DescriptorDesc descriptor_desc = {};
+		add_ubo(descriptor_desc, VERTEX_STAGE, renderer.scene_pass_ubo[i], 0);
+		add_ubo(descriptor_desc, VERTEX_STAGE | FRAGMENT_STAGE, renderer.simulation_ubo[i], 1);
+		update_descriptor_set(renderer.scene_pass_descriptor[i], descriptor_desc);
+	}
+	
+	FramebufferDesc desc{ width, height };
+	desc.stencil_buffer = StencilBufferFormat::P8;
+
+	AttachmentDesc& attachment = add_color_attachment(desc, &renderer.scene_map);
+	attachment.num_samples = msaa; //todo implement msaa for depth settings.msaa;
+
+	AttachmentDesc& depth_attachment = add_depth_attachment(desc, &renderer.depth_scene_map);
+	depth_attachment.num_samples = msaa;
+
+	add_dependency(desc, VERTEX_STAGE, RenderPass::TerrainHeightGeneration);
+	add_dependency(desc, FRAGMENT_STAGE, RenderPass::TerrainTextureGeneration);
+
+	for (uint i = 0; i < 4; i++) {
+		add_dependency(desc, FRAGMENT_STAGE, (RenderPass::ID)(RenderPass::Shadow0 + i));
+	}
+
+	SubpassDesc subpasses[2] = {};
+	SubpassDesc& z_prepass = subpasses[0];
+	z_prepass.depth_attachment = true;
+
+	SubpassDesc& color_pass = subpasses[1];
+	color_pass.color_attachments.append(0);
+	color_pass.depth_attachment = true;
+
+	make_Framebuffer(RenderPass::Scene, desc, { subpasses, 2 });
+
+	renderer.z_prepass_pipeline_layout = query_Layout(renderer.scene_pass_descriptor[0]);
+}
+
 Renderer* make_Renderer(const RenderSettings& settings, World& world) {
 	Renderer* renderer = PERMANENT_ALLOC(Renderer);
 	renderer->settings = settings;
     
-    return renderer;
+	uint width = settings.display_resolution_width;
+	uint height = settings.display_resolution_height;
+
+	make_scene_pass(*renderer, width, height, settings.msaa);
+    
+	return renderer;
 
 	ID skybox = make_default_Skybox(world, "engine/Tropical_Beach_3k.hdr");
 	SkyLight* skylight = world.m_by_id<SkyLight>(skybox);
     
 	extract_lighting_from_cubemap(renderer->lighting_system, *skylight);
-    
-	for (uint i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		renderer->scene_pass_ubo[i] = alloc_ubo_buffer(sizeof(PassUBO), UBO_PERMANENT_MAP);
-		renderer->simulation_ubo[i] = alloc_ubo_buffer(sizeof(SimulationUBO), UBO_PERMANENT_MAP);
-
-		DescriptorDesc descriptor_desc = {};
-		add_ubo(descriptor_desc, VERTEX_STAGE, renderer->scene_pass_ubo[i], 0);
-		add_ubo(descriptor_desc, VERTEX_STAGE | FRAGMENT_STAGE, renderer->simulation_ubo[i], 1);
-		update_descriptor_set(renderer->scene_pass_descriptor[i], descriptor_desc);
-	}
 
 	make_shadow_resources(renderer->shadow_resources, renderer->simulation_ubo, settings.shadow);
 	make_lighting_system(renderer->lighting_system, renderer->shadow_resources, *skylight);
 
-	{
-		renderer->z_prepass_pipeline_layout = query_Layout(renderer->scene_pass_descriptor[0]);
-
-		array<2, descriptor_set_handle> descriptors = { renderer->scene_pass_descriptor[0], renderer->lighting_system.pbr_descriptor[0] };
-		renderer->color_pipeline_layout = query_Layout(descriptors);
-	}
-
-	uint width = settings.display_resolution_width;
-	uint height = settings.display_resolution_height;
-
-	{
-		FramebufferDesc desc{ width, height };
-        desc.stencil_buffer = StencilBufferFormat::P8;
-                
-		AttachmentDesc& attachment = add_color_attachment(desc, &renderer->scene_map);
-		attachment.num_samples = 1; //todo implement msaa for depth settings.msaa;
-
-		AttachmentDesc& depth_attachment = add_depth_attachment(desc, &renderer->depth_scene_map);
-        
-		add_dependency(desc, VERTEX_STAGE, RenderPass::TerrainHeightGeneration);
-		add_dependency(desc, FRAGMENT_STAGE, RenderPass::TerrainTextureGeneration);
-
-		for (uint i = 0; i < 4; i++) {
-			add_dependency(desc, FRAGMENT_STAGE, (RenderPass::ID)(RenderPass::Shadow0 + i));
-		}
-
-		SubpassDesc subpasses[2] = {};
-		SubpassDesc& z_prepass = subpasses[0];
-		z_prepass.depth_attachment = true;
-
-		SubpassDesc& color_pass = subpasses[1];
-		color_pass.color_attachments.append(0);
-		color_pass.depth_attachment = true;
-
-		make_Framebuffer(RenderPass::Scene, desc, { subpasses, 2 });
-	}
+	array<2, descriptor_set_handle> descriptors = { renderer->scene_pass_descriptor[0], renderer->lighting_system.pbr_descriptor[0] };
+	renderer->color_pipeline_layout = query_Layout(descriptors);
 
 	make_volumetric_resources(renderer->volumetric_resources, renderer->depth_scene_map, renderer->shadow_resources, 0.5*width, 0.5*height);
 	make_composite_resources(renderer->composite_resources, renderer->depth_scene_map, renderer->scene_map, renderer->volumetric_resources.volumetric_map, renderer->volumetric_resources.cloud_map, width, height);
@@ -130,8 +131,6 @@ void extract_render_data(Renderer& renderer, Viewport& viewport, FrameData& fram
 		frame.culled_mesh_bucket[i] = TEMPORARY_ARRAY(CulledMeshBucket, MAX_MESH_BUCKETS);
 	}
 
-	auto some_camera = world.first<Camera>();
-
 	update_camera_matrices(world, camera_layermask, viewport);
 	extract_planes(viewport);
 	
@@ -150,6 +149,20 @@ void extract_render_data(Renderer& renderer, Viewport& viewport, FrameData& fram
 	extract_render_data_terrain(frame.terrain_data, world, &viewport, layermask);
 	extract_skybox(frame.skybox_data, world, layermask);
 
+}
+
+void bind_scene_pass_z_prepass(Renderer& renderer, RenderPass& render_pass, const FrameData& frame) {
+	uint frame_index = get_frame_index();
+	
+	SimulationUBO simulation_ubo = {};
+	simulation_ubo.time = Time::now();
+	memcpy_ubo_buffer(renderer.scene_pass_ubo[frame_index], &frame.pass_ubo);
+	memcpy_ubo_buffer(renderer.simulation_ubo[frame_index], &simulation_ubo);
+
+	descriptor_set_handle scene_pass_descriptor = renderer.scene_pass_descriptor[frame_index];
+
+	bind_pipeline_layout(render_pass.cmd_buffer, renderer.z_prepass_pipeline_layout);
+	bind_descriptor(render_pass.cmd_buffer, 0, scene_pass_descriptor);
 }
 
 GPUSubmission build_command_buffers(Renderer& renderer, const FrameData& frame) {
@@ -183,21 +196,14 @@ GPUSubmission build_command_buffers(Renderer& renderer, const FrameData& frame) 
 
 	uint frame_index = get_frame_index();
 
-	SimulationUBO simulation_ubo = {};
-	simulation_ubo.time = Time::now();
-
 	//todo move into Frame struct
 	ShadowUBO shadow_ubo = {};
 	fill_shadow_ubo(shadow_ubo, frame.shadow_proj_info);
 
 	//todo would be more efficient to build structs in place, instead of copying
-	memcpy_ubo_buffer(renderer.scene_pass_ubo[frame_index], &frame.pass_ubo);
-	memcpy_ubo_buffer(renderer.simulation_ubo[frame_index], &simulation_ubo);
 	memcpy_ubo_buffer(renderer.lighting_system.light_ubo[frame_index], &frame.light_ubo);
 	memcpy_ubo_buffer(renderer.shadow_resources.shadow_ubos[frame_index], &shadow_ubo);
 	memcpy_ubo_buffer(renderer.composite_resources.ubo[frame_index], &frame.composite_ubo);
-
-	descriptor_set_handle scene_pass_descriptor = renderer.scene_pass_descriptor[frame_index];
 
 	//SHADOW PASS
 	bind_cascade_viewports(renderer.shadow_resources, submission.render_passes + RenderPass::Shadow0, renderer.settings.shadow, frame.shadow_proj_info);
@@ -209,18 +215,15 @@ GPUSubmission build_command_buffers(Renderer& renderer, const FrameData& frame) 
 	}
 
 	//Z-PREPASS	
-	bind_pipeline_layout(main_pass.cmd_buffer, renderer.z_prepass_pipeline_layout);
-	bind_descriptor(cmd_buffer, 0, scene_pass_descriptor);
+	bind_scene_pass_z_prepass(renderer, main_pass, frame);
 
 	render_meshes(renderer.mesh_buckets, frame.culled_mesh_bucket[RenderPass::Scene], main_pass);
 	render_grass(frame.grass_data, main_pass);
 	
 	next_subpass(main_pass); 
 
-	array<2, descriptor_set_handle> descriptors = {scene_pass_descriptor, renderer.lighting_system.pbr_descriptor[frame_index]};
-
+	//MAIN PASS
 	bind_pipeline_layout(cmd_buffer, renderer.color_pipeline_layout);
-	//bind_descriptor(cmd_buffer, 0, scene_pass_descriptor);
 	bind_descriptor(cmd_buffer, 1, renderer.lighting_system.pbr_descriptor[frame_index]);
 
 	render_terrain(renderer.terrain_render_resources, frame.terrain_data, submission.render_passes);

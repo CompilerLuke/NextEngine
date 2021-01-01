@@ -1,5 +1,5 @@
 #pragma once
 
-struct Message {
-    
-};
+#include <functional>
+
+using Message = std::function<void()>;

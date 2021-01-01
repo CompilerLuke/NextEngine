@@ -63,17 +63,9 @@ struct AABB {
 	}
 
 	inline bool intersects(const AABB& other) const {
-		bool inside = false;
-		glm::vec3 verts[8];
-		to_verts(verts);
-
-		for (uint i = 0; i < 8; i++) {
-			if (glm::all(glm::greaterThan(verts[i], other.min)) && glm::all(glm::lessThan(verts[i], other.max))) {
-				return true;
-			}
-		}
-
-		return false;
+		return (min.x <= other.max.x && max.x >= other.min.x) &&
+			   (min.y <= other.max.y && max.y >= other.min.y) &&
+			   (min.z <= other.max.z && max.z >= other.min.z);
 	}
 
 	inline glm::vec3 operator[](int i) const { return (&min)[i]; };

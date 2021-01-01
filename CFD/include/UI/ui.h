@@ -13,6 +13,20 @@ struct Input;
 struct UIDrawData;
 struct CommandBuffer;
 struct LayedOutUIView;
+struct StableID;
+
+using UI_GUID = u64;
+
+struct UI_ID {
+    enum Type { Local, Global } type;
+    u64 hash;
+
+    UI_ID() : type(Local), hash(0) {}
+    UI_ID(uint id) : type(Local), hash(id) {}
+    UI_ID(Type type, const char* str) : type(type), hash(hash_func(str)) {}
+    UI_ID(Type type, string_view str) : type(type), hash(hash_func(str)) {}
+    UI_ID(Type type, UI_GUID hash) : type(type), hash(hash) {}
+};
 
 enum SizeMode { Px, Perc, Grow };
 
@@ -59,12 +73,18 @@ struct BoxConstraint {
 };
 
 using Color = glm::vec4;
-constexpr Color BLACK = glm::vec4(0,0,0,1);
-constexpr Color WHITE = glm::vec4(1,1,1,1);
 
 constexpr Color color4(uint r, uint g, uint b, uint a = 1.0) {
     return glm::vec4(r/255.0f,g/255.0f,b/255.0f,a);
 }
+
+constexpr glm::vec4 shade1 = color4(30, 30, 30, 1);
+constexpr glm::vec4 shade2 = color4(40, 40, 40, 1);
+constexpr glm::vec4 shade3 = color4(50, 50, 50, 1);
+constexpr glm::vec4 border = color4(100, 100, 100, 1);
+constexpr glm::vec4 blue = color4(52, 159, 235, 1);
+constexpr glm::vec4 white = color4(255, 255, 255, 1);
+constexpr glm::vec4 black = color4(0, 0, 0, 1);
 
 
 //using LayoutFlags = uint;
@@ -98,10 +118,6 @@ struct LayoutStyle {
     void set_margin(Size margin) {
         for (uint i = 0; i < 4; i++) this->margin[i] = margin;
     }
-    
-    void set_flex(glm::vec2 factor) {
-        flex_factor = factor;
-    }
 };
 
 #define LAYOUT_PROPERTIES(T) \
@@ -109,7 +125,9 @@ T& padding(EdgeAlignment align, Size padding) { layout.set_padding(padding, alig
 T& padding(Size padding) { layout.set_padding(padding); return *this; }\
 T& margin(EdgeAlignment align, Size margin) { layout.set_margin(margin, align); return *this; }\
 T& margin(Size margin) { layout.set_margin(margin); return *this; } \
-T& flex(glm::vec2 factor) { layout.set_flex(factor); return *this; } \
+T& flex(glm::vec2 factor) { layout.flex_factor = factor; return *this; } \
+T& flex_h(float factor = 1.0) { layout.flex_factor.x = factor; return *this; } \
+T& flex_v(float factor = 1.0) { layout.flex_factor.y = factor; return *this; } \
 T& frame(Size width, Size height) { layout.min_width = width; layout.min_height = height; layout.max_width = width; layout.max_height = height; return *this; } \
 T& align(VAlignment alignment) { layout.valignment = alignment; return *this; }\
 T& align(HAlignment alignment) { layout.halignment = alignment; return *this; }\
@@ -134,7 +152,7 @@ struct TextStyle {
     font_handle font;
     Size font_size = {Px, 12};
     Size line_spacing = {Px, 0};
-    Color color = BLACK;
+    Color color = black;
     uint line_limit = 1;
     TextAlignment alignment = TJustify;
 };
@@ -148,17 +166,14 @@ T& color(Color color) { text_style.color = color; return *this; }
 struct Events {
     Message on_click;
     Message on_double_click;
-    Message on_hover;
-    Message on_focus;
-    Message on_loose_focus;
+    std::function<void(bool)> on_hover;
 };
 
 #define EVENT_PROPERTIES(T) \
-T& on_click(Message mesg) { events.on_click = mesg; return *this; } \
-T& on_double_click(Message mesg) { events.on_double_click = mesg; return *this; } \
-T& on_hover(Message mesg) { events.on_hover = mesg; return *this; } \
-T& on_focus(Message mesg) { events.on_focus = mesg; return *this; } \
-T& on_loose_focus(Message mesg) { events.on_loose_focus = mesg; return *this; }
+T& on_click(Message&& mesg) { events.on_click = mesg; return *this; } \
+T& on_double_click(Message&& mesg) { events.on_double_click = std::move(mesg); return *this; } \
+T& on_hover(std::function<void(bool)>&& mesg) { events.on_hover = std::move(mesg); return *this; } \
+T& id(UI_ID id) { _id = id; return *this; }
 
 struct BgStyle {
     Color color;
@@ -167,6 +182,8 @@ struct BgStyle {
 };
 
 struct UIView {
+    UI_ID _id;
+    UI_GUID guid;
     LayoutStyle layout;
     Events events;
     BgStyle bg;
@@ -216,9 +233,10 @@ struct ImageView : UIView {
     float aspect_ratio = IGNORE_ASPECT;
     glm::vec2 a = glm::vec2(0,0);
     glm::vec2 b = glm::vec2(1,1);
-    glm::vec4 image_color = WHITE;
+    glm::vec4 image_color = white;
     
     LAYOUT_PROPERTIES(ImageView)
+    EVENT_PROPERTIES(ImageView)
     
     ImageView& color(Color color) {
         image_color = color;
@@ -288,17 +306,7 @@ struct StackView : UIContainer {
     LayedOutUIView& compute_layout(UI& ui, const BoxConstraint&) override;
 };
 
-
-struct Hash {
-    u64 hash;
-    
-    Hash(const char* str) : hash(hash_func(str)) {}
-    Hash(string_view str) : hash(hash_func(str)) {}
-    Hash(u64 hash) : hash(hash) {}
-};
-
 struct ScrollView : UIContainer {
-    u64 hash;
     Color scroll_bar_color;
     
     LAYOUT_PROPERTIES(ScrollView)
@@ -312,8 +320,6 @@ constexpr PanelFlags PANEL_MOVABLE = 1 << 0;
 constexpr PanelFlags PANEL_RESIZEABLE_BASE = 1 << 0;
 
 struct PanelView : UIContainer {
-    u64 hash;
-    struct PanelState* state;
     PanelFlags flags;
     
     LAYOUT_PROPERTIES(PanelView)
@@ -340,7 +346,6 @@ struct PanelView : UIContainer {
 };
 
 struct SplitterView : UIContainer {
-    u64 hash;
     Color splitter_color;
     Color splitter_hover_color;
     Size splitter_thickness;
@@ -363,8 +368,13 @@ struct SplitterView : UIContainer {
 
 struct InputString {
     string_view placeholder;
-    char* buffer;
-    uint len;
+    enum { CString, StringBuffer, SString } type;
+    union {
+        char* cstring_buffer;
+        string_buffer* string_buffer;
+        sstring* sstring;
+    };
+    uint max = 100;
     Color cursor;
     Color placeholder_color;
 };
@@ -419,7 +429,7 @@ struct InputFloatView : UIContainer {
     LayedOutUIView& compute_layout(UI& ui, const BoxConstraint&) override;
 };
 
-UI* make_UI();
+UI* make_ui();
 void destroy_UI(UI* ui);
 
 void set_default_font(UI& ui, font_handle font);
@@ -458,8 +468,10 @@ enum class ThemeSize {
     Title3FontSize,
     TextPadding,
     ButtonPadding,
-    StackPadding,
-    StackMargin,
+    HStackPadding,
+    VStackPadding,
+    HStackMargin,
+    VStackMargin,
     StackSpacing,
     InputPadding,
     InputMaxWidth,
@@ -497,6 +509,7 @@ void end_ui_frame(UI& ui);
 UITheme& get_ui_theme(UI& ui);
 UIDrawData& get_ui_draw_data(UI& ui);
 CursorShape get_ui_cursor_shape(UI& ui);
+bool is_cursor_active(UI& ui);
 
 font_handle load_font(UI& ui, string_view path);
 
@@ -508,32 +521,47 @@ Text& button(UI& ui, string_view);
 ImageView& image(UI& ui, texture_handle image);
 ImageView& image(UI& ui, string_view src);
 Spacer& spacer(UI& ui, uint flex = 1);
+StackView& divider(UI& ui, Color color);
 
 StackView& begin_vstack(UI& ui, Size spacing = -1.0f, HAlignment alignment = HLeading);
 StackView& begin_vstack(UI& ui, HAlignment alignment);
 void end_vstack(UI& ui);
 
-
 StackView& begin_hstack(UI& ui, Size spacing = -1.0f, VAlignment alignment = VCenter);
 StackView& begin_hstack(UI& ui, VAlignment alignment);
 void end_hstack(UI& ui);
 
-PanelView& begin_panel(UI& ui, Hash hash);
+PanelView& begin_panel(UI& ui);
 void end_panel(UI& ui);
 
-SplitterView& begin_hsplitter(UI& ui, Hash hash);
-SplitterView& begin_vsplitter(UI& ui, Hash hash);
+SplitterView& begin_hsplitter(UI& ui);
+SplitterView& begin_vsplitter(UI& ui);
 void end_hsplitter(UI& ui);
 void end_vsplitter(UI& ui);
 
-void open_panel(UI& ui, Hash hash);
-void close_panel(UI& ui, Hash hash);
+void open_panel(UI& ui);
+void close_panel(UI& ui);
 
 
 InputStringView& input(UI& ui, char* buffer, uint len);
+InputStringView& input(UI& ui, string_buffer*);
+InputStringView& input(UI& ui, sstring*);
 InputIntView& input(UI& ui, int* value, int min = -INT_MAX, int max = INT_MAX, int px_per_inc = 10);
 InputFloatView& input(UI& ui, float* value, float min = -FLT_MAX, float max = FLT_MAX, float px_per_inc = 1.0);
 StackView& input(UI& ui, glm::vec3* vec, float min = -FLT_MAX, float max = FLT_MAX, float px_per_inc = 10.0);
+StackView& input(UI& ui, glm::vec4* vec, float min = -FLT_MAX, float max = FLT_MAX, float px_per_inc = 10.0);
 
-ScrollView& begin_scroll_view(UI& ui, Hash hash);
+ScrollView& begin_scroll_view(UI& ui);
 void end_scroll_view(UI& ui);
+
+#include <typeindex>
+
+UI_GUID get_stable_id(UI& ui, std::type_index type, UI_ID id);
+
+template<typename T, uint N = 103>
+T& get_state(UI& ui, UI_ID id = {}) {
+    static hash_map<UI_GUID, T, N> states;
+    UI_GUID guid = get_stable_id(ui, typeid(T), id);
+
+    return states[guid];
+}

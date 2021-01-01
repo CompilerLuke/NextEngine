@@ -18,7 +18,7 @@
 #include "graphics/assets/assets.h"
 #include "graphics/rhi/rhi.h"
 
-UI* make_UI() {
+UI* make_ui() {
     UI* ui = PERMANENT_ALLOC(UI);
     ui->renderer = make_ui_renderer();
     ui->allocator = &get_temporary_allocator();
@@ -36,22 +36,107 @@ void init_text_style(UI& ui, TextStyle& text_style) {
     text_style.font_size = ui.theme.size(ThemeSize::DefaultFontSize);
 }
 
+
+StableID* find_or_create_stable_id(UI& ui, StableID& parent, std::type_index type, UI_ID id) {
+    StableAddID& result = ui.id_stack.last();
+
+    uint index = result.children.length;
+    if (id.type == UI_ID::Global) {
+        result.children.append({ typeid(void) });
+        StableID* stable = &ui.stable_id[id.hash];
+        stable->id = id.hash;
+
+        return stable;
+    }
+
+    for (int i = index; i < parent.children.length; i++) {
+        const StableID& child = parent.children[i];
+        if (child.hash == id.hash && child.type == type) {
+            result.children.append(parent.children[i]);
+            parent.children[i] = {};
+            return &result.children[index];
+        }
+    }
+    for (int i = min(index, parent.children.length) - 1; i >= 0; i--) {
+        const StableID& child = parent.children[i];
+        if (child.hash == id.hash && child.type == type) {
+            result.children.append(parent.children[i]);
+            parent.children[i] = {};
+            return &result.children[index];
+        }
+    }
+
+    //Questionable generation of ids
+    //Could generate ids in 0-1000, by incrementing counter
+    //And avoid a hash map lookup
+    StableID stable;
+    stable.id = rand(); // +INT_MAX;
+    stable.hash = id.hash;
+    stable.type = type;
+    result.children.append(stable);
+    return &result.children[index];
+}
+
+StableID* find_or_create_stable_id(UI& ui, StableID& parent, UIView& view) {
+    return find_or_create_stable_id(ui, parent, typeid(view), view._id);
+}
+
+//Somewhat awkward as it's finding the stable id for the last view
+//as the id property hasn't been set yet
+//if the id was a parameter, instead of .id(_)
+//this could be avoided
+void set_id_of_last_view(UI& ui) {
+    auto& cstack = ui.container_stack;
+    UIContainer& container = *cstack.last();
+
+    StableAddID& id = ui.id_stack.last();
+    if (cstack.length > ui.id_stack.length) {
+        StableID* stable = find_or_create_stable_id(ui, *id.ptr, container);
+
+        container.guid = stable->id;
+        ui.id_stack.append({ stable });
+    }
+    else if (container.children.length > 0) {
+        UIView& last = *container.children.last();
+        StableID* stable = find_or_create_stable_id(ui, *id.ptr, last);
+        last.guid = stable->id;
+    }
+}
+
+UI_GUID get_stable_id(UI& ui, std::type_index type, UI_ID id) {
+    StableAddID& stable = ui.id_stack.last();
+    return find_or_create_stable_id(ui, *stable.ptr, type, id)->id;
+}
+
 template<typename T>
 T& make_element(UI& ui) {
+    set_id_of_last_view(ui);
+
     T* ptr = (T*)ui.allocator->allocate(sizeof(T));
     new (ptr) T();
     ui.container_stack.last()->children.append(ptr);
+
     return *ptr;
 }
 
 template<typename T>
 T& push_container(UI& ui) {
+    set_id_of_last_view(ui);
+
     T& element = make_element<T>(ui);
     ui.container_stack.append(&element);
     return element;
 }
 
 void pop_container(UI& ui) {
+    if (ui.container_stack.last()->children.length > 0) {
+        set_id_of_last_view(ui);
+
+        StableAddID& stable = ui.id_stack.last();
+        stable.ptr->children = stable.children;
+        ui.id_stack.pop();
+    }
+
     assert_mesg(ui.container_stack.length > 0, "Unbalanced push and pop container");
     ui.container_stack.pop();
 }
@@ -106,8 +191,8 @@ StackView& begin_stack(UI& ui, Size spacing, bool axis, uint alignment) {
     stack.spacing = spacing;
     stack.alignment = alignment;
     stack.axis = axis;
-    stack.margin(ui.theme.size(ThemeSize::StackMargin));
-    stack.padding(ui.theme.size(ThemeSize::StackPadding));
+    stack.margin(ui.theme.size((ThemeSize)((uint)ThemeSize::HStackMargin + axis)));
+    stack.padding(ui.theme.size((ThemeSize)((uint)ThemeSize::HStackPadding + axis)));
     
     return stack;
 }
@@ -135,18 +220,15 @@ Spacer& spacer(UI& ui, uint flex) {
     return spacer;
 }
 
-ScrollView& begin_scroll_view(UI& ui, Hash hash) {
+ScrollView& begin_scroll_view(UI& ui) {
     ScrollView& scroll = push_container<ScrollView>(ui);
-    scroll.hash = hash.hash;
     scroll.flex(glm::vec2(1));
     scroll.scroll_bar_color = ui.theme.color(ThemeColor::Scrollbar);
     return scroll;
 }
 
-PanelView& begin_panel(UI& ui, Hash hash) {
+PanelView& begin_panel(UI& ui) {
     PanelView& panel = push_container<PanelView>(ui);
-    panel.hash = hash.hash;
-    panel.state = &ui.panels[hash.hash];
     panel.background(ui.theme.color(ThemeColor::Panel));
     panel.layout.min_width = 100;
     panel.layout.min_height = 100;
@@ -155,29 +237,30 @@ PanelView& begin_panel(UI& ui, Hash hash) {
 }
 
 PanelView& PanelView::open(bool open) {
-    state->open = open;
+    //todo implement
+    //state->open = open;
     return *this;
 }
 
 bool PanelView::is_open() {
-    return state->open;
+    //todo implement
+    return true;
 }
 
-void open_panel(UI& ui, Hash hash) {
-    ui.panels[hash.hash].open = true;
+void open_panel(UI& ui, UI_GUID id) {
+    ui.panels[id].open = true;
 }
 
-void close_panel(UI& ui, Hash hash) {
-    ui.panels[hash.hash].open = false;
+void close_panel(UI& ui, UI_GUID id) {
+    ui.panels[id].open = false;
 }
 
 void end_panel(UI& ui) {
     pop_container(ui);
 }
 
-SplitterView& begin_splitter(UI& ui, Hash hash, bool axis) {
+SplitterView& begin_splitter(UI& ui, bool axis) {
     SplitterView& splitter = push_container<SplitterView>(ui);
-    splitter.hash = hash.hash;
     splitter.axis = axis;
     splitter.splitter_color = ui.theme.color(ThemeColor::Splitter);
     splitter.splitter_hover_color = ui.theme.color(ThemeColor::SplitterHover);
@@ -186,12 +269,12 @@ SplitterView& begin_splitter(UI& ui, Hash hash, bool axis) {
     return splitter;
 }
 
-SplitterView& begin_hsplitter(UI& ui, Hash hash) {
-    return begin_splitter(ui, hash, 0);
+SplitterView& begin_hsplitter(UI& ui) {
+    return begin_splitter(ui, 0);
 }
 
-SplitterView& begin_vsplitter(UI& ui, Hash hash) {
-    return begin_splitter(ui, hash, 1);
+SplitterView& begin_vsplitter(UI& ui) {
+    return begin_splitter(ui, 1);
 }
 
 void end_hsplitter(UI& ui) {
@@ -233,10 +316,29 @@ void init_input_style(UI& ui, T& view) {
 
 InputStringView& input(UI& ui, char* buffer, uint len) {
     InputStringView& input = make_element<InputStringView>(ui);
-    input.input.buffer = buffer;
-    input.input.len = len;
+    input.input.type = InputString::CString;
+    input.input.cstring_buffer = buffer;
+    input.input.max = len;
     init_input_style(ui, input);
     
+    return input;
+}
+
+InputStringView& input(UI& ui, string_buffer* buffer) {
+    InputStringView& input = make_element<InputStringView>(ui);
+    input.input.type = InputString::StringBuffer;
+    input.input.string_buffer = buffer;
+    init_input_style(ui, input);
+    
+    return input;
+}
+
+InputStringView& input(UI& ui, sstring* buffer) {
+    InputStringView& input = make_element<InputStringView>(ui);
+    input.input.type = InputString::SString;
+    input.input.sstring = buffer;
+    init_input_style(ui, input);
+
     return input;
 }
 
@@ -267,11 +369,28 @@ InputFloatView& input(UI& ui, float* value, float min, float max, float px_per_i
 }
 
 StackView& input(UI& ui, glm::vec3* value, float min, float max, float px_per_inc) {
-    StackView& view = begin_hstack(ui, ui.theme.size(ThemeSize::VecSpacing)).padding(0);
+    StackView& view = begin_hstack(ui, ui.theme.size(ThemeSize::VecSpacing));
     input(ui, &value->x, min, max, px_per_inc);
     input(ui, &value->y, min, max, px_per_inc);
     input(ui, &value->z, min, max, px_per_inc);
     end_hstack(ui);
+    return view;
+}
+
+StackView& input(UI& ui, glm::vec4* value, float min, float max, float px_per_inc) {
+    StackView& view = begin_hstack(ui, ui.theme.size(ThemeSize::VecSpacing));
+    input(ui, &value->x, min, max, px_per_inc);
+    input(ui, &value->y, min, max, px_per_inc);
+    input(ui, &value->z, min, max, px_per_inc);
+    input(ui, &value->w, min, max, px_per_inc);
+    end_hstack(ui);
+    return view;
+}
+
+//todo create dedicated type
+StackView& divider(UI& ui, Color color) {
+    StackView& view = begin_vstack(ui).background(color).width({ Perc,100 }).height(1);
+    end_vstack(ui);
     return view;
 }
 
@@ -303,7 +422,7 @@ void begin_ui_frame(UI& ui, const ScreenInfo& info, const Input& window_input, C
     
     ui.max_font_size = 64; //todo make a parameter
     
-    StackView* root = TEMPORARY_ALLOC(StackView, {});
+    StackView* root = TEMPORARY_ALLOC(StackView);
     root->axis = 0;
     root->layout.valignment = VTop;
     root->alignment = HCenter;
@@ -311,11 +430,16 @@ void begin_ui_frame(UI& ui, const ScreenInfo& info, const Input& window_input, C
     root->bg.color = glm::vec4(1,1,1,1);
     
     ui.container_stack.append(root);
+    ui.id_stack.append({ &ui.id_root });
 }
 
 void end_ui_frame(UI& ui) {
     assert_mesg(ui.container_stack.length == 1, "Uneven number of begin and ends");
-    
+
+    UIView& base = *ui.container_stack[0];
+    pop_container(ui);
+    ui.id_stack.clear();
+
     glm::vec2 size(ui.draw_data.width_px, ui.draw_data.height_px);
     
     ui.draw_data.layers.append({});
@@ -325,7 +449,8 @@ void end_ui_frame(UI& ui) {
     
     BoxConstraint box{glm::vec2(0), size};
     
-    LayedOutUIView& layed_out = ui.container_stack[0]->compute_layout(ui, box);
+
+    LayedOutUIView& layed_out = base.compute_layout(ui, box);
     bool any_clicked = layed_out.render(ui, root);
     bool clicked = ui.input.mouse_button_pressed(MouseButton::Left);
     bool enter = ui.input.key_pressed(Key::Enter);
@@ -345,6 +470,11 @@ void end_ui_frame(UI& ui) {
     }
     
     ui.container_stack.clear();
+
+    if (ui.font_cache.uploading_font_this_frame) {
+        end_gpu_upload();
+        ui.font_cache.uploading_font_this_frame = false;
+    }
 }
 
 UITheme& get_ui_theme(UI& ui) { return ui.theme; }

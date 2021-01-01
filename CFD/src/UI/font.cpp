@@ -26,7 +26,6 @@ Font make_font(FontCache& cache, const FontDesc& desc) {
     
     FT_Set_Char_Size(face, 0, desc.size << 6, desc.dpi_h, desc.dpi_v);
 
-    
     uint glyph_height = face->size->metrics.height >> 6;
     
     uint font_atlas_width = 16;
@@ -44,7 +43,7 @@ Font make_font(FontCache& cache, const FontDesc& desc) {
     uint size_of_font_atlas = font_atlas.height * row_width;
     font_atlas.data = TEMPORARY_ZEROED_ARRAY(char, size_of_font_atlas);
     
-    printf("[RASTERIZING FONT] (%u) - %upx, %u", desc.font.id, desc.size, glyph_height);
+    printf("[RASTERIZING FONT] (%u) - %upx, %u\n", desc.font.id, desc.size, glyph_height);
     
     Font font;
 
@@ -97,9 +96,11 @@ Font make_font(FontCache& cache, const FontDesc& desc) {
         assert(ch.size.x <= glyph_height && ch.size.y <= glyph_height);
     }
 
-    begin_gpu_upload();
+    if (!cache.uploading_font_this_frame) {
+        cache.uploading_font_this_frame = true;
+        begin_gpu_upload();
+    }
     font.atlas = upload_Texture(font_atlas);
-    end_gpu_upload();
 
     //FT_Done_Face(face);
     //FT_Done_FreeType(ft);

@@ -836,7 +836,7 @@ void render_frame(Editor& editor, World& world) {
         if (editor.visibility & SHOW_PHYSICS) render_colliders(editor.physics_resources, scene_pass.cmd_buffer, world, mask);
         render_overlay(editor, scene_pass);
     } else {
-        editor.game.render(gpu_submission);
+        editor.game.render(gpu_submission, frame_data);
         
         if (editor.visibility & SHOW_PHYSICS) render_colliders(editor.physics_resources, scene_pass.cmd_buffer, world, mask);
     }
@@ -1026,10 +1026,12 @@ void render_settings(Editor& editor) {
 			ImGui::Checkbox("Hotreload shaders", &settings.hotreload_shaders);
 
 			if (ImGui::CollapsingHeader("Shadow")) {
-				ImGui::InputFloat("Resolution", &settings.shadow.shadow_resolution);
+				int shadow_resolution = settings.shadow.shadow_resolution;
+				ImGui::InputInt("Resolution", &shadow_resolution);
 				ImGui::InputFloat("Cascade split lambda", &settings.shadow.cascade_split_lambda);
 				ImGui::InputFloat("Constant depth bias", &settings.shadow.constant_depth_bias);
 				ImGui::InputFloat("Slope depth bias", &settings.shadow.slope_depth_bias);
+				settings.shadow.shadow_resolution = shadow_resolution;
 			}
 
 			render_fields(get_VolumetricSettings_type(), &settings.volumetric, "", editor);

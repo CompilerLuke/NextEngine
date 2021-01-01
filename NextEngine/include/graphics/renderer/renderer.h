@@ -99,6 +99,7 @@ ENGINE_API texture_handle get_output_map(Renderer& renderer);
 ENGINE_API void build_framegraph(Renderer& renderer, slice<Dependency>);
 ENGINE_API void render_overlay(Renderer& renderer, RenderPass& render_pass);
 ENGINE_API void extract_render_data(Renderer& renderer, Viewport& viewport, FrameData& frame, World& world, EntityQuery layermask, EntityQuery camera_layermask);
+ENGINE_API void bind_scene_pass_z_prepass(Renderer& renderer, RenderPass& render_pass, const FrameData& frame);
 ENGINE_API GPUSubmission build_command_buffers(Renderer& renderer, const FrameData& frame);
 ENGINE_API void submit_frame(Renderer& renderer, GPUSubmission& submission);
 

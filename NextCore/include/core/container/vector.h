@@ -157,8 +157,7 @@ struct vector {
 		}
 	}
 
-
-	vector<T>& operator=(const vector<T>& other) {
+	vector<T>& operator=(const slice<T> other) {
 		free_data();
 
 		this->reserve(other.length);
@@ -169,6 +168,10 @@ struct vector {
 		}
 
 		return *this;
+	}
+
+	vector<T>& operator=(const vector<T>& other) {
+		return (*this = (const slice<T>)other);
 	}
 
 	inline bool contains(const T& element) {
@@ -203,6 +206,10 @@ struct vector {
 	ARRAY_INDEXING
 
 	operator slice<T>() & {
+		return { data, length };
+	}
+
+	operator const slice<T>() const {
 		return { data, length };
 	}
 };

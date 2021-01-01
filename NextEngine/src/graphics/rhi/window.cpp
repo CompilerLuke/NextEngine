@@ -63,6 +63,10 @@ void Window::init() {
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 #endif
+
+	if (borderless) {
+		glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+	}
 	
 	//glfwWindowHint(GLFW_SAMPLES, 4); 
 	auto c_title = title.c_str();
