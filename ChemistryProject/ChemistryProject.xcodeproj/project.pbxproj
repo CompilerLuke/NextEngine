@@ -1,0 +1,469 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		18493E875C97E3F99EBF1CC7 /* emission.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7A9AB4AF9C6661E1D91B8AEF /* emission.cpp */; };
+		19C2FF99BBAC9B8BB2D3ADD9 /* generated.cpp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 183B4AA1E65E9E536D6CF0E1 /* generated.cpp.cpp */; };
+		8A4E2DB6E58F8128B8E9CBF6 /* stdafx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D9568A7EF06925B0E08520BE /* stdafx.cpp */; };
+		A127E05D62E071CF09FB3E9D /* libNextEngine.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = C9A7CEC57DA3E7F75F562505 /* libNextEngine.dylib */; };
+		BAE4C3F74D728DE9B64B3237 /* generated.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE003E1FC16BFFD1000FA45F /* generated.cpp */; };
+		DC33A656EC808A48EA6D5496 /* libNextCore.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5C3C975E03B23310AC773D9E /* libNextCore.dylib */; };
+		EAC11397DEC05D0963AB71D7 /* ChemistryProject.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 880998BFCC1D69F1BFEEEEFF /* ChemistryProject.cpp */; };
+		EBF2C0777E808A69E7592EB7 /* gold_foil.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E256329FA5C1F451E46598DF /* gold_foil.cpp */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		17CEA890399A55C2764F7ED0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0ACBDCD97EB4548BA1020319 /* ../NextEngine/NextEngine.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = CAD8A43D21660EAFF9DF227D;
+			remoteInfo = libNextEngine.dylib;
+		};
+		3DEF2F8A6629E83C4DC575CA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 06E2AB32E5FFC564C2092172 /* ../NextCore/NextCore.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = FDEFFF2A4660E35C8AFFB56A;
+			remoteInfo = libNextCore.dylib;
+		};
+		9029A223B8645AD59FFFE863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 06E2AB32E5FFC564C2092172 /* ../NextCore/NextCore.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = CBBF99D0B6ABBFC2FE918810;
+			remoteInfo = libNextCore.dylib;
+		};
+		C59435F7E75FE32924150C37 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0ACBDCD97EB4548BA1020319 /* ../NextEngine/NextEngine.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = E02A573708650FE9F0009D77;
+			remoteInfo = libNextEngine.dylib;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		06E2AB32E5FFC564C2092172 /* libNextCore.dylib */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = "NextCore.xcodeproj"; path = ../NextCore/NextCore.xcodeproj; sourceTree = SOURCE_ROOT; };
+		0ACBDCD97EB4548BA1020319 /* libNextEngine.dylib */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = "NextEngine.xcodeproj"; path = ../NextEngine/NextEngine.xcodeproj; sourceTree = SOURCE_ROOT; };
+		183B4AA1E65E9E536D6CF0E1 /* generated.cpp.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = generated.cpp.cpp; path = src/generated.cpp.cpp; sourceTree = "<group>"; };
+		2B3E5A65EEAA1C172D4DC0A5 /* gold_foil.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = gold_foil.h; path = include/gold_foil.h; sourceTree = "<group>"; };
+		590A7E557AD62B87B78B5495 /* emission.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = emission.h; path = include/emission.h; sourceTree = "<group>"; };
+		6E8A030B3CAD56BDC3BBA94B /* component_ids.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = component_ids.h; path = include/component_ids.h; sourceTree = "<group>"; };
+		778216591563170BECE15C99 /* chemistry_component_ids.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = chemistry_component_ids.h; path = include/chemistry_component_ids.h; sourceTree = "<group>"; };
+		7A9AB4AF9C6661E1D91B8AEF /* emission.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = emission.cpp; path = src/emission.cpp; sourceTree = "<group>"; };
+		880998BFCC1D69F1BFEEEEFF /* ChemistryProject.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ChemistryProject.cpp; path = src/ChemistryProject.cpp; sourceTree = "<group>"; };
+		97AF1C97B97AC9C9F62FF2D7 /* rotating.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = rotating.h; path = include/rotating.h; sourceTree = "<group>"; };
+		D9568A7EF06925B0E08520BE /* stdafx.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = stdafx.cpp; path = stdafx.cpp; sourceTree = "<group>"; };
+		DFFCC308E36D953A64DA3948 /* stdafx.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = stdafx.h; path = stdafx.h; sourceTree = "<group>"; };
+		E042A1B12DA597E3A3C497F1 /* libChemistryProject.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; name = libChemistryProject.dylib; path = libChemistryProject.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
+		E256329FA5C1F451E46598DF /* gold_foil.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = gold_foil.cpp; path = src/gold_foil.cpp; sourceTree = "<group>"; };
+		E78EF5E5AAFAB797E99E5C25 /* generated.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = generated.h; path = include/generated.h; sourceTree = "<group>"; };
+		FE003E1FC16BFFD1000FA45F /* generated.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = generated.cpp; path = src/generated.cpp; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		26AD66A1487913D3852E3CE1 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DC33A656EC808A48EA6D5496 /* libNextCore.dylib in Frameworks */,
+				A127E05D62E071CF09FB3E9D /* libNextEngine.dylib in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0094A74FA3E03081BEB0FD8F /* ChemistryProject */ = {
+			isa = PBXGroup;
+			children = (
+				5E8C725002DF100215175890 /* include */,
+				5775D4184366DFCA959E7A58 /* src */,
+				D9568A7EF06925B0E08520BE /* stdafx.cpp */,
+				DFFCC308E36D953A64DA3948 /* stdafx.h */,
+				A6C936B49B3FADE6EA134CF4 /* Products */,
+				9D968EAA920D05DCE0E0A4EA /* Projects */,
+			);
+			name = ChemistryProject;
+			sourceTree = "<group>";
+		};
+		2631F38A7CBF5DFC553871CA /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				5C3C975E03B23310AC773D9E /* libNextCore.dylib */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		5775D4184366DFCA959E7A58 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				880998BFCC1D69F1BFEEEEFF /* ChemistryProject.cpp */,
+				7A9AB4AF9C6661E1D91B8AEF /* emission.cpp */,
+				FE003E1FC16BFFD1000FA45F /* generated.cpp */,
+				183B4AA1E65E9E536D6CF0E1 /* generated.cpp.cpp */,
+				E256329FA5C1F451E46598DF /* gold_foil.cpp */,
+			);
+			name = src;
+			sourceTree = "<group>";
+		};
+		5E8C725002DF100215175890 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				778216591563170BECE15C99 /* chemistry_component_ids.h */,
+				6E8A030B3CAD56BDC3BBA94B /* component_ids.h */,
+				590A7E557AD62B87B78B5495 /* emission.h */,
+				E78EF5E5AAFAB797E99E5C25 /* generated.h */,
+				2B3E5A65EEAA1C172D4DC0A5 /* gold_foil.h */,
+				97AF1C97B97AC9C9F62FF2D7 /* rotating.h */,
+			);
+			name = include;
+			sourceTree = "<group>";
+		};
+		96E96057C67B2F49A1886E97 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C9A7CEC57DA3E7F75F562505 /* libNextEngine.dylib */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		9D968EAA920D05DCE0E0A4EA /* Projects */ = {
+			isa = PBXGroup;
+			children = (
+				06E2AB32E5FFC564C2092172 /* NextCore.xcodeproj */,
+				0ACBDCD97EB4548BA1020319 /* NextEngine.xcodeproj */,
+			);
+			name = Projects;
+			sourceTree = "<group>";
+		};
+		A6C936B49B3FADE6EA134CF4 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				E042A1B12DA597E3A3C497F1 /* libChemistryProject.dylib */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		3774877768587F697B70B5B7 /* ChemistryProject */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 14E8AF0036B45C3273698540 /* Build configuration list for PBXNativeTarget "ChemistryProject" */;
+			buildPhases = (
+				9607AE1010C857E500CD1376 /* Prebuild */,
+				9694E741B8609473F515BD81 /* Resources */,
+				00420098220DADCA5EC2D6D8 /* Sources */,
+				26AD66A1487913D3852E3CE1 /* Frameworks */,
+				9607AE3710C85E8F00CD1376 /* Postbuild */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				13EA30936A779B0542F0AED3 /* PBXTargetDependency */,
+				84A19D60B4336C528F40ABA0 /* PBXTargetDependency */,
+			);
+			name = ChemistryProject;
+			productName = ChemistryProject;
+			productReference = E042A1B12DA597E3A3C497F1 /* libChemistryProject.dylib */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		08FB7793FE84155DC02AAC07 /* Project object */ = {
+			isa = PBXProject;
+			buildConfigurationList = 1DEB928908733DD80010E9CD /* Build configuration list for PBXProject "ChemistryProject" */;
+			compatibilityVersion = "Xcode 3.2";
+			hasScannedForEncodings = 1;
+			mainGroup = 0094A74FA3E03081BEB0FD8F /* ChemistryProject */;
+			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = 2631F38A7CBF5DFC553871CA /* Products */;
+					ProjectRef = 06E2AB32E5FFC564C2092172 /* NextCore.xcodeproj */;
+				},
+				{
+					ProductGroup = 96E96057C67B2F49A1886E97 /* Products */;
+					ProjectRef = 0ACBDCD97EB4548BA1020319 /* NextEngine.xcodeproj */;
+				},
+			);
+			projectRoot = "";
+			targets = (
+				3774877768587F697B70B5B7 /* libChemistryProject.dylib */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		5C3C975E03B23310AC773D9E /* libNextCore.dylib */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.dylib";
+			path = libNextCore.dylib;
+			remoteRef = 3DEF2F8A6629E83C4DC575CA /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		C9A7CEC57DA3E7F75F562505 /* libNextEngine.dylib */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.dylib";
+			path = libNextEngine.dylib;
+			remoteRef = C59435F7E75FE32924150C37 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
+
+/* Begin PBXResourcesBuildPhase section */
+		9694E741B8609473F515BD81 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		9607AE1010C857E500CD1376 /* Prebuild */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = Prebuild;
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nif [ \"${CONFIGURATION}\" = \"Debug\" ]; then\n../bin/Debug-macosx-x86_64/ReflectionTool/ReflectionTool -b \".\" -i \"include\" rotating.h gold_foil.h emission.h -c \"chemistry_component_ids.h\" -o src/generated\nfi\nif [ \"${CONFIGURATION}\" = \"Release\" ]; then\n../bin/Release-macosx-x86_64/ReflectionTool/ReflectionTool -b \".\" -i \"include\" rotating.h gold_foil.h emission.h -c \"chemistry_component_ids.h\" -o src/generated\nfi\nif [ \"${CONFIGURATION}\" = \"Dist\" ]; then\n../bin/Dist-macosx-x86_64/ReflectionTool/ReflectionTool -b \".\" -i \"include\" rotating.h gold_foil.h emission.h -c \"chemistry_component_ids.h\" -o src/generated\nfi";
+		};
+		9607AE3710C85E8F00CD1376 /* Postbuild */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = Postbuild;
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nif [ \"${CONFIGURATION}\" = \"Debug\" ]; then\ncp -rf ../bin/Debug-macosx-x86_64/ChemistryProject/libChemistryProject.dylib ../bin/Debug-macosx-x86_64/TheUnpluggingRunner\nfi\nif [ \"${CONFIGURATION}\" = \"Release\" ]; then\ncp -rf ../bin/Release-macosx-x86_64/ChemistryProject/libChemistryProject.dylib ../bin/Release-macosx-x86_64/TheUnpluggingRunner\nfi\nif [ \"${CONFIGURATION}\" = \"Dist\" ]; then\ncp -rf ../bin/Dist-macosx-x86_64/ChemistryProject/libChemistryProject.dylib ../bin/Dist-macosx-x86_64/TheUnpluggingRunner\nfi";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		00420098220DADCA5EC2D6D8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EAC11397DEC05D0963AB71D7 /* ChemistryProject.cpp in Sources */,
+				18493E875C97E3F99EBF1CC7 /* emission.cpp in Sources */,
+				BAE4C3F74D728DE9B64B3237 /* generated.cpp in Sources */,
+				19C2FF99BBAC9B8BB2D3ADD9 /* generated.cpp.cpp in Sources */,
+				EBF2C0777E808A69E7592EB7 /* gold_foil.cpp in Sources */,
+				8A4E2DB6E58F8128B8E9CBF6 /* stdafx.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		13EA30936A779B0542F0AED3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = libNextCore.dylib;
+			targetProxy = 9029A223B8645AD59FFFE863 /* PBXContainerItemProxy */;
+		};
+		84A19D60B4336C528F40ABA0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = libNextEngine.dylib;
+			targetProxy = 17CEA890399A55C2764F7ED0 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		34C9C453C7578E4530303293 /* Dist */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = "../bin/Dist-macosx-x86_64/ChemistryProject";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				EXECUTABLE_PREFIX = lib;
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/lib;
+				MACOSX_DEPLOYMENT_TARGET = 10.15.5;
+				PRODUCT_NAME = ChemistryProject;
+			};
+			name = Dist;
+		};
+		C1BBC278ACA7E86AF48DB0B8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(NATIVE_ARCH_ACTUAL)";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++1z";
+				CONFIGURATION_BUILD_DIR = "$(SYMROOT)";
+				CONFIGURATION_TEMP_DIR = "$(OBJROOT)";
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = stdafx.h;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					_CRT_SECURE_NO_WARNINGS,
+					NE_PLATFORM_MACOSX,
+					NE_RELEASE,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					../vendor/glm,
+					"$(inherited)",
+				);
+				OBJROOT = "../bin-int/Release-macosx-x86_64/ChemistryProject";
+				ONLY_ACTIVE_ARCH = NO;
+				SYMROOT = "../bin/Release-macosx-x86_64/ChemistryProject";
+				USER_HEADER_SEARCH_PATHS = (
+					../NextEngine/include,
+					../NextCore/include,
+					include,
+					.,
+				);
+			};
+			name = Release;
+		};
+		C220C0BEBB86C230AF221EFE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(NATIVE_ARCH_ACTUAL)";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++1z";
+				CONFIGURATION_BUILD_DIR = "$(SYMROOT)";
+				CONFIGURATION_TEMP_DIR = "$(OBJROOT)";
+				COPY_PHASE_STRIP = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = stdafx.h;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					_CRT_SECURE_NO_WARNINGS,
+					NE_PLATFORM_MACOSX,
+					NE_DEBUG,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					../vendor/glm,
+					"$(inherited)",
+				);
+				OBJROOT = "../bin-int/Debug-macosx-x86_64/ChemistryProject";
+				ONLY_ACTIVE_ARCH = YES;
+				SYMROOT = "../bin/Debug-macosx-x86_64/ChemistryProject";
+				USER_HEADER_SEARCH_PATHS = (
+					../NextEngine/include,
+					../NextCore/include,
+					include,
+					.,
+				);
+			};
+			name = Debug;
+		};
+		DD5E182BF470B35DE48CAE6B /* Dist */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(NATIVE_ARCH_ACTUAL)";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++1z";
+				CONFIGURATION_BUILD_DIR = "$(SYMROOT)";
+				CONFIGURATION_TEMP_DIR = "$(OBJROOT)";
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = stdafx.h;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					_CRT_SECURE_NO_WARNINGS,
+					NE_PLATFORM_MACOSX,
+					NE_DIST,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					../vendor/glm,
+					"$(inherited)",
+				);
+				OBJROOT = "../bin-int/Dist-macosx-x86_64/ChemistryProject";
+				ONLY_ACTIVE_ARCH = NO;
+				SYMROOT = "../bin/Dist-macosx-x86_64/ChemistryProject";
+				USER_HEADER_SEARCH_PATHS = (
+					../NextEngine/include,
+					../NextCore/include,
+					include,
+					.,
+				);
+			};
+			name = Dist;
+		};
+		EECE684000F844F234E92E80 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = "../bin/Release-macosx-x86_64/ChemistryProject";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				EXECUTABLE_PREFIX = lib;
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/lib;
+				MACOSX_DEPLOYMENT_TARGET = 10.15.5;
+				PRODUCT_NAME = ChemistryProject;
+			};
+			name = Release;
+		};
+		F02B43C6D4724BF8585F7A06 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = "../bin/Debug-macosx-x86_64/ChemistryProject";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				EXECUTABLE_PREFIX = lib;
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/lib;
+				MACOSX_DEPLOYMENT_TARGET = 10.15.5;
+				PRODUCT_NAME = ChemistryProject;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		14E8AF0036B45C3273698540 /* Build configuration list for PBXNativeTarget "libChemistryProject.dylib" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F02B43C6D4724BF8585F7A06 /* Debug */,
+				EECE684000F844F234E92E80 /* Release */,
+				34C9C453C7578E4530303293 /* Dist */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		1DEB928908733DD80010E9CD /* Build configuration list for PBXProject "ChemistryProject" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C220C0BEBB86C230AF221EFE /* Debug */,
+				C1BBC278ACA7E86AF48DB0B8 /* Release */,
+				DD5E182BF470B35DE48CAE6B /* Dist */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+};
+rootObject = 08FB7793FE84155DC02AAC07 /* Project object */;
+}
