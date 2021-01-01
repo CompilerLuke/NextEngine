@@ -7,7 +7,7 @@ UICmdBuffer& current_layer(UI& ui) {
     return ui.draw_data.layers[ui.draw_data.current];
 }
 
-void draw_quad(UICmdBuffer& cmd_buffer, glm::vec2 pos, glm::vec2 size, texture_handle texture, glm::vec4 col = WHITE, glm::vec2 a = glm::vec2(0,0), glm::vec2 b = glm::vec2(1,1)) {
+void draw_quad(UICmdBuffer& cmd_buffer, glm::vec2 pos, glm::vec2 size, texture_handle texture, glm::vec4 col = white, glm::vec2 a = glm::vec2(0,0), glm::vec2 b = glm::vec2(1,1)) {
     
     uint offset = cmd_buffer.vertices.length;
     
@@ -102,6 +102,31 @@ glm::vec2 vec2_axis(bool flip, float a, float b) {
     return vec;
 }
 
+bool handle_events(UI& ui, UI_GUID id, UIElementGeo& geo, Events& events) {
+    bool is_hovered = geo.element.intersects(ui.input.mouse_position);
+    if (events.on_click && ui.input.mouse_button_pressed() && is_hovered) {
+        events.on_click();
+        return true;
+    }
+
+    static hash_set<UI_GUID, 13> hovered;
+
+    if (events.on_hover) {
+        bool was_hovered = hovered.contains(id);
+        if (is_hovered && !was_hovered) {
+            hovered.add(id);
+            events.on_hover(true);
+        }
+
+        if (!is_hovered && was_hovered) {
+            hovered.remove(id);
+            events.on_hover(false);
+        }
+    }
+
+    return false;
+}
+
 void render_bg(UI& ui, UIElementGeo& geo, BgStyle bg) {
     UICmdBuffer& cmd_buffer = current_layer(ui);
     if (bg.color.a != 0) draw_quad(cmd_buffer, geo.element.pos, geo.element.size, bg.color);
@@ -113,6 +138,7 @@ void render_bg(UI& ui, UIElementGeo& geo, BgStyle bg) {
         
         Rect2D border;
         bool axis = i/2;
+        border.pos[!axis] = geo.element.pos[!axis];
         border.pos[axis] = geo.element.pos[axis] + (i%2)*(geo.element.size[axis] - thickness);
         border.size = vec2_axis(axis, thickness, geo.element.size[!axis]);
         
@@ -137,21 +163,21 @@ bool render_children(UI& ui, LayedOutUIContainer& container) {
     }
     cmd_buffer.pop_clip_rect();
     
-    return clicked;
+    return clicked || handle_events(ui, container.id, container.geo, container.events);
 }
 
 bool LayedOutUIContainer::render(UI& ui, LayedOutUIView& parent) {
     to_absolute_position(geo, parent);
-    
-    
+   
     render_bg(ui, geo, bg);
+
     return render_children(ui, *this);
 }
 
 bool LayedOutScrollView::render(UI& ui, LayedOutUIView &parent) {
     to_absolute_position(geo, parent);
     
-    ScrollState& state = ui.scrolls[hash];
+    ScrollState& state = ui.scrolls[id];
     Input& input = ui.input;
     
     float height = geo.content.size.y - geo.extent.size.y;
@@ -180,10 +206,10 @@ bool LayedOutScrollView::render(UI& ui, LayedOutUIView &parent) {
     
     static u64 active_id = 0;
     if (active_id == 0 && scroll_handle.intersects(input.mouse_position) && input.mouse_button_down()) {
-        active_id = hash;
+        active_id = id;
     }
     
-    bool active = active_id == hash;
+    bool active = active_id == id;
     if (active) {
         draw_scroll_bar = true;
         
@@ -209,7 +235,7 @@ bool LayedOutScrollView::render(UI& ui, LayedOutUIView &parent) {
 
 
 bool LayedOutPanel::render(UI& ui, LayedOutUIView& parent) {
-    PanelState& state = ui.panels[hash];
+    PanelState& state = ui.panels[id];
     Input& input = ui.input;
     
     if (state.first) {
@@ -293,7 +319,7 @@ bool LayedOutSplitter::render(UI& ui, LayedOutUIView& parent) {
     to_absolute_position(geo, parent);
     
     Input& input = ui.input;
-    SplitterState& state = ui.splitters[hash];
+    SplitterState& state = ui.splitters[id];
     
     Rect2D splitter;
     splitter.pos = geo.element.pos;
@@ -327,7 +353,9 @@ bool LayedOutText::render(UI& ui, LayedOutUIView& parent) {
 
     UICmdBuffer& cmd_buffer = current_layer(ui);
     
+    bool clicked = handle_events(ui, parent.id, geo, events);
     render_bg(ui, geo, bg);
+
     for (auto& word : text.words) {
         draw_text(cmd_buffer, word.text, geo.content.pos + word.pos, *text.font, text.font_scale, text.font_color);
     }
@@ -339,11 +367,9 @@ bool LayedOutImage::render(UI& ui, LayedOutUIView& parent) {
     to_absolute_position(geo, parent);
     
     UICmdBuffer& cmd_buffer = current_layer(ui);
-    
-    
-    if (geo.inner.pos != geo.element.pos || geo.inner.size != geo.element.size) {
-        draw_quad(cmd_buffer, geo.element.pos, geo.element.size, bg.color);
-    }
+
+    handle_events(ui, id, geo, events);
+    render_bg(ui, geo, bg);
     
     cmd_buffer.push_clip_rect(geo.inner);
     draw_quad(cmd_buffer, geo.content.pos, geo.content.size, texture, image_color, a, b);
@@ -352,7 +378,7 @@ bool LayedOutImage::render(UI& ui, LayedOutUIView& parent) {
     return false;
 }
 
-void click_text(UI& ui, LayedOutUIView& view, FontInfo& font, glm::vec2 inner_pos, UI_ID id, char* buffer) {
+void click_text(UI& ui, LayedOutUIView& view, FontInfo& font, glm::vec2 inner_pos, UI_GUID id, char* buffer) {
     Input& input = ui.input;
     
     ui.cursor_shape = CursorShape::IBeam;
@@ -431,7 +457,7 @@ bool edit_text(UI& ui, LayedOutUIView& view, glm::vec4 cursor_color, FontInfo& f
     memcpy(ui.buffer, buffer, 100);
     
     Rect2D cursor;
-    cursor.size.x = 2; //todo make configurable
+    cursor.size.x = 1; //todo make configurable
     cursor.size.y = view.geo.inner.size.y * 1.5;
     cursor.pos.x = view.geo.inner.pos.x;
     cursor.pos.y = view.geo.element.pos.y + center(view.geo.element.size.y, cursor.size.y);
@@ -452,9 +478,17 @@ bool edit_text(UI& ui, LayedOutUIView& view, glm::vec4 cursor_color, FontInfo& f
 bool LayedOutInputString::render(UI& ui, LayedOutUIView& parent) {
     to_absolute_position(geo, parent);
     
-    UI_ID id = (UI_ID)input.buffer;
-
-    char* buffer = input.buffer; // (ui->active == id) ? ui->buffer : widget->buffer;
+    char* buffer;
+    if (input.type == InputString::CString) {
+        buffer = input.cstring_buffer; // (ui->active == id) ? ui->buffer : widget->buffer;
+    }
+    if (input.type == InputString::StringBuffer) {
+        input.string_buffer->reserve(input.max);
+        buffer = input.string_buffer->data;
+    }
+    if (input.type == InputString::SString) {
+        buffer = input.sstring->data;
+    }
 
     render_bg(ui, geo, bg);
     
@@ -485,7 +519,7 @@ bool draw_quad_clicked(UI& ui, Rect2D rect, glm::vec4 color, glm::vec4 hover_col
 }
 
 
-bool draw_input_number(UI& ui, LayedOutUIView& view, UI_ID id, Color hover_color, Color cursor_color, FontInfo& font, char* buffer, bool* incr, bool* decr, float* dragged) {
+bool draw_input_number(UI& ui, LayedOutUIView& view, UI_GUID id, Color hover_color, Color cursor_color, FontInfo& font, char* buffer, bool* incr, bool* decr, float* dragged) {
     Input& input = ui.input;
     UIElementGeo& geo = view.geo;
 
@@ -598,7 +632,7 @@ bool LayedOutInputInt::render(UI& ui, LayedOutUIView& parent) {
     bool incr = false, decr = false;
     float dragged = 0.0f;
     
-    bool clicked = draw_input_number(ui, *this, (UI_ID)input.value, input.hover, input.cursor, font, buffer, &incr, &decr, &dragged);
+    bool clicked = draw_input_number(ui, *this, id, input.hover, input.cursor, font, buffer, &incr, &decr, &dragged);
     if (incr) *input.value += input.inc;
     if (decr) *input.value -= input.inc;
     *input.value += dragged / input.px_per_inc;
@@ -614,7 +648,7 @@ bool LayedOutInputFloat::render(UI& ui, LayedOutUIView& parent) {
     bool incr = false, decr = false;
     float dragged = 0.0f;
 
-    bool clicked = draw_input_number(ui, *this, (UI_ID)input.value, input.hover, input.cursor, font, buffer, &incr, &decr, &dragged);
+    bool clicked = draw_input_number(ui, *this, id, input.hover, input.cursor, font, buffer, &incr, &decr, &dragged);
     if (incr) *input.value += input.inc;
     if (decr) *input.value -= input.inc;
     *input.value += dragged / input.px_per_inc;
@@ -631,5 +665,7 @@ void LayedOutInputInt::loose_focus(UI& ui) {
 }
 
 void LayedOutInputString::loose_focus(UI& ui) {
-    memcpy(input.buffer, ui.buffer, input.len);
+    if (input.type == InputString::CString) memcpy(input.cstring_buffer, ui.buffer, input.max);
+    if (input.type == InputString::StringBuffer) *input.string_buffer = ui.buffer;
+    if (input.type == InputString::SString) *input.sstring = ui.buffer;
 }

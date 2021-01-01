@@ -61,6 +61,8 @@ RESOLVE_TYPE(glm::vec3, vec3)
 	return type;
 }
 
+RESOLVE_TYPE(glm::vec4, vec4)
+
 Struct init_quat() {
 	Struct type("glm::quat", sizeof(glm::quat));
 	type.fields.append({ "x", offsetof(glm::quat, x), get_float_type() });

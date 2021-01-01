@@ -212,6 +212,7 @@ VkVertexInputBindingDescription input_bindings(VertexStreaming& self, VertexLayo
 }
 
 ArrayVertexInputs input_attributes(VertexLayouts& layouts, VertexLayout layout, InstanceLayout instance_layout) {
+	if (instance_layout == INSTANCE_LAYOUT_NONE) return layouts.vertex_layouts[layout].input_desc;
 	return layouts.instance_layouts[layout][instance_layout].input_desc;
 }
 

@@ -211,6 +211,14 @@ TextLayout compute_text_layout(UI& ui, string_view text, TextStyle& text_style, 
     return result;
 }
 
+template<typename T>
+T& alloc_layed_out_view(UI& ui, UIView* view) {
+    T* result = alloc_t<T>(*ui.allocator);
+    result->id = view->guid;
+    result->events = view->events;
+    result->bg = view->bg;
+    return *result;
+}
 
 LayedOutUIView& Text::compute_layout(UI& ui, const BoxConstraint& constraint) {
     float margin[4];
@@ -220,15 +228,14 @@ LayedOutUIView& Text::compute_layout(UI& ui, const BoxConstraint& constraint) {
     
     glm::vec2 text_size(inner.max);
 
-    LayedOutText* result = alloc_t<LayedOutText>(*ui.allocator);
-    result->text = compute_text_layout(ui, text, text_style, &text_size);
-    result->geo = compute_geometry(ui, layout, text_size, inner, constraint, padding, margin);
-    result->bg = bg;
+    LayedOutText& result = alloc_layed_out_view<LayedOutText>(ui,this);
+    result.text = compute_text_layout(ui, text, text_style, &text_size);
+    result.geo = compute_geometry(ui, layout, text_size, inner, constraint, padding, margin);
     
-    return *result;
+    return result;
 }
 
-void compute_flex_layout(UI& ui, LayedOutUIContainer* result, LayoutStyle& layout, Size spacing_size, uint axis, uint alignment, const BoxConstraint& constraint, slice<UIView*> children) {
+void compute_flex_layout(UI& ui, LayedOutUIContainer& result, LayoutStyle& layout, Size spacing_size, uint axis, uint alignment, const BoxConstraint& constraint, slice<UIView*> children) {
     float spacing = 0.0f;
     to_size_bounds(&spacing, spacing_size, constraint.max[axis]);
     
@@ -314,8 +321,8 @@ void compute_flex_layout(UI& ui, LayedOutUIContainer* result, LayoutStyle& layou
         layout_children[i]->geo.extent.pos += offset;
     }
     
-    result->geo = geo;
-    result->children = {layout_children, children.length};
+    result.geo = geo;
+    result.children = {layout_children, children.length};
 }
 
 LayedOutUIView& ImageView::compute_layout(UI& ui, const BoxConstraint& constraint) {
@@ -363,24 +370,21 @@ LayedOutUIView& ImageView::compute_layout(UI& ui, const BoxConstraint& constrain
         content = glm::clamp(size, inner.min, inner.max);
     }
     
-    LayedOutImage* result = alloc_t<LayedOutImage>(*ui.allocator);
-    result->bg = bg;
-    result->texture = texture;
-    result->image_color = image_color;
-    result->geo = compute_geometry(ui, layout, content, inner, constraint, padding, margin);
-    result->a = a;
-    result->b = b;
+    LayedOutImage& result = alloc_layed_out_view<LayedOutImage>(ui,this);
+    result.texture = texture;
+    result.image_color = image_color;
+    result.geo = compute_geometry(ui, layout, content, inner, constraint, padding, margin);
+    result.a = a;
+    result.b = b;
     
-    return *result;
+    return result;
 }
-
 
 //todo change into pointer
 LayedOutUIView& StackView::compute_layout(UI& ui, const BoxConstraint& constraint) {
-    LayedOutUIContainer* element = alloc_t<LayedOutUIContainer>(*ui.allocator);
+    LayedOutUIContainer& element = alloc_layed_out_view<LayedOutUIContainer>(ui,this);
     compute_flex_layout(ui, element, layout, spacing, axis, alignment, constraint, children);
-    element->bg = bg;
-    return *element;
+    return element;
 }
 
 LayedOutUIView& ScrollView::compute_layout(UI& ui, const BoxConstraint& constraint) {
@@ -390,12 +394,13 @@ LayedOutUIView& ScrollView::compute_layout(UI& ui, const BoxConstraint& constrai
     
     float spacing = 0.0f;
     
-    ScrollState& state = ui.scrolls[hash];
+    ScrollState& state = ui.scrolls[guid];
     
     float offset = 0.0;
     uint axis = 1;
     
     LayedOutUIView** layed_out_children = alloc_t<LayedOutUIView*>(*ui.allocator, children.length);
+
     for (uint i = 0; i < children.length; i++) {
         BoxConstraint child_constraint;
         child_constraint.max = glm::vec2(inner.max.x, 100000);
@@ -408,13 +413,11 @@ LayedOutUIView& ScrollView::compute_layout(UI& ui, const BoxConstraint& constrai
     
     glm::vec2 content(inner.max.x, offset);
     
-    LayedOutScrollView* element = alloc_t<LayedOutScrollView>(*ui.allocator);
-    element->bg = bg;
-    element->hash = hash;
-    element->children = {layed_out_children, children.length};
-    element->geo = compute_geometry(ui, layout, content, inner, constraint, padding, margin);
+    LayedOutScrollView& element = alloc_layed_out_view<LayedOutScrollView>(ui, this);
+    element.children = {layed_out_children, children.length};
+    element.geo = compute_geometry(ui, layout, content, inner, constraint, padding, margin);
     
-    return *element;
+    return element;
 }
 
 LayedOutUIView& PanelView::compute_layout(UI& ui, const BoxConstraint& constraint) {
@@ -422,29 +425,28 @@ LayedOutUIView& PanelView::compute_layout(UI& ui, const BoxConstraint& constrain
     float margin[4];
     glm::vec2 min_size = compute_inner(ui, layout, constraint, padding, margin).min;
     
-    if (!state->first) {
-        if (flags & PANEL_MOVABLE) layout.position = {AbsolutePx, state->position};
+    PanelState& state = ui.panels[guid];
+    if (!state.first) {
+        if (flags & PANEL_MOVABLE) layout.position = {AbsolutePx, state.position};
         for (uint i = 0; i < 4; i++) {
             if (!(flags & (PANEL_RESIZEABLE_BASE << i))) continue;
-            if (i % 2 == 0) width(state->size.x);
-            else height(state->size.y);
+            if (i % 2 == 0) width(state.size.x);
+            else height(state.size.y);
         }
     }
     
     BoxConstraint inner = compute_inner(ui, layout, constraint, padding, margin);
     
-    LayedOutPanel* result = alloc_t<LayedOutPanel>(*ui.allocator);
-    result->bg = bg;
-    result->hash = hash;
-    result->flags = flags;
-    result->min_size = min_size;
+    LayedOutPanel& result = alloc_layed_out_view<LayedOutPanel>(ui, this);
+    result.flags = flags;
+    result.min_size = min_size;
     compute_flex_layout(ui, result, layout, 0.0f, 1, 0, inner, children);
 
-    return *result;
+    return result;
 }
 
 LayedOutUIView& SplitterView::compute_layout(UI& ui, const BoxConstraint& constraint) {
-    SplitterState& state = ui.splitters[hash];
+    SplitterState& state = ui.splitters[guid];
     
     assert_mesg(children.length == 2, "Splitter expects 2 children");
     
@@ -469,28 +471,27 @@ LayedOutUIView& SplitterView::compute_layout(UI& ui, const BoxConstraint& constr
     a.max[axis] = state.splitter_offset - 0.5*thickness;
     b.max[axis] = inner.max[axis] - state.splitter_offset - 0.5*thickness;
     
-    LayedOutSplitter* result = alloc_t<LayedOutSplitter>(*ui.allocator);
-    result->children[0] = &children[0]->compute_layout(ui, a);
-    result->children[1] = &children[1]->compute_layout(ui, b);
+    StableID child_ids[2];
+
+    LayedOutSplitter& result = alloc_layed_out_view<LayedOutSplitter>(ui, this);
+    result.children[0] = &children[0]->compute_layout(ui, a);
+    result.children[1] = &children[1]->compute_layout(ui, b);
+
+    result.children[1]->geo.extent.pos[axis] = state.splitter_offset+0.5f*thickness;
     
-    result->children[1]->geo.extent.pos[axis] = state.splitter_offset + thickness;
-    
-    result->bg = bg;
-    result->hash = hash;
-    result->axis = axis;
-    result->color = splitter_color;
-    result->hover_color = splitter_hover_color;
-    result->thickness = thickness;
+    result.axis = axis;
+    result.color = splitter_color;
+    result.hover_color = splitter_hover_color;
+    result.thickness = thickness;
     
     glm::vec2 content;
-    content[axis] = result->children[0]->geo.extent.size[axis] + result->children[1]->geo.extent.size[axis];
+    content[axis] = result.children[0]->geo.extent.size[axis] + result.children[1]->geo.extent.size[axis] + thickness;
     content[!axis] = inner.max[!axis];
     //fmaxf(result->children[0]->geo.extent.size[!axis], result->children[1]->geo.extent.pos[!axis]);
     
-    result->geo = compute_geometry(ui, layout, content, inner, constraint, padding, margin);
+    result.geo = compute_geometry(ui, layout, content, inner, constraint, padding, margin);
     
-
-    return *result;
+    return result;
 }
 
 LayedOutUIView& Spacer::compute_layout(UI& ui, const BoxConstraint& constraint) {
@@ -500,18 +501,17 @@ LayedOutUIView& Spacer::compute_layout(UI& ui, const BoxConstraint& constraint) 
         to_size_bounds(margin + i, layout.margin[i], constraint.max[i/2]);
     }
     
-    LayedOutUIView* result = alloc_t<LayedOutUIView>(*ui.allocator);
-    result->geo.extent.size = constraint.min;
-    result->geo.element.size = constraint.min;
-    result->geo.inner.size = constraint.min;
-    result->bg = bg;
+    LayedOutUIView& result = alloc_layed_out_view<LayedOutUIView>(ui, this);
+    result.geo.extent.size = constraint.min;
+    result.geo.element.size = constraint.min;
+    result.geo.inner.size = constraint.min;
     
     //result->geo.element.size.x = constraint.max.x - margin[ELeading] - margin[ETrailing];
     //result->geo.element.size.y = constraint.max.y - margin[ETop] - margin[EBottom];
     //result->geo.element.pos.x = margin[ELeading];
     //result->geo.element.pos.y = margin[ETrailing];
     
-    return *result;
+    return result;
 }
 
 glm::vec2 calc_size_of(FontInfo& info, string_view text) {
@@ -531,18 +531,17 @@ R& compute_input_layout(UI& ui, T* self, const BoxConstraint& constraint) {
     float padding[4], margin[4];
     BoxConstraint inner = compute_inner(ui, self->layout, constraint, padding, margin);
     
-    R* result = alloc_t<R>(*ui.allocator);
-    result->input = self->input;
-    result->font.font = &query_font(ui, nullptr, &result->font.font_scale, self->text_style);
-    result->font.font_color = self->text_style.color;
-    result->bg = self->bg;
+    R& result = alloc_layed_out_view<R>(ui, self);
+    result.input = self->input;
+    result.font.font = &query_font(ui, nullptr, &result.font.font_scale, self->text_style);
+    result.font.font_color = self->text_style.color;
     
-    glm::vec2 content = calc_size_of(result->font, "X");
+    glm::vec2 content = calc_size_of(result.font, "X");
     content.x = inner.max.x; //todo don't hardcode
     
-    result->geo = compute_geometry(ui, self->layout, content, inner, constraint, padding, margin);
+    result.geo = compute_geometry(ui, self->layout, content, inner, constraint, padding, margin);
     
-    return *result;
+    return result;
 }
 
 LayedOutUIView& InputStringView::compute_layout(UI& ui, const BoxConstraint& constraint) {

@@ -1,0 +1,198 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup><EnableUnitySupport>true</EnableUnitySupport></PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Dist|x64">
+      <Configuration>Dist</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{74C382EC-60BC-A13E-89EE-86C37546814A}</ProjectGuid>
+    <IgnoreWarnCompileDuplicatedFilename>true</IgnoreWarnCompileDuplicatedFilename>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>ChemistryProject</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>..\bin\Debug-windows-x86_64\ChemistryProject\</OutDir>
+    <IntDir>..\bin-int\Debug-windows-x86_64\ChemistryProject\</IntDir>
+    <TargetName>ChemistryProject</TargetName>
+    <TargetExt>.dll</TargetExt>
+    <IncludePath>..\vendor\glm;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>..\bin\Release-windows-x86_64\ChemistryProject\</OutDir>
+    <IntDir>..\bin-int\Release-windows-x86_64\ChemistryProject\</IntDir>
+    <TargetName>ChemistryProject</TargetName>
+    <TargetExt>.dll</TargetExt>
+    <IncludePath>..\vendor\glm;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>..\bin\Dist-windows-x86_64\ChemistryProject\</OutDir>
+    <IntDir>..\bin-int\Dist-windows-x86_64\ChemistryProject\</IntDir>
+    <TargetName>ChemistryProject</TargetName>
+    <TargetExt>.dll</TargetExt>
+    <IncludePath>..\vendor\glm;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NE_PLATFORM_WINDOWS;NE_DEBUG;CHEMISTRYPROJECT_DLL;CHEMISTRYPROJECT_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <Optimization>Disabled</Optimization>
+      <MinimalRebuild>false</MinimalRebuild>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <IncludeInUnityFile>true</IncludeInUnityFile>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ImportLibrary>..\bin\Debug-windows-x86_64\ChemistryProject\ChemistryProject.lib</ImportLibrary>
+    </Link>
+    <PreBuildEvent>
+      <Command>"../bin/Debug-windows-x86_64/ReflectionTool/ReflectionTool.exe" -b "." -i "include" rotating.h gold_foil.h emission.h -c "chemistry_component_ids.h" -o src/generated</Command>
+    </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>IF EXIST ..\bin\Debug-windows-x86_64\ChemistryProject\ChemistryProject.dll\ (xcopy /Q /E /Y /I ..\bin\Debug-windows-x86_64\ChemistryProject\ChemistryProject.dll ..\bin\Debug-windows-x86_64\TheUnpluggingRunner &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Debug-windows-x86_64\ChemistryProject\ChemistryProject.dll ..\bin\Debug-windows-x86_64\TheUnpluggingRunner &gt; nul)</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NE_PLATFORM_WINDOWS;NE_RELEASE;CHEMISTRYPROJECT_DLL;CHEMISTRYPROJECT_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <Optimization>Full</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <IncludeInUnityFile>true</IncludeInUnityFile>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <ImportLibrary>..\bin\Release-windows-x86_64\ChemistryProject\ChemistryProject.lib</ImportLibrary>
+    </Link>
+    <PreBuildEvent>
+      <Command>"../bin/Release-windows-x86_64/ReflectionTool/ReflectionTool.exe" -b "." -i "include" rotating.h gold_foil.h emission.h -c "chemistry_component_ids.h" -o src/generated</Command>
+    </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>IF EXIST ..\bin\Release-windows-x86_64\ChemistryProject\ChemistryProject.dll\ (xcopy /Q /E /Y /I ..\bin\Release-windows-x86_64\ChemistryProject\ChemistryProject.dll ..\bin\Release-windows-x86_64\TheUnpluggingRunner &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Release-windows-x86_64\ChemistryProject\ChemistryProject.dll ..\bin\Release-windows-x86_64\TheUnpluggingRunner &gt; nul)</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NE_PLATFORM_WINDOWS;NE_DIST;CHEMISTRYPROJECT_DLL;CHEMISTRYPROJECT_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <Optimization>Full</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <IncludeInUnityFile>true</IncludeInUnityFile>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <ImportLibrary>..\bin\Dist-windows-x86_64\ChemistryProject\ChemistryProject.lib</ImportLibrary>
+    </Link>
+    <PreBuildEvent>
+      <Command>"../bin/Dist-windows-x86_64/ReflectionTool/ReflectionTool.exe" -b "." -i "include" rotating.h gold_foil.h emission.h -c "chemistry_component_ids.h" -o src/generated</Command>
+    </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>IF EXIST ..\bin\Dist-windows-x86_64\ChemistryProject\ChemistryProject.dll\ (xcopy /Q /E /Y /I ..\bin\Dist-windows-x86_64\ChemistryProject\ChemistryProject.dll ..\bin\Dist-windows-x86_64\TheUnpluggingRunner &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Dist-windows-x86_64\ChemistryProject\ChemistryProject.dll ..\bin\Dist-windows-x86_64\TheUnpluggingRunner &gt; nul)</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="include\chemistry_component_ids.h" />
+    <ClInclude Include="include\emission.h" />
+    <ClInclude Include="include\generated.h" />
+    <ClInclude Include="include\gold_foil.h" />
+    <ClInclude Include="include\rotating.h" />
+    <ClInclude Include="stdafx.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\chemistry_project.cpp" />
+    <ClCompile Include="src\emission.cpp" />
+    <ClCompile Include="src\generated.cpp" />
+    <ClCompile Include="src\gold_foil.cpp" />
+    <ClCompile Include="stdafx.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NextCore\NextCore.vcxproj">
+      <Project>{4DE9C0F6-39B6-1B02-62CF-09AA4EFB5090}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\NextEngine\NextEngine.vcxproj">
+      <Project>{BAC032AF-A678-74FC-0F80-4D58FB560FED}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

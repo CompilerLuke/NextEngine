@@ -130,6 +130,11 @@ struct PushConstantRange {
 
 //const u64 NATIVE_RENDER_PASS = 1ull << 63;
 
+enum PushConstantStage {
+	PushConstant_Vertex, 
+	PushConstant_Fragment
+};
+
 struct PipelineDesc {
 	shader_handle shader;
 	shader_flags shader_flags = SHADER_INSTANCED;

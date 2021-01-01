@@ -124,7 +124,6 @@ struct hash_map_base : hash_set_base<K> {
         
         
 	}
-
     
 	uint set(K key, const V& value) {
 		int index = this->keys.add(key);
@@ -175,9 +174,17 @@ struct hash_set {
 		return hash_set_base<K>::hash_set_base(N, meta, keys).matches(hash, key, probe_hash);
 	}
 
+	void remove(const K& key) {
+		int i = index(key);
+		if (i == -1) return;
+		meta[i] = {};
+		keys[i] = {};
+	}
+
 	bool is_full(uint probe_hash) const { return meta[probe_hash] & 0x1; }
 	int add(K key) { return hash_set_base<K>(N, meta, keys).add(key); }
 	int index(K key) { return hash_set_base<K>(N, meta, keys).index(key); }
+	bool contains(K key) { return hash_set_base<K>(N, meta, keys).index(key) != -1; }
 };
 
 template <typename K, typename V, uint N>
@@ -198,6 +205,14 @@ struct hash_map : hash_set<K, N> {
 		int index = this->add(key);
 		values[index] = value;
 		return index;
+	}
+
+	void remove(const K& key) {
+		int i = index(key);
+		if (i == -1) return;
+		meta[i] = {};
+		keys[i] = {};
+		values[i] = {};
 	}
     
     const V& operator[](K key) const {

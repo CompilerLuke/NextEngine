@@ -178,6 +178,7 @@ void register_wsi_pass(VkRenderPass render_pass, uint width, uint height) {
     
     Attachment attachment;
     attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	attachment.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
     
     framegraph.info[RenderPass::Screen].attachments.append(attachment);
 }

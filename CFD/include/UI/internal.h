@@ -10,6 +10,8 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
+#include <typeindex>
+
 struct LinearAllocator;
 struct Input;
 
@@ -17,6 +19,19 @@ struct FontCache {
     FT_Library ft;
     HandleManager<FT_Face, font_handle> fonts;
     hash_map<FontDesc, Font, 103> cached;
+    bool uploading_font_this_frame = false;
+};
+
+struct StableID {
+    std::type_index type = typeid(void);
+    UI_GUID id = 0;
+    u64 hash;
+    vector<StableID> children;
+};
+
+struct StableAddID {
+    StableID* ptr;
+    tvector<StableID> children;
 };
 
 struct ScrollState {
@@ -41,14 +56,14 @@ struct SplitterState {
 constexpr uint MAX_SCROLL_BARS = 13;
 constexpr uint MAX_PANELS = 23;
 constexpr uint MAX_SPLITTERS = 13;
-
-using UI_ID = u64;
+constexpr uint MAX_GUIDS = 103;
 
 struct UI {
     FontCache font_cache;
     UIRenderer* renderer;
     LinearAllocator* allocator;
     tvector<UIContainer*> container_stack;
+    tvector<StableAddID> id_stack;
     Input input;
     UIDrawData draw_data;
     font_handle default_font;
@@ -60,13 +75,15 @@ struct UI {
     
     float max_font_size;
     
+    StableID id_root;
+    hash_map<u64, StableID, MAX_GUIDS> stable_id;
     hash_map<u64, ScrollState, MAX_SCROLL_BARS> scrolls;
     hash_map<u64, PanelState, MAX_PANELS> panels;
     hash_map<u64, SplitterState, MAX_SPLITTERS> splitters;
     
     char buffer[100];
-    UI_ID active;
-    UI_ID dragging;
+    UI_GUID active;
+    UI_GUID dragging;
     int dragging_edge;
     int cursor_pos;
     LayedOutUIView* active_input;

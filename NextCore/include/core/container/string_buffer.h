@@ -10,7 +10,7 @@ struct string_buffer {
 	unsigned int capacity = 0;
 	unsigned int length = 0;
 
-	inline unsigned int size() {
+	inline uint size() {
 		return length;
 	}
 
@@ -21,6 +21,9 @@ struct string_buffer {
 			if (this->length > 0) {
 				memcpy(data, this->data, sizeof(char) * ((size_t)length + 1));
 				allocator->deallocate(this->data);
+			}
+			else {
+				data[0] = '\0';
 			}
 
 			this->data = data;

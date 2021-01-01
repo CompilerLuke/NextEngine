@@ -1,9 +1,7 @@
 #include "generated.h"
 #include "engine/types.h"
-#include "./chemistry_component_ids.h"
 #include "./rotating.h"
 #include "./gold_foil.h"
-#include "./generated.h"
 #include "./emission.h"
 
 refl::Struct init_Rotating() {

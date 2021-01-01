@@ -293,7 +293,7 @@ void destroy(VkDevice device, Swapchain& swapchain) {
 	vkDestroySwapchainKHR(device, swapchain, nullptr);
 }
 
-void remakeSwapChain(RHI& rhi) {
+void remake_swapchain(RHI& rhi) {
 	VkDevice device = rhi.device;
 	VkPhysicalDevice physical_device = rhi.device.physical_device;
 	Swapchain& swapchain = rhi.swapchain;
@@ -362,7 +362,7 @@ void acquire_swapchain_image(Swapchain& swapchain) {
 	VkResult result = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, swapchain.image_available_semaphore[swapchain.current_frame], VK_NULL_HANDLE, &swapchain.image_index);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-		remakeSwapChain(rhi);
+		remake_swapchain(rhi);
 		return;
 	}
 	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
@@ -394,14 +394,16 @@ void present_swapchain_image(Swapchain& swapchain) {
 	VkResult result = vkQueuePresentKHR(rhi.device.present_queue, &presentInfo);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-		//framebufferResized = false;
-		remakeSwapChain(rhi);
+		remake_swapchain(rhi);
 	}
 	else if (result != VK_SUCCESS) {
 		throw "failed to present swap chain image!";
 	}
 }
 
+//todo, the best strategy might be to immediately start recording asset transfer
+//after a submit has been issued, and then only submit if any transfer have been made
+//in the current frame
 void begin_gpu_upload() {
 	rhi.waiting_on_transfer_frame = begin_staging_cmds(rhi.staging_queue);
 	begin_vertex_buffer_upload(rhi.vertex_streaming);

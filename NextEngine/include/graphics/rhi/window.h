@@ -33,8 +33,9 @@ struct Window {
 	string_buffer title;
 	bool vSync = true;
 	bool full_screen = false;
-	unsigned int width = 3840;
-	unsigned int height = 2160;
+	bool borderless = false;
+	uint width = 3840;
+	uint height = 2160;
     CursorShape cursor_shape = CursorShape::Arrow;
 
 	EventDispatcher<glm::vec2> on_resize;

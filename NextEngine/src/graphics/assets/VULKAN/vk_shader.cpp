@@ -258,7 +258,7 @@ string_buffer preprocess_source(string_view source, Stage stage, shader_flags fl
 string_buffer compile_glsl_to_spirv(shaderc_compiler_t compiler, Stage stage, string_view source, string_view input_file_name, shader_flags flags, string_buffer* err) {
 	string_buffer source_assembly = preprocess_source(source, stage, flags);
 
-	//printf("Source: %s", source_assembly.data);
+	printf("Source: %s", source_assembly.data);
 
 	shaderc_shader_kind glsl_shader_kind = stage == VERTEX_STAGE ? shaderc_glsl_vertex_shader : shaderc_glsl_fragment_shader;
 
@@ -444,8 +444,7 @@ void reflect_module(ShaderModuleInfo& info, string_view vert_spirv, string_view 
 	write_joint_ref(&info, VK_SHADER_STAGE_VERTEX_BIT, vert);
 	write_joint_ref(&info, VK_SHADER_STAGE_FRAGMENT_BIT, frag);
 
-	//log("===========\n");
-	print_module(info);
+	//print_module(info);
 
 	spvReflectDestroyShaderModule(&vert_module);
 	spvReflectDestroyShaderModule(&frag_module);
