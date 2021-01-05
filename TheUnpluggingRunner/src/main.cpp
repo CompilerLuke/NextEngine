@@ -98,7 +98,7 @@ void fiber_main(void* data) {
 
 	Modules modules(app_name, level, engine_asset_path);
 
-#ifdef NE_PLATFORM_MACOS
+#ifdef NE_PLATFORM_MACOSX
     const char* game_dll_path = "bin/" NE_BUILD_DIR "/CFD/libCFD.dylib";
     const char* editor_dll_path = "bin/" NE_BUILD_DIR "/TheUnpluggingRunner/libNextEngineEditor.dylib";
 #elif NE_PLATFORM_WINDOWS

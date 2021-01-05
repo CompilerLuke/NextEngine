@@ -294,12 +294,18 @@ project "CFD"
 	links { "NextCore", "NextEngine" }
  
     --if freetype then
+    filter "system:windows"
 	    sysincludedirs { "C:/Users/User/Desktop/Game Engine/freetype-windows-binaries/include"}
         libdirs { "C:/Users/User/Desktop/Game Engine/freetype-windows-binaries/win64"}
-
-		--sysincludedirs { "/usr/local/Cellar/freetype/2.10.2/include/freetype2" }
-        --libdirs { "/usr/local/Cellar/freetype/2.10.2/lib" } --maybe it is better to include freetype through git submodules
         links "freetype"
+
+    filter "system:macosx"
+		sysincludedirs { "/usr/local/Cellar/freetype/2.10.2/include/freetype2" }
+        libdirs { "/usr/local/Cellar/freetype/2.10.2/lib" } --maybe it is better to include freetype through git submodules
+        links "freetype"
+
+    filter "*"
+
     --end
 
 	prebuildcommands (reflection_exe .. ' -b "." -i "include" components.h -c "cfd_ids.h" -o src/generated')

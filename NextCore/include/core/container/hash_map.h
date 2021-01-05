@@ -210,9 +210,9 @@ struct hash_map : hash_set<K, N> {
 	void remove(const K& key) {
 		int i = index(key);
 		if (i == -1) return;
-		meta[i] = {};
-		keys[i] = {};
-		values[i] = {};
+		this->meta[i] = {};
+		this->keys[i] = {};
+		this->values[i] = {};
 	}
     
     const V& operator[](K key) const {

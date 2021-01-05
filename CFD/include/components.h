@@ -12,10 +12,13 @@ struct CFDMesh {
 
 COMP 
 struct CFDDomain {
-	glm::vec3 size = glm::vec3(100);
-	int contour_layers = 1;
+	glm::vec3 size = glm::vec3(6,2,4);
+	int contour_layers = 5;
 	float contour_initial_thickness = 0.01;
 	float contour_thickness_expontent = 1.1;
 	
 	int tetrahedron_layers = 1;
+    
+    float grid_resolution = 0.15;
+    int grid_layers = 3;
 };

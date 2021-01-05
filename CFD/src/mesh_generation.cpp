@@ -40,6 +40,14 @@ void get_positions(slice<CFDVertex> vertices, slice<vertex_handle> handles, vec3
 	}
 }
 
+void get_positions(slice<CFDVertex> vertices, CFDCell& cell, const ShapeDesc::Face& face, vec3* positions) {
+    uint verts = face.num_verts;
+    for (uint j = 0; j < face.num_verts; j++) {
+        vertex_handle vertex = cell.vertices[face.verts[j]];
+        positions[j] = vertices[vertex.id].position;
+    }
+}
+
 template<typename T>
 using spatial_hash_map = hash_map_base<vec3, T>;
 
@@ -126,6 +134,7 @@ struct FollowEdgeLoopJob {
 
 };
 
+
 CFDPolygon form_quad(CFDSurface& surface, polygon_handle p_id, uint connect_with_edge) {
 	const CFDPolygon& polygon = surface.polygons[p_id.id];
 
@@ -176,20 +185,24 @@ CFDPolygon form_quad(CFDSurface& surface, polygon_handle p_id, uint connect_with
 	return quad;
 }
 
-int find_best_quad_edge(polygon_handle* new_ids, CFDPolygon& polygon, QuadSelectionInfo& info, float min_score = 0.0f) {
-	int connect_with_edge = -1;
-	float highest_score = min_score;
-	for (uint j = 0; j < 3; j++) {
-		polygon_handle neighbor = polygon.edges[j].neighbor;
-		if (new_ids[neighbor.id].id != -1) continue;
+int find_best_quad_edge_and_score(polygon_handle* new_ids, CFDPolygon& polygon, QuadSelectionInfo& info, float* highest_score) {
+    int connect_with_edge = -1;
+    for (uint j = 0; j < 3; j++) {
+        polygon_handle neighbor = polygon.edges[j].neighbor;
+        if (new_ids[neighbor.id].id != -1) continue;
 
-		float score = info.edge_score[j];
-		if (score > highest_score) {
-			connect_with_edge = j;
-			highest_score = score;
-		}
-	}
-	return connect_with_edge;
+        float score = info.edge_score[j];
+        if (score > *highest_score) {
+            connect_with_edge = j;
+            *highest_score = score;
+        }
+    }
+    return connect_with_edge;
+}
+
+int find_best_quad_edge(polygon_handle* new_ids, CFDPolygon& polygon, QuadSelectionInfo& info, float min_score = 0.0f) {
+	float score = min_score;
+    return find_best_quad_edge_and_score(new_ids, polygon, info, &score);
 }
 
 bool add_quad(CFDPolygon& quad, vector<CFDPolygon>& polygons, polygon_handle* new_ids, CFDSurface& surface, polygon_handle handle, int connect_with) {
@@ -236,12 +249,14 @@ int find_best_quad_edge_from(CFDSurface& surface, polygon_handle* new_ids, CFDPo
 	return chosen_edge;
 }
 
-void scan_edgeloop(vector<CFDPolygon>& polygons, CFDSurface& surface, polygon_handle* new_ids, QuadSelectionInfo* infos, CFDPolygon& quad, uint starting_edge) {
-	polygon_handle p = quad.edges[starting_edge].neighbor;
+bool scan_edgeloop(vector<CFDPolygon>& polygons, CFDSurface& surface, polygon_handle* new_ids, QuadSelectionInfo* infos, CFDPolygon& quad, uint starting_edge) {
+    polygon_handle p = quad.edges[starting_edge].neighbor;
+    
+    if (p.id == -1 || new_ids[p.id].id != -1) return false;
 
 	uint count = 0;
 	uint edge_index = quad.edges[starting_edge].neighbor_edge;
-
+    
 	while (p.id != -1) {
 		CFDPolygon& polygon = surface.polygons[p.id];
 		
@@ -273,6 +288,40 @@ void scan_edgeloop(vector<CFDPolygon>& polygons, CFDSurface& surface, polygon_ha
 		count++;
 		//printf("Created quad! %i %i %i %i\n", quad.vertices[0].id, quad.vertices[1].id, quad.vertices[2].id, quad.vertices[3].id);
 	}
+    
+    return true;
+}
+
+int select_crawling_edge(CFDSurface& surface, CFDPolygon& quad, polygon_handle* new_ids, QuadSelectionInfo* info) {
+    float longest = 0;
+    uint crawl_from = 0;
+    for (uint i = 0; i < 2; i++) {
+        glm::vec3 a = surface.vertices[quad.vertices[i].id].position;
+        glm::vec3 b = surface.vertices[quad.vertices[(i+1)%4].id].position;
+
+        glm::vec3 length3 = a - b;
+        float length = glm::dot(length3, length3);
+        if (length > longest) {
+            longest = length;
+            crawl_from = i;
+        }
+    }
+    
+    /*int crawl_from = -1;
+    float highest = 0.0f;
+    for (uint i = 0; i < 4; i++) {
+        polygon_handle p = quad.edges[i].neighbor;
+        
+        float score = 0.0f;
+        find_best_quad_edge_and_score(new_ids, surface.polygons[p.id], info[p.id], &score);
+        
+        if (score > highest) {
+            highest = score;
+            crawl_from = i;
+        }
+    }*/
+    
+    return crawl_from;
 }
 
 CFDSurface quadify_surface(CFDSurface& surface) {
@@ -315,55 +364,40 @@ CFDSurface quadify_surface(CFDSurface& surface) {
 	polygon_handle* new_ids = TEMPORARY_ZEROED_ARRAY(polygon_handle, surface.polygons.length);
 	vector<CFDPolygon> polygons;
 
-	uint edge_loops = 0;
 	for (int i = surface.polygons.length - 1; i >= 0; i--) {
 		//if (edge_loops == 8) break;
 
 		TopScore top_score = top_scores[i];
 		if (new_ids[top_score.id.id].id != -1) continue;
 
-		CFDPolygon quad;
+		CFDPolygon starting_quad;
+        int connecting_edge = find_best_quad_edge(new_ids, surface.polygons[top_score.id.id], infos[top_score.id.id]);
+        if (!add_quad(starting_quad, polygons, new_ids, surface, top_score.id, connecting_edge)) continue;
 
-		int connecting_edge = find_best_quad_edge(new_ids, surface.polygons[top_score.id.id], infos[top_score.id.id]);
-		if (!add_quad(quad, polygons, new_ids, surface, top_score.id, connecting_edge)) continue;
+        int start_crawl_from = select_crawling_edge(surface, starting_quad, new_ids, infos);
+        
+        scan_edgeloop(polygons, surface, new_ids, infos, starting_quad, start_crawl_from); //forwards
+        scan_edgeloop(polygons, surface, new_ids, infos, starting_quad, start_crawl_from + 2); //backwards
+        
+        /*
+        for (uint dir = 0; dir < 2; dir++) {
+            CFDPolygon quad = starting_quad;
+            int crawl_from = !start_crawl_from;
+            
+            while (true) {
+                polygon_handle adjacent = quad.edges[!crawl_from].neighbor;
+                if (adjacent.id == -1 || new_ids[adjacent.id].id != -1) break;
+                int connecting_edge = find_best_quad_edge(new_ids, surface.polygons[adjacent.id], infos[adjacent.id]);
+                if (!add_quad(quad, polygons, new_ids, surface, adjacent, connecting_edge)) break;
 
-		edge_loops++;
+                crawl_from = select_crawling_edge(surface, quad, new_ids, infos);
 
-		//printf("Created quad!\n");
-
-		float longest = 0;
-		uint crawl_from = 0;
-		for (uint i = 0; i < 2; i++) {
-			glm::vec3 a = surface.vertices[quad.vertices[i].id].position;
-			glm::vec3 b = surface.vertices[quad.vertices[(i+1)%4].id].position;
-
-			glm::vec3 length3 = a - b;
-			float length = glm::dot(length3, length3);
-			if (length > longest) {
-				longest = length;
-				crawl_from = i;
-			}
-		}
-
-		//Scan up and down edge loop
-		for (uint dir = 0; dir < 2; dir++) {
-			uint starting_edge = crawl_from + 2*dir;
-			polygon_handle p = quad.edges[starting_edge].neighbor;
-
-			uint edge_index = quad.edges[starting_edge].neighbor_edge;
-			scan_edgeloop(polygons, surface, new_ids, infos, quad, edge_index);
-		}
-
-		
-		//Create adjacent quad and then scan those edge loops
-		for (uint dir = 0; dir < 2; dir++) {
-			uint starting_edge = !crawl_from + 2 * dir;
-			
-			CFDPolygon adjacent_quad;
-			//add_quad(adjacent_quad, polygons, new_ids, surface, quad.edges[starting_edge].neighbor, diagonal_edge);
-		}
-		
-		//break;
+                if (!scan_edgeloop(polygons, surface, new_ids, infos, quad, crawl_from)) break;
+                scan_edgeloop(polygons, surface, new_ids, infos, quad, crawl_from + 2); //backwards
+                
+                crawl_from = !crawl_from;
+            }
+        }*/
 	}
 
 	for (uint i = 0; i < surface.polygons.length; i++) {
@@ -409,6 +443,22 @@ vec3 quad_normal(vec3 positions[4]) {
 	vec3 normal1 = triangle_normal(triangle1);
 	vec3 normal2 = triangle_normal(triangle2);
 	return normalize((normal1 + normal2) / 2.0f);
+}
+
+void compute_normals(slice<CFDVertex> vertices, CFDCell& cell) {
+    const ShapeDesc& shape = shapes[cell.type];
+    
+    for (uint i = 0; i < shape.num_faces; i++) {
+        const ShapeDesc::Face& face = shape.faces[i];
+        vec3 positions[4];
+        uint verts = face.num_verts;
+        for (uint j = 0; j < face.num_verts; j++) {
+            vertex_handle vertex = cell.vertices[face.verts[j]];
+            positions[j] = vertices[vertex.id].position;
+        }
+        
+        cell.faces[i].normal = verts == 3 ? triangle_normal(positions) : quad_normal(positions);
+    }
 }
 
 CFDSurface surface_from_mesh(vector<CFDVertex>& vertices, const glm::mat4& mat, Mesh& mesh) {
@@ -528,14 +578,10 @@ void create_boundary(CFDVolume& result, uint& extruded_vertices_offset, Mesh& me
 		for (uint j = 0; j < sides; j++) {
 			cell.vertices[j] = polygon.vertices[j];
 			cell.vertices[j + sides].id = polygon.vertices[j].id + extruded_vertices_offset;
-		}
-
-		//bottom cell.faces[0]
-		//top cell.faces[polygon.type]
-		uint neighbors = polygon.type;
-		for (uint j = 0; j < neighbors; j++) {
-			cell.faces[j + 1].neighbor.id = polygon.edges[j].neighbor.id;
-		}
+            cell.faces[j + 1].neighbor.id = polygon.edges[j].neighbor.id;
+        }
+        
+        compute_normals(result.vertices, cell);
 	}
 }
 
@@ -588,6 +634,7 @@ void extrude_contour_mesh(CFDVolume& mesh, uint& extruded_vertices_offset, uint&
 		}
 		}
 
+        compute_normals(mesh.vertices, extruded_cell);
 		mesh.cells.append(extruded_cell);
 	}
 	extruded_cell_offset = cell_count;
@@ -612,12 +659,12 @@ struct Front {
 		Payload* p; //to avoid recursion
 		Subdivision* parent;
 	};
-
+    
 	union Payload {
 		Subdivision children[8];
 		struct {
 			AABB aabbs[MAX_PER_CELL];
-			cell_handle cells[MAX_PER_CELL];
+            cell_handle cells[MAX_PER_CELL];
 		};
 		Payload* free_next;
 
@@ -637,7 +684,8 @@ struct Front {
 	};
 
 	struct Result {
-		cell_handle cell;
+        uint cell_count;
+		cell_handle cells[16];
 		vertex_handle vertex;
 		float dist = FLT_MAX; 
 		float dist_to_center = FLT_MAX; 
@@ -717,9 +765,12 @@ struct Front {
 			last_visited = &subdivision;
 
 			for (uint i = 0; i < subdivision.count; i++) {
+                if (!subdivision.p->aabbs[i].intersects(aabb)) continue;
+                
 				cell_handle cell_handle = subdivision.p->cells[i];
 				CFDCell& cell = cells[cell_handle.id];
 
+                
 				//todo could skip this, if center is further than some threschold
 				
 				uint verts = shapes[cell.type].num_verts;
@@ -728,9 +779,13 @@ struct Front {
 					vec3 position = vertices[vertex_handle.id].position;
 					float dist = length(position - center);
 
-					if (dist < result.dist) {
+                    if (result.vertex.id == vertex_handle.id) {
+                        result.cells[result.cell_count++] = cell_handle;
+                    }
+					else if (dist < result.dist) {
 						result.dist = dist;
-						result.cell = cell_handle;
+                        result.cell_count = 1;
+						result.cells[0] = cell_handle;
 						result.vertex = vertex_handle;
 					}
 				}
@@ -947,7 +1002,8 @@ void test_front() {
 	front.add_cell({ 0 });
 
 	Front::Result result = front.find_closest(glm::vec3(0,1.0,0.0), 0.8);
-	assert(result.cell.id == 0);
+    assert(result.cell_count == 1);
+    assert(result.cells[0].id == 0);
 	assert(result.vertex.id == 4);
 }
 
@@ -986,15 +1042,14 @@ void create_isotropic_cell(CFDVolume& mesh, Front& front, CFDCell& cell, vec3* p
 	centroid /= base_sides;
 
 	//length(positions[i] - positions[(i + 1) % base_sides])
-	float r_h = sqrtf(3.0) / 2.0;
-	float r = 0.0f;
-	for (uint i = 0; i < base_sides; i++) r += r_h*length(positions[i] - centroid);
-	r /= base_sides;
-
-
+	float r_h = base_sides == 3 ? sqrtf(6)/3 : sqrtf(2)/2;
+	float r = FLT_MAX;
+	for (uint i = 0; i < base_sides; i++) r = fminf(r, r_h*length(positions[i] - positions[(i+1)%base_sides]));
+	//r /= base_sides;
+    
 	glm::vec3 position = centroid + glm::normalize(normal) * r;
 
-	Front::Result result = front.find_closest(position, r);
+    Front::Result result = front.find_closest(position, 1.0*r);
 	vertex_handle vertex = result.vertex;
 
 	//Add cell to the front and mesh
@@ -1004,46 +1059,48 @@ void create_isotropic_cell(CFDVolume& mesh, Front& front, CFDCell& cell, vec3* p
 		vertex.id = mesh.vertices.length;
 		cell.vertices[base_sides] = vertex;
 		mesh.vertices.append({ position, normal });
-
-		goto add_cell;
 	}
 	else {
 		cell.vertices[base_sides] = vertex;
-		CFDCell& neighbor = mesh.cells[result.cell.id];
+		
+        for (uint i = 0; i < result.cell_count; i++) {
+            cell_handle neighbor_cell = result.cells[i];
+            CFDCell& neighbor = mesh.cells[neighbor_cell.id];
 
-		vertex_handle faces_cell[6][3];
-		vertex_handle faces_neighbor[6][3];
+            vertex_handle faces_cell[6][3];
+            vertex_handle faces_neighbor[6][3];
 
-		for (uint i = 1; i < shape.num_faces; i++) {
-			for (uint j = 0; j < 3; j++) {
-				faces_cell[i][j] = cell.vertices[shape.faces[i].verts[j]];
-			}
-			sort3_vertices(faces_cell[i]);
-		}
+            for (uint i = 1; i < shape.num_faces; i++) {
+                for (uint j = 0; j < 3; j++) {
+                    faces_cell[i][j] = cell.vertices[shape.faces[i].verts[j]];
+                }
+                sort3_vertices(faces_cell[i]);
+            }
 
-		const ShapeDesc& neighbor_shape = shapes[neighbor.type];
+            const ShapeDesc& neighbor_shape = shapes[neighbor.type];
 
-		for (uint i = 0; i < neighbor_shape.num_faces; i++) {
-			for (uint j = 0; j < 3; j++) {
-				faces_cell[i][j] = neighbor.vertices[neighbor_shape.faces[i].verts[j]];
-			}
-			sort3_vertices(faces_cell[i]);
-		}
+            for (uint i = 0; i < neighbor_shape.num_faces; i++) {
+                for (uint j = 0; j < 3; j++) {
+                    faces_neighbor[i][j] = neighbor.vertices[neighbor_shape.faces[i].verts[j]];
+                }
+                sort3_vertices(faces_neighbor[i]);
+            }
 
-		for (uint i = 0; i < shape.num_faces; i++) {
-			for (uint j = 0; j < neighbor_shape.num_faces; j++) {
-				if (memcmp(faces_cell + i, faces_neighbor + j, sizeof(vertex_handle) * 3) == 0) {
-					cell.faces[i].neighbor = result.cell;
-					neighbor.faces[i].neighbor = { cell_id };
-					goto add_cell;
-				}
-			}
-		}
+            for (uint i = 1; i < shape.num_faces; i++) {
+                for (uint j = 0; j < neighbor_shape.num_faces; j++) {
+                    if (neighbor.faces[j].neighbor.id != -1) continue;
+                    if (memcmp(faces_cell + i, faces_neighbor + j, sizeof(vertex_handle) * 3) == 0) {
+                        cell.faces[i].neighbor = neighbor_cell;
+                        neighbor.faces[j].neighbor = { cell_id };
+                    }
+                }
+            }
+        }
 	}
 
-	add_cell:
-		mesh.cells.append(cell);
-		front.add_cell({ cell_id });
+    compute_normals(mesh.vertices, cell);
+    mesh.cells.append(cell);
+    front.add_cell({ cell_id });
 }
 
 void advancing_front_triangulation(CFDVolume& mesh, Front& front, uint& extruded_vertices_offset, uint& extruded_cell_offset, float grid_size) {
@@ -1064,26 +1121,203 @@ void advancing_front_triangulation(CFDVolume& mesh, Front& front, uint& extruded
 
 				uint verts = face.num_verts;
 				for (uint j = 0; j < face.num_verts; j++) {
-					vertices[j] = cell.vertices[face.verts[j]];
-					positions[j] = mesh.vertices[vertices[j].id].position;
+                    uint index = face.num_verts-j-1; //flip vertices, as this face will be the bottom
+					vertices[index] = cell.vertices[face.verts[j]];
+					positions[index] = mesh.vertices[vertices[index].id].position;
+                    
 				}
 
 				CFDCell new_cell;
 				vec3 normal;
 				if (verts == 4) {
 					new_cell.type = CFDCell::PENTAHEDRON;
-					normal = quad_normal(positions);
+					normal = -quad_normal(positions);
 				}
 				else {
 					new_cell.type = CFDCell::TETRAHEDRON;
-					normal = triangle_normal(positions);
+					normal = -triangle_normal(positions);
 				}
-
+                
+                new_cell.faces[0].neighbor = {(int)cell_id};
+                cell.faces[i].neighbor = {(int)mesh.cells.length};
+                
+                //todo set neighbor of base
 				memcpy_t(new_cell.vertices, vertices, verts);
 				create_isotropic_cell(mesh, front, new_cell, positions, normal);
 			}
 		}
 	}
+}
+
+struct Grid {
+    bool* occupied;
+    uint width;
+    uint height;
+    uint depth;
+    
+    glm::vec3 min;
+    float resolution;
+    
+    uint index(glm::ivec3 vec) {
+        return vec.x + vec.y * width + vec.z * width * height;
+    }
+    
+    glm::ivec3 pos(uint index) {
+        int wh = width * height;
+        glm::ivec3 pos;
+        pos.z = index / wh;
+        int rem = index - pos.z*wh;
+        pos.y = rem / width;
+        pos.x = rem % width;
+        return pos;
+    }
+    
+    bool is_valid(glm::ivec3 p) {
+        return p.x >= 0 && p.x < width
+            && p.y >= 0 && p.y < height
+            && p.z >= 0 && p.z < depth;
+    }
+    
+    bool& operator[](glm::ivec3 vec) {
+        return occupied[index(vec)];
+    }
+};
+
+
+glm::ivec3 grid_offsets[6] = {
+    glm::ivec3(-1,0,0),
+    glm::ivec3(1,0,0),
+    glm::ivec3(0,-1,0),
+    glm::ivec3(0,1,0),
+    glm::ivec3(0,0,-1),
+    glm::ivec3(0,0,1)
+};
+
+void build_grid(CFDVolume& mesh, uint& extruded_vertices_offset, uint& extruded_cell_offset, float resolution, uint layers, AABB& domain_bounds) {
+    uint cell_count = mesh.cells.length;
+    
+    glm::vec3 size = domain_bounds.size();
+    
+
+    
+    Grid grid;
+    grid.resolution = resolution;
+    grid.min = domain_bounds.min;
+    grid.width = size.x / resolution;
+    grid.height = size.y / resolution;
+    grid.depth = size.z / resolution;
+    
+    uint grid_cells = grid.width*grid.height*grid.depth;
+    grid.occupied = TEMPORARY_ZEROED_ARRAY(bool, grid_cells);
+    
+    glm::vec3 offset = glm::vec3(0.25*resolution);
+    
+    //RASTERIZE OUTLINE TO GRID
+    for (uint cell_id = extruded_cell_offset; cell_id < cell_count; cell_id++) {
+        CFDCell& cell = mesh.cells[cell_id];
+        AABB aabb;
+        uint verts = shapes[cell.type].num_verts;
+        for (uint i = 0; i < verts; i++) {
+            vec3 position = mesh.vertices[cell.vertices[i].id].position;
+            aabb.update(position);
+        }
+        
+        aabb.min -= offset;
+        aabb.max += offset;
+        
+        //RASTERIZE AABB
+        glm::ivec3 min_i = glm::ivec3(glm::floor((aabb.min - grid.min) / grid.resolution));
+        glm::ivec3 max_i = glm::ivec3(glm::ceil((aabb.max - grid.min) / grid.resolution));
+        
+        for (uint z = min_i.z; z < max_i.z; z++) {
+            for (uint y = min_i.y; y < max_i.y; y++) {
+                for (uint x = min_i.x; x < max_i.x; x++) {
+                    grid[glm::ivec3(x,y,z)] = true;
+                }
+            }
+        }
+    }
+    
+    //Flood Fill to determine what's inside and out
+    //Any Cell that is visited is outside if we start at the corner
+    bool* visited = TEMPORARY_ZEROED_ARRAY(bool, grid_cells);
+    
+    tvector<uint> stack;
+    stack.append(0);
+    visited[0] = true; //todo assert corner is empty
+    
+    while (stack.length > 0) {
+        uint index = stack.pop();
+        glm::ivec3 pos = grid.pos(index);
+        
+        for (uint i = 0; i < 6; i++) {
+            glm::ivec3 p = pos + grid_offsets[i];
+            if (!grid.is_valid(p)) continue;
+            
+            uint neighbor_index = grid.index(p);
+            if (!grid.occupied[neighbor_index] && !visited[neighbor_index]) {
+                visited[neighbor_index] = true;
+                stack.append(neighbor_index);
+            }
+        }
+    }
+    
+    //GENERATE OUTLINE
+    bool* empty = grid.occupied;
+    grid.occupied = visited;
+
+    for (uint i = 0; i < layers; i++) {
+        for (uint z = 0; z < grid.depth; z++) {
+            for (uint y = 0; y < grid.height; y++) {
+                for (uint x = 0; x < grid.width; x++) {
+                    glm::ivec3 pos = glm::ivec3(x,y,z);
+                    
+                    uint index = grid.index(pos);
+                    bool is_empty = grid.occupied[index];
+                    bool fill = false;
+                
+                    if (is_empty) {
+                        for (uint i = 0; i < 6 && !fill; i++) {
+                            glm::ivec3 p = pos + grid_offsets[i];
+                            if (grid.is_valid(p)) fill = !grid[p];
+                        }
+                    }
+                    
+                    
+                    if (fill) {
+                        empty[index] = false;
+        
+                        CFDCell cell;
+                        cell.type = CFDCell::HEXAHEDRON;
+                        
+                        uint offset = mesh.vertices.length;
+                        glm::vec3 min = domain_bounds.min;
+                        
+                        //todo: counter-clockwise
+                        mesh.vertices.append({{min.x + (x+1)*resolution, min.y + y*resolution, min.z + z*resolution}});
+                        mesh.vertices.append({{min.x + (x+1)*resolution, min.y + y*resolution, min.z + (z+1)*resolution}});
+                        mesh.vertices.append({{min.x + x*resolution    , min.y + y*resolution, min.z + (z+1)*resolution}});
+                        mesh.vertices.append({{min.x + x*resolution    , min.y + y*resolution, min.z + z*resolution}});
+
+                        mesh.vertices.append({{min.x + (x+1)*resolution, min.y + (y+1)*resolution, min.z + z*resolution}});
+                        mesh.vertices.append({{min.x + (x+1)*resolution, min.y + (y+1)*resolution, min.z + (z+1)*resolution}});
+                        mesh.vertices.append({{min.x + x*resolution    , min.y + (y+1)*resolution, min.z + (z+1)*resolution}});
+                        mesh.vertices.append({{min.x + x*resolution    , min.y + (y+1)*resolution, min.z + z*resolution}});
+                        
+                        for (int i = 0; i < 8; i++) {
+                            cell.vertices[i] = {(int)offset + i};
+                        }
+                        
+                        mesh.cells.append(cell);
+                    } else {
+                        empty[index] = is_empty;
+                    }
+                }
+            }
+        }
+        
+        std::swap(grid.occupied, empty);
+    }
 }
 
 CFDVolume generate_mesh(World& world, CFDMeshError& err) {
@@ -1125,12 +1359,14 @@ CFDVolume generate_mesh(World& world, CFDMeshError& err) {
 			float dist = initial * pow(a, i);
 			extrude_contour_mesh(result, extruded_vertice_watermark, extruded_cells_watermark, dist);
 		}
+        
+        build_grid(result, extruded_vertice_watermark, extruded_cells_watermark, domain.grid_resolution, domain.grid_layers,  domain_bounds);
 
-		Front front(result.vertices, result.cells, domain_bounds);
+		/*Front front(result.vertices, result.cells, domain_bounds);
 
 		for (uint i = 0; i < domain.tetrahedron_layers; i++) {
 			advancing_front_triangulation(result, front, extruded_vertice_watermark, extruded_cells_watermark, 0.1);
-		}
+		}*/
 	}
 	else {
 		err.type = CFDMeshError::NoMeshOrDomain;

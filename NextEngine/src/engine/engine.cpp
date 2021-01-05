@@ -28,8 +28,8 @@ Modules::Modules(const char* app_name, const char* level_path, const char* engin
 	register_default_components(*world);
 	physics_system->init(*world);
 
-    window->width = 3840;
-    window->height = 2160;
+    window->width = 2048; //3840;
+    window->height = 1440; //2160;
 	window->title = app_name;
 	//
 	window->full_screen = false;

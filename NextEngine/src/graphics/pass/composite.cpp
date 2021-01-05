@@ -43,7 +43,7 @@ void fill_composite_ubo(CompositeUBO& ubo, Viewport& viewport) {
 }
 
 void render_composite_pass(CompositeResources& resources) {
-	RenderPass& render_pass = begin_render_pass(RenderPass::Composite);
+	RenderPass render_pass = begin_render_pass(RenderPass::Composite);
 	CommandBuffer& cmd_buffer = render_pass.cmd_buffer;
 	bind_pipeline(cmd_buffer, resources.pipeline);
 	bind_descriptor(cmd_buffer, 1, resources.descriptor[get_frame_index()]);

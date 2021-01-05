@@ -113,17 +113,17 @@ constexpr ShapeDesc triprism_shape = { 6, 5, {
 
 constexpr ShapeDesc tetra_shape = { 4, 4, {
 	{3, {0,1,2}}, //bottom
-	{3, {0,3,2}}, //left
-	{3, {1,2,3}}, //right
-	{3, {0,1,3}}, //front
+	{3, {2,3,0}}, //left
+	{3, {1,0,3}}, //right
+	{3, {2,1,3}}, //front
 } };
 
 constexpr ShapeDesc petra_shape = { 5, 5, {
 	{4, {0,1,2,3}}, //bottom
-	{3, {0,4,3}}, //left
-	{3, {2,3,4}}, //back
-	{3, {1,2,4}}, //right
-	{3, {0,1,4}}, //front
+	{3, {3,4,0}}, //left
+	{3, {1,0,4}}, //back
+	{3, {2,1,4}}, //right
+	{3, {3,2,4}}, //front
 } };
 
 constexpr ShapeDesc shapes[4] = {

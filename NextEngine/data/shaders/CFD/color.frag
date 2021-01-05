@@ -17,11 +17,12 @@ void main() {
 
   vec3 normal = normal_from_texture(TBN, vec3(0.5,0.5,1.0));
 
-  vec3 diffuse = color.rgb * dot(normal, vec3(0,1,0));
+  vec3 diffuse = color.rgb * max(0, dot(normal, vec3(0,1,0)));
   vec3 ambient = color.rgb;
 
   #ifndef IS_DEPTH_ONLY 
-  FragColor = vec4(color);
-  // vec4(diffuse * 0.3 + ambient, color.a);
+  FragColor = vec4(diffuse * 0.6 + 0.6*ambient, color.a);
+  //vec4(color);
+    
   #endif 
 }

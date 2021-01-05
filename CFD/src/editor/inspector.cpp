@@ -29,8 +29,7 @@ void destroy_inspector(Inspector* inspector) {
 template<typename T>
 void field(UI& ui, string_view field, T* value, float min = -FLT_MAX, float max = FLT_MAX, float inc_per_pixel = 5.0) {
     begin_hstack(ui);
-    text(ui, field); //.color(color4(220,220,220));
-    spacer(ui);
+    text(ui, field).flex_h().align(HLeading); //.color(color4(220,220,220));
     input(ui, value, min, max, inc_per_pixel);
     end_hstack(ui);
 }
@@ -101,6 +100,11 @@ void render_domain_component(UI& ui, CFDDomain& domain) {
 
     begin_component(ui, "Tetrahedron Layer");
         field(ui, "layers", &domain.tetrahedron_layers);
+    end_component(ui);
+    
+    begin_component(ui, "Grid");
+    field(ui, "resolution", &domain.grid_resolution);
+    field(ui, "high layers", &domain.grid_layers);
     end_component(ui);
 }
 

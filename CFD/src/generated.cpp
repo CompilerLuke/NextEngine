@@ -30,6 +30,8 @@ refl::Struct init_CFDDomain() {
 	type.fields.append({"contour_initial_thickness", offsetof(CFDDomain, contour_initial_thickness), get_float_type()});
 	type.fields.append({"contour_thickness_expontent", offsetof(CFDDomain, contour_thickness_expontent), get_float_type()});
 	type.fields.append({"tetrahedron_layers", offsetof(CFDDomain, tetrahedron_layers), get_int_type()});
+	type.fields.append({"grid_resolution", offsetof(CFDDomain, grid_resolution), get_float_type()});
+	type.fields.append({"grid_layers", offsetof(CFDDomain, grid_layers), get_int_type()});
 	return type;
 }
 

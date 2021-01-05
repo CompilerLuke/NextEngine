@@ -86,6 +86,7 @@ void default_scene(Lister& lister, World& world) {
     }
     {
         auto [e, trans, camera, flyover] = world.make<Transform, Camera, Flyover>();
+        flyover.mouse_sensitivity = 0.1f;
         trans.position.z = 15.0;
     }
 }
@@ -189,9 +190,9 @@ ImageView& icon(UI& ui, texture_handle texture) {
     return image(ui, texture)
         .resizeable()
         .frame(20, 20)
-        .flex(glm::vec2(0))
         .color(hovered ? blue : white)
-        .on_hover([&](bool hover) { hovered = hover; });
+        .on_hover([&](bool hover) { hovered = hover; })
+        .flex(glm::vec2(0));
 }
 
 void render_editor_ui(CFD& cfd, Modules& engine) {

@@ -2,6 +2,8 @@
 
 #include "engine/handle.h"
 #include "graphics/rhi/buffer.h"
+#include <glm/vec3.hpp>
+#include <glm/mat4x4.hpp>
 
 struct Viewport;
 

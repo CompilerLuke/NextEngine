@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/container/hash_map.h"
 #include "core/container/string_view.h"
 #include "core/container/tvector.h"
 #include "graphics/rhi/draw.h"

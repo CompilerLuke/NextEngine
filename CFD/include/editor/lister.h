@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/container/string_view.h"
+#include "ecs/id.h"
 
 struct Lister;
 struct World;
