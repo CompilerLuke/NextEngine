@@ -22,7 +22,7 @@ using u16 = uint16_t;
 
 #define kb(num) num * 1024
 #define mb(num) kb(num) * 1024
-#define gb(num) mb(num) * 1024l
+#define gb(num) mb(num) * 1024ull
 
 #define SYSTEM_COMP
 #define COMP

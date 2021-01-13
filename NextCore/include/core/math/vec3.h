@@ -4,6 +4,8 @@
 #include <math.h>
 #include <glm/vec3.hpp>
 
+//todo merge vec3.h and vec4.h into one file
+
 struct vec3 {
 	float x;
 	float y;
@@ -71,6 +73,10 @@ inline float length(vec3 v) {
 
 inline float dot(vec3 a, vec3 b) {
 	return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+inline float sq(vec3 a) {
+	return a.x*a.x + a.y*a.y + a.z*a.z;
 }
 
 inline vec3 normalize(vec3 v) {

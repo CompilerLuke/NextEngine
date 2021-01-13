@@ -3,7 +3,7 @@
 #include "core/core.h"
 #include <assert.h>
 
-using hash_meta = uint;
+using hash_meta = u64;
 
 inline uint hash_func(void* ptr) { return (u64)ptr >> 32; }
 inline uint hash_func(uint hash) { return hash; }
@@ -33,9 +33,9 @@ struct hash_set_base {
 		}
 	}
 
-	bool matches(uint hash, const K& key, uint probe_hash) const {
-		uint hash_truncated = (hash << 1) >> 1;
-		uint found_hash = meta[probe_hash] >> 1;
+	bool matches(hash_meta hash, const K& key, uint probe_hash) const {
+		hash_meta hash_truncated = (hash << 1) >> 1;
+		hash_meta found_hash = meta[probe_hash] >> 1;
 		return found_hash == hash_truncated && keys[probe_hash] == key;
 	}
 
@@ -44,7 +44,7 @@ struct hash_set_base {
 	}
 
 	int add(K key) {
-		const u64 hash = hash_func(key);
+		const hash_meta hash = hash_func(key);
 		uint probe_hash = hash % capacity;
 		uint it = 0;
 		while (is_full(probe_hash)) {
@@ -63,7 +63,7 @@ struct hash_set_base {
 	}
 
 	int index(K key) {
-		const u64 hash = hash_func(key);
+		const hash_meta hash = hash_func(key);
 		uint probe_hash = hash % capacity;
 
 		while (is_full(probe_hash) && !matches(hash, key, probe_hash)) {
@@ -124,6 +124,14 @@ struct hash_map_base : hash_set_base<K> {
         
         
 	}
+
+	void clear() {
+		for (uint i = 0; i < capacity; i++) {
+			this->meta[i] = {};
+			this->keys[i] = {};
+			this->values[i] = {};
+		}
+	}
     
 	uint set(K key, const V& value) {
 		int index = this->keys.add(key);
@@ -170,7 +178,7 @@ struct hash_set {
 		}
 	}
 
-	bool matches(uint hash, const K& key, uint probe_hash) const { 
+	bool matches(hash_meta hash, const K& key, uint probe_hash) const { 
 		return hash_set_base<K>::hash_set_base(N, meta, keys).matches(hash, key, probe_hash);
 	}
 

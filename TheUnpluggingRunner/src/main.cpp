@@ -86,7 +86,7 @@ void fiber_main(void* data) {
 	LinearAllocator& temporary_allocator = get_thread_local_temporary_allocator();
 
 	permanent_allocator = LinearAllocator(mb(500));
-	temporary_allocator = LinearAllocator(mb(500));
+	temporary_allocator = LinearAllocator(gb(1));
 
 	Context& context = get_context();
 	context.temporary_allocator = &get_thread_local_temporary_allocator();

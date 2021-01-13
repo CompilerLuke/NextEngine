@@ -244,6 +244,8 @@ Ray ray_from_mouse(Viewport& viewport, glm::vec2 mouse_position) {
 	return Ray(start, glm::normalize(end - start), glm::length(end - start));
 }
 
+#undef max
+
 float max(glm::vec3 vec) {
 	return vec.x > vec.y ? (vec.x > vec.z ? vec.x : vec.z) : (vec.y > vec.z ? vec.y : vec.z);
 }

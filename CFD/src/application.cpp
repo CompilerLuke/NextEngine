@@ -86,7 +86,7 @@ void default_scene(Lister& lister, World& world) {
     }
     {
         auto [e, trans, camera, flyover] = world.make<Transform, Camera, Flyover>();
-        flyover.mouse_sensitivity = 0.1f;
+        //flyover.mouse_sensitivity = 0.1f;
         trans.position.z = 15.0;
     }
 }
@@ -96,8 +96,6 @@ void test_front();
 APPLICATION_API CFD* init(void* args, Modules& engine) {
     World& world = *engine.world;
     
-    test_front();
-
     CFD* cfd = new CFD();
     cfd->ui = make_ui();
     cfd->ui_renderer = make_ui_renderer();

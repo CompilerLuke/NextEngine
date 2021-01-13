@@ -81,9 +81,6 @@
     <ClCompile Include="src\generated.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="src\mesh_generation.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
     <ClCompile Include="src\solver.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -93,5 +90,10 @@
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="src\editor\lister.cpp" />
     <ClCompile Include="src\editor\inspector.cpp" />
+    <ClCompile Include="src\mesh_generation\mesh_generation.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mesh_generation\delanuay.cpp" />
+    <ClCompile Include="src\mesh_generation\isotropic_advancing_front.cpp" />
   </ItemGroup>
 </Project>

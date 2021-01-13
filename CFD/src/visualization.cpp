@@ -39,7 +39,7 @@ CFDVisualization* make_cfd_visualization() {
 	pipeline_desc.range[PushConstant_Vertex].size = sizeof(glm::mat4);
 	pipeline_desc.range[PushConstant_Fragment].size = 2*sizeof(glm::vec4);
 	pipeline_desc.range[PushConstant_Fragment].offset = sizeof(glm::mat4);
-    pipeline_desc.state = Cull_None; //temporary
+    //pipeline_desc.state = Cull_None; //temporary
     
 	visualization->pipeline_triangle_solid = query_Pipeline(pipeline_desc);
 
@@ -110,9 +110,8 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
 void render_cfd_mesh(CFDVisualization& visualization, CommandBuffer& cmd_buffer) {
 	glm::mat4 mat(1.0);
 	glm::vec4 color(1.0, 0.0, 0.0, 1.0);
-	glm::vec4 line_color(0.0, 0.0, 0.0, 1.0);
-	glm::vec4 cross_section_plane(1, 0, 0, -FLT_EPSILON);
-    
+	glm::vec4 line_color(0.0, 0.0, 1.0, 1.0);
+	glm::vec4 cross_section_plane(1, 0, 0, -2*FLT_EPSILON);
     
 	bind_pipeline(cmd_buffer, visualization.pipeline_triangle_solid);
 	bind_vertex_buffer(cmd_buffer, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_NONE);
@@ -164,6 +163,8 @@ void extract_cfd_scene_render_data(CFDSceneRenderData& render_data, World& world
 }
 
 void render_cfd_scene(CFDVisualization& visualization, const CFDSceneRenderData render_data, CommandBuffer& cmd_buffer) {
+	return;
+	
 	bind_pipeline(cmd_buffer, visualization.pipeline_triangle_solid);
 	bind_vertex_buffer(cmd_buffer, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_NONE);
 

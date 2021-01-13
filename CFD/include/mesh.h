@@ -18,6 +18,69 @@ struct cell_handle {
 	int id = -1;
 };
 
+struct EdgeSet {
+	vertex_handle a;
+	vertex_handle b;
+
+	inline EdgeSet() {}
+	inline EdgeSet(vertex_handle a, vertex_handle b) {
+		if (a.id > b.id) {
+			this->a = b;
+			this->b = a;
+		}
+		else {
+			this->a = a;
+			this->b = b;
+		}
+	}
+};
+
+inline u64 hash_func(EdgeSet edge) {
+	return (u64)edge.a.id << 32 | edge.b.id;
+}
+
+inline bool operator==(EdgeSet a, EdgeSet b) {
+	return a.a.id == b.a.id && a.b.id == b.b.id;
+}
+
+
+inline void swap_vertex(vertex_handle& a, vertex_handle& b) {
+	vertex_handle tmp = a;
+	a = b;
+	b = tmp;
+}
+
+inline void sort3_vertices(vertex_handle verts[3]) {
+	if (verts[0].id > verts[1].id) swap_vertex(verts[0], verts[1]);
+	if (verts[1].id > verts[2].id) swap_vertex(verts[1], verts[2]);
+	if (verts[0].id > verts[1].id) swap_vertex(verts[0], verts[1]);
+}
+
+struct TriangleFaceSet {
+	vertex_handle verts[3];
+
+	inline TriangleFaceSet() {}
+	inline TriangleFaceSet(vertex_handle v[3]) {
+		this->verts[0] = v[0];
+		this->verts[1] = v[1];
+		this->verts[2] = v[2];
+		sort3_vertices(this->verts);
+	}
+
+	inline bool operator==(const TriangleFaceSet& other) const {
+		return memcmp(verts, other.verts, sizeof(vertex_handle) * 3) == 0;
+	}
+};
+
+inline u64 hash_func(const TriangleFaceSet& set) {
+	return (u64)set.verts[0].id | (u64)set.verts[1].id << 22 | (u64)set.verts[2].id << 44;
+}
+
+struct Boundary {
+	cell_handle cell;
+	vertex_handle vertices[4];
+};
+
 //enum FaceSide {
 //	Bottom,
 //	Top,
@@ -95,7 +158,7 @@ struct ShapeDesc {
 };
 
 constexpr ShapeDesc hexahedron_shape = { 8, 6, {
-	{4,{0,1,2,3}}, //bottom
+	{4,{3,2,1,0}}, //bottom
 	{4,{0,4,7,3}}, //left
 	{4,{2,3,7,6}}, //back
 	{4,{1,2,6,5}},//right
@@ -133,5 +196,32 @@ constexpr ShapeDesc shapes[4] = {
 	petra_shape
 };
 
+void compute_normals(slice<CFDVertex> vertices, CFDCell& cell);
+
+vec3 triangle_normal(vec3 positions[3]);
+vec3 quad_normal(vec3 positions[4]);
+void advancing_front_triangulation(CFDVolume& mesh, uint& extruded_vertices_offset, uint& extruded_cell_offset, const AABB&);
+void build_deluanay(CFDVolume& volume, slice<vertex_handle> verts, slice<Boundary> boundary);
 CFDVolume generate_mesh(World& world, CFDMeshError&);
 void log_error(CFDMeshError& error);
+
+inline void get_positions(slice<CFDVertex> vertices, const CFDPolygon& polygon, vec3* positions) {
+	uint verts = polygon.type;
+	for (uint i = 0; i < verts; i++) {
+		positions[i] = vertices[polygon.vertices[i].id].position;
+	}
+}
+
+inline void get_positions(slice<CFDVertex> vertices, slice<vertex_handle> handles, vec3* positions) {
+	for (uint i = 0; i < handles.length; i++) {
+		positions[i] = vertices[handles[i].id].position;
+	}
+}
+
+inline void get_positions(slice<CFDVertex> vertices, CFDCell& cell, const ShapeDesc::Face& face, vec3* positions) {
+	uint verts = face.num_verts;
+	for (uint j = 0; j < face.num_verts; j++) {
+		vertex_handle vertex = cell.vertices[face.verts[j]];
+		positions[j] = vertices[vertex.id].position;
+	}
+}

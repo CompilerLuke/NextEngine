@@ -20,5 +20,5 @@ struct CFDDomain {
 	int tetrahedron_layers = 1;
     
     float grid_resolution = 0.15;
-    int grid_layers = 3;
+    int grid_layers = 1;
 };
