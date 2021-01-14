@@ -27,23 +27,23 @@ vec4 circumsphere(vec3 p[4]) {
 	float r = length(center - p[0]);
 	return vec4(center, r);
 
-	
+
 #else
-	
-	glm::mat3 a = glm::transpose(glm::mat3(p[0]-p[3], p[1]-p[3], p[2]-p[3]));
+
+	glm::mat3 a = glm::transpose(glm::mat3(p[0] - p[3], p[1] - p[3], p[2] - p[3]));
 	float sp = sq(p[3]);
 	vec3 b = 0.5f * vec3(sq(p[0]) - sp, sq(p[1]) - sp, sq(p[2]) - sp);
 	vec3 c = glm::inverse(a) * b;
 
 	float det = (
-		+ a[0][0] * (a[1][1] * a[2][2] - a[2][1] * a[1][2])
+		+a[0][0] * (a[1][1] * a[2][2] - a[2][1] * a[1][2])
 		- a[1][0] * (a[0][1] * a[2][2] - a[2][1] * a[0][2])
 		+ a[2][0] * (a[0][1] * a[1][2] - a[1][1] * a[0][2]));
 
-	if (det < 0.01) {
+	if (fabs(det) < 0.001) {
 		//printf("Co-planar points\n");
 		c = (p[0] + p[1] + p[2] + p[3]) / 4;
-		//return vec4((p[0]+p[1]+p[2]+p[3])/3, length(p[0]-p[1]));
+	//return vec4((p[0]+p[1]+p[2]+p[3])/3, length(p[0]-p[1]));
 	}
 
 	float r = length(c - p[0]);
@@ -120,6 +120,7 @@ struct DeluanayAcceleration {
 		free_payload = nullptr;
 		init(root);
 		root.aabb_division = aabb;
+		root.parent = nullptr;
 	}
 
 	bool is_leaf(Subdivision& subdivision) {
@@ -191,7 +192,9 @@ struct DeluanayAcceleration {
 		int y = (int)vec.y;
 		int z = (int)vec.z;
 
-		if (x < 0 || x > 1 || y < 0 || y > 1 || z < 0 || z > 1) return tiebreaker % 8;
+		if (x < 0 || x > 1 || y < 0 || y > 1 || z < 0 || z > 1) {
+			return tiebreaker % 8;
+		}
 		//x = (x > 1) ? 1 : (x < 0) ? 0 : x;
 		//y = (y > 1) ? 1 : (y < 0) ? 0 : y;
 		//z = (z > 1) ? 1 : (z < 0) ? 0 : z;
@@ -240,12 +243,32 @@ struct DeluanayAcceleration {
 			if (leaf) {
 				if (subdivision->count < MAX_PER_CELL) {
 					add_cell_to_leaf(*subdivision, e);
-					printf("Adding node %i\n", depth);
+					//printf("Adding node %i\n", depth);
 					break;
 				}
 				else { //Subdivide the cell
 					TetElement elements[MAX_PER_CELL];
 					memcpy_t(elements, subdivision->p->elements, subdivision->count);
+
+					bool all_duplicates = true;
+					bool all_outside = true;
+
+					vec3 last;
+					for (uint i = 0; i < MAX_PER_CELL && (all_duplicates || all_outside); i++) {
+						vec3 current = elements[i].circumcenter;
+						float dist = fabs(sq_distance(last, current));
+						if (i > 0 && all_duplicates && dist > 0.01) {
+							all_duplicates = false;
+						}
+						if (all_outside && subdivision->aabb_division.inside(current)) {
+							all_outside = false;
+						}
+						last = current;
+					}
+
+					bool unsplittable = all_duplicates || all_outside;
+
+					//assert(depth < 20);
 
 					//printf("Subdividing %p (%i)\n", subdivision, subdivision->count);
 
@@ -269,8 +292,16 @@ struct DeluanayAcceleration {
 						subdivision->p->children[i].parent = subdivision;
 					}
 
-					for (uint i = 0; i < MAX_PER_CELL; i++) {
-						add_cell_to_sub(subdivision->p->children, elements[i], min, half_size);
+
+					if (unsplittable) {
+						for (uint i = 0; i < MAX_PER_CELL; i++) {
+							add_cell_to_leaf(subdivision->p->children[i%8], elements[i]);
+						}
+					}
+					else {
+						for (uint i = 0; i < MAX_PER_CELL; i++) {
+							add_cell_to_sub(subdivision->p->children, elements[i], min, half_size);
+						}
 					}
 
 					//printf("Has count (%i)\n", subdivision->count);
@@ -302,7 +333,7 @@ struct DeluanayAcceleration {
 	}
 
 	void remove_cell(cell_handle handle) {
-		CellInfo& info = cell_info[handle.id];
+		CellInfo info = cell_info[handle.id];
 		Subdivision* subdivision = info.subdivision;
 
 		assert(subdivision->count > 0);
@@ -351,23 +382,23 @@ struct DeluanayAcceleration {
 				Subdivision children[8];
 				memcpy_t(children, subdivision->p->children, 8);
 
-subdivision->count = 0;
-for (uint i = 0; i < 8; i++) {
-	Subdivision& child = children[i];
+				subdivision->count = 0;
+				for (uint i = 0; i < 8; i++) {
+					Subdivision& child = children[i];
 
-	for (uint j = 0; j < child.count; j++) {
-		subdivision->p->elements[subdivision->count] = child.p->elements[j];
+					for (uint j = 0; j < child.count; j++) {
+						subdivision->p->elements[subdivision->count] = child.p->elements[j];
 
-		cell_handle cell = child.p->elements[j].cell;
-		cell_info[cell.id].index = subdivision->count;
-		cell_info[cell.id].subdivision = subdivision;
-		subdivision->count++;
-	}
+						cell_handle cell = child.p->elements[j].cell;
+						cell_info[cell.id].index = subdivision->count;
+						cell_info[cell.id].subdivision = subdivision;
+						subdivision->count++;
+					}
 
-	deinit(child);
-}
+					deinit(child);
+				}
 
-assert(subdivision->count <= MAX_PER_CELL);
+				assert(subdivision->count <= MAX_PER_CELL);
 			}
 
 			subdivision = subdivision->parent;
@@ -397,15 +428,19 @@ float tetrahedron_skewness(vec3 positions[4]) {
 	return skewness;
 }
 
-bool add_vertex(CFDVolume& volume, DeluanayAcceleration& acceleration, hash_map_base<TriangleFaceSet, PolygonCavityFace>& shared_face, tvector<cell_handle>& in_circum, vertex_handle vert, uint depth = 0) {
+bool add_vertex(CFDVolume& volume, DeluanayAcceleration& acceleration, hash_map_base<TriangleFaceSet, PolygonCavityFace>& shared_face, uint shared_face_capacity, tvector<cell_handle>& in_circum, vertex_handle vert, uint depth = 0) {
 	vec3 position = volume.vertices[vert.id].position;
 
 	in_circum.clear();
 	acceleration.find_in_circum(in_circum, position);
 
 	const uint max_shared_face = in_circum.length * 6;
+	assert(max_shared_face < shared_face_capacity);
+	
 	shared_face.capacity = max_shared_face;
 	shared_face.clear();
+
+	printf("Found %i in circum\n", in_circum.length);
 
 	for (cell_handle cell_handle : in_circum) {
 		//remove cell
@@ -517,7 +552,7 @@ void build_deluanay(CFDVolume& volume, slice<vertex_handle> verts, slice<Boundar
 	}
 
 	vec4 circum = circumsphere(positions);
-	float m = 1.0f;
+	float m = 10.0f;
 	AABB super_aabb = { vec3(circum) - m*circum.w, vec3(circum) + m*circum.w };
 
 	int cell_id = volume.cells.length;
@@ -532,7 +567,7 @@ void build_deluanay(CFDVolume& volume, slice<vertex_handle> verts, slice<Boundar
 	tvector<cell_handle> in_circum;
 	in_circum.allocator = &allocator;
 
-	constexpr uint max_shared_faces = mb(1) / (sizeof(TriangleFaceSet) + sizeof(PolygonCavityFace) + sizeof(hash_meta));
+	uint max_shared_faces = verts.length; // mb(1) / (sizeof(TriangleFaceSet) + sizeof(PolygonCavityFace) + sizeof(hash_meta));
 	hash_map_base<TriangleFaceSet, PolygonCavityFace> shared_face = {
 		max_shared_faces,
 		alloc_t<hash_meta>(allocator, max_shared_faces),
@@ -542,8 +577,9 @@ void build_deluanay(CFDVolume& volume, slice<vertex_handle> verts, slice<Boundar
 
 	cell_handle free_list;
 
-	for (vertex_handle vertex : verts) {
-		if (!add_vertex(volume, acceleration, shared_face, in_circum, vertex)) {
+	for (uint i = 0; i < verts.length; i++) {
+		printf("Adding vertex %i of %i", i, verts.length);
+		if (!add_vertex(volume, acceleration, shared_face, max_shared_faces, in_circum, verts[i])) {
 			break;
 		}
 	}

@@ -911,12 +911,13 @@ CFDVolume generate_mesh(World& world, CFDMeshError& err) {
 		}
 
 		tvector<Boundary> boundary;
-		tvector<vertex_handle> boundary_verts_a;
-		tvector<vertex_handle> boundary_verts_b;
+		tvector<vertex_handle> boundary_verts;
+		//tvector<vertex_handle> boundary_verts_a;
+		//tvector<vertex_handle> boundary_verts_b;
 
-		boundary_verts_a.reserve(result.vertices.length - extruded_vertice_watermark);
+		boundary_verts.reserve(result.vertices.length - extruded_vertice_watermark);
 		for (int i = extruded_vertice_watermark; i < result.vertices.length; i++) {
-			boundary_verts_a.append({ i });
+			boundary_verts.append({ i });
 		}
 
 		boundary.reserve(result.cells.length - extruded_cells_watermark);
@@ -935,11 +936,11 @@ CFDVolume generate_mesh(World& world, CFDMeshError& err) {
 
 		//result.cells.clear();
 		uint prev = result.cells.length;
-        build_grid(result, boundary_verts_b, boundary, extruded_vertice_watermark, extruded_cells_watermark, domain.grid_resolution, domain.grid_layers,  domain_bounds);		
+        build_grid(result, boundary_verts, boundary, extruded_vertice_watermark, extruded_cells_watermark, domain.grid_resolution, domain.grid_layers,  domain_bounds);		
 		
 		//std::shuffle(boundary_verts.begin(), boundary_verts.end(), std::default_random_engine(seed));
 
-		tvector<vertex_handle> boundary_verts;
+		/*tvector<vertex_handle> boundary_verts;
 		uint len = min(boundary_verts_a.length, boundary_verts_b.length);
 		for (uint i = 0; i < len; i++) {
 			boundary_verts.append(boundary_verts_a[i]);
@@ -950,13 +951,15 @@ CFDVolume generate_mesh(World& world, CFDMeshError& err) {
 		}
 		for (uint i = len; i < boundary_verts_b.length; i++) {
 			boundary_verts.append(boundary_verts_b[i]);
-		}
+		}*/
 
 		//boundary_verts.length = 300;
 
-		//advancing_front_triangulation(result, extruded_vertice_watermark, extruded_cells_watermark, domain_bounds);
-		build_deluanay(result, boundary_verts, boundary);
+		prev = result.cells.length;
+		advancing_front_triangulation(result, extruded_vertice_watermark, extruded_cells_watermark, domain_bounds);
+		//build_deluanay(result, boundary_verts, boundary);
 
+		printf("Deluanay generated %i cells", result.cells.length - prev);
 		/*Front front(result.vertices, result.cells, domain_bounds);
 
 		for (uint i = 0; i < domain.tetrahedron_layers; i++) {
