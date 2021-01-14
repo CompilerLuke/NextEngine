@@ -22,3 +22,4 @@ struct CFDDomain {
     float grid_resolution = 0.15;
     int grid_layers = 1;
 };
+

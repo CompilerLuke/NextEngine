@@ -5,9 +5,11 @@
 #include "components/transform.h"
 #include "components/camera.h"
 #include "components.h"
+#include "cfd_ids.h"
 #include "ecs/ecs.h"
 #include "graphics/assets/assets.h"
 #include "graphics/assets/model.h"
+
 
 struct Inspector {
     World& world;
