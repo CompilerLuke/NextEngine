@@ -65,10 +65,13 @@ struct hash_set_base {
 	int index(K key) {
 		const hash_meta hash = hash_func(key);
 		uint probe_hash = hash % capacity;
+		uint it = 0;
 
 		while (is_full(probe_hash) && !matches(hash, key, probe_hash)) {
+			assert(it != capacity);
 			probe_hash++;
 			probe_hash %= capacity;
+			it++;
 		}
 
 		if (is_full(probe_hash)) return probe_hash;

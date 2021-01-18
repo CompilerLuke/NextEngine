@@ -95,5 +95,6 @@
     </ClCompile>
     <ClCompile Include="src\mesh_generation\delanuay.cpp" />
     <ClCompile Include="src\mesh_generation\isotropic_advancing_front.cpp" />
+    <ClCompile Include="src\mesh_generation\failed.cpp" />
   </ItemGroup>
 </Project>

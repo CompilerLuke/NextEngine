@@ -198,6 +198,7 @@
     <ClCompile Include="src\editor\inspector.cpp" />
     <ClCompile Include="src\editor\lister.cpp" />
     <ClCompile Include="src\mesh_generation\delanuay.cpp" />
+    <ClCompile Include="src\mesh_generation\failed.cpp" />
     <ClCompile Include="src\mesh_generation\isotropic_advancing_front.cpp" />
     <ClCompile Include="src\UI\backend.cpp" />
     <ClCompile Include="src\UI\draw.cpp" />

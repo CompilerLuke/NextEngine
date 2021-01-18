@@ -429,7 +429,7 @@ void compute_normals(slice<CFDVertex> vertices, CFDCell& cell) {
         const ShapeDesc::Face& face = shape.faces[i];
         vec3 positions[4];
         uint verts = face.num_verts;
-        for (uint j = 0; j < face.num_verts; j++) {
+        for (uint j = 0; j < verts; j++) {
             vertex_handle vertex = cell.vertices[face.verts[j]];
             positions[j] = vertices[vertex.id].position;
         }
@@ -682,14 +682,12 @@ vertex_handle add_grid_vertex(CFDVolume& volume, Grid& grid, uint x, uint y, uin
 	return result;
 }
 
-void build_grid(CFDVolume& mesh, tvector<vertex_handle>& boundary_verts, tvector<Boundary>& boundary, uint& extruded_vertices_offset, uint& extruded_cell_offset, float resolution, uint layers, AABB& domain_bounds) {
+void build_grid(CFDVolume& mesh, vector<vertex_handle>& boundary_verts, tvector<Boundary>& boundary, uint& extruded_vertices_offset, uint& extruded_cell_offset, float resolution, uint layers, AABB& domain_bounds) {
 	LinearRegion region(get_temporary_allocator());
 	
 	uint cell_count = mesh.cells.length;
     
     glm::vec3 size = domain_bounds.size();
-    
-
     
     Grid grid;
     grid.resolution = resolution;
@@ -889,11 +887,11 @@ CFDVolume generate_mesh(World& world, CFDMeshError& err) {
 			tvector<Boundary> boundary;
 			tvector<vertex_handle> boundary_verts;
 
-			for (uint i = 0; i < 10000; i++) {
+			for (uint i = 0; i < 50; i++) {
 				vec3 pos;
-				pos.x = (float)(rand()%10000) / 2000.0f;
-				pos.y = (float)(rand()%10000) / 2000.0f;
-				pos.z = (float)(rand()%10000) / 2000.0f;
+				pos.x = (float)(rand()%10)/10;
+				pos.y = (float)(rand()%10)/10;
+				pos.z = (float)(rand()%10)/10;
 
 				boundary_verts.append({ (int)result.vertices.length });
 				result.vertices.append({ pos });
@@ -911,7 +909,7 @@ CFDVolume generate_mesh(World& world, CFDMeshError& err) {
 		}
 
 		tvector<Boundary> boundary;
-		tvector<vertex_handle> boundary_verts;
+		vector<vertex_handle> boundary_verts;
 		//tvector<vertex_handle> boundary_verts_a;
 		//tvector<vertex_handle> boundary_verts_b;
 
@@ -936,6 +934,7 @@ CFDVolume generate_mesh(World& world, CFDMeshError& err) {
 
 		//result.cells.clear();
 		uint prev = result.cells.length;
+		//boundary_verts.clear();
         build_grid(result, boundary_verts, boundary, extruded_vertice_watermark, extruded_cells_watermark, domain.grid_resolution, domain.grid_layers,  domain_bounds);		
 		
 		//std::shuffle(boundary_verts.begin(), boundary_verts.end(), std::default_random_engine(seed));
@@ -956,8 +955,13 @@ CFDVolume generate_mesh(World& world, CFDMeshError& err) {
 		//boundary_verts.length = 300;
 
 		prev = result.cells.length;
-		advancing_front_triangulation(result, extruded_vertice_watermark, extruded_cells_watermark, domain_bounds);
-		//build_deluanay(result, boundary_verts, boundary);
+		//advancing_front_triangulation(result, extruded_vertice_watermark, extruded_cells_watermark, domain_bounds);
+		
+		//printf("================\nOccupied %ull\n", boundary_verts.allocator->occupied);
+
+		result.cells.clear();
+		build_deluanay(result, boundary_verts, boundary);
+
 
 		printf("Deluanay generated %i cells", result.cells.length - prev);
 		/*Front front(result.vertices, result.cells, domain_bounds);

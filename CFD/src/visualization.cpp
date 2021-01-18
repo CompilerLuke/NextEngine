@@ -16,6 +16,17 @@
 #include "core/time.h"
 #include "cfd_ids.h"
 
+struct DebugRenderer {
+	CPUVisibleBuffer debug_line_buffer;
+	CPUVisibleBuffer debug_index_buffer;
+	Arena vertex_arena[MAX_FRAMES_IN_FLIGHT];
+	Arena index_arena[MAX_FRAMES_IN_FLIGHT];
+	uint frame_index;
+
+	pipeline_handle pipeline_line;
+	pipeline_handle pipeline_triangle;
+};
+
 struct CFDVisualization {
 	VertexBuffer line_vertex_buffer;
 	VertexBuffer solid_vertex_buffer;
@@ -39,7 +50,7 @@ CFDVisualization* make_cfd_visualization() {
 	pipeline_desc.range[PushConstant_Vertex].size = sizeof(glm::mat4);
 	pipeline_desc.range[PushConstant_Fragment].size = 2*sizeof(glm::vec4);
 	pipeline_desc.range[PushConstant_Fragment].offset = sizeof(glm::mat4);
-    //pipeline_desc.state = Cull_None; //temporary
+    pipeline_desc.state =  Cull_None; //temporary
     
 	visualization->pipeline_triangle_solid = query_Pipeline(pipeline_desc);
 
@@ -110,17 +121,18 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
 void render_cfd_mesh(CFDVisualization& visualization, CommandBuffer& cmd_buffer) {
 	glm::mat4 mat(1.0);
 	glm::vec4 color(1.0, 0.0, 0.0, 1.0);
-	glm::vec4 line_color(0.0, 0.0, 1.0, 1.0);
-	glm::vec4 cross_section_plane(1, 0, 0, -2*FLT_EPSILON);
-    
+	glm::vec4 line_color(1.0, 1.0, 0.0, 10.0);
+	glm::vec4 cross_section_plane(0, 0, 0, -FLT_EPSILON);
+
 	bind_pipeline(cmd_buffer, visualization.pipeline_triangle_solid);
 	bind_vertex_buffer(cmd_buffer, VERTEX_LAYOUT_DEFAULT, INSTANCE_LAYOUT_NONE);
 	push_constant(cmd_buffer, VERTEX_STAGE, 0, &mat);
-	push_constant(cmd_buffer, FRAGMENT_STAGE, sizeof(glm::mat4), &color);
+	
 	push_constant(cmd_buffer, FRAGMENT_STAGE, sizeof(glm::mat4) + sizeof(glm::vec4), &cross_section_plane);
 
+	push_constant(cmd_buffer, FRAGMENT_STAGE, sizeof(glm::mat4), &color);
 	draw_mesh(cmd_buffer, visualization.solid_vertex_buffer);
-
+		
 	bind_pipeline(cmd_buffer, visualization.pipeline_line);
 	push_constant(cmd_buffer, FRAGMENT_STAGE, sizeof(glm::mat4), &line_color);
 	draw_mesh(cmd_buffer, visualization.line_vertex_buffer);

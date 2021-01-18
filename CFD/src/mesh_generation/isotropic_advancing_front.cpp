@@ -8,6 +8,32 @@
 #include "mesh.h"
 #include "core/memory/linear_allocator.h"
 
+struct Ray {
+	vec3 orig;
+	vec3 dir;
+	float max_t;
+
+	Ray(vec3 start, vec3 end) {
+		orig = start;
+		dir = end - start;
+		max_t = length(dir);
+		dir /= max_t;
+	}
+};
+
+bool ray_triangle_intersection(vec3 orig, vec3 dir, vec3 p[3], float* t);
+
+bool ray_triangle_intersection(const Ray& ray, vec3 v0, vec3 v1, vec3 v2) {
+	vec3 v[3] = { v0,v1,v2 };
+	float t = 0.0f;
+	bool inter = ray_triangle_intersection(ray.orig, ray.dir, v, &t);
+	bool result = inter;
+	if (inter) {
+		result = t + 0.01 < ray.max_t;
+	}
+	return result;
+}
+
 struct Front {
 	static constexpr uint MAX_PER_CELL = 16;
 	static constexpr uint BLOCK_SIZE = kb(16);
@@ -114,7 +140,58 @@ struct Front {
 		free_payload = free_next;
 	}
 
-	Result find_closest(Subdivision& subdivision, AABB& aabb, cell_handle curr) {
+	bool intersects(Subdivision& subdivision, Ray& ray, AABB& aabb) {
+		if (!aabb.intersects(subdivision.aabb)) return false;
+
+		bool leaf = is_leaf(subdivision);
+		if (leaf) {
+			for (uint i = 0; i < subdivision.count; i++) {
+				if (!subdivision.p->aabbs[i].intersects(aabb)) continue;
+
+				CFDCell& cell = cells[subdivision.p->cells[i].id];
+				const ShapeDesc& shape = shapes[cell.type];
+				for (uint f = 0; f < shape.num_faces; f++) {
+					vec3 p[4];
+					get_positions(vertices, cell, shape.faces[f], p);
+
+					if (ray_triangle_intersection(ray, p[0], p[1], p[2])) {
+						return true;
+					}
+					if (shape.faces[f].num_verts == 4) {
+						if (ray_triangle_intersection(ray, p[0], p[2], p[3])) {
+							return true;
+						}
+					}
+				}
+			}
+		}
+		else {
+			for (uint i = 0; i < 8; i++) {
+				if (intersects(subdivision.p->children[i], ray, aabb)) return true;
+			}
+		}
+		return false;
+	}
+
+	bool intersects(Ray& ray) {
+		Subdivision* start_from = last_visited;
+
+		vec3 a = ray.orig;
+		vec3 b = ray.orig + ray.max_t * ray.dir;
+
+		AABB aabb;
+		aabb.update(a);
+		aabb.update(b);
+		
+		while (!aabb.inside(start_from->aabb_division)) {
+			if (!start_from->parent) break; //found root
+			start_from = start_from->parent;
+		}
+
+		return intersects(root, ray, aabb);
+	}
+
+	Result find_closest(Subdivision& subdivision, vec3 base, AABB& aabb, cell_handle curr) {
 		Result result;
 		if (!aabb.intersects(subdivision.aabb)) return result;
 
@@ -134,19 +211,9 @@ struct Front {
 
 				//todo could skip this, if center is further than some threschold
 				const ShapeDesc& shape = shapes[cell.type];
-				bool valid_verts[8] = {};
-				for (uint i = 0; i < shape.num_faces; i++) {
-					const ShapeDesc::Face& face = shape.faces[i];
-					if (cell.faces[i].neighbor.id != -1) continue;
-					for (uint j = 0; j < face.num_verts; j++) {
-						valid_verts[face.verts[j]] = true;
-					}
-				}
 
 				uint verts = shapes[cell.type].num_verts;
 				for (uint i = 0; i < verts; i++) {
-					if (!valid_verts[i]) continue;
-
 					vertex_handle v = cell.vertices[i];
 					vec3 position = vertices[v.id].position;
 					float dist = length(position - center);
@@ -155,6 +222,8 @@ struct Front {
 						result.cells[result.cell_count++] = cell_handle;
 					}
 					else if (dist < result.dist) {
+						if (intersects(Ray(base, position))) continue;
+
 						result.dist = dist;
 						result.cell_count = 1;
 						result.cells[0] = cell_handle;
@@ -165,7 +234,7 @@ struct Front {
 		}
 		else {
 			for (uint i = 0; i < 8; i++) {
-				Result child_result = find_closest(subdivision.p->children[i], aabb, curr);
+				Result child_result = find_closest(subdivision.p->children[i], base, aabb, curr);
 				if (child_result.dist < result.dist) result = child_result;
 			}
 		}
@@ -173,7 +242,7 @@ struct Front {
 		return result;
 	}
 
-	Result find_closest(glm::vec3 position, float radius, cell_handle curr) {
+	Result find_closest(glm::vec3 position, vec3 base, float radius, cell_handle curr) {
 		uint depth = 0;
 
 		AABB sphere_aabb;
@@ -187,7 +256,7 @@ struct Front {
 			start_from = start_from->parent;
 		}
 
-		Result result = find_closest(*start_from, sphere_aabb, curr);
+		Result result = find_closest(*start_from, base, sphere_aabb, curr);
 		if (result.dist < radius) {
 			return result;
 		}
@@ -374,7 +443,7 @@ void test_front() {
 
 	front.add_cell({ 0 });
 
-	Front::Result result = front.find_closest(glm::vec3(0, 1.0, 0.0), 0.8, { 0 });
+	Front::Result result = front.find_closest(glm::vec3(0, 1.0, 0.0), vec3(0), 0.8, { 0 });
 	assert(result.cell_count == 1);
 	assert(result.cells[0].id == 0);
 	assert(result.vertex.id == 4);
@@ -410,16 +479,23 @@ void create_isotropic_cell(CFDVolume& mesh, Front& front, CFDCell& cell, cell_ha
 
 	glm::vec3 position = centroid + glm::normalize(normal) * r * r_h;
 
-	Front::Result result = front.find_closest(position, r, curr);
+	Front::Result result = front.find_closest(position, centroid, r, curr);
 	vertex_handle vertex = result.vertex;
 
 	//Add cell to the front and mesh
 	int cell_id = mesh.cells.length;
 
 	if (vertex.id == -1) {
-		vertex.id = mesh.vertices.length;
-		cell.vertices[base_sides] = vertex;
-		mesh.vertices.append({ position, normal });
+		uint attempts = 5;
+		for (uint i = 0; i < attempts; i++) {
+			vec3 position = centroid + glm::normalize(normal) * r * (attempts - i)/attempts * r_h;
+
+			if (i+1 < attempts && front.intersects(Ray{ centroid,position })) continue;
+			
+			vertex.id = mesh.vertices.length;
+			cell.vertices[base_sides] = vertex;
+			mesh.vertices.append({ position, normal });
+		}
 	}
 	else {
 		cell.vertices[base_sides] = vertex;
