@@ -6,6 +6,7 @@
 #include "ecs/id.h"
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
+#include "core/math/vec4.h"
 
 struct CommandBuffer;
 struct CFDVolume;
@@ -16,7 +17,7 @@ struct FrameData;
 struct Renderer;
 
 CFDVisualization* make_cfd_visualization();
-void build_vertex_representation(CFDVisualization& visualization, CFDVolume&);
+void build_vertex_representation(CFDVisualization& visualization, CFDVolume&, vec4 plane);
 void render_cfd_mesh(CFDVisualization& visualization, CommandBuffer& cmd_buffer);
 
 struct CFDMeshInstance {

@@ -155,9 +155,15 @@ void Application::reload_if_modified() {
 }
 
 void Application::run() {
+    static bool present = true;
+    
 	while (is_running()) {
-        if (engine.window && !engine.window->is_visible()) {
+        if (!present && engine.window && !engine.window->is_visible()) {
             thread_sleep(16000);
+            present = false;
+            engine.window->poll_inputs();
+            
+            continue;
         }
         
 		engine.begin_frame();
@@ -179,6 +185,7 @@ void Application::run() {
 		}
 
 		engine.end_frame();
+        present = false;
 	}
 }
 

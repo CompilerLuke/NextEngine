@@ -60,12 +60,18 @@ struct TriangleFaceSet {
 	vertex_handle verts[3];
 
 	inline TriangleFaceSet() {}
-	inline TriangleFaceSet(vertex_handle v[3]) {
+	inline TriangleFaceSet(const vertex_handle v[3]) {
 		this->verts[0] = v[0];
 		this->verts[1] = v[1];
 		this->verts[2] = v[2];
 		sort3_vertices(this->verts);
 	}
+    inline TriangleFaceSet(vertex_handle a, vertex_handle b, vertex_handle c) {
+        this->verts[0] = a;
+        this->verts[1] = b;
+        this->verts[2] = c;
+        sort3_vertices(this->verts);
+    }
 
 	inline bool operator==(const TriangleFaceSet& other) const {
 		return memcmp(verts, other.verts, sizeof(vertex_handle) * 3) == 0;
@@ -103,8 +109,6 @@ struct CFDCell {
 
 	Face faces[6];
 	vertex_handle vertices[8];
-	float pressure;
-	vec3 velocity;
 };
 
 struct CFDPolygon {
@@ -135,6 +139,14 @@ struct CFDSurface {
 struct CFDVolume {
 	vector<CFDCell> cells;
 	vector<CFDVertex> vertices;
+    
+    inline CFDCell& operator[](cell_handle cell) {
+        return cells[cell.id];
+    }
+    
+    inline CFDVertex& operator[](vertex_handle vertex) {
+        return vertices[vertex.id];
+    }
 };
 
 struct CFDMeshError {
@@ -150,11 +162,15 @@ struct ShapeDesc {
 	struct Face {
 		uint num_verts;
 		uint verts[6];
+        
+        const uint operator[](uint v) const { return verts[v]; }
 	};
 
 	uint num_verts;
 	uint num_faces;
 	Face faces[6];
+    
+    const Face& operator[](uint face) const { return faces[face]; }
 };
 
 constexpr ShapeDesc hexahedron_shape = { 8, 6, {
@@ -224,4 +240,13 @@ inline void get_positions(slice<CFDVertex> vertices, CFDCell& cell, const ShapeD
 		vertex_handle vertex = cell.vertices[face.verts[j]];
 		positions[j] = vertices[vertex.id].position;
 	}
+}
+
+inline vec3 compute_centroid(CFDVolume& volume, vertex_handle vertices[], uint n) {
+    vec3 centroid;
+    for (uint i = 0; i < n; i++) {
+        centroid += volume[vertices[i]].position;
+    }
+    centroid /= n;
+    return centroid;
 }

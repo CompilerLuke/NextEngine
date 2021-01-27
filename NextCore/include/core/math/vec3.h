@@ -17,6 +17,7 @@ struct vec3 {
 
 	inline vec3(glm::vec3 v) : x(v.x), y(v.y), z(v.z) {}
 	inline operator glm::vec3() { return glm::vec3(x,y,z); }
+    inline float& operator[](uint i) { return (&this->x)[i]; }
 };
 
 inline vec3 operator+(vec3 a, vec3 b) {
@@ -91,3 +92,7 @@ inline vec3 cross(vec3 a, vec3 b) {
 	};
 }
 
+inline float max(vec3 vec) {
+    if (vec.x > vec.y) return vec.x > vec.z ? vec.x : vec.z;
+    else return vec.y > vec.z ? vec.y : vec.z;
+}

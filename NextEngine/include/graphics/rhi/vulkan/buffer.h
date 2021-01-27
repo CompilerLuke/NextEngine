@@ -43,14 +43,14 @@ using ArrayVertexBindings = array<2, VkVertexInputBindingDescription>;
 //todo tommorow optimization performing merging
 //todo VkBuffer can be merged for different Layouts
 struct VertexArena {
-	int vertex_capacity;
-	int index_capacity;
-	int base_vertex_offset;
-	int base_index_offset;
-	int vertex_offset;
-	int index_offset;
-	int vertex_offset_start_of_frame;
-	int index_offset_start_of_frame;
+	u64 vertex_capacity;
+	u64 index_capacity;
+	u64 base_vertex_offset;
+	u64 base_index_offset;
+	u64 vertex_offset;
+	u64 index_offset;
+	u64 vertex_offset_start_of_frame;
+	u64 index_offset_start_of_frame;
 };
 
 struct LayoutVertexInputs {
@@ -161,7 +161,6 @@ HostVisibleBuffer make_HostVisibleBuffer(VkDevice device, VkPhysicalDevice physi
 void destroy_HostVisibleBuffer(VkDevice device, VkPhysicalDevice physical_device, HostVisibleBuffer&);
 void map_buffer_memory(VkDevice device, HostVisibleBuffer& buffer_backing);
 void unmap_buffer_memory(VkDevice device, HostVisibleBuffer& buffer_backing);
-
 
 void begin_frame(InstanceAllocator& self, uint frame_index);
 //void end_frame(InstanceAllocator& self);

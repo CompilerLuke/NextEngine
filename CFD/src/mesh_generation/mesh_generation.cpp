@@ -1,5 +1,7 @@
 #include <glm/vec3.hpp>
 #include "core/core.h"
+#include "mesh_generation/advancing_front.h"
+
 
 //found on https://cs.stackexchange.com/questions/37952/hash-function-floating-point-inputs-for-genetic-algorithm
 u64 hash_func(glm::vec3 position) {
@@ -491,7 +493,7 @@ CFDSurface surface_from_mesh(vector<CFDVertex>& vertices, const glm::mat4& mat, 
 			uint a = vert_for_edge[j][0];
 			uint b = vert_for_edge[j][1];
 
-			vec3 mid_point = (vertex_positions[a] + vertex_positions[b]) / 2.0f;
+			vec3 mid_point = (vertex_positions[a] + vertex_positions[b]) / 2.0f; //todo use vertex indices instead
 
 			uint index = edge_hash_map.add(mid_point);
 			EdgeInfo& info = edge_hash_map.values[index];
@@ -524,98 +526,116 @@ CFDSurface surface_from_mesh(vector<CFDVertex>& vertices, const glm::mat4& mat, 
 	return {std::move(triangles), vertices};
 }
 
+void extrude_cell(CFDVolume& volume, Front& front, vertex_handle* extruded, uint front_offset, float dist, CFDCell& cell, cell_handle handle) {
+    CFDCell extruded_cell;
+    extruded_cell.type = cell.type;
 
-void create_boundary(CFDVolume& result, uint& extruded_vertices_offset, Mesh& mesh, const glm::mat4& model_m, float dist) {
+    uint base = cell.type == CFDCell::HEXAHEDRON ? 4 : 3;
+    if (cell.type != CFDCell::HEXAHEDRON && cell.type != CFDCell::TRIPRISM) return;
+    
+    bool in_front = true;
+    for (uint j = 0; j < base; j++) {
+        if (cell.vertices[j + base].id < front_offset) {
+            in_front = false;
+            break;
+        }
+    }
+    
+    if (!in_front) return;
+    
+    memcpy_t(extruded_cell.vertices, cell.vertices + base, base);
+    float edge_length = 0;
+    for (uint j = 0; j < base; j++) {
+        edge_length = length(volume[cell.vertices[j+base]].position - volume[cell.vertices[(j+1)%base+base]].position);
+    }
+    edge_length /= base;
+    
+    //dist = fminf(0.5f*edge_length, dist);
+    
+    for (uint j = 0; j < base; j++) {
+        vertex_handle& v = extruded[cell.vertices[j+base].id - front_offset];
+        if (v.id == -1) {
+            CFDVertex& vertex = volume[cell.vertices[j+base]];
+            vec3 target = vertex.position + vertex.normal * dist;
+            
+            Front::Result result = front.find_closest(target, vertex.position, 0.49f*dist, {-1});
+            
+            if (false && result.vertex.id != -1) {
+                v = result.vertex;
+            } else {
+                v = {(int)volume.vertices.length};
+                
+                CFDVertex extruded = {target, vertex.normal};
+                volume.vertices.append(extruded);
+            }
+        }
+        
+        extruded_cell.vertices[j+base] = v;
+        //todo fix connectivity
+        //extruded_cell.faces[j + 1].neighbor.id = -1;
+        //extruded_cell.faces[j + 1].neighbor.id = cell.faces[j + 1].neighbor.id + cell_offset;
+    }
+    
+    for (uint i = 0; i < base; i++) {
+        uint n = 0;
+        for (uint j = i+1; j < base; j++) {
+            if (extruded_cell.vertices[i].id == extruded_cell.vertices[j].id) n++;
+        }
+        if (n > 0) return; //forms duplicate
+    }
+    
+    cell_handle extruded_handle = {(int)volume.cells.length};
+
+    extruded_cell.faces[0].neighbor = handle;
+    cell.faces[base+1].neighbor.id = volume.cells.length;
+    
+    compute_normals(volume.vertices, extruded_cell);
+    volume.cells.append(extruded_cell);
+    
+    front.add_cell(extruded_handle);
+}
+
+
+void create_boundary(CFDVolume& result, Front& front, uint& extruded_vertices_offset, Mesh& mesh, const glm::mat4& model_m, float dist) {
 	result = {};
 
-	vector<CFDVertex> vertices;
-	CFDSurface surface = surface_from_mesh(vertices, model_m, mesh);
+	CFDSurface surface = surface_from_mesh(result.vertices, model_m, mesh);
 	surface = quadify_surface(surface);
 
-	extruded_vertices_offset = vertices.length;
+	extruded_vertices_offset = result.vertices.length;
 	
-	result.vertices.resize(vertices.length * 2);
-	for (uint i = 0; i < vertices.length; i++) {
-		result.vertices[i] = vertices[i];
-		//extruded vert
-		result.vertices[i + extruded_vertices_offset].position = vertices[i].position + dist * vertices[i].normal;
-		result.vertices[i + extruded_vertices_offset].normal = vertices[i].normal;
-	}
-
-	result.cells.resize(surface.polygons.length);
+    vertex_handle* extruded = TEMPORARY_ARRAY(vertex_handle, result.vertices.length);
 
 	for (uint i = 0; i < surface.polygons.length; i++) {
 		CFDPolygon& polygon = surface.polygons[i];
 		
-		CFDCell& cell = result.cells[i];
-
+        CFDCell cell;
 		cell.type = polygon.type == CFDPolygon::TRIANGLE ? CFDCell::TRIPRISM : CFDCell::HEXAHEDRON;
 
 		uint sides = polygon.type;
 		for (uint j = 0; j < sides; j++) {
-			cell.vertices[j] = polygon.vertices[j];
-			cell.vertices[j + sides].id = polygon.vertices[j].id + extruded_vertices_offset;
+			cell.vertices[j + sides] = polygon.vertices[j];
             cell.faces[j + 1].neighbor.id = polygon.edges[j].neighbor.id;
         }
         
-        compute_normals(result.vertices, cell);
+        extrude_cell(result, front, extruded, 0, dist, cell, {});
 	}
 }
 
-void extrude_contour_mesh(CFDVolume& mesh, uint& extruded_vertices_offset, uint& extruded_cell_offset, float dist) {
+void extrude_contour_mesh(CFDVolume& mesh, Front& front, uint& extruded_vertices_offset, uint& extruded_cell_offset, float dist) {
 	uint vertex_count = mesh.vertices.length;
-	for (uint i = extruded_vertices_offset; i < vertex_count; i++) {
-		CFDVertex& vertex = mesh.vertices[i];
-		CFDVertex extruded = vertex;
-		extruded.position += vertex.normal * dist;
-
-		mesh.vertices.append(extruded);
-	}
-	uint offset = vertex_count - extruded_vertices_offset;
+    
+    uint front_offset = extruded_vertices_offset;
+    uint n_vertices = vertex_count - extruded_vertices_offset;
+    vertex_handle* extruded = TEMPORARY_ARRAY(vertex_handle, n_vertices);
 	extruded_vertices_offset = vertex_count;
 
 	uint cell_count = mesh.cells.length;
-	uint cell_offset = cell_count - extruded_cell_offset;
-
-	for (uint i = extruded_cell_offset; i < cell_count; i++) {
-		CFDCell& cell = mesh.cells[i];
-
-		CFDCell extruded_cell;
-		extruded_cell.type = cell.type;
-
-		switch (cell.type) {
-		case CFDCell::HEXAHEDRON: {
-			memcpy_t(extruded_cell.vertices, cell.vertices + 4, 4);
-			for (uint j = 0; j < 4; j++) {
-				extruded_cell.vertices[j + 4].id = extruded_cell.vertices[j].id + offset;
-				extruded_cell.faces[j + 1].neighbor.id = cell.faces[j + 1].neighbor.id + cell_offset;
-			}
-
-			extruded_cell.faces[0].neighbor.id = i;
-			cell.faces[5].neighbor.id = mesh.cells.length;
-
-			break;
-		}
-
-		case CFDCell::TRIPRISM: {
-			memcpy_t(extruded_cell.vertices, cell.vertices + 3, 3);
-			for (uint j = 0; j < 3; j++) {
-				extruded_cell.vertices[j + 3].id = extruded_cell.vertices[j].id + offset;
-				extruded_cell.faces[j + 1].neighbor.id = cell.faces[j + 1].neighbor.id + cell_offset;
-			}
-
-			extruded_cell.faces[0].neighbor.id = i;
-			cell.faces[4].neighbor.id = mesh.cells.length;
-
-			break;
-		}
-		}
-
-        compute_normals(mesh.vertices, extruded_cell);
-		mesh.cells.append(extruded_cell);
+	for (int i = extruded_cell_offset; i < cell_count; i++) {
+        extrude_cell(mesh, front, extruded, front_offset, dist, mesh.cells[i], {i});
 	}
 	extruded_cell_offset = cell_count;
-	printf("Generated %i new cells, offset %i, dist %f\n", mesh.cells.length - extruded_cell_offset, offset, dist);
+	printf("Generated %i new cells, offset %i, dist %f\n", mesh.cells.length - extruded_cell_offset, n_vertices, dist);
 }
 
 struct Grid {
@@ -662,6 +682,15 @@ glm::ivec3 grid_offsets[6] = {
     glm::ivec3(0 ,1 ,0 )
 };
 
+uint opposing_face[6] = {
+    5,
+    3,
+    4,
+    1,
+    2,
+    0
+};
+
 vertex_handle add_grid_vertex(CFDVolume& volume, Grid& grid, uint x, uint y, uint z, bool* unique) {
 	uint index = x + y * (grid.width+1) + z * (grid.width+1) * (grid.height+1);
 	vertex_handle& result = grid.vertices[index];
@@ -682,19 +711,46 @@ vertex_handle add_grid_vertex(CFDVolume& volume, Grid& grid, uint x, uint y, uin
 	return result;
 }
 
-void build_grid(CFDVolume& mesh, vector<vertex_handle>& boundary_verts, tvector<Boundary>& boundary, uint& extruded_vertices_offset, uint& extruded_cell_offset, float resolution, uint layers, AABB& domain_bounds) {
+void build_grid(CFDVolume& mesh, vector<vertex_handle>& boundary_verts, tvector<Boundary>& boundary, uint& extruded_vertices_offset, uint& extruded_cell_offset, float resolution, uint layers) {
 	LinearRegion region(get_temporary_allocator());
 	
 	uint cell_count = mesh.cells.length;
+    
+    AABB domain_bounds;
+    for (uint i = extruded_vertices_offset; i < mesh.vertices.length; i++) {
+        domain_bounds.update(mesh.vertices[i].position);
+    }
+    
+    domain_bounds.min -= resolution * layers;
+    domain_bounds.max += resolution * layers;
     
     glm::vec3 size = domain_bounds.size();
     
     Grid grid;
     grid.resolution = resolution;
     grid.min = domain_bounds.min;
-    grid.width = size.x / resolution;
-    grid.height = size.y / resolution;
-    grid.depth = size.z / resolution;
+    grid.width = (size.x+1) / resolution;
+    grid.height = (size.y+1) / resolution;
+    grid.depth = (size.z+1) / resolution;
+    
+    /*if (grid.width  % 2 != 0) {
+        grid.min.x -= 0.5*resolution;
+        grid.width++;
+    }
+    if (grid.height % 2 != 0) {
+        grid.min.y -= 0.5*resolution;
+        grid.height++;
+    }
+    if (grid.depth  % 2 != 0) {
+        grid.min.z -= 0.5*resolution;
+        grid.depth++;
+    }*/
+    
+    //grid.width = ceilf(grid.width/2.0) * 2;
+    //grid.height = ceilf(grid.height/2.0) * 2;
+    //grid.depth = ceilf(grid.depth/2.0) * 2;
+    
+    
     
     uint grid_cells = grid.width*grid.height*grid.depth;
     uint grid_cells_plus1 = (grid.width+1)*(grid.height+1)*(grid.depth+1);
@@ -754,6 +810,8 @@ void build_grid(CFDVolume& mesh, vector<vertex_handle>& boundary_verts, tvector<
         }
     }
     
+    cell_handle* cell_ids = TEMPORARY_ARRAY(cell_handle, grid_cells);
+    
     //GENERATE OUTLINE
     bool* empty = grid.occupied;
     grid.occupied = visited;
@@ -786,14 +844,10 @@ void build_grid(CFDVolume& mesh, vector<vertex_handle>& boundary_verts, tvector<
         
                         CFDCell cell;
                         cell.type = CFDCell::HEXAHEDRON;
-                        
-                        uint offset = mesh.vertices.length;
-                        glm::vec3 min = domain_bounds.min;
+                        cell_handle curr = {(int)mesh.cells.length};
                         
                         //todo: counter-clockwise
 						bool is_unique[8];
-
-
 						cell.vertices[0] = add_grid_vertex(mesh, grid, x  , y, z+1, is_unique+0);
 						cell.vertices[1] = add_grid_vertex(mesh, grid, x+1, y, z+1, is_unique+1);
 						cell.vertices[2] = add_grid_vertex(mesh, grid, x+1, y, z  , is_unique+2);
@@ -804,9 +858,17 @@ void build_grid(CFDVolume& mesh, vector<vertex_handle>& boundary_verts, tvector<
 						cell.vertices[6] = add_grid_vertex(mesh, grid, x+1, y+1, z  , is_unique+6);
 						cell.vertices[7] = add_grid_vertex(mesh, grid, x, y + 1, z, is_unique + 7);
 
-						//HACK
 						for (uint i = 0; i < 6; i++) {
-							cell.faces[i].neighbor.id = 0;
+                            glm::vec3 p = pos + grid_offsets[i];
+                            if (grid.is_valid(p)) {
+                                cell_handle neighbor = cell_ids[grid.index(p)];
+                                if (neighbor.id != -1) {
+                                    cell.faces[i].neighbor = neighbor; //mantain doubly linked connections
+                                    mesh[neighbor].faces[opposing_face[i]].neighbor = curr;
+                                }
+                            } else {
+                                cell.faces[i].neighbor.id = -1;
+                            }
 						}
 
 						if (n == 0) {
@@ -829,8 +891,9 @@ void build_grid(CFDVolume& mesh, vector<vertex_handle>& boundary_verts, tvector<
 								boundary.append(face);
 							}
 
-						}
+                        }
 
+                        cell_ids[index] = curr;
 						mesh.cells.append(cell);
                     } else {
                         empty[index] = is_empty;
@@ -849,11 +912,15 @@ float frand() {
 
 #include <random>
 
+#include "core/profiler.h"
+
 CFDVolume generate_mesh(World& world, CFDMeshError& err) {
 	auto some_mesh = world.first<Transform, CFDMesh>();
 	auto some_domain = world.first<Transform, CFDDomain>();
 
 	CFDVolume result;
+    
+    Profile profile("Generate mesh");
 
 	if (some_domain && some_mesh) {
 		auto [mesh_entity, mesh_trans, mesh] = *some_mesh;
@@ -883,15 +950,16 @@ CFDVolume generate_mesh(World& world, CFDMeshError& err) {
 		uint extruded_vertice_watermark = 0;
 		uint extruded_cells_watermark = 0;
 		
+        
 		if (false) {
 			tvector<Boundary> boundary;
 			tvector<vertex_handle> boundary_verts;
 
-			for (uint i = 0; i < 50; i++) {
+			for (uint i = 0; i < 1000; i++) {
 				vec3 pos;
-				pos.x = (float)(rand()%10)/10;
-				pos.y = (float)(rand()%10)/10;
-				pos.z = (float)(rand()%10)/10;
+				pos.x = (float)rand() / INT_MAX * 10;
+				pos.y = (float)rand() / INT_MAX * 10;
+				pos.z = (float)rand() / INT_MAX * 10;
 
 				boundary_verts.append({ (int)result.vertices.length });
 				result.vertices.append({ pos });
@@ -900,13 +968,17 @@ CFDVolume generate_mesh(World& world, CFDMeshError& err) {
 			build_deluanay(result, boundary_verts, boundary);
 			return result;
 		}
-		
-		create_boundary(result, extruded_vertice_watermark, model->meshes[0], model_m, initial);
-
-		for (uint i = 1; i < n; i++) {
-			float dist = initial * pow(a, i);
-			extrude_contour_mesh(result, extruded_vertice_watermark, extruded_cells_watermark, dist);
-		}
+	
+        //Advancing Front
+        {
+            Front front(result.vertices, result.cells, domain_bounds);
+            create_boundary(result, front, extruded_vertice_watermark, model->meshes[0], model_m, initial);
+            
+            for (uint i = 1; i < n; i++) {
+                float dist = initial * pow(a, i);
+                extrude_contour_mesh(result, front, extruded_vertice_watermark, extruded_cells_watermark, dist);
+            }
+        }
 
 		tvector<Boundary> boundary;
 		vector<vertex_handle> boundary_verts;
@@ -935,7 +1007,7 @@ CFDVolume generate_mesh(World& world, CFDMeshError& err) {
 		//result.cells.clear();
 		uint prev = result.cells.length;
 		//boundary_verts.clear();
-        build_grid(result, boundary_verts, boundary, extruded_vertice_watermark, extruded_cells_watermark, domain.grid_resolution, domain.grid_layers,  domain_bounds);		
+        build_grid(result, boundary_verts, boundary, extruded_vertice_watermark, extruded_cells_watermark, domain.grid_resolution, domain.grid_layers);		
 		
 		//std::shuffle(boundary_verts.begin(), boundary_verts.end(), std::default_random_engine(seed));
 
@@ -959,11 +1031,11 @@ CFDVolume generate_mesh(World& world, CFDMeshError& err) {
 		
 		//printf("================\nOccupied %ull\n", boundary_verts.allocator->occupied);
 
-		result.cells.clear();
-		build_deluanay(result, boundary_verts, boundary);
+		//result.cells.clear();
+		//build_deluanay(result, boundary_verts, boundary);
 
 
-		printf("Deluanay generated %i cells", result.cells.length - prev);
+		printf("Deluanay generated %i cells\n", result.cells.length - prev);
 		/*Front front(result.vertices, result.cells, domain_bounds);
 
 		for (uint i = 0; i < domain.tetrahedron_layers; i++) {
@@ -973,6 +1045,9 @@ CFDVolume generate_mesh(World& world, CFDMeshError& err) {
 	else {
 		err.type = CFDMeshError::NoMeshOrDomain;
 	}
+    
+    profile.end();
+    printf("==== Generated mesh in %f ms, verts: %i, cells: %i\n\n\n", profile.duration() * 1000, result.vertices.length, result.cells.length);
 
 	return result;
 }

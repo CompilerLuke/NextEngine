@@ -125,8 +125,8 @@ ENGINE_API buffer_handle alloc_buffer(u64 size, BufferUsageFlags usage, device_m
 ENGINE_API buffer_handle alloc_buffer_and_memory(u64 size, BufferUsageFlags usage, device_memory_handle* memory, DeviceMemoryFlags memory_flags);
 ENGINE_API void dealloc_buffer(buffer_handle buffer);
 
-ENGINE_API CPUVisibleBuffer alloc_cpu_visibile_buffer(u64 size, BufferUsageFlags usage);
-ENGINE_API void dealloc_cpu_visibile_buffer(CPUVisibleBuffer&);
+ENGINE_API CPUVisibleBuffer alloc_cpu_visible_buffer(u64 size, BufferUsageFlags usage);
+ENGINE_API void dealloc_cpu_visible_buffer(CPUVisibleBuffer&);
 
 ENGINE_API VertexLayout register_vertex_layout(VertexLayoutDesc&);
 
@@ -145,8 +145,6 @@ VertexBuffer alloc_vertex_buffer(VertexLayout layout, slice<T> vertices, slice<u
 	return alloc_vertex_buffer(layout, vertices.length, vertices.data, indices.length, indices.data);
 }
 
-
-
 template<typename T>
 InstanceBuffer frame_alloc_instance_buffer(InstanceLayout layout, const slice<T> data) {
 	void* mapped;
@@ -155,3 +153,16 @@ InstanceBuffer frame_alloc_instance_buffer(InstanceLayout layout, const slice<T>
 	return buffer;
 }
 
+inline void make_Arena(Arena* arena, u64 max, uint n = MAX_FRAMES_IN_FLIGHT) {
+    u64 offset = 0;
+    for (uint i = 0; i < n; i++) {
+        arena[i].base_offset = offset;
+        arena[i].capacity = max;
+        offset += max;
+    }
+}
+
+inline void alloc_Arena(Arena* arena, u64 max, CPUVisibleBuffer* buffer, BufferUsageFlags flags, uint n = MAX_FRAMES_IN_FLIGHT) {
+    make_Arena(arena, max, n);
+    *buffer = alloc_cpu_visible_buffer(max * n, flags);
+}

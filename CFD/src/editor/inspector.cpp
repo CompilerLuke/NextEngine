@@ -108,6 +108,11 @@ void render_domain_component(UI& ui, CFDDomain& domain) {
     field(ui, "resolution", &domain.grid_resolution);
     field(ui, "high layers", &domain.grid_layers);
     end_component(ui);
+    
+    begin_component(ui, "Visualization");
+    field(ui, "center", &domain.center);
+    field(ui, "plane", &domain.plane);
+    end_component(ui);
 }
 
 void render_inspector(Inspector& inspector) {

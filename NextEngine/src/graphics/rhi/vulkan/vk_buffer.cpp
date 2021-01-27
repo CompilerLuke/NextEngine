@@ -286,6 +286,7 @@ VertexBuffer alloc_vertex_buffer(VertexStreaming& self, VertexLayout layout, int
 	allocator.index_offset += indices_size;
 
 	printf("OFFSET vertex : %i, index : %i\n", vertex_offset, index_offset);
+    printf("Requires: %i index, %i vertex", indices_size, vertices_size);
 
 	if (vertices) staged_copy(self, self.vertex_buffer, vertex_offset, vertices, vertices_size);
 	if (indices) staged_copy(self, self.index_buffer, index_offset, indices, indices_size);
@@ -464,7 +465,7 @@ void bind_instance_buffer(InstanceAllocator& self, VkCommandBuffer cmd_buffer, I
 	vkCmdBindVertexBuffers(cmd_buffer, 1, 1, &self.instance_memory.buffer, &offset);
 }
 
-CPUVisibleBuffer alloc_cpu_visibile_buffer(u64 size, BufferUsageFlags usage) {
+CPUVisibleBuffer alloc_cpu_visible_buffer(u64 size, BufferUsageFlags usage) {
     CPUVisibleBuffer buffer;
     buffer.buffer = alloc_buffer_and_memory(size, usage, &buffer.memory, MEMORY_CPU_WRITEABLE);
     buffer.mapped = map_memory(buffer.memory, 0, size);
@@ -478,7 +479,7 @@ void dealloc_buffer(buffer_handle handle) {
     vkDestroyBuffer(rhi.device, buffer, 0);
 }
 
-void dealloc_cpu_visibile_buffer(CPUVisibleBuffer& buffer) {
+void dealloc_cpu_visible_buffer(CPUVisibleBuffer& buffer) {
     unmap_memory(buffer.memory);
     dealloc_buffer(buffer.buffer);
     dealloc_device_memory(buffer.memory);
@@ -589,7 +590,7 @@ void make_VertexStreaming(VertexStreaming& self, VkDevice device, VkPhysicalDevi
 	}
 
 	//Allocate Buffers
-	self.staging_buffer = make_HostVisibleBuffer(device, self.physical_device, 0, mb(200));
+	self.staging_buffer = make_HostVisibleBuffer(device, self.physical_device, 0, mb(100));
 
 	make_Buffer(device, physical_device, vertex_offset, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, self.vertex_buffer, self.vertex_buffer_memory);
 	make_Buffer(device, physical_device, index_offset, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, self.index_buffer, self.index_buffer_memory);

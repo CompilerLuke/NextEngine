@@ -32,6 +32,8 @@ refl::Struct init_CFDDomain() {
 	type.fields.append({"tetrahedron_layers", offsetof(CFDDomain, tetrahedron_layers), get_int_type()});
 	type.fields.append({"grid_resolution", offsetof(CFDDomain, grid_resolution), get_float_type()});
 	type.fields.append({"grid_layers", offsetof(CFDDomain, grid_layers), get_int_type()});
+	type.fields.append({"center", offsetof(CFDDomain, center), get_vec3_type()});
+	type.fields.append({"plane", offsetof(CFDDomain, plane), get_vec3_type()});
 	return type;
 }
 
