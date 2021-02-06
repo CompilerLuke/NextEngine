@@ -1,4 +1,4 @@
-#include "mesh_generation/advancing_front.h"
+#include "mesh_generation/front_octotree.h"
 #include "core/math/vec3.h"
 #include "core/memory/linear_allocator.h"
 

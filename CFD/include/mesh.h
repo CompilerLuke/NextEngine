@@ -124,11 +124,11 @@ struct CFDPolygon {
 
 	vertex_handle vertices[4];
 	Edge edges[4];
+    vec3 normal;
 };
 
 struct CFDVertex {
 	vec3 position;
-	vec3 normal;
 };
 
 struct CFDSurface {

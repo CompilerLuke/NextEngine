@@ -11,7 +11,7 @@
 #include "core/memory/linear_allocator.h"
 
 #include "geo/predicates.h"
-#include "mesh_generation/deluanay.h"
+#include "mesh_generation/delaunay.h"
 
 float sq_distance(glm::vec3 a, glm::vec3 b) {
 	glm::vec3 dist3 = a - b;
@@ -313,7 +313,7 @@ void assert_neighbors(CFDVolume& volume, cell_handle handle, TriangleFaceSet set
 
 
 
-bool Deluanay::find_in_circum(vec3 pos, vertex_handle v) {
+bool Delaunay::find_in_circum(vec3 pos, vertex_handle v) {
     //Walk structure to get to enclosing triangle, starting from the last inserted
     cell_handle current = last;
     cell_handle prev;
@@ -439,7 +439,7 @@ bool Deluanay::find_in_circum(vec3 pos, vertex_handle v) {
 }
 
 
-bool Deluanay::update_circum(cell_handle cell_handle) {
+bool Delaunay::update_circum(cell_handle cell_handle) {
     CFDCell& cell = volume.cells[cell_handle.id];
 
     vec3 positions[4];
@@ -466,7 +466,7 @@ bool Deluanay::update_circum(cell_handle cell_handle) {
 }
 
 //would not be necessary, if this data was stored in cell connectivity
-inline int Deluanay::get_face_index(const TriangleFaceSet& face, CFDCell& neighbor) {
+inline int Delaunay::get_face_index(const TriangleFaceSet& face, CFDCell& neighbor) {
     for (uint i = 0; i < 4; i++) {
         vertex_handle verts[3];
         for (uint j = 0; j < 3; j++) {
@@ -479,7 +479,7 @@ inline int Deluanay::get_face_index(const TriangleFaceSet& face, CFDCell& neighb
     return -1;
 }
 
-bool Deluanay::add_face(const Boundary& boundary) {
+bool Delaunay::add_face(const Boundary& boundary) {
     const vertex_handle* verts = boundary.vertices;
 
     //todo sort vertices for better performance
@@ -515,7 +515,7 @@ bool Deluanay::add_face(const Boundary& boundary) {
     }
 }
 
-bool Deluanay::add_vertex(vertex_handle vert) {
+bool Delaunay::add_vertex(vertex_handle vert) {
 
     vec3 position = volume.vertices[vert.id].position;
 
@@ -634,7 +634,7 @@ void start_with_non_coplanar(CFDVolume& mesh, slice<vertex_handle> vertices) {
 
 void brio_vertices(CFDVolume& mesh, const AABB& aabb, slice<vertex_handle> vertices);
 
-Deluanay::Deluanay(CFDVolume& volume, const AABB& aabb) : volume(volume) {
+Delaunay::Delaunay(CFDVolume& volume, const AABB& aabb) : volume(volume) {
     max_shared_face = 10000;
     
     LinearAllocator& allocator = get_temporary_allocator();
@@ -669,7 +669,7 @@ Deluanay::Deluanay(CFDVolume& volume, const AABB& aabb) : volume(volume) {
     exactinit(aabb.max.x - aabb.min.x, aabb.max.y - aabb.min.y, aabb.max.z - aabb.min.z); // for the predicates to work
 }
 
-bool Deluanay::add_vertices(slice<vertex_handle> verts) {
+bool Delaunay::add_vertices(slice<vertex_handle> verts) {
     brio_vertices(volume, aabb, verts);
     start_with_non_coplanar(volume, verts);
     
@@ -680,7 +680,7 @@ bool Deluanay::add_vertices(slice<vertex_handle> verts) {
     return true;
 }
 
-bool Deluanay::complete() {
+bool Delaunay::complete() {
     //super_cell_base
     for (uint i = 0; i < volume.cells.length; i++) {
         CFDCell& cell = volume.cells[i];

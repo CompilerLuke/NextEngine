@@ -24,6 +24,21 @@ struct tvector {
 			this->capacity = count;
 		}
 	}
+    
+    inline void resize(uint count) {
+        if (count > capacity) {
+            if (capacity == 0) reserve(count);
+            else if (capacity * 2 < count) reserve(count);
+            else reserve(capacity * 2);
+        }
+
+        int diff = count - length;
+        for (int i = 0; i < diff; i++) {
+            new (data + length + i) T();
+        }
+
+        length = count;
+    }
 
 	inline void append(const T& element) {
 		if (length >= capacity) {

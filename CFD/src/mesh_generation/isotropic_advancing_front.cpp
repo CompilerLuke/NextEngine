@@ -7,7 +7,7 @@
 #include "graphics/culling/aabb.h"
 #include "mesh.h"
 #include "core/memory/linear_allocator.h"
-#include "mesh_generation/advancing_front.h"
+#include "mesh_generation/front_octotree.h"
 
 void test_front() {
 	vector<CFDVertex> vertices;
@@ -80,7 +80,7 @@ void create_isotropic_cell(CFDVolume& mesh, Front& front, CFDCell& cell, cell_ha
 			
 			vertex.id = mesh.vertices.length;
 			cell.vertices[base_sides] = vertex;
-			mesh.vertices.append({ position, normal });
+			mesh.vertices.append({ position });
 		}
 	}
 	else {
