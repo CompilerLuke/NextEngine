@@ -44,25 +44,10 @@ UIRenderer* make_ui_renderer() {
 
     VertexLayout vertex_layout = register_vertex_layout(vertex_layout_desc);
     
-    u64 vertex_offset = 0;
-    u64 index_offset = 0;
-
-    //todo factor into function for arena
-    for (uint i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        renderer->vertex_arena[i].base_offset = vertex_offset;
-        renderer->vertex_arena[i].capacity = MAX_UI_VERTEX_BUFFER_SIZE;
-
-        renderer->index_arena[i].base_offset = index_offset;
-        renderer->index_arena[i].capacity = MAX_UI_INDEX_BUFFER_SIZE;
-
-        vertex_offset += MAX_UI_VERTEX_BUFFER_SIZE;
-        index_offset += MAX_UI_INDEX_BUFFER_SIZE;
-    }
-    
     renderer->dummy_tex = default_textures.white;
     
-    renderer->vertex_buffer = alloc_cpu_visibile_buffer(vertex_offset, BUFFER_VERTEX);
-    renderer->index_buffer = alloc_cpu_visibile_buffer(index_offset, BUFFER_INDEX);
+    alloc_Arena(renderer->vertex_arena, MAX_UI_VERTEX_BUFFER_SIZE, &renderer->vertex_buffer, BUFFER_VERTEX);
+    alloc_Arena(renderer->index_arena, MAX_UI_INDEX_BUFFER_SIZE, &renderer->index_buffer, BUFFER_INDEX);
 
     renderer->proj_ubo_buffer = alloc_ubo_buffer(sizeof(glm::mat4), UBO_PERMANENT_MAP);
 
@@ -95,8 +80,8 @@ UIRenderer* make_ui_renderer() {
 }
 
 void destroy_ui_renderer(UIRenderer* renderer) {
-    dealloc_cpu_visibile_buffer(renderer->vertex_buffer);
-    dealloc_cpu_visibile_buffer(renderer->index_buffer);
+    dealloc_cpu_visible_buffer(renderer->vertex_buffer);
+    dealloc_cpu_visible_buffer(renderer->index_buffer);
 }
 
 

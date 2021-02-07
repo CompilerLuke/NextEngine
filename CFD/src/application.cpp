@@ -69,11 +69,11 @@ void set_theme(UITheme& theme) {
 }
 
 void default_scene(Lister& lister, World& world) {
-    model_handle model = load_Model("airfoil.fbx");
+    model_handle model = load_Model("fighter_jet.obj");
 
     {
         auto [e, trans, mesh] = world.make<Transform, CFDMesh>();
-        trans.scale = glm::vec3(1.0);
+        trans.scale = glm::vec3(0.1);
         trans.rotation = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1.0, 0.0, 0.0));
         mesh.model = model;
         mesh.color = glm::vec4(1,1,0,1);
@@ -82,18 +82,24 @@ void default_scene(Lister& lister, World& world) {
     }
     {
         auto [e, trans, domain] = world.make<Transform, CFDDomain>();
+        domain.size = vec3(25);
+        
         register_entity(lister, "Domain", e.id);
     }
     {
         auto [e, trans, camera, flyover] = world.make<Transform, Camera, Flyover>();
-        //flyover.mouse_sensitivity = 0.1f;
+        flyover.mouse_sensitivity = 0.1f;
+        flyover.movement_speed *= 0.2;
         trans.position.z = 15.0;
     }
 }
 
 void test_front();
+void insphere_test();
 
 APPLICATION_API CFD* init(void* args, Modules& engine) {
+    insphere_test();
+    
     World& world = *engine.world;
     
     CFD* cfd = new CFD();
@@ -116,6 +122,7 @@ APPLICATION_API CFD* init(void* args, Modules& engine) {
     Dependency dependencies[1] = {
         { FRAGMENT_STAGE, RenderPass::Scene },
     };
+    
 
     build_framegraph(*engine.renderer, { dependencies, 1});
     end_gpu_upload();
@@ -158,7 +165,8 @@ APPLICATION_API void update(CFD& cfd, Modules& modules) {
 				solver.phase = SOLVER_PHASE_FAIL;
 			}
 
-			build_vertex_representation(*cfd.visualization, solver.mesh);
+            vec4 plane(domain.plane, dot(domain.plane, domain.center));
+			build_vertex_representation(*cfd.visualization, solver.mesh, plane);
 		}
 	}
 }
@@ -275,6 +283,7 @@ APPLICATION_API void render(CFD& cfd, Modules& engine, GPUSubmission& _gpu_submi
     CFDSolver& solver = cfd.solver;
     CFDVisualization& visualization = *cfd.visualization;
     CFDSceneRenderData& cfd_render_data = cfd.render_data;
+    World& world = *engine.world;
     
     RenderPass screen = begin_render_frame();
 

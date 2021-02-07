@@ -127,6 +127,8 @@ struct hash_map_base : hash_set_base<K> {
         
         
 	}
+    
+    hash_map_base() : hash_set_base<K>(0, nullptr, nullptr), values(nullptr) {}
 
 	void clear() {
 		for (uint i = 0; i < this->capacity; i++) {

@@ -12,7 +12,6 @@ struct vec4 {
 	vec4(float x, float y, float z, float w) : x(x), y(y), z(z), w(w) {}
 	vec4(vec3 xyz, float w) : x(xyz.x), y(xyz.y), z(xyz.z), w(w) {}
 
-	inline operator vec3() {
-		return vec3(x, y, z);
-	}
+	inline operator vec3() { return vec3(x, y, z); }
+    inline float& operator[](uint i) { return (&this->x)[i]; }
 };

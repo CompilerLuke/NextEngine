@@ -238,8 +238,8 @@ void make_RHI(const VulkanDesc& desc, Window& window) {
 	make_vk_CommandPool(rhi.transfer_cmd_pool, device, Queue_AsyncTransfer);
 
 	//todo make this tweakable
-	u64 vertex_max_memory[VERTEX_LAYOUT_MAX] = { mb(500) };
-	u64 index_max_memory[VERTEX_LAYOUT_MAX] = { mb(500) };
+	u64 vertex_max_memory[VERTEX_LAYOUT_MAX] = { mb(200) };
+	u64 index_max_memory[VERTEX_LAYOUT_MAX] = { mb(200) };
 	u64 instance_max_memory[INSTANCE_LAYOUT_MAX] = { mb(0), mb(100), mb(5) };
 	u64 ubo_max_memory[UBO_UPDATE_MODE_COUNT] = { mb(5), mb(5), mb(5) };
 
