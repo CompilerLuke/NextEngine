@@ -681,6 +681,7 @@ void build_deluanay(CFDVolume& volume, slice<vertex_handle> verts, slice<Boundar
             draw_debug_boxes(volume);
             break;
         }
+        if (i == 2) return;
     }
 
 	//Cleanup

@@ -57,7 +57,7 @@ CFDVisualization* make_cfd_visualization() {
 	pipeline_desc.state = Cull_None | PolyMode_Wireframe | (3 << WireframeLineWidth_Offset);
 	visualization->pipeline_triangle_wireframe = query_Pipeline(pipeline_desc);
 
-	pipeline_desc.state = Cull_None | PrimitiveType_LineList | (3 << WireframeLineWidth_Offset);
+	pipeline_desc.state = Cull_None | DepthFunc_Always | PrimitiveType_LineList | (3 << WireframeLineWidth_Offset);
 	visualization->pipeline_line = query_Pipeline(pipeline_desc);
 
 	return visualization;
