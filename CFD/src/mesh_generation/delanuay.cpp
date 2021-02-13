@@ -13,6 +13,57 @@
 #include "geo/predicates.h"
 #include "mesh_generation/delaunay.h"
 
+using tet_handle = uint;
+
+struct CavityFace {
+    tet_handle tet;
+    vertex_handle verts[3];
+};
+
+struct TetFaces {
+    tet_handle neighbor : 30;
+    uint neighbor_face : 2;
+};
+
+struct Tet {
+    tet_handle prev;
+    tet_handle next;
+};
+
+struct VertexInfo {
+    vec3 normal;
+    float curvature; //+ concave, 0 flat, - convex
+    uint count = 0;
+};
+
+const tet_handle NEIGH = (1 << 30)-1 << 2;
+const tet_handle NEIGH_FACE = (1<<2)-1;
+
+struct Delaunay {
+    //Delaunay
+    CFDVolume& volume;
+    slice<CFDVertex> vertices;
+    hash_map_base<TriangleFaceSet, tet_handle> shared_face;
+    AABB aabb;
+    uint max_shared_face;
+    uint super_offset;
+    tvector<CavityFace> cavity;
+    tet_handle last;
+    tet_handle free_chain;
+
+    //Mesh
+    uint tet_count;
+    Tet* tets;
+    vertex_handle* indices;
+    tet_handle* faces;
+    float* subdets;
+
+    //Advancing front
+    tet_handle active_faces;
+    VertexInfo* active_verts;
+    uint active_vert_offset;
+};
+
 float sq_distance(glm::vec3 a, glm::vec3 b) {
 	glm::vec3 dist3 = a - b;
 	return glm::dot(dist3, dist3);
@@ -95,20 +146,19 @@ static inline real symbolicPerturbation (vertex_handle indices[5], vec3 i, vec3 
 #define NE_INFO(mesg) fprintf(stderr, "Info: %s\n", mesg);
 
 
-static real insphere(CFDVolume& mesh, slice<vec4> subdets, cell_handle curr, vertex_handle v) {
-    CFDCell& cell = mesh.cells[curr.id];
-    vec4 subdet = subdets[curr.id];
+real insphere(Delaunay& d, tet_handle curr, vertex_handle v) {
+    float* subdet = d.subdets+curr;
     
 #if 1
     vec3 p[5];
-    for (uint i = 0; i < 4; i++) p[i] = mesh[cell.vertices[i]].position;
-    p[4] = mesh[v].position;
+    for (uint i = 0; i < 4; i++) p[i] = d.vertices[d.indices[curr+i].id].position;
+    p[4] = vertices[v.id].position;
     
     real det = insphere(&p[0].x, &p[1].x, &p[2].x, &p[3].x, &p[4].x);
     
     if (det == 0.0) {
         vertex_handle nn[5];
-        memcpy_t(nn, cell.vertices, 4);
+        memcpy_t(nn, d.indices + curr, 4);
         nn[4] = v;
         //NE_INFO("symbolic perturbation");
         det = symbolicPerturbation (nn,p[0],p[1],p[2],p[3],p[4]);
@@ -176,27 +226,34 @@ static real insphere(CFDVolume& mesh, slice<vec4> subdets, cell_handle curr, ver
 
 
 /* compute sub-determinent of tet curTet */
-void compute_subdet(CFDVolume& mesh, slice<vec4> subdets, cell_handle cell_handle)
-{
+void compute_subdet(Delaunay& d, tet_handle tet) {
+    auto indices = d.indices;
+    auto vertices = d.vertices;
+    
+    vec3 centroid;
+    for (uint i = 0; i < 4; i++) {
+        vec3 position = d.vertices[indices[tet+i].id].position;
+        centroid += position / 4.0f;
+    }
+
     vec4 ab;
     vec4 ac;
 
-    CFDCell& cell = mesh[cell_handle];
-    vec4& subdet = subdets[cell_handle.id];
+    float* subdet = d.subdets + tet;
 
-    vec3 a = mesh[cell.vertices[0]].position;
-    vec3 b = mesh[cell.vertices[1]].position;
-    vec3 c = mesh[cell.vertices[2]].position;
+    vec3 a = vertices[indices[tet+0].id].position;
+    vec3 b = vertices[indices[tet+1].id].position;
+    vec3 c = vertices[indices[tet+2].id].position;
 
-    if(cell.vertices[3].id != -1) {
-        vec3 d = mesh[cell.vertices[3]].position;
+    if(indices[tet+3].id != -1) {
+        vec3 d = vertices[indices[tet+3].id].position;
         vec4 ad;
 
         uint i;
         for (i=0; i<3; i++) {
-          ab[i]=b[i]-a[i]; //AB
-          ac[i]=c[i]-a[i]; //AC
-          ad[i]=d[i]-a[i]; //AD
+            ab[i]=b[i]-a[i]; //AB
+            ac[i]=c[i]-a[i]; //AC
+            ad[i]=d[i]-a[i]; //AD
         }
 
         ab.w = dot(ab,ab);
@@ -212,10 +269,10 @@ void compute_subdet(CFDVolume& mesh, slice<vec4> subdets, cell_handle cell_handl
         real bc30 = ab.x*ac.w - ab.w*ac.x;
 
         // each subdet is a simple triple product
-        subdet.x = ab.w*cd12 + ac.w*db12 + ad.w*bc12;
-        subdet.y = ab.z*cd30 + ac.z*db30 + ad.z*bc30;
-        subdet.z = ab.y*cd30 + ac.y*db30 + ad.y*bc30;
-        subdet.w = ab.x*cd12 + ac.x*db12 + ad.x*bc12;
+        subdet[0] = ab.w*cd12 + ac.w*db12 + ad.w*bc12;
+        subdet[1] = ab.z*cd30 + ac.z*db30 + ad.z*bc30;
+        subdet[2] = ab.y*cd30 + ac.y*db30 + ad.y*bc30;
+        subdet[3] = ab.x*cd12 + ac.x*db12 + ad.x*bc12;
 
     // SubDet[3]=AD*(ACxAB) = 6 X volume of the tet !
     }
@@ -227,7 +284,7 @@ void compute_subdet(CFDVolume& mesh, slice<vec4> subdets, cell_handle cell_handl
         }
 
         vec3 c = cross(ac, ab);
-        subdet = vec4(c,dot(c,c));
+        *(vec4*)subdet = vec4(c,dot(c,c));
     }
 }
 
@@ -311,175 +368,118 @@ void assert_neighbors(CFDVolume& volume, cell_handle handle, TriangleFaceSet set
     assert(is_neighbor);
 }
 
-
-
-bool Delaunay::find_in_circum(vec3 pos, vertex_handle v) {
+tet_handle find_enclosing_tet(Delaunay& d, vec3 pos) {
     //Walk structure to get to enclosing triangle, starting from the last inserted
-    cell_handle current = last;
-    cell_handle prev;
+    tet_handle current = d.last;
+    tet_handle prev = -1;
 
     //printf("==============\n");
     //printf("Starting at %i\n", current.id);
 
     uint count = 0;
     loop: {
-        CFDCell& cell = volume[current];
-
         uint offset = rand();
         for (uint it = 0; it < 4; it++) {
             uint i = (it + offset) % 4;
-            cell_handle neighbor = cell.faces[i].neighbor;
-            if (neighbor.id == -1 || neighbor.id == prev.id) continue;
+            tet_handle neighbor = d.faces[current + i] & NEIGH;
+            if (!neighbor || neighbor == prev) continue;
 
             vec3 verts[3];
-            get_positions(volume.vertices, cell, tetra_shape.faces[i], verts);
-            
-            vec3 vert0 = volume[cell.vertices[tetra_shape[i][0]]].position;
-            vec3 normal = cell.faces[i].normal;
-            
-            float det = dot(normal, pos - vert0);
-            float det2 = -orient3d(verts[0], verts[1], verts[2], pos);
-            
-            if (det2 > FLT_EPSILON) {
+            for (uint j = 0; j < 3; j++) {
+                verts[j] = d.vertices[d.indices[current + j].id].position;
+            }
+
+            float det = -orient3d(verts[0], verts[1], verts[2], pos);
+            if (det > FLT_EPSILON) {
                 prev = current;
                 current = neighbor;
-                if (count++ > 1000) {
-                    return false;
-                }
+                if (count++ > 1000) return 0;
                 goto loop;
             }
         }
     };
 
-    CFDCell& start = volume[current];
+    return current;
+}
 
-    ///assert(inside == 1);
+bool find_in_circum(Delaunay& d, vertex_handle v) {
+    vec3 pos = d.vertices[v.id].position;
+    tet_handle current = find_enclosing_tet(d, pos);
+    if (!current) return false;
 
-    /*bool inside = point_inside(volume, current, pos);
-    assert(inside);
-    
-    bool inside_circum = point_inside(circumspheres[current.id], pos);
+    d.cavity.length = 0;
 
-    if (!inside_circum) {
-        printf("Failed current at %i\n", current.id);
-        //add_box_cell(volume, orig, 0.2);
-        //for (uint i = 0; i < 4; i++) {
-        //    add_box_cell(volume, volume.vertices[start.vertices[i].id].position, 0.1);
-        //}
-        //add_box_cell(volume, centroid4(volume, start.vertices), 0.1);
-        
+    d.subdets[current + 3] = -1;
 
+    d.tets[current].next = d.free_chain; //store free chain in next
+    d.tets[current].prev = 0; //store stack in prev
 
-        return false;
-    }*/
-    
-    stack.length = 0;
-    cavity.length = 0;
+    tet_handle stack = current;
+    tet_handle free = current;
 
-    memset(&subdets[current.id], 0, sizeof(vec4));
-    stack.append(current);
-    free_cells.append(current);
-    while (stack.length > 0) {
-        current = stack.pop();
-        CFDCell& cell = volume.cells[current.id];
+    while (stack != -1) {
+        current = stack;
+        Tet& cell = d.tets[current];
+        stack = cell.prev;
 
         //printf("Visiting %i\n", current.id);
         for (uint i = 0; i < 4; i++) {
-            vertex_handle verts[3];
+            tet_handle neighbor = d.faces[current+i]&NEIGH;
+
+            vertex_handle verts[4];
             for (uint j = 0; j < 3; j++) {
-                verts[j] = cell.vertices[tetra_shape.faces[i].verts[2-j]];
+                verts[j] = d.indices[current + tetra_shape.faces[i].verts[2 - j]];
                 //Reverse orientation, as tetrashape will reverse orientation when extruding
                 //Reverse-reverse -> no face flip -> as face should point outwards
             }
 
 
-            cell_handle neighbor = cell.faces[i].neighbor;
-
-            if (neighbor.id != -1) {
+            if (neighbor != -1) {
                 static char empty[sizeof(vec4)];
                 
-                bool visited = memcmp(&subdets[neighbor.id], empty, sizeof(vec4)) == 0;
+                bool visited = d.subdets[neighbor+3] == -1;
                 bool inside = visited;
                 if (!visited) {
-                    float value = insphere(volume, subdets, neighbor, v);
+                    float value = insphere(d, neighbor, v);
                     //printf("Insphere %f\n", value);
                     inside |= value < 0;
                 }
                 
-                
                 if (!visited && inside) {
                     //printf("Neighbor %i: adding to stack\n", neighbor.id);
 
-                    memset(&subdets[neighbor.id], 0, sizeof(vec4)); //Mark for deletion and that it is already visited
-                    assert(memcmp(&subdets[neighbor.id], empty, sizeof(vec4)) == 0);
-                    stack.append(neighbor);
-                    free_cells.append(neighbor);
+                    d.subdets[neighbor+3] = -1; //Mark for deletion and that it is already visited
+                    
+                    d.tets[neighbor].next = d.free_chain;
+                    d.tets[neighbor].prev = stack;
+                    stack = neighbor;
+                    free = neighbor;
                 }
 
                 //printf("Face %i, neighbor %i, %s\n", i, neighbor.id, inside ? "not unique" : "unique");
                 if (!inside) { //face is unique
                     //printf("Neighbor %i: Unique face %i\n", neighbor.id, i);
-                    assert_neighbors(volume, neighbor, verts);
-
-                    cavity.append({ neighbor, {verts[0], verts[1], verts[2]} });
+                    //assert_neighbors(volume, neighbor, verts);
+                    d.cavity.append({ d.faces[current + i], verts[0], verts[1], verts[2] });
                 }
 
                 //if (visited) printf("Neighbor %i: already visited %i\n", neighbor.id, i);
             }
             else {
                 //printf("Outside\n");
-                cavity.append({ {}, {verts[0], verts[1], verts[2]} }); //Super-triangle
+                d.cavity.append({ current + i, verts[0], verts[1], verts[2] }); //Super-triangle
             }
         }
     }
     
+    d.free_chain = free;
 
     //assert(cavity.length >= 3);
-    return cavity.length >= 3;
+    return d.cavity.length >= 3;
 }
 
-
-bool Delaunay::update_circum(cell_handle cell_handle) {
-    CFDCell& cell = volume.cells[cell_handle.id];
-
-    vec3 positions[4];
-    get_positions(volume.vertices, { cell.vertices, 4 }, positions);
-
-    vec3 centroid;
-    for (uint i = 0; i < 4; i++) centroid += positions[i] / 4.0f;
-
-    //printf("Created %i, center: %f %f %f, radius: %f\n", cell_handle.id, circum.center.x, circum.center.y, circum.center.z, circum.radius);
-    //for (uint i = 0; i < 4; i++) {
-    //    printf("    V[%i] = (%f,%f,%f)\n", i, positions[i].x, positions[i].y, positions[i].z);
-    //}
-
-    if (cell_handle.id >= subdets.length) {
-        uint capacity = max(cell_handle.id+1, subdets.capacity * 2);
-        subdets.reserve(capacity);
-        subdets.length = capacity;
-    }
-    
-    compute_subdet(volume, subdets, cell_handle);
-    compute_normals(volume.vertices, cell);
-
-    return true;
-}
-
-//would not be necessary, if this data was stored in cell connectivity
-inline int Delaunay::get_face_index(const TriangleFaceSet& face, CFDCell& neighbor) {
-    for (uint i = 0; i < 4; i++) {
-        vertex_handle verts[3];
-        for (uint j = 0; j < 3; j++) {
-            verts[j] = neighbor.vertices[tetra_shape[i][j]];
-        }
-
-        if (face == verts) return i;
-    }
-    
-    return -1;
-}
-
-bool Delaunay::add_face(const Boundary& boundary) {
+/*
+bool add_face(Delaunay& d, const Boundary& boundary) {
     const vertex_handle* verts = boundary.vertices;
 
     //todo sort vertices for better performance
@@ -487,23 +487,17 @@ bool Delaunay::add_face(const Boundary& boundary) {
     uint n = 4;
     vec3 centroid;
     for (uint i = 0; i < n; i++) {
-        centroid += volume[verts[i]].position;
+        centroid += vertices[verts[i].id].position;
     }
     centroid /= 4;
     
     if (!find_in_circum(centroid, {})) return false;
     
     for (CavityFace& cavity : cavity) {
-        cell_handle free_cell_handle;
-        if (free_cells.length > 0) {
-            free_cell_handle = free_cells.pop();
-        } else {
-            free_cell_handle = { (int)volume.cells.length };
-            volume.cells.append({ CFDCell::PENTAHEDRON });
-        }
+        tet_handle free_cell_handle = alloc_tet();
         
-        cell_handle neighbor = cavity.handle;
-        int index = get_face_index(verts, volume[neighbor]);
+        tet_handle neighbor = cavity.handle;
+        int index = cavity.face;
         
         vertex_handle unique;
         for (uint i = 0; i < 4 && unique.id == -1; i++) {
@@ -514,88 +508,87 @@ bool Delaunay::add_face(const Boundary& boundary) {
         }
     }
 }
+*/
 
-bool Delaunay::add_vertex(vertex_handle vert) {
+tet_handle alloc_tet(Delaunay& d) {
+    tet_handle tet = d.free_chain;
+    if (!tet) {
+        uint prev_count = d.tet_count;
+        uint tet_count = prev_count*2;
+        
+        u64 size = (sizeof(Tet) + sizeof(vertex_handle) + sizeof(tet_handle) + sizeof(float))* 4*d.tet_count;
 
-    vec3 position = volume.vertices[vert.id].position;
+        d.tets = (Tet*)realloc(d.tets, size);
+        d.indices = (vertex_handle*)((char*)d.tets + 4*sizeof(Tet)*tet_count);
+        d.faces = (tet_handle*)((char*)d.indices + 4*sizeof(vertex_handle) * tet_count);
+        d.subdets = (float*)((char*)d.faces + 4*sizeof(TetFaces) * tet_count);
 
-    if (!find_in_circum(position, vert)) return false;
+        d.free_chain = prev_count;
+        for (uint i = prev_count; i < tet_count-1; i++) {
+            d.tets[i].next = i+1;
+            d.tets[i].prev = 0;
+        }
+        d.tets[tet_count - 1] = {};
+        d.tet_count = tet_count;
+    }
+    else {
+        d.free_chain = d.tets[tet].next;
+    }
+    d.tets[tet].next = {};
+    d.subdets[tet+3] = -1;
+
+    return tet;
+}
+
+bool add_vertex(Delaunay& d, vertex_handle vert) {
+    if (!find_in_circum(d, vert)) return false;
     
-    shared_face.capacity = cavity.length * 3;
-    assert(shared_face.capacity < max_shared_face);
-    shared_face.clear();
+    d.shared_face.capacity = d.cavity.length * 3;
+    assert(d.shared_face.capacity < d.max_shared_face);
+    d.shared_face.clear();
     
     //printf("======== Retriangulating with %i faces\n", cavity.length);
 
-    for (CavityFace& cavity : cavity) {
-        cell_handle free_cell_handle;
-        if (free_cells.length > 0) {
-            free_cell_handle = free_cells.pop();
-        }
-        else {
-            free_cell_handle = { (int)volume.cells.length };
-            volume.cells.append({ CFDCell::TETRAHEDRON });
-        }
-        CFDCell& free_cell = volume.cells[free_cell_handle.id];
+    for (CavityFace& cavity : d.cavity) {
+        tet_handle tet = alloc_tet(d);
 
-        memcpy_t(free_cell.vertices, cavity.verts, 3);
-        free_cell.vertices[3] = vert;
+        memcpy_t(d.indices + tet, cavity.verts, 3);
+        d.indices[tet+3] = vert;
 
-        vec3 points[4];
-        for (uint i = 0; i < 4; i++) {
-            points[i] = volume.vertices[free_cell.vertices[i].id].position;
-        }
-
-        //Update doubly linked connectivity
-        free_cell.faces[0].neighbor = cavity.handle;
-        
         //printf("====== Creating %i (%i %i %i %i) ==========\n", free_cell_handle.id, cavity.verts[0].id, cavity.verts[1].id, cavity.verts[2].id, vert.id);
-        if (cavity.handle.id != -1) {
-            CFDCell& neighbor = volume.cells[cavity.handle.id];
-            int index = get_face_index(cavity.verts, neighbor);
-            neighbor.faces[index].neighbor = free_cell_handle;
-        }
-        else {
-            //printf("Outside\n");
-        }
+        //Update doubly linked connectivity
+        d.faces[tet] = cavity.tet;
+        if (!cavity.tet) d.faces[cavity.tet] = tet;
         
         for (uint i = 1; i < 4; i++) {
             vertex_handle verts[3];
             for (uint j = 0; j < 3; j++) {
-                verts[j] = free_cell.vertices[tetra_shape.faces[i].verts[j]];
+                verts[j] = d.indices[tet+tetra_shape.faces[i].verts[j]];
             }
             
-            uint index = shared_face.add(verts);
-            FaceInfo& info = shared_face.values[index];
-            if (info.face == -1) {
-                info.neighbor = free_cell_handle;
-                info.face = i;
-                free_cell.faces[i].neighbor = {};
-
+            uint index = d.shared_face.add(verts);
+            tet_handle& neigh = d.shared_face.values[index];
+            if (!neigh) {
+                neigh = tet+i;
+                d.faces[tet+i] = {};
                 //printf("Setting verts[%i], face %i: %i %i %i\n", index, i, verts[0].id, verts[1].id, verts[2].id);
             }
             else {
                 //printf("Connecting with neighbor %i [%i]\n", info.neighbor.id, index);
-                assert_neighbors(volume, info.neighbor, verts);
+                //assert_neighbors(volume, info.neighbor, verts);
                                     
-                cell_handle neighbor = info.neighbor;
-                volume.cells[neighbor.id].faces[info.face].neighbor = free_cell_handle;
-                free_cell.faces[i].neighbor = neighbor;
+                d.faces[neigh] = tet+i;
+                d.faces[tet + i] = neigh;
             }
         }
 
-        if (!update_circum(free_cell_handle)) return false;
-        last = free_cell_handle;
+        compute_subdet(d, tet);
     }
 
     //assert(free_cells.length == 0);
 
     return true;
 }
-
-
-#include <algorithm>
-
 
 void start_with_non_coplanar(CFDVolume& mesh, slice<vertex_handle> vertices) {
     uint i=0,j=1,k=2,l=3;
@@ -634,7 +627,7 @@ void start_with_non_coplanar(CFDVolume& mesh, slice<vertex_handle> vertices) {
 
 void brio_vertices(CFDVolume& mesh, const AABB& aabb, slice<vertex_handle> vertices);
 
-Delaunay::Delaunay(CFDVolume& volume, const AABB& aabb) : volume(volume) {
+Delaunay::Delaunay(CFDVolume& volume, const AABB& aabb) : vertices(volume.vertices), volume(volume) {
     max_shared_face = 10000;
     
     LinearAllocator& allocator = get_temporary_allocator();
@@ -655,13 +648,14 @@ Delaunay::Delaunay(CFDVolume& volume, const AABB& aabb) : volume(volume) {
     float e = sqrtf(3)/3*l;
     float a = M_PI * 2 / 3;
 
-    super_vertex_base = {(int)volume.vertices.length};
+    auto& vertices = volume.vertices;
+    super_vertex_base = {(int)vertices.length};
 
-    volume.vertices.append({ centroid + vec3(e * cosf(2 * a), b, e * sinf(2 * a)) });
-    volume.vertices.append({ centroid + vec3(e * cosf(1 * a), b, e * sinf(1 * a)) });
-    volume.vertices.append({ centroid + vec3(e * cosf(0 * a), b, e * sinf(0 * a)) });
+    vertices.append({ centroid + vec3(e * cosf(2 * a), b, e * sinf(2 * a)) });
+    vertices.append({ centroid + vec3(e * cosf(1 * a), b, e * sinf(1 * a)) });
+    vertices.append({ centroid + vec3(e * cosf(0 * a), b, e * sinf(0 * a)) });
 
-    volume.vertices.append({ centroid + vec3(0, t, 0) });
+    vertices.append({ centroid + vec3(0, t, 0) });
 
     CFDCell cell{CFDCell::TETRAHEDRON};
     vec3 positions[4];
@@ -696,7 +690,6 @@ bool Delaunay::complete() {
         if (shared) {
             for (uint j = 0; j < 4; j++) cell.vertices[j].id = 0;
         }
-        if (i == 2) return;
     }
     
     return true;
@@ -731,6 +724,7 @@ bool Delaunay::complete() {
     }
 #endif
 
+#if 0
 void insphere_test() {
     CFDVolume mesh;
     
@@ -757,3 +751,4 @@ void insphere_test() {
     mesh.vertices.append({vec3(-1.1,0,0)});
     assert(insphere(mesh, {subdets,4}, {0}, {6}) < 0);
 }
+#endif

@@ -7,11 +7,29 @@
     <Filter Include="include\UI">
       <UniqueIdentifier>{1642B8DA-02FA-F927-6B01-D38357D89418}</UniqueIdentifier>
     </Filter>
+    <Filter Include="include\editor">
+      <UniqueIdentifier>{BF0C0E4A-ABDA-0150-946E-727680DBDDB4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\geo">
+      <UniqueIdentifier>{73D5C031-DF8A-3927-687F-33FED433302B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\mesh_generation">
+      <UniqueIdentifier>{70B92C87-DCF0-741E-E5FA-D84151B19B17}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src">
       <UniqueIdentifier>{2DAB880B-99B4-887C-2230-9F7C8E38947C}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\UI">
       <UniqueIdentifier>{3A4B661C-26ED-90F2-0FA8-A446FBE81743}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\editor">
+      <UniqueIdentifier>{E3072458-CFBF-65A5-38C7-3E01249E0096}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\geo">
+      <UniqueIdentifier>{170330A9-83E2-AE44-8CFA-391BF85815A6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\mesh_generation">
+      <UniqueIdentifier>{147DA92A-80DE-8638-094C-CDEA75ACBDF7}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -42,11 +60,32 @@
     <ClInclude Include="include\components.h">
       <Filter>include</Filter>
     </ClInclude>
+    <ClInclude Include="include\editor\inspector.h">
+      <Filter>include\editor</Filter>
+    </ClInclude>
+    <ClInclude Include="include\editor\lister.h">
+      <Filter>include\editor</Filter>
+    </ClInclude>
+    <ClInclude Include="include\editor\selection.h">
+      <Filter>include\editor</Filter>
+    </ClInclude>
     <ClInclude Include="include\generated.h">
       <Filter>include</Filter>
     </ClInclude>
+    <ClInclude Include="include\geo\predicates.h">
+      <Filter>include\geo</Filter>
+    </ClInclude>
     <ClInclude Include="include\mesh.h">
       <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\mesh_generation\delaunay.h">
+      <Filter>include\mesh_generation</Filter>
+    </ClInclude>
+    <ClInclude Include="include\mesh_generation\delaunay_advancing_front.h">
+      <Filter>include\mesh_generation</Filter>
+    </ClInclude>
+    <ClInclude Include="include\mesh_generation\front_octotree.h">
+      <Filter>include\mesh_generation</Filter>
     </ClInclude>
     <ClInclude Include="include\solver.h">
       <Filter>include</Filter>
@@ -55,9 +94,6 @@
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="stdafx.h" />
-    <ClInclude Include="include\editor\inspector.h" />
-    <ClInclude Include="include\editor\lister.h" />
-    <ClInclude Include="include\editor\selection.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\UI\backend.cpp">
@@ -78,8 +114,38 @@
     <ClCompile Include="src\application.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\editor\inspector.cpp">
+      <Filter>src\editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\lister.cpp">
+      <Filter>src\editor</Filter>
+    </ClCompile>
     <ClCompile Include="src\generated.cpp">
       <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\geo\predicates.cpp">
+      <Filter>src\geo</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mesh_generation\advancing_front.cpp">
+      <Filter>src\mesh_generation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mesh_generation\delanuay.cpp">
+      <Filter>src\mesh_generation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mesh_generation\deluanay_advancing_front.cpp">
+      <Filter>src\mesh_generation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mesh_generation\failed.cpp">
+      <Filter>src\mesh_generation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mesh_generation\hilbert_sort.cpp">
+      <Filter>src\mesh_generation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mesh_generation\isotropic_advancing_front.cpp">
+      <Filter>src\mesh_generation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mesh_generation\mesh_generation.cpp">
+      <Filter>src\mesh_generation</Filter>
     </ClCompile>
     <ClCompile Include="src\solver.cpp">
       <Filter>src</Filter>
@@ -88,13 +154,5 @@
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="stdafx.cpp" />
-    <ClCompile Include="src\editor\lister.cpp" />
-    <ClCompile Include="src\editor\inspector.cpp" />
-    <ClCompile Include="src\mesh_generation\mesh_generation.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="src\mesh_generation\delanuay.cpp" />
-    <ClCompile Include="src\mesh_generation\isotropic_advancing_front.cpp" />
-    <ClCompile Include="src\mesh_generation\failed.cpp" />
   </ItemGroup>
 </Project>

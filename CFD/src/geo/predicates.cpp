@@ -44,6 +44,9 @@
 #ifdef LINUX
 #include <fpu_control.h>
 #endif /* LINUX */
+#ifdef NE_PLATFORM_WINDOWS
+#define __restrict__ __restrict
+#endif
 
 #include "geo/predicates.h"
 

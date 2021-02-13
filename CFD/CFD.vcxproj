@@ -1,8 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup>
-    <EnableUnitySupport>true</EnableUnitySupport>
-  </PropertyGroup>
+  <PropertyGroup><EnableUnitySupport>true</EnableUnitySupport></PropertyGroup>
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
@@ -176,9 +174,6 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="include\editor\inspector.h" />
-    <ClInclude Include="include\editor\lister.h" />
-    <ClInclude Include="include\editor\selection.h" />
     <ClInclude Include="include\UI\draw.h" />
     <ClInclude Include="include\UI\event.h" />
     <ClInclude Include="include\UI\font.h" />
@@ -188,25 +183,36 @@
     <ClInclude Include="include\cfd_ids.h" />
     <ClInclude Include="include\collision.h" />
     <ClInclude Include="include\components.h" />
+    <ClInclude Include="include\editor\inspector.h" />
+    <ClInclude Include="include\editor\lister.h" />
+    <ClInclude Include="include\editor\selection.h" />
     <ClInclude Include="include\generated.h" />
+    <ClInclude Include="include\geo\predicates.h" />
     <ClInclude Include="include\mesh.h" />
+    <ClInclude Include="include\mesh_generation\delaunay.h" />
+    <ClInclude Include="include\mesh_generation\delaunay_advancing_front.h" />
+    <ClInclude Include="include\mesh_generation\front_octotree.h" />
     <ClInclude Include="include\solver.h" />
     <ClInclude Include="include\visualizer.h" />
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\editor\inspector.cpp" />
-    <ClCompile Include="src\editor\lister.cpp" />
-    <ClCompile Include="src\mesh_generation\delanuay.cpp" />
-    <ClCompile Include="src\mesh_generation\failed.cpp" />
-    <ClCompile Include="src\mesh_generation\isotropic_advancing_front.cpp" />
     <ClCompile Include="src\UI\backend.cpp" />
     <ClCompile Include="src\UI\draw.cpp" />
     <ClCompile Include="src\UI\font.cpp" />
     <ClCompile Include="src\UI\layout.cpp" />
     <ClCompile Include="src\UI\ui.cpp" />
     <ClCompile Include="src\application.cpp" />
+    <ClCompile Include="src\editor\inspector.cpp" />
+    <ClCompile Include="src\editor\lister.cpp" />
     <ClCompile Include="src\generated.cpp" />
+    <ClCompile Include="src\geo\predicates.cpp" />
+    <ClCompile Include="src\mesh_generation\advancing_front.cpp" />
+    <ClCompile Include="src\mesh_generation\delanuay.cpp" />
+    <ClCompile Include="src\mesh_generation\deluanay_advancing_front.cpp" />
+    <ClCompile Include="src\mesh_generation\failed.cpp" />
+    <ClCompile Include="src\mesh_generation\hilbert_sort.cpp" />
+    <ClCompile Include="src\mesh_generation\isotropic_advancing_front.cpp" />
     <ClCompile Include="src\mesh_generation\mesh_generation.cpp" />
     <ClCompile Include="src\solver.cpp" />
     <ClCompile Include="src\visualization.cpp" />

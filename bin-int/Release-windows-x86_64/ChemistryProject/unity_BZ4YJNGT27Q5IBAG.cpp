@@ -8,6 +8,3 @@
 
 #include "C:\Users\User\source\repos\NextEngine\ChemistryProject\src\generated.cpp"
 
-
-#include "C:\Users\User\source\repos\NextEngine\ChemistryProject\src\gold_foil.cpp"
-

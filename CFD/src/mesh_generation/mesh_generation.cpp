@@ -862,7 +862,7 @@ CFDVolume generate_mesh(World& world, CFDMeshError& err) {
         
         {
             CFDSurface surface = surface_from_mesh(result.vertices, model_m, model->meshes[0]);
-            DelaunayFront front(delaunay, surface);
+            DelaunayFront front(delaunay, result, surface);
             front.generate_n_layers(n, initial, domain.contour_thickness_expontent);
         }
 

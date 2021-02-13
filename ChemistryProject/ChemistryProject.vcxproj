@@ -1,6 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup><EnableUnitySupport>true</EnableUnitySupport></PropertyGroup>
+  <PropertyGroup>
+    <EnableUnitySupport>true</EnableUnitySupport>
+  </PropertyGroup>
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
@@ -169,6 +171,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="include\chemistry_component_ids.h" />
+    <ClInclude Include="include\component_ids.h" />
     <ClInclude Include="include\emission.h" />
     <ClInclude Include="include\generated.h" />
     <ClInclude Include="include\gold_foil.h" />
@@ -179,6 +182,7 @@
     <ClCompile Include="src\chemistry_project.cpp" />
     <ClCompile Include="src\emission.cpp" />
     <ClCompile Include="src\generated.cpp" />
+    <ClCompile Include="src\generated.cpp.cpp" />
     <ClCompile Include="src\gold_foil.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>

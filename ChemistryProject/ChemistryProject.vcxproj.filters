@@ -12,6 +12,9 @@
     <ClInclude Include="include\chemistry_component_ids.h">
       <Filter>include</Filter>
     </ClInclude>
+    <ClInclude Include="include\component_ids.h">
+      <Filter>include</Filter>
+    </ClInclude>
     <ClInclude Include="include\emission.h">
       <Filter>include</Filter>
     </ClInclude>
@@ -34,6 +37,9 @@
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="src\generated.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\generated.cpp.cpp">
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="src\gold_foil.cpp">

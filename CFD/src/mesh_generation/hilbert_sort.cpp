@@ -14,14 +14,28 @@
 #define nextbefore(x) (x*(1.0-DBL_EPSILON))
 #endif
 
+#ifdef NE_PLATFORM_WINDOWS 
+#include <intrin.h>
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+
+DWORD __inline clz(uint32_t value) {
+    DWORD leading_zero = 0;
+
+    if (_BitScanForward(&leading_zero, value)) return 31 - leading_zero;
+    return 32;
+}
+#elif
+#define clz __builtin_clz
+#endif
+
 #define MIN(x,y) ((x)<(y)?(x):(y))
 #define SWAP(x,y) do{uint32_t tmp=x; x=y; y=tmp;}while(0)
 #define INVE(x) x=s-1-x
 
-
 uint hilbert_advised_bits(uint32_t n)
 {
-  uint nlog2 = (32-__builtin_clz(n))*3/2; // if we have n points, we want approximately n^1.5 possible hilbert coordinates
+  uint nlog2 = (32-clz(n))*3/2; // if we have n points, we want approximately n^1.5 possible hilbert coordinates
   return MIN(63, nlog2>15?(nlog2+10)/11*11:nlog2); // we prefer multiple of 11
 }
 
