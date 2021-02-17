@@ -229,6 +229,7 @@ void exactinit(real maxx, real maxy, real maxz)
   ispstaticfilter = 1.2466136531027298e-13 * maxx * maxy * maxz * (maxz * maxz);
 }
 
+__attribute__((no_sanitize("address")))
 static int fast_expansion_sum_zeroelim(const int elen, const real *e, const int flen, const real *f, real *h)
 /* h cannot be e or f. */
 {
@@ -352,7 +353,7 @@ static real estimate(const int elen, const real *e)
   return Q;
 }
 
-
+__attribute__((no_sanitize("address")))
 static real orient3dadapt(const real* __restrict__ pa, const real* __restrict__ pb, const real* __restrict__ pc, const real* __restrict__ pd, const real permanent)
 {
   INEXACT real adx, bdx, cdx, ady, bdy, cdy, adz, bdz, cdz;

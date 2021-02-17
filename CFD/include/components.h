@@ -23,6 +23,6 @@ struct CFDDomain {
     int grid_layers = 0;
     
     glm::vec3 center;
-    glm::vec3 plane;
+    glm::vec3 plane = glm::vec3(1,0,0);
 };
 

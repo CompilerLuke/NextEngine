@@ -17,7 +17,7 @@ struct FrameData;
 struct Renderer;
 
 CFDVisualization* make_cfd_visualization();
-void build_vertex_representation(CFDVisualization& visualization, CFDVolume&, vec4 plane);
+void build_vertex_representation(CFDVisualization& visualization, CFDVolume&, vec4 plane, bool rebuild);
 void render_cfd_mesh(CFDVisualization& visualization, CommandBuffer& cmd_buffer);
 
 struct CFDMeshInstance {

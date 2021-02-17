@@ -25,7 +25,7 @@ DWORD __inline clz(uint32_t value) {
     if (_BitScanForward(&leading_zero, value)) return 31 - leading_zero;
     return 32;
 }
-#elif
+#else
 #define clz __builtin_clz
 #endif
 

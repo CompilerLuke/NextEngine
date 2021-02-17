@@ -27,3 +27,11 @@
 //    real insphere(tet_handle curr, vertex_handle v);
 //};
 
+struct Delaunay;
+struct CFDVolume;
+
+Delaunay* make_Delaunay(CFDVolume&, const AABB&);
+void destroy_Delaunay(Delaunay*);
+void generate_n_layers(Delaunay& d, CFDSurface& surface, uint n, float initial, float g);
+bool add_vertices(Delaunay& d, slice<vertex_handle> verts, float min_dist = 0.0f);
+

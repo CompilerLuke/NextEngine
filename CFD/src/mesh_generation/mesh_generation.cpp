@@ -857,13 +857,16 @@ CFDVolume generate_mesh(World& world, CFDMeshError& err) {
 		}
 	
         //Advancing Front
-        Delaunay delaunay(result, domain_bounds);
+        
+        
         vector<vertex_handle> boundary_verts;
         
         {
             CFDSurface surface = surface_from_mesh(result.vertices, model_m, model->meshes[0]);
-            DelaunayFront front(delaunay, result, surface);
-            front.generate_n_layers(n, initial, domain.contour_thickness_expontent);
+            
+            Delaunay* delaunay = make_Delaunay(result, domain_bounds);
+            generate_n_layers(*delaunay, surface, n, initial, domain.contour_thickness_expontent);
+            destroy_Delaunay(delaunay);
         }
 
 		tvector<Boundary> boundary;
@@ -893,7 +896,8 @@ CFDVolume generate_mesh(World& world, CFDMeshError& err) {
 		//result.cells.clear();
 		uint prev = result.cells.length;
 		//boundary_verts.clear();
-        build_grid(result, boundary_verts, boundary, extruded_vertice_watermark, extruded_cells_watermark, domain.grid_resolution, domain.grid_layers);		
+        
+        //build_grid(result, boundary_verts, boundary, extruded_vertice_watermark, extruded_cells_watermark, domain.grid_resolution, domain.grid_layers);
 		
 		//std::shuffle(boundary_verts.begin(), boundary_verts.end(), std::default_random_engine(seed));
 

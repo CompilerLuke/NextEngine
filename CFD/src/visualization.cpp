@@ -80,44 +80,48 @@ CFDVisualization* make_cfd_visualization() {
 	pipeline_desc.range[PushConstant_Vertex].size = sizeof(glm::mat4);
 	pipeline_desc.range[PushConstant_Fragment].size = sizeof(glm::vec4);
 	pipeline_desc.range[PushConstant_Fragment].offset = sizeof(glm::mat4);
-    //pipeline_desc.state = ; //temporary
+    //pipeline_desc.state = DepthFunc_Always | DepthMask_None; //temporary
     
 	visualization->pipeline_triangle_solid = query_Pipeline(pipeline_desc);
 
 	pipeline_desc.state = Cull_None | PolyMode_Wireframe | (3 << WireframeLineWidth_Offset);
 	visualization->pipeline_triangle_wireframe = query_Pipeline(pipeline_desc);
 
-	pipeline_desc.state = Cull_None | DepthFunc_Always | PrimitiveType_LineList | (3 << WireframeLineWidth_Offset);
+	pipeline_desc.state = Cull_None | PrimitiveType_LineList | (3 << WireframeLineWidth_Offset);
 	visualization->pipeline_line = query_Pipeline(pipeline_desc);
 
 	return visualization;
 }
 
-void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mesh, vec4 plane) {
-	//Identify contour
+void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mesh, vec4 plane, bool rebuild) {
+    if (!rebuild && plane == visualization.last_plane) return;
+    
+    //Identify contour
     uint* visible = TEMPORARY_ZEROED_ARRAY(uint, (mesh.cells.length+1) / 32);
+    float epsilon = 0.1;
     
     for (int i = 0; i < mesh.cells.length; i++) {
         CFDCell& cell = mesh.cells[i];
         
         uint n = shapes[cell.type].num_verts;
         
-#if 1
+#if 0
         bool is_visible = true;
         for (uint i = 0; i < n; i++) {
             vec3 position = mesh[cell.vertices[i]].position;
             
-            if (dot(plane, position) < plane.w-FLT_EPSILON) {
+            if (dot(plane, position) < plane.w-epsilon) {
                 is_visible = false;
                 break;
             }
         }
 #else
         vec3 centroid = compute_centroid(mesh, cell.vertices, n);
-        bool is_visible = dot(plane, centroid) > plane.w;
+        bool is_visible = dot(plane, centroid) > plane.w+epsilon;
 #endif
         
-        if (is_visible) visible[i / 32] |= 1 << i%32;
+        //is_visible = true;
+        if (is_visible) visible[i / 32] |= 1 << (i%32);
     }
     
 	//line_vertices.resize(mesh.vertices.length);
@@ -127,6 +131,7 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
 	//}
     
     visualization.frame_index = (visualization.frame_index+1) % MAX_FRAMES_IN_FLIGHT;
+    visualization.last_plane = plane;
     
     Arena& vertex_arena = visualization.vertex_arena[visualization.frame_index];
     Arena& index_arena = visualization.index_arena[visualization.frame_index];
@@ -151,7 +156,8 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
         const CFDCell& cell = mesh.cells[i];
         const ShapeDesc& desc = shapes[cell.type];
         
-        /*bool is_contour = false;
+#if 1
+        bool is_contour = false;
         for (uint i = 0; i < desc.num_faces; i++) {
             int neigh = cell.faces[i].neighbor.id;
             bool has_no_neighbor = neigh == -1 || !(visible[neigh/32] & (1 << neigh%32));
@@ -162,7 +168,8 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
             }
         }
         
-        if (!is_contour) continue;*/
+        if (!is_contour) continue;
+#endif
         
         for (uint i = 0; i < desc.num_faces; i++) {
             const ShapeDesc::Face& face = desc.faces[i];
@@ -199,6 +206,8 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
     
     visualization.line_vertex_buffer.index_base = line_buffer_offset / sizeof(uint);
 
+    //printf("Generated vertex representation!\n");
+    
 	//todo leaks memory
 	//begin_gpu_upload();
 	//visualization.line_vertex_buffer = alloc_vertex_buffer<Vertex>(VERTEX_LAYOUT_DEFAULT, line_vertices, line_indices);
@@ -209,7 +218,7 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
 
 void render_cfd_mesh(CFDVisualization& vis, CommandBuffer& cmd_buffer) {
 	glm::mat4 mat(1.0);
-	glm::vec4 color(1.0, 0.0, 0.0, 1.0);
+	glm::vec4 color(1.0, 1.0, 1.0, 1.0);
 	glm::vec4 line_color(0.0, 0.0, 0.0, 1.0);
     
     uint frame_index = vis.frame_index;

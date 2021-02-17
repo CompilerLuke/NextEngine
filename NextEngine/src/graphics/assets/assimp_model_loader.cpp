@@ -40,11 +40,11 @@ struct ModelLoadingScratch {
 	for (int i = 0; i < mesh->mNumVertices; i++) {
 		auto position = mesh->mVertices[i];
 
-		auto tangent = mesh->mTangents[i];
-		auto bitangent = mesh->mBitangents[i];
+		auto tangent = mesh->mTangents ? mesh->mTangents[i] : aiVector3D();
+        auto bitangent = mesh->mBitangents ? mesh->mBitangents[i] : aiVector3D();
 
 		auto first_coords = coords ? glm::vec2(coords[i].x, coords[i].y) : glm::vec2(0,0);
-		auto normals = mesh->mNormals[i];
+		auto normals = mesh->mNormals ? mesh->mNormals[i] : aiVector3D();
 
 		vertices[i] = {
 			apply_trans * glm::vec4(position.x, position.y, position.z, 1.0),

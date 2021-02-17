@@ -4,20 +4,22 @@
 #include <math.h>
 #include <glm/vec3.hpp>
 
+using real = double;
+
 //todo merge vec3.h and vec4.h into one file
 
 struct vec3 {
-	float x;
-	float y;
-	float z;
+	real x;
+	real y;
+	real z;
 
 	inline vec3() : x(0.0f), y(0.0f), z(0.0f) {}
-	inline vec3(float x, float y, float z) : x(x), y(y), z(z) {}
-	inline vec3(float x) : x(x), y(x), z(x) {}
+	inline vec3(real x, real y, real z) : x(x), y(y), z(z) {}
+	inline vec3(real x) : x(x), y(x), z(x) {}
 
 	inline vec3(glm::vec3 v) : x(v.x), y(v.y), z(v.z) {}
 	inline operator glm::vec3() { return glm::vec3(x,y,z); }
-    inline float& operator[](uint i) { return (&this->x)[i]; }
+    inline real& operator[](uint i) { return (&this->x)[i]; }
 };
 
 inline vec3 operator+(vec3 a, vec3 b) {

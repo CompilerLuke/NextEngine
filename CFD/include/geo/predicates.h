@@ -1,6 +1,6 @@
 #pragma once
 
-using real = float;
+using real = double;
 
 extern real o3dstaticfilter;
 extern real o3derrboundA;

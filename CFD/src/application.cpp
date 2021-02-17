@@ -69,11 +69,12 @@ void set_theme(UITheme& theme) {
 }
 
 void default_scene(Lister& lister, World& world) {
-    model_handle model = load_Model("fighter_jet.obj");
+    model_handle model = load_Model("fighter_jet2.obj");
 
     {
         auto [e, trans, mesh] = world.make<Transform, CFDMesh>();
-        trans.scale = glm::vec3(0.1);
+        trans.position.z = 39.2f;
+        trans.scale = glm::vec3(1.6);
         trans.rotation = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1.0, 0.0, 0.0));
         mesh.model = model;
         mesh.color = glm::vec4(1,1,0,1);
@@ -82,14 +83,17 @@ void default_scene(Lister& lister, World& world) {
     }
     {
         auto [e, trans, domain] = world.make<Transform, CFDDomain>();
-        domain.size = vec3(25);
+        domain.size = vec3(100);
+        domain.tetrahedron_layers = 3;
+        domain.contour_initial_thickness = 0.5;
+        domain.contour_thickness_expontent = 1.4;
         
         register_entity(lister, "Domain", e.id);
     }
     {
         auto [e, trans, camera, flyover] = world.make<Transform, Camera, Flyover>();
         flyover.mouse_sensitivity = 0.1f;
-        flyover.movement_speed *= 0.2;
+        flyover.movement_speed *= 1;
         trans.position.z = 15.0;
     }
 }
@@ -98,7 +102,7 @@ void test_front();
 void insphere_test();
 
 APPLICATION_API CFD* init(void* args, Modules& engine) {
-    insphere_test();
+    //insphere_test();
     
     World& world = *engine.world;
     
@@ -145,30 +149,33 @@ APPLICATION_API void update(CFD& cfd, Modules& modules) {
 	UpdateCtx update_ctx(*modules.time, *modules.input);
 	update_ctx.layermask = EntityQuery().with_none(EDITOR_ONLY);
 	update_flyover(world, update_ctx);
+    
+    auto some_mesh = world.first<Transform, CFDMesh>();
+    auto some_domain = world.first<Transform, CFDDomain>();
 
-	if (solver.phase == SOLVER_PHASE_MESH_GENERATION) {
-		auto some_mesh = world.first<Transform, CFDMesh>();
-		auto some_domain = world.first<Transform, CFDDomain>();
+    if (some_domain && some_mesh) {
+        auto [e1, mesh_trans, mesh] = *some_mesh;
+        auto [e2, domain_trans, domain] = *some_domain;
+        
+        vec4 plane(domain.plane, dot(domain.plane, domain.center));
+        
+        if (solver.phase == SOLVER_PHASE_MESH_GENERATION) {
+            CFDMeshError err;
+            solver.mesh = generate_mesh(world, err);
+            
+            if (err.type == CFDMeshError::None) {
+                solver.phase = SOLVER_PHASE_SIMULATION;
+            }
+            else {
+                log_error(err);
+                solver.phase = SOLVER_PHASE_FAIL;
+            }
 
-		if (some_domain && some_mesh) {
-			auto [e1, mesh_trans, mesh] = *some_mesh;
-			auto [e2, domain_trans, domain] = *some_domain;
-		
-			CFDMeshError err;
-			solver.mesh = generate_mesh(world, err);
-			
-			if (err.type == CFDMeshError::None) {
-				solver.phase = SOLVER_PHASE_SIMULATION;
-			}
-			else {
-				log_error(err);
-				solver.phase = SOLVER_PHASE_FAIL;
-			}
-
-            vec4 plane(domain.plane, dot(domain.plane, domain.center));
-			build_vertex_representation(*cfd.visualization, solver.mesh, plane);
-		}
-	}
+            build_vertex_representation(*cfd.visualization, solver.mesh, plane, true);
+        } else {
+            build_vertex_representation(*cfd.visualization, solver.mesh, plane, false);
+        }
+    }
 }
 
 void nav_bar_li(UI& ui, string_view name) {
