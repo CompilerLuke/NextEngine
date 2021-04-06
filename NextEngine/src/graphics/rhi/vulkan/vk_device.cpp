@@ -339,36 +339,41 @@ VkPhysicalDevice pick_physical_devices(VkInstance instance, VkSurfaceKHR surface
 	return devices[index];
 }
 
+void enable_extensions(VkDeviceCreateInfo& info) {
+    VkPhysicalDeviceVulkan12Features* physical_device_features_12 = TEMPORARY_ALLOC(VkPhysicalDeviceVulkan12Features, {});
+    physical_device_features_12->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+    physical_device_features_12->timelineSemaphore = true;
+    physical_device_features_12->pNext = (void*)info.pNext;
+    
+    VkPhysicalDeviceDescriptorIndexingFeatures* descriptor_indexing_features = TEMPORARY_ALLOC(VkPhysicalDeviceDescriptorIndexingFeatures);
+    descriptor_indexing_features->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+
+    // Enable non-uniform indexing
+    descriptor_indexing_features->shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+    descriptor_indexing_features->runtimeDescriptorArray = VK_TRUE;
+    descriptor_indexing_features->descriptorBindingVariableDescriptorCount = VK_TRUE;
+    descriptor_indexing_features->descriptorBindingPartiallyBound = VK_TRUE;
+    descriptor_indexing_features->pNext = &physical_device_features_12;
+    
+    info.pNext = descriptor_indexing_features;
+}
+
 void make_logical_device(Device& device, const VulkanDesc& desc, VkSurfaceKHR surface) {	
 	QueueFamilyIndices queue_families = find_queue_families(device.physical_device, surface);
 	device.queue_families = queue_families;
 	device.device_features = desc.device_features;
 
-	//VkPhysicalDeviceTimelineSemaphoreFeatures semaphore_features = {};
-	//semaphore_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES;
-	//semaphore_features.timelineSemaphore = true;
+	VkDeviceCreateInfo device_desc = {};
+	device_desc.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	device_desc.enabledExtensionCount = sizeof(device_extensions) / sizeof(const char*);
+	device_desc.ppEnabledExtensionNames = device_extensions;
+	device_desc.pEnabledFeatures = &desc.device_features;
+	
+    enable_extensions(device_desc);
 
-	//VkPhysicalDeviceFeatures2 physical_device_features_2 = {};
-	//physical_device_features_2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-	//physical_device_features_2.features = desc.device_features;
-	//physical_device_features_2.pNext = &physical_device_features_12;
-
-	VkPhysicalDeviceVulkan12Features physical_device_features_12 = {};
-	physical_device_features_12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-	physical_device_features_12.timelineSemaphore = true;
-
-
-	VkDeviceCreateInfo makeInfo = {};
-	makeInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-	makeInfo.enabledExtensionCount = sizeof(device_extensions) / sizeof(const char*);
-	makeInfo.ppEnabledExtensionNames = device_extensions;
-	makeInfo.pEnabledFeatures = &desc.device_features;
-	makeInfo.pNext = &physical_device_features_12;
-
-
-	makeInfo.enabledLayerCount = desc.num_validation_layers;
+	device_desc.enabledLayerCount = desc.num_validation_layers;
 	if (desc.num_validation_layers > 0) {
-		makeInfo.ppEnabledLayerNames = desc.validation_layers;
+		device_desc.ppEnabledLayerNames = desc.validation_layers;
 	}
 
 	//DEFINE ALL QUEUES TO BE CREATED
@@ -392,19 +397,15 @@ void make_logical_device(Device& device, const VulkanDesc& desc, VkSurfaceKHR su
 		queueCreateInfo.pQueuePriorities = &queuePriority;
 	}
 
-	makeInfo.queueCreateInfoCount = queueCreateInfos.length;
-	makeInfo.pQueueCreateInfos = queueCreateInfos.data;
+	device_desc.queueCreateInfoCount = queueCreateInfos.length;
+	device_desc.pQueueCreateInfos = queueCreateInfos.data;
 	
-	if (vkCreateDevice(device.physical_device, &makeInfo, nullptr, &device.device) != VK_SUCCESS) {
+	if (vkCreateDevice(device.physical_device, &device_desc, nullptr, &device.device) != VK_SUCCESS) {
 		throw "failed to make logical device!";
 	}
 
 	VkPhysicalDeviceTimelineSemaphoreProperties semaphore_properties = {};
 	semaphore_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES;
-
-	VkPhysicalDeviceVulkan12Properties properties_12 = {};
-	properties_12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES;
-	properties_12.pNext = &semaphore_properties;
 
 	VkPhysicalDeviceProperties2 properties = {};
 	properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
@@ -414,7 +415,6 @@ void make_logical_device(Device& device, const VulkanDesc& desc, VkSurfaceKHR su
 	
 	device.device_limits = properties.properties.limits;
 	
-	printf("\n\nSEMAPHORE MAX VALUE DIFFERENCE %i\n", properties_12.maxTimelineSemaphoreValueDifference);
 	printf("\n\nSEMAPHORE MAX VALUE DIFFERENCE %i\n", semaphore_properties.maxTimelineSemaphoreValueDifference);
 
 	vkGetDeviceQueue(device, queue_families.graphics_family, 0, &device.graphics_queue);

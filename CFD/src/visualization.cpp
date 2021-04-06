@@ -105,19 +105,20 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
         
         uint n = shapes[cell.type].num_verts;
         
-#if 0
+        
+#if 1
         bool is_visible = true;
         for (uint i = 0; i < n; i++) {
             vec3 position = mesh[cell.vertices[i]].position;
             
-            if (dot(plane, position) < plane.w-epsilon) {
+            if (dot(plane, position) < plane.w+epsilon) {
                 is_visible = false;
                 break;
             }
         }
 #else
         vec3 centroid = compute_centroid(mesh, cell.vertices, n);
-        bool is_visible = dot(plane, centroid) > plane.w+epsilon;
+        bool is_visible = dot(plane, centroid) > plane.w-epsilon;
 #endif
         
         //is_visible = true;
@@ -155,6 +156,7 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
         
         const CFDCell& cell = mesh.cells[i];
         const ShapeDesc& desc = shapes[cell.type];
+        
         
 #if 1
         bool is_contour = false;

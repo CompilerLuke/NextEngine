@@ -80,8 +80,8 @@ void Application::init(void* args) {
 u64 timestamp_of(const char* path) {
 	struct _stat info;
 	_stat(path, &info);
-
-	return info.st_mtime;
+    
+	return info.st_mtimespec.tv_sec;
 }
 
 void* Application::get_func(string_view name) {
@@ -89,8 +89,6 @@ void* Application::get_func(string_view name) {
 }
 
 void Application::load_functions() {
-	time_modified = timestamp_of(path.c_str());
-
 	bool locked = false;
 	for (uint i = 0; i < 10; i++) {
 		dll_handle = load_DLL(path, &locked);
@@ -116,8 +114,14 @@ void Application::load_functions() {
     
 
 	if (!init_func || !deinit_func || !update_func || !render_func) {
+        if (!init_func) fprintf(stderr, "Missing init function 'APPLICATION_API App* init(void* args, Modules&);'");
+        if (!deinit_func) fprintf(stderr, "Missing deinit function 'APPLICATION_API void deinit(App* app, Modules&);'");
+        if (!update_func) fprintf(stderr, "Missing init function 'APPLICATION_API void update(App* app, Modules&);'");
+        if (!render_func) fprintf(stderr, "Missing init function 'APPLICATION_API void render(App* app, Modules&);'");
 		throw "Missing application functions";
 	}
+    
+    time_modified = timestamp_of(path.c_str());
 }
 
 

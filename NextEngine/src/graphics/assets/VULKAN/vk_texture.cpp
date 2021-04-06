@@ -548,8 +548,6 @@ void transfer_image_ownership(TextureAllocator& allocator, VkCommandBuffer cmd_b
 
 		transition_ImageLayout(cmd_buffer, transfer_ownership->image, transfer_ownership->format, 
 			VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 1, queue.queue_family, queue.dst_queue_family);
-		//transition_ImageLayout(cmd_buffer, allocator.staging_queue, transfer_ownership->image, transfer_ownership->format,
-		//	VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 		printf("\n=========================\n");
 

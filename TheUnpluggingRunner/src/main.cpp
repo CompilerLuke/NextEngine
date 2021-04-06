@@ -115,7 +115,7 @@ void fiber_main(void* data) {
 
     
 #ifdef BUILD_STANDALONE
-	Application game(modules, game_dll_path);
+	Application game(modules, "bin/" NE_BUILD_DIR "/Notec/libCFD.dylib");
 	game.init();
 	game.run();
 #else

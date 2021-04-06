@@ -26,6 +26,11 @@ void key_callback(GLFWwindow* window_ptr, int key, int scancode, int action, int
 	window->on_key.broadcast({ key, scancode, action, mods });
 }
 
+void char_callback(GLFWwindow* window_ptr, uint c) {
+    auto window = (Window*)glfwGetWindowUserPointer(window_ptr);
+    window->on_char.broadcast(c);
+}
+
 void mouse_button_callback(GLFWwindow* window_ptr, int button, int action, int mods) {
 	auto window = (Window*)glfwGetWindowUserPointer(window_ptr);
 	window->on_mouse_button.broadcast({ button, action, mods });
@@ -88,6 +93,7 @@ void Window::init() {
 	glfwSetFramebufferSizeCallback(window_ptr, framebuffer_size_callback);
 	glfwSetCursorPosCallback(window_ptr, cursor_pos_callback);
 	glfwSetKeyCallback(window_ptr, key_callback);
+    glfwSetCharCallback(window_ptr, char_callback);
 	glfwSetInputMode(window_ptr, GLFW_CURSOR, GLFW_CURSOR);
 	glfwSetDropCallback(window_ptr, drop_callback);
 	glfwSetMouseButtonCallback(window_ptr, mouse_button_callback);

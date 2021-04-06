@@ -35,11 +35,11 @@ using u16 = uint16_t;
 //PER FRAME RESOURCES HAVE TO BE DUPLICATED, OTHERWISE THE GPU CAN GRAB DATA FROM THE WRONG FRAME
 const uint MAX_FRAMES_IN_FLIGHT = 3;
 
-inline constexpr uint max(uint a, uint b) {
+inline constexpr int max(int a, int b) {
 	return a > b ? a : b;
 }
 
-inline constexpr uint min(uint a, uint b) {
+inline constexpr int min(int a, int b) {
 	return a < b ? a : b;
 }
 

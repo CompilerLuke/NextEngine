@@ -41,6 +41,7 @@ struct Window {
 	EventDispatcher<glm::vec2> on_resize;
 	EventDispatcher<glm::vec2> on_cursor_pos;
 	EventDispatcher<KeyData> on_key;
+    EventDispatcher<uint> on_char;
 	EventDispatcher<string_buffer> on_drop;
 	EventDispatcher<MouseButtonData> on_mouse_button;
 	EventDispatcher<glm::vec2> on_scroll;

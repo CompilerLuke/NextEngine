@@ -67,19 +67,9 @@ void end_staging_cmds(StagingQueue& queue) {
 	info.completion_fence = completed;
 	info.cmd_buffers.append(queue.cmd_buffers[queue.frame_index]);
 
-	//uint64_t value;
-	//vkGetSemaphoreCounterValue(device, queue.wait_on_transfer, &value);
-
 	printf("SIGNALLING SEMAPHORE WITH CURRENT VALUE %i\n", signal_value);
 
 	queue_signal_timeline_semaphore(info, queue.wait_on_transfer, signal_value);
-	
-	/*VkSubmitInfo submitInfo = {};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &cmd_buffer;
-	submitInfo.signalSemaphoreCount = MAX_FRAMES_IN_FLIGHT;
-	submitInfo.pSignalSemaphores = queue.wait_on_transfer;*/
 	
 	vkResetFences(device, 1, &completed);
 

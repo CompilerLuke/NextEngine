@@ -14,7 +14,6 @@
 		B8FD7735A9F4E52715F86575 /* chemistry_project.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1772EE7DAFBFD42FDE06D4BD /* chemistry_project.cpp */; };
 		BAE4C3F74D728DE9B64B3237 /* generated.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FE003E1FC16BFFD1000FA45F /* generated.cpp */; };
 		DC33A656EC808A48EA6D5496 /* libNextCore.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5C3C975E03B23310AC773D9E /* libNextCore.dylib */; };
-		EAC11397DEC05D0963AB71D7 /* ChemistryProject.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 880998BFCC1D69F1BFEEEEFF /* ChemistryProject.cpp */; };
 		EBF2C0777E808A69E7592EB7 /* gold_foil.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E256329FA5C1F451E46598DF /* gold_foil.cpp */; };
 /* End PBXBuildFile section */
 
@@ -59,7 +58,6 @@
 		6E8A030B3CAD56BDC3BBA94B /* component_ids.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = component_ids.h; path = include/component_ids.h; sourceTree = "<group>"; };
 		778216591563170BECE15C99 /* chemistry_component_ids.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = chemistry_component_ids.h; path = include/chemistry_component_ids.h; sourceTree = "<group>"; };
 		7A9AB4AF9C6661E1D91B8AEF /* emission.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = emission.cpp; path = src/emission.cpp; sourceTree = "<group>"; };
-		880998BFCC1D69F1BFEEEEFF /* ChemistryProject.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ChemistryProject.cpp; path = src/ChemistryProject.cpp; sourceTree = "<group>"; };
 		97AF1C97B97AC9C9F62FF2D7 /* rotating.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = rotating.h; path = include/rotating.h; sourceTree = "<group>"; };
 		D9568A7EF06925B0E08520BE /* stdafx.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = stdafx.cpp; path = stdafx.cpp; sourceTree = "<group>"; };
 		D968587B26CB4EAD9CEA4EBB /* rotating 2.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "rotating 2.h"; path = "include/rotating 2.h"; sourceTree = "<group>"; };
@@ -107,7 +105,6 @@
 		5775D4184366DFCA959E7A58 /* src */ = {
 			isa = PBXGroup;
 			children = (
-				880998BFCC1D69F1BFEEEEFF /* ChemistryProject.cpp */,
 				1772EE7DAFBFD42FDE06D4BD /* chemistry_project.cpp */,
 				7A9AB4AF9C6661E1D91B8AEF /* emission.cpp */,
 				FE003E1FC16BFFD1000FA45F /* generated.cpp */,
@@ -270,7 +267,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				EAC11397DEC05D0963AB71D7 /* ChemistryProject.cpp in Sources */,
 				B8FD7735A9F4E52715F86575 /* chemistry_project.cpp in Sources */,
 				18493E875C97E3F99EBF1CC7 /* emission.cpp in Sources */,
 				BAE4C3F74D728DE9B64B3237 /* generated.cpp in Sources */,

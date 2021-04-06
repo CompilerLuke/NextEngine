@@ -47,3 +47,19 @@ ENGINE_API void set_scissor(CommandBuffer&, Rect2D);
 
 //void begin_render_pass(CommandBuffer&, render_pass_handle);
 //void end_render_pass(CommandBuffer&);
+
+/*
+//Deferred API
+#include "buffer.h"
+
+struct DeferCommandBuffer;
+
+ENGINE_API DeferCommandBuffer& alloc_cmd_buffer(Allocator* allocator = nullptr);
+
+struct IndexedDrawCmd;
+
+ENGINE_API IndexedDrawCmd& draw_cmd(DeferCommandBuffer&);
+ENGINE_API void render_to_pass();
+
+ENGINE_API void cmd_set_scissor();
+*/

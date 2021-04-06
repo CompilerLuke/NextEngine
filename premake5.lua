@@ -183,7 +183,6 @@ project "NextEngine"
         "%{prj.name}/vendor/bullet3/src",
 	}
 
-
 	links 
 	{
 		"NextCore",
@@ -281,6 +280,45 @@ project "ChemistryProject"
 	-- $(SolutionDir)x64\Release\ReflectionTool.exe  -b $(ProjectDir) -i "" -d "" -o generated
 	dll_config()
 
+project "NextUI"
+    location "NextUI"
+
+    includedirs { "NextEngine/include", "NextCore/include "}
+    links { "NextCore", "NextEngine" }
+
+    filter "system:windows"
+        sysincludedirs { "C:/Users/User/Desktop/Game Engine/freetype-windows-binaries/include"}
+        libdirs { "C:/Users/User/Desktop/Game Engine/freetype-windows-binaries/win64"}
+        links "freetype"
+
+    filter "system:macosx"
+        sysincludedirs { "/usr/local/Cellar/freetype/2.10.2/include/freetype2" }
+        libdirs { "/usr/local/Cellar/freetype/2.10.2/lib" } --maybe it is better to include freetype through git submodules
+        links "freetype"
+
+    filter "*"
+
+    dll_config()
+
+project "Notec"
+    location "Notec"
+
+    files {
+        "%{prj.name}/include/generated.h",
+        "%{prj.name}/src/generated.cpp"
+    }
+
+    includedirs { "NextEngine/include", "NextCore/include", "NextUI/include" }
+    includedirs {"Notec/vendor/inst/include"}
+    libdirs {"Notec/vendor/inst/lib"}
+    links { "NextCore", "NextEngine", "NextUI", "cling" }
+
+    postbuildcommands {
+        ("{COPY} vendor/inst/lib/libCling.dylib ../bin/" .. outputdir .. "/TheUnpluggingRunner")
+    }
+
+    dll_config()
+
 project "CFD"
 	location "CFD"
 
@@ -290,27 +328,10 @@ project "CFD"
 	    "%{prj.name}/src/generated.cpp"
 	}
 
-	includedirs { "NextEngine/include", "NextCore/include" }
-	links { "NextCore", "NextEngine" }
- 
-    --if freetype then
-    filter "system:windows"
-	    sysincludedirs { "C:/Users/User/Desktop/Game Engine/freetype-windows-binaries/include"}
-        libdirs { "C:/Users/User/Desktop/Game Engine/freetype-windows-binaries/win64"}
-        links "freetype"
-
-    filter "system:macosx"
-		sysincludedirs { "/usr/local/Cellar/freetype/2.10.2/include/freetype2" }
-        libdirs { "/usr/local/Cellar/freetype/2.10.2/lib" } --maybe it is better to include freetype through git submodules
-        links "freetype"
-
-    filter "*"
-
-    --end
+	includedirs { "NextEngine/include", "NextCore/include", "NextUI/include" }
+	links { "NextCore", "NextEngine", "NextUI" }
 
 	prebuildcommands (reflection_exe .. ' -b "." -i "include" components.h -c "cfd_ids.h" -o src/generated')
-
-	-- $(SolutionDir)x64\Release\ReflectionTool.exe  -b $(ProjectDir) -i "" -d "" -o generated
 	dll_config()
 
 project "TheUnpluggingGame"

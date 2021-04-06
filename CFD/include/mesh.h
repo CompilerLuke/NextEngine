@@ -56,6 +56,14 @@ inline void sort3_vertices(vertex_handle verts[3]) {
 	if (verts[0].id > verts[1].id) swap_vertex(verts[0], verts[1]);
 }
 
+inline void sort4_vertices(vertex_handle verts[4]) {
+    if (verts[0].id > verts[1].id) swap_vertex(verts[0], verts[1]);
+    if (verts[2].id > verts[3].id) swap_vertex(verts[2], verts[3]);
+    if (verts[0].id > verts[2].id) swap_vertex(verts[2], verts[3]);
+    if (verts[1].id > verts[3].id) swap_vertex(verts[1], verts[3]);
+    if (verts[1].id > verts[2].id) swap_vertex(verts[1], verts[2]);
+}
+
 struct TriangleFaceSet {
 	vertex_handle verts[3];
 
@@ -196,6 +204,8 @@ constexpr ShapeDesc tetra_shape = { 4, 4, {
 	{3, {1,2,3}}, //right
 	{3, {0,1,3}}, //front
 } };
+
+constexpr uint tetra_opposite[4] = { 3, 1, 0, 2 };
 
 constexpr ShapeDesc petra_shape = { 5, 5, {
 	{4, {0,1,2,3}}, //bottom

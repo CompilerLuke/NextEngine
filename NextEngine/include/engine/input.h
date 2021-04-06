@@ -156,7 +156,9 @@ struct Input {
 	glm::vec2 mouse_offset;
 
 	float scroll_offset = 0;
+    int last_key;
 
+    double last_pressed[(uint)Key::Last] = {};
     int keys[(uint)Key::Last] = {};
 
 	bool mouse_captured = false;
@@ -165,6 +167,7 @@ struct Input {
 
 	bool ENGINE_API key_down(Key, ModKeys allow_mod = ModKeys::None);
 	bool ENGINE_API key_pressed(Key, ModKeys allow_mod = ModKeys::None);
+    bool ENGINE_API key_down_timeout(Key, float timeout, ModKeys allow_mod = ModKeys::None);
 	bool ENGINE_API key_mod_pressed(Key key, Key mod = Key::Control);
 
 	bool ENGINE_API mouse_button_down(MouseButton button = MouseButton::Left);

@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include "core/core.h"
+#include <string.h>
 
 struct CORE_API Allocator {
 	virtual void* allocate(std::size_t) { return NULL;  };

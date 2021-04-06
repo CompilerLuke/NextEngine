@@ -94,6 +94,10 @@ inline vec3 cross(vec3 a, vec3 b) {
 	};
 }
 
+inline vec3 abs(vec3 vec) {
+    return vec3(fabs(vec.x), fabs(vec.y), fabs(vec.z));
+}
+
 inline float max(vec3 vec) {
     if (vec.x > vec.y) return vec.x > vec.z ? vec.x : vec.z;
     else return vec.y > vec.z ? vec.y : vec.z;

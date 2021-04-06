@@ -127,7 +127,6 @@ APPLICATION_API CFD* init(void* args, Modules& engine) {
         { FRAGMENT_STAGE, RenderPass::Scene },
     };
     
-
     build_framegraph(*engine.renderer, { dependencies, 1});
     end_gpu_upload();
     
