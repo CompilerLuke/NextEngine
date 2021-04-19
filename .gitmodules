@@ -16,3 +16,9 @@
 [submodule "NextEngine/vendor/ImGui"]
 	path = NextEngine/vendor/ImGui
 	url = https://github.com/CompilerLuke/ImGui.git
+[submodule "CFD/vendor/opennurbs"]
+	path = CFD/vendor/opennurbs
+	url = https://github.com/mcneel/opennurbs.git
+[submodule "CFD/vendor/lapack"]
+	path = CFD/vendor/lapack
+	url = https://github.com/Reference-LAPACK/lapack
