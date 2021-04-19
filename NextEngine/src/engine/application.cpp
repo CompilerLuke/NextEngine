@@ -81,7 +81,7 @@ u64 timestamp_of(const char* path) {
 	struct _stat info;
 	_stat(path, &info);
     
-	return info.st_mtimespec.tv_sec;
+	return info.st_mtime; 
 }
 
 void* Application::get_func(string_view name) {

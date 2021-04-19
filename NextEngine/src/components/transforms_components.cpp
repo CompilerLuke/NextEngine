@@ -8,7 +8,7 @@
 #include <glm/simd/matrix.h>
 #include "ecs/ecs.h"
 
-glm::mat4 compute_model_matrix(Transform& trans) {
+glm::mat4 compute_model_matrix(const Transform& trans) {
 	glm::mat4 identity(1.0);
 	return glm::translate(identity, trans.position) * glm::scale(identity, trans.scale) * glm::mat4_cast(trans.rotation);
 }

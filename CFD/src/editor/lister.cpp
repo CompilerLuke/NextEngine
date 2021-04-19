@@ -1,4 +1,4 @@
-#include "UI/ui.h"
+#include "ui/ui.h"
 #include "editor/lister.h"
 #include "editor/selection.h"
 #include "ecs/ecs.h"
@@ -6,7 +6,7 @@
 #include "core/memory/linear_allocator.h"
 #include "core/io/logger.h"
 #include "graphics/rhi/primitives.h"
-#include "components.h"
+#include "cfd_components.h"
 #include "cfd_ids.h"
 
 REFL
@@ -20,7 +20,7 @@ struct EntityNode {
 
 struct Lister {
 	World& world;
-	Selection& selection;
+	SceneSelection& selection;
 	UI& ui;
 
 	EntityNode root_node;
@@ -29,7 +29,7 @@ struct Lister {
 	string_buffer filter;
 };
 
-Lister* make_lister(World& world, Selection& selection, UI& ui) {
+Lister* make_lister(World& world, SceneSelection& selection, UI& ui) {
 	Lister* lister = PERMANENT_ALLOC(Lister, { world, selection, ui });
 	lister->by_id[0] = &lister->root_node;
 	return lister;
@@ -53,12 +53,12 @@ sstring& name_of_entity(Lister& lister, ID id) {
 	return node_by_id(lister, id)->name;
 }
 
-void render_hierarchy(Lister& lister, UI& ui, EntityNode& node, Selection& selection) {
+void render_hierarchy(Lister& lister, UI& ui, EntityNode& node, SceneSelection& selection) {
 	EntityNode* real = node_by_id(lister, node.id);
 	UITheme& theme = get_ui_theme(ui);
 
 	ID id = node.id;
-	bool selected = selection.is_selected(node.id);
+	bool selected = selection.is_active(node.id);
 
 	bool& hovered = get_state<bool>(ui);
 
@@ -82,22 +82,6 @@ void render_hierarchy(Lister& lister, UI& ui, EntityNode& node, Selection& selec
 			text(ui, ">").on_click([=] { real->expanded = true; });
 		}
 	}
-
-	/*
-	if (ImGui::BeginDragDropSource()) {
-		ImGui::Text(node.name.data);
-		//Could also cast u64 to a pointer
-		ImGui::SetDragDropPayload("DRAG_AND_DROP_ENTITY", real, sizeof(EntityNode));
-		ImGui::EndDragDropSource();
-	}
-	if (ImGui::BeginDragDropTarget()) {
-		if (ImGui::AcceptDragDropPayload("DRAG_AND_DROP_ENTITY")) {
-			EntityNode* child = (EntityNode*)ImGui::GetDragDropPayload()->Data;
-			defer_add_child.append(AddChild{ id, child->id });
-		}
-		ImGui::EndDragDropTarget();
-	}
-	*/
 
 	end_hstack(ui);
 	if (node.expanded && has_children) {
@@ -230,16 +214,16 @@ void register_entity(Lister& lister, string_view name, ID id) {
 }
 
 void create_under_selected(Lister& lister, string_view name, ID id) {
-	EntityNode* parent = node_by_id(lister, lister.selection.selected);
+	EntityNode* parent = node_by_id(lister, lister.selection.get_active());
 	if (!parent) {
 		printf("Found no parent!\n");
 		return;
 	}
 
-	add_child(lister, lister.selection.selected, { name, id });
+	add_child(lister, lister.selection.get_active(), { name, id });
 }
 
-void spawn_primitive(Lister& lister, model_handle primitive, const char* name, material_handle default_material) {
+void spawn_primitive(Lister& lister, input_model_handle primitive, const char* name, material_handle default_material) {
 	auto [e, trans, mesh] = lister.world.make<Transform, CFDMesh>();
 	mesh.model = primitive;
 

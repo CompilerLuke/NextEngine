@@ -2,6 +2,7 @@
 
 #include "core/core.h"
 #include <math.h>
+#include <glm/vec2.hpp>
 
 struct vec2 {
 	float x;
@@ -42,16 +43,18 @@ struct vec2 {
 	void operator/=(vec2 other) {
 		*this = *this * other;
 	}
+
+	operator glm::vec2() { return glm::vec2(x, y);  }
 };
 
-float length(vec2 v) {
+inline float length(vec2 v) {
 	return sqrtf(v.x*v.x + v.y*v.y);
 }
 
-float dot(vec2 a, vec2 b) {
+inline float dot(vec2 a, vec2 b) {
 	return a.x * b.x + a.y * b.y;
 }
 
-vec2 normalize(vec2 v) {
+inline vec2 normalize(vec2 v) {
 	return v / length(v);
 }

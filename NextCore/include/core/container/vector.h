@@ -53,8 +53,7 @@ struct vector {
 			else reserve(capacity * 2);
 		}
 		
-		T* ptr = new (&data[length++]) T();
-		*ptr = std::move(element);
+		T* ptr = new (&data[length++]) T(std::move(element));
 	}
 
 	inline void append(const T& element) {
@@ -64,6 +63,19 @@ struct vector {
 		}
 
 		new (data + length++) T(element);
+	}
+
+	inline void operator+=(slice<T> concat) {
+		uint new_length = length + concat.length;
+		if (new_length >= capacity) {
+			reserve(max(new_length, capacity*2));
+		}
+
+		for (uint i = 0; i < concat.length; i++) {
+			new (data + length + i) T(concat[i]);
+		}
+
+		length = new_length;
 	}
 
 	inline T& last(int index = 1) {

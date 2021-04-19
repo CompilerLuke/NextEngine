@@ -174,9 +174,6 @@
     <ClInclude Include="include\graphics\assets\texture.h">
       <Filter>include\graphics\assets</Filter>
     </ClInclude>
-    <ClInclude Include="include\graphics\culling\aabb.h">
-      <Filter>include\graphics\culling</Filter>
-    </ClInclude>
     <ClInclude Include="include\graphics\culling\build_bvh.h">
       <Filter>include\graphics\culling</Filter>
     </ClInclude>

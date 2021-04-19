@@ -97,7 +97,7 @@ void subdivide_BVH(SubdivideBVHJob& job) {
 	
 	if (job.mesh_count <= MAX_MESHES_PER_NODE || job.depth >= MAX_DEPTH) {
 		Node& node = alloc_leaf_node(scene_partition, job.node_aabb, MAX_MESH_INSTANCES, job.mesh_count);
-
+	
 		copy_into_node(node, scene_partition.meshes, job.meshes);
 		copy_into_node(node, scene_partition.aabbs, job.aabbs);
 		copy_into_node(node, scene_partition.model_m, job.models_m);

@@ -1,9 +1,9 @@
-#include "font.h"
-#include "ui.h"
+#include "ui/font.h"
+#include "ui/ui.h"
 
 #include "graphics/rhi/rhi.h"
 #include "graphics/assets/assets.h"
-#include "internal.h"
+#include "ui/internal.h"
 
 u64 hash_func(const FontDesc& desc) {
     return desc.font.id | (desc.size << 8);

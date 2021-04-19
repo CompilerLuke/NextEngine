@@ -50,7 +50,7 @@ struct tvector {
 
 	inline void operator+=(slice<T> other) {
 		uint new_length = length + other.length;
-		reserve(new_length);
+		if (new_length > capacity) reserve(max(capacity*2, new_length));
 
 		memcpy(data + length, other.data, sizeof(T) * other.length);
 		length = new_length;

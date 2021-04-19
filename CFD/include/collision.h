@@ -1,6 +1,6 @@
 #pragma once
 
-#include "graphics/culling/aabb.h"
+#include "core/math/aabb.h"
 #include "mesh.h"
 
 struct GeometryNode {

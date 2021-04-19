@@ -1,6 +1,9 @@
+#include "core/container/string_view.h"
+
+#if 0
+
 #include "cling/Interpreter/Interpreter.h"
 #include "cling/Interpreter/Value.h"
-#include "core/container/string_view.h"
 
 void execute(string_view str) {
     const char* LLVMRESDIR = "/Users/antonellacalvia/Desktop/Coding/NextEngine/Notec/vendor/inst"; //path to llvm resource directory
@@ -27,3 +30,7 @@ void execute(string_view str) {
         printf("Compilation Failed!");
     }
 }
+
+#else
+void execute(string_view str) {}
+#endif

@@ -6,7 +6,7 @@
 #include "core/container/handle_manager.h"
 #include "engine/handle.h"
 #include "graphics/rhi/buffer.h"
-#include "graphics/culling/aabb.h"
+#include "core/math/aabb.h"
 #include <glm/vec3.hpp>
 #include <glm/vec2.hpp>
 

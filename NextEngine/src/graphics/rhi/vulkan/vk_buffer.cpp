@@ -646,10 +646,10 @@ void dealloc_device_memory(device_memory_handle handle) {
     //todo
 }
 
-void* map_memory(device_memory_handle handle, u64 offset, u64 size) {
+u8* map_memory(device_memory_handle handle, u64 offset, u64 size) {
     void* mapped = nullptr;
     vkMapMemory(rhi.device, get_device_memory(handle), offset, size, 0, &mapped);
-    return mapped;
+    return (u8*)mapped;
 }
 
 void unmap_memory(device_memory_handle handle) {

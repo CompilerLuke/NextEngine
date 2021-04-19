@@ -5,10 +5,10 @@
 
 struct Lister;
 struct World;
-struct Selection;
+struct SceneSelection;
 struct sstring;
 
-Lister* make_lister(World&, Selection& selection, UI& ui);
+Lister* make_lister(World&, SceneSelection& selection, UI& ui);
 void destroy_lister(Lister*);
 
 sstring& name_of_entity(Lister& lister, ID id);

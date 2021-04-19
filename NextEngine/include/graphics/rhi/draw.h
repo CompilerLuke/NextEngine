@@ -41,6 +41,7 @@ ENGINE_API void bind_material(CommandBuffer&, material_handle);
 ENGINE_API void bind_material_and_pipeline(CommandBuffer&, material_handle);
 ENGINE_API void draw_mesh(CommandBuffer&, VertexBuffer, InstanceBuffer);
 ENGINE_API void draw_mesh(CommandBuffer&, VertexBuffer);
+ENGINE_API void draw_indexed(CommandBuffer& cmd_buffer, uint index_count, uint instance, uint index_base, uint vertex_base);
 ENGINE_API void set_depth_bias(CommandBuffer&, float constant, float slope);
 ENGINE_API void set_scissor(CommandBuffer&, Rect2D);
 

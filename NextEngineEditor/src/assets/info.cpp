@@ -33,6 +33,11 @@ AssetNode::AssetNode(const AssetNode& other) {
     }
 }*/
 
+AssetNode::AssetNode(AssetNode&& other) {
+	memcpy(this, &other, sizeof(AssetNode));
+	memset(&other, 0, sizeof(AssetNode));
+}
+
 void AssetNode::operator=(AssetNode&& other) {
 	memcpy(this, &other, sizeof(AssetNode));
 	memset(&other, 0, sizeof(AssetNode));

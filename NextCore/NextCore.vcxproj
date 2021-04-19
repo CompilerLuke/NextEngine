@@ -159,6 +159,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="include\core\algorithm.h" />
     <ClInclude Include="include\core\atomic.h" />
     <ClInclude Include="include\core\container.h" />
     <ClInclude Include="include\core\container\array.h" />
@@ -187,6 +188,8 @@
     <ClInclude Include="include\core\job_system\job.h" />
     <ClInclude Include="include\core\job_system\thread.h" />
     <ClInclude Include="include\core\job_system\work_stealing_queue.h" />
+    <ClInclude Include="include\core\math\aabb.h" />
+    <ClInclude Include="include\core\math\intersection.h" />
     <ClInclude Include="include\core\math\vec2.h" />
     <ClInclude Include="include\core\math\vec3.h" />
     <ClInclude Include="include\core\math\vec4.h" />

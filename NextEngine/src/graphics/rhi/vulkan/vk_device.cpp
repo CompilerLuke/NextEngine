@@ -355,7 +355,7 @@ void enable_extensions(VkDeviceCreateInfo& info) {
     descriptor_indexing_features->descriptorBindingPartiallyBound = VK_TRUE;
     descriptor_indexing_features->pNext = &physical_device_features_12;
     
-    info.pNext = descriptor_indexing_features;
+    info.pNext = physical_device_features_12;
 }
 
 void make_logical_device(Device& device, const VulkanDesc& desc, VkSurfaceKHR surface) {	
@@ -415,7 +415,7 @@ void make_logical_device(Device& device, const VulkanDesc& desc, VkSurfaceKHR su
 	
 	device.device_limits = properties.properties.limits;
 	
-	printf("\n\nSEMAPHORE MAX VALUE DIFFERENCE %i\n", semaphore_properties.maxTimelineSemaphoreValueDifference);
+	printf("\n\nSEMAPHORE MAX VALUE DIFFERENCE %ull\n", semaphore_properties.maxTimelineSemaphoreValueDifference);
 
 	vkGetDeviceQueue(device, queue_families.graphics_family, 0, &device.graphics_queue);
 	vkGetDeviceQueue(device, queue_families.present_family, 0, &device.present_queue);

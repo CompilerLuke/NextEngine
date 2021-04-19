@@ -1,19 +1,8 @@
-#include "graphics/culling/aabb.h"
+#include "core/math/aabb.h"
 #include "mesh.h"
 #include "core/container/vector.h"
 
-struct Ray {
-    vec3 orig;
-    vec3 dir;
-    float max_t;
-
-    inline Ray(vec3 start, vec3 end) {
-        orig = start;
-        dir = end - start;
-        max_t = length(dir);
-        dir /= max_t;
-    }
-};
+struct Ray;
 
 struct Front {
     static constexpr uint MAX_PER_CELL = 16;

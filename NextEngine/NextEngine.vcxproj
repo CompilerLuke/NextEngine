@@ -197,7 +197,6 @@
     <ClInclude Include="include\graphics\assets\model.h" />
     <ClInclude Include="include\graphics\assets\shader.h" />
     <ClInclude Include="include\graphics\assets\texture.h" />
-    <ClInclude Include="include\graphics\culling\aabb.h" />
     <ClInclude Include="include\graphics\culling\build_bvh.h" />
     <ClInclude Include="include\graphics\culling\culling.h" />
     <ClInclude Include="include\graphics\culling\scene_partition.h" />

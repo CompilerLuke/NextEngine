@@ -30,4 +30,4 @@ struct UpdateCtx;
 ENGINE_API void update_local_transforms(World&, UpdateCtx&);
 
 ENGINE_API void calc_global_transform(World& world, ID id);
-ENGINE_API glm::mat4 compute_model_matrix(Transform&);
+ENGINE_API glm::mat4 compute_model_matrix(const Transform&);

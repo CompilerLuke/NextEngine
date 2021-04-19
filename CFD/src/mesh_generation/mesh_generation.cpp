@@ -2,42 +2,22 @@
 #include "core/core.h"
 #include "mesh_generation/delaunay_advancing_front.h"
 #include "mesh_generation/delaunay.h"
+#include "mesh_generation/surface_point_placement.h"
+#include "mesh_generation/point_octotree.h"
+#include "mesh/surface_tet_mesh.h"
+#include "mesh/edge_graph.h"
 
-//found on https://cs.stackexchange.com/questions/37952/hash-function-floating-point-inputs-for-genetic-algorithm
-u64 hash_func(glm::vec3 position) {
-    int h = 1;
-    for (int i = 0; i < 3; i++) {
-        union {
-            float as_float;
-            int as_int;
-        } value = { position[i] };
-        
-        h = 31 * h + value.as_int;
-    }
-    h ^= (h >> 20) ^ (h >> 12);
-    return h ^ (h >> 7) ^ (h >> 4);
-}
+#undef max
+#undef min
 
 #include "cfd_ids.h"
 #include "mesh.h"
 #include "ecs/ecs.h"
 #include "components/transform.h"
-#include "components.h"
+#include "cfd_components.h"
 #include "graphics/assets/assets.h"
 #include "graphics/assets/model.h"
 #include <algorithm>
-
-template<typename T>
-using spatial_hash_map = hash_map_base<vec3, T>;
-
-template<typename T>
-spatial_hash_map<T> make_t_hash_map(uint hash_map_size) {
-	return spatial_hash_map<T>(hash_map_size,
-		TEMPORARY_ZEROED_ARRAY(hash_meta, hash_map_size),
-		TEMPORARY_ZEROED_ARRAY(vec3, hash_map_size),
-		TEMPORARY_ZEROED_ARRAY(T, hash_map_size)
-	);
-}
 
 //essentially a precomputed modulus
 const uint vert_for_edge[3][3] = {
@@ -397,18 +377,6 @@ CFDSurface quadify_surface(CFDSurface& surface) {
 	return {std::move(polygons), surface.vertices};
 }
 
-struct VertexInfo {
-	uint id;
-	vec3 position;
-	vec3 normal;
-	uint count;
-};
-
-struct EdgeInfo {
-	polygon_handle neighbor;
-	uint neighbor_edge;
-};
-
 
 vec3 triangle_normal(vec3 positions[3]) {
 	vec3 dir1 = normalize(positions[0] - positions[1]);
@@ -440,368 +408,145 @@ void compute_normals(slice<CFDVertex> vertices, CFDCell& cell) {
     }
 }
 
-CFDSurface surface_from_mesh(vector<CFDVertex>& vertices, const glm::mat4& mat, Mesh& mesh) {
-	uint lod = 0;
-	slice<uint> mesh_indices = mesh.indices[lod];
-	slice<Vertex> mesh_vertices = mesh.vertices[lod];
+#include <random>
 
-	uint hash_map_size = mesh_indices.length * 2;
+#include "core/profiler.h"
+#include "visualization/debug_renderer.h"
 
-	spatial_hash_map<VertexInfo> vertex_hash_map = make_t_hash_map<VertexInfo>(hash_map_size);
-	spatial_hash_map<EdgeInfo> edge_hash_map = make_t_hash_map<EdgeInfo>(hash_map_size);
+#include "mesh/feature_edges.h"
 
-	uint vertex_id = 0;
-	float tolerance = 0.001;
-
-	vector<CFDPolygon> triangles;
-	triangles.reserve(mesh_indices.length / 3);
-
-	for (uint i = 0; i < mesh_indices.length; i += 3) {
-		uint* indices = mesh_indices.data + i;
-		uint triangle_id = i / 3;
-
-		CFDPolygon triangle{ CFDPolygon::TRIANGLE };
-
-		vec3 vertex_positions[3] = {};
-
-		for (uint j = 0; j < 3; j++) {
-			Vertex vertex = mesh.vertices[lod][indices[j]];
-
-			glm::vec3 position = vertex.position;
-			position /= tolerance;
-			position = glm::ceil(position);
-			position *= tolerance;
-
-			VertexInfo& info = vertex_hash_map[position];
-			uint previous_count = info.count++;
-			if (previous_count == 0) { //assign the vertex an ID
-				info.id = vertex_id++;
-			}
-			
-			info.normal += vertex.normal;
-
-			triangle.vertices[j].id = info.id;
-			vertex_positions[j] = vertex.position;
-		}
-
-		/*assert(triangle.vertices[0].id != triangle.vertices[1].id
-			&& triangle.vertices[1].id != triangle.vertices[2].id
-			&& triangle.vertices[2].id != triangle.vertices[0].id
-		);*/
-
-		for (uint j = 0; j < 3; j++) {
-			uint a = vert_for_edge[j][0];
-			uint b = vert_for_edge[j][1];
-
-			vec3 mid_point = (vertex_positions[a] + vertex_positions[b]) / 2.0f; //todo use vertex indices instead
-
-			uint index = edge_hash_map.add(mid_point);
-			EdgeInfo& info = edge_hash_map.values[index];
-
-			if (info.neighbor.id == -1) {
-				info.neighbor.id = triangle_id;
-				info.neighbor_edge = j;
-			}
-			else {
-				CFDPolygon::Edge& edge = triangle.edges[j];
-				CFDPolygon::Edge& neighbor_edge = triangles[info.neighbor.id].edges[info.neighbor_edge];
-
-				edge.neighbor = info.neighbor;
-				edge.neighbor_edge = info.neighbor_edge;
-				neighbor_edge.neighbor.id = triangle_id;
-				neighbor_edge.neighbor_edge = j;
-			}
-		}
-
-		triangles.append(triangle);
-	}
-
-	vertices.resize(vertex_id);
-
-	for (auto [position, info] : vertex_hash_map) {
-		vertices[info.id].position = glm::vec3(mat * glm::vec4(glm::vec3(position),1.0));
-	}
-
-	return {std::move(triangles), vertices};
-}
-
-struct Grid {
-    bool* occupied;
-	vertex_handle* vertices;
-    uint width;
-    uint height;
-    uint depth;
-    
-    glm::vec3 min;
-    float resolution;
-    
-    uint index(glm::ivec3 vec) {
-        return vec.x + vec.y * width + vec.z * width * height;
-    }
-    
-    glm::ivec3 pos(uint index) {
-        int wh = width * height;
-        glm::ivec3 pos;
-        pos.z = index / wh;
-        int rem = index - pos.z*wh;
-        pos.y = rem / width;
-        pos.x = rem % width;
-        return pos;
-    }
-    
-    bool is_valid(glm::ivec3 p) {
-        return p.x >= 0 && p.x < width
-            && p.y >= 0 && p.y < height
-            && p.z >= 0 && p.z < depth;
-    }
-    
-    bool& operator[](glm::ivec3 vec) {
-        return occupied[index(vec)];
-    }
-};
-
-glm::ivec3 grid_offsets[6] = {
-    glm::ivec3(0,-1,0 ),
-    glm::ivec3(-1,0 ,0 ),
-    glm::ivec3(0 ,0 ,-1 ),
-    glm::ivec3(1 ,0 ,0 ),
-    glm::ivec3(0 ,0 ,1),
-    glm::ivec3(0 ,1 ,0 )
-};
-
-uint opposing_face[6] = {
-    5,
-    3,
-    4,
-    1,
-    2,
-    0
-};
-
-vertex_handle add_grid_vertex(CFDVolume& volume, Grid& grid, uint x, uint y, uint z, bool* unique) {
-	uint index = x + y * (grid.width+1) + z * (grid.width+1) * (grid.height+1);
-	vertex_handle& result = grid.vertices[index];
+FeatureCurves identify_feature_edges(SurfaceTriMesh& surface, float feature_angle, float min_quality, CFDDebugRenderer& debug) {
+	struct DihedralID {
+		float dihedral;
+		edge_handle edge;
+	};
 	
-	if (result.id == -1) {
-		float resolution = grid.resolution;
-		glm::vec3 min = grid.min;
-		glm::vec3 pos = { min.x + x * resolution, min.y + y * resolution, min.z + z * resolution };
+	EdgeGraph edge_graph = build_edge_graph(surface);
+	vec3* normals = TEMPORARY_ZEROED_ARRAY(vec3, surface.tri_count);
+	vec3* centers = TEMPORARY_ZEROED_ARRAY(vec3, surface.tri_count);
+	float* dihedrals = TEMPORARY_ZEROED_ARRAY(float, 3*surface.tri_count);
+	bool* visited = TEMPORARY_ZEROED_ARRAY(bool, 3*surface.tri_count);
+	DihedralID* largest_dihedral = TEMPORARY_ZEROED_ARRAY(DihedralID, 3*surface.tri_count);
 
-		result = { (int)volume.vertices.length };
-		volume.vertices.append({ pos });
-		*unique = true;
+	const float episilon = 0.002;
+
+	for (tri_handle i : surface) {
+		vec3 positions[3];
+		vec3 center;
+		for (uint j = 0; j < 3; j++) {
+			positions[j] = surface.positions[surface.indices[i + j].id];
+			center += positions[j];
+		}
+
+		center /= 3;
+		normals[i / 3] = triangle_normal(positions);
+		centers[i / 3] = center; // +episilon * normals[i / 3];
 	}
-	else {
-		*unique = false;
+
+	FeatureCurves result;
+
+	feature_angle = to_radians(feature_angle);
+
+	for (tri_handle i : surface) {
+		for (uint j = 0; j < 3; j++) {
+			tri_handle neighbor = surface.neighbor(i, j);
+			float dist = length(centers[i / 3] - centers[neighbor / 3]);
+			dihedrals[i + j] = acos(dot(normals[i / 3], normals[neighbor / 3]));
+			
+			if (surface.indices[i + j].id > surface.indices[i + (j + 1) % 3].id) continue;
+			largest_dihedral[i + j].dihedral = dihedrals[i + j] / dist;
+			largest_dihedral[i + j].edge = i + j;
+		}
+	}
+
+	std::sort(largest_dihedral, largest_dihedral + 3 * surface.tri_capacity, [](DihedralID& a, DihedralID& b) { return a.dihedral > b.dihedral; });
+
+	tvector<edge_handle> possible_strong_edges;
+	tvector<vec3> positions;
+
+	for (uint i = 0; i < 3 * surface.tri_capacity; i++) {
+		if (largest_dihedral[i].dihedral < feature_angle) break;
+	
+		edge_handle starting_edge = largest_dihedral[i].edge;
+		
+		for (uint i = 0; i < 1; i++) {
+			uint count = 0;
+
+			edge_handle current_edge = i == 1 ? surface.edges[starting_edge] : starting_edge;
+			possible_strong_edges.length = 0;
+			positions.length = 0;
+
+			while (count++ < 10000) {
+				visited[current_edge] = true;
+				visited[surface.edges[current_edge]] = true;
+
+				possible_strong_edges.append(current_edge);
+
+				vertex_handle v0, v1;
+				surface.edge_verts(current_edge, &v0, &v1);
+
+				vec3 p0 = surface.positions[v0.id];
+				vec3 p1 = surface.positions[v1.id];
+				vec3 p01 = p0 - p1;
+
+				auto neighbors = edge_graph.neighbors(v0);
+				float best_score = 0.0f;
+
+				uint best_edge = 0;
+
+				positions.append(p0);
+
+				float dihedral1 = dihedrals[current_edge];
+				//draw_line(debug, p0, p1, vec4(1, 0, 0, 1));
+				//suspend_execution(debug);
+
+				for (edge_handle edge : neighbors) {
+					vec3 p2 = surface.position(edge, 0);
+					if (p2 == p1) continue;
+					vec3 p12 = p2 - p0;
+					float dihedral2 = dihedrals[edge];
+
+					float edge_dot = dot(normalize(p01), normalize(p12));
+					float dihedral_simmilarity = 1 - fabs(dihedral1 - dihedral2) / fmaxf(dihedral1, dihedral2);
+
+					float score = edge_dot * dihedral_simmilarity;
+
+					if (score > best_score) {
+						best_edge = edge;
+						best_score = score;
+					}
+				}
+
+				if (best_score > min_quality) current_edge = best_edge;
+				else break;
+
+				if (visited[current_edge]) {
+					//strong_edges += possible_strong_edges;
+					break;
+				}
+			}
+
+			if (possible_strong_edges.length > 5) {
+				result.splines.append(Spline(positions));
+				result.edges += possible_strong_edges;
+			}
+		}
+	}
+
+	for (edge_handle edge : result.edges) {
+		vec3 p0, p1;
+		surface.edge_verts(edge, &p0, &p1);
+		p0 += normals[edge/3] * episilon;
+		p1 += normals[edge/3] * episilon;
+		draw_line(debug, p0, p1, vec4(1, 0, 0, 1));
 	}
 
 	return result;
 }
 
-void build_grid(CFDVolume& mesh, vector<vertex_handle>& boundary_verts, tvector<Boundary>& boundary, uint& extruded_vertices_offset, uint& extruded_cell_offset, float resolution, uint layers) {
-	LinearRegion region(get_temporary_allocator());
-	
-	uint cell_count = mesh.cells.length;
-    
-    AABB domain_bounds;
-    for (uint i = extruded_vertices_offset; i < mesh.vertices.length; i++) {
-        domain_bounds.update(mesh.vertices[i].position);
-    }
-    
-    domain_bounds.min -= resolution * layers;
-    domain_bounds.max += resolution * layers;
-    
-    glm::vec3 size = domain_bounds.size();
-    
-    Grid grid;
-    grid.resolution = resolution;
-    grid.min = domain_bounds.min;
-    grid.width = (size.x+1) / resolution;
-    grid.height = (size.y+1) / resolution;
-    grid.depth = (size.z+1) / resolution;
-    
-    /*if (grid.width  % 2 != 0) {
-        grid.min.x -= 0.5*resolution;
-        grid.width++;
-    }
-    if (grid.height % 2 != 0) {
-        grid.min.y -= 0.5*resolution;
-        grid.height++;
-    }
-    if (grid.depth  % 2 != 0) {
-        grid.min.z -= 0.5*resolution;
-        grid.depth++;
-    }*/
-    
-    //grid.width = ceilf(grid.width/2.0) * 2;
-    //grid.height = ceilf(grid.height/2.0) * 2;
-    //grid.depth = ceilf(grid.depth/2.0) * 2;
-    
-    
-    
-    uint grid_cells = grid.width*grid.height*grid.depth;
-    uint grid_cells_plus1 = (grid.width+1)*(grid.height+1)*(grid.depth+1);
-    grid.occupied = TEMPORARY_ZEROED_ARRAY(bool, grid_cells);
-	grid.vertices = TEMPORARY_ZEROED_ARRAY(vertex_handle, grid_cells_plus1); 
-	//quite a large allocation, maybe a hashmap is more efficient, since it will be mostly empty
-    
-    glm::vec3 offset = glm::vec3(0.25*resolution);
-    
-    //RASTERIZE OUTLINE TO GRID
-    for (uint cell_id = extruded_cell_offset; cell_id < cell_count; cell_id++) {
-        CFDCell& cell = mesh.cells[cell_id];
-        AABB aabb;
-        uint verts = shapes[cell.type].num_verts;
-        for (uint i = 0; i < verts; i++) {
-            vec3 position = mesh.vertices[cell.vertices[i].id].position;
-            aabb.update(position);
-        }
-        
-        aabb.min -= offset;
-        aabb.max += offset;
-        
-        //RASTERIZE AABB
-        glm::ivec3 min_i = glm::ivec3(glm::floor((aabb.min - grid.min) / grid.resolution));
-        glm::ivec3 max_i = glm::ivec3(glm::ceil((aabb.max - grid.min) / grid.resolution));
-        
-        for (uint z = min_i.z; z < max_i.z; z++) {
-            for (uint y = min_i.y; y < max_i.y; y++) {
-                for (uint x = min_i.x; x < max_i.x; x++) {
-                    grid[glm::ivec3(x,y,z)] = true;
-                }
-            }
-        }
-    }
-    
-    //Flood Fill to determine what's inside and out
-    //Any Cell that is visited is outside if we start at the corner
-    bool* visited = TEMPORARY_ZEROED_ARRAY(bool, grid_cells);
-    
-    tvector<uint> stack;
-    stack.append(0);
-    visited[0] = true; //todo assert corner is empty
-    
-    while (stack.length > 0) {
-        uint index = stack.pop();
-        glm::ivec3 pos = grid.pos(index);
-        
-        for (uint i = 0; i < 6; i++) {
-            glm::ivec3 p = pos + grid_offsets[i];
-            if (!grid.is_valid(p)) continue;
-            
-            uint neighbor_index = grid.index(p);
-            if (!grid.occupied[neighbor_index] && !visited[neighbor_index]) {
-                visited[neighbor_index] = true;
-                stack.append(neighbor_index);
-            }
-        }
-    }
-    
-    cell_handle* cell_ids = TEMPORARY_ARRAY(cell_handle, grid_cells);
-    
-    //GENERATE OUTLINE
-    bool* empty = grid.occupied;
-    grid.occupied = visited;
+#include "mesh_generation/cross_field.h"
 
-    for (uint n = 0; n < layers; n++) {
-        for (uint z = 0; z < grid.depth; z++) {
-            for (uint y = 0; y < grid.height; y++) {
-                for (uint x = 0; x < grid.width; x++) {
-                    glm::ivec3 pos = glm::ivec3(x,y,z);
-                    
-                    uint index = grid.index(pos);
-                    bool is_empty = grid.occupied[index];
-                    bool fill = false;
-					
-					bool neighbor[6] = {};
-
-                    if (is_empty) {
-                        for (uint i = 0; i < 6; i++) {
-                            glm::ivec3 p = pos + grid_offsets[i];
-							if (grid.is_valid(p)) {
-								bool boundary = !grid[p];
-								neighbor[i] = boundary;
-								fill |= boundary;
-							}
-                        }
-                    }
-                    
-                    if (fill) {
-                        empty[index] = false;
-        
-                        CFDCell cell;
-                        cell.type = CFDCell::HEXAHEDRON;
-                        cell_handle curr = {(int)mesh.cells.length};
-                        
-                        //todo: counter-clockwise
-						bool is_unique[8];
-						cell.vertices[0] = add_grid_vertex(mesh, grid, x  , y, z+1, is_unique+0);
-						cell.vertices[1] = add_grid_vertex(mesh, grid, x+1, y, z+1, is_unique+1);
-						cell.vertices[2] = add_grid_vertex(mesh, grid, x+1, y, z  , is_unique+2);
-						cell.vertices[3] = add_grid_vertex(mesh, grid, x, y, z, is_unique + 3);
-						
-						cell.vertices[4] = add_grid_vertex(mesh, grid, x  , y+1, z+1, is_unique+4);
-						cell.vertices[5] = add_grid_vertex(mesh, grid, x+1, y+1, z+1, is_unique+5);
-						cell.vertices[6] = add_grid_vertex(mesh, grid, x+1, y+1, z  , is_unique+6);
-						cell.vertices[7] = add_grid_vertex(mesh, grid, x, y + 1, z, is_unique + 7);
-
-						for (uint i = 0; i < 6; i++) {
-                            glm::vec3 p = pos + grid_offsets[i];
-                            if (grid.is_valid(p)) {
-                                cell_handle neighbor = cell_ids[grid.index(p)];
-                                if (neighbor.id != -1) {
-                                    cell.faces[i].neighbor = neighbor; //mantain doubly linked connections
-                                    mesh[neighbor].faces[opposing_face[i]].neighbor = curr;
-                                }
-                            } else {
-                                cell.faces[i].neighbor.id = -1;
-                            }
-						}
-
-						if (n == 0) {
-							for (uint i = 0; i < 6; i++) {
-								if (!neighbor[i]) continue;
-								cell.faces[i].neighbor.id = -1;
-
-								Boundary face;
-								face.cell = { (int)mesh.cells.length };
-								for (uint j = 0; j < 4; j++) {
-									uint index = hexahedron_shape.faces[i].verts[j];
-									vertex_handle v = cell.vertices[index];
-									face.vertices[j] = v;
-									if (is_unique[index]) {
-										boundary_verts.append(v);
-										is_unique[index] = false;
-									}
-								}
-
-								boundary.append(face);
-							}
-
-                        }
-
-                        cell_ids[index] = curr;
-						mesh.cells.append(cell);
-                    } else {
-                        empty[index] = is_empty;
-                    }
-                }
-            }
-        }
-        
-        std::swap(grid.occupied, empty);
-    }
-}
-
-float frand() {
-	return (float)rand() / INT_MAX * 2.0 - 1.0;
-}
-
-#include <random>
-
-#include "core/profiler.h"
-
-CFDVolume generate_mesh(World& world, CFDMeshError& err) {
+CFDVolume generate_mesh(World& world, InputMeshRegistry& registry, CFDMeshError& err, CFDDebugRenderer& debug) {
 	auto some_mesh = world.first<Transform, CFDMesh>();
 	auto some_domain = world.first<Transform, CFDDomain>();
 
@@ -817,10 +562,11 @@ CFDVolume generate_mesh(World& world, CFDMeshError& err) {
 		domain_bounds.min = domain_trans.position - domain.size;
 		domain_bounds.max = domain_trans.position + domain.size;
 
-		Model* model = get_Model(mesh.model);
+		InputModel& model = registry.get_model(mesh.model);
+		InputModelBVH& bvh = registry.get_model_bvh(mesh.model);
 		glm::mat4 model_m = compute_model_matrix(mesh_trans);
 
-		AABB mesh_bounds = model->aabb.apply(model_m);
+		AABB mesh_bounds = model.aabb.apply(model_m);
 
 		if (!mesh_bounds.inside(domain_bounds)) {
 			err.type = CFDMeshError::MeshOutsideDomain;
@@ -828,109 +574,22 @@ CFDVolume generate_mesh(World& world, CFDMeshError& err) {
 			return result;
 		}
 
-		//glm::vec3 position = mesh_trans.position - domain_bounds.min;
-
 		float initial = domain.contour_initial_thickness;
 		float a = domain.contour_thickness_expontent;
-
-		uint n = domain.contour_layers;
-		uint extruded_vertice_watermark = 0;
-		uint extruded_cells_watermark = 0;
+		float n = domain.contour_layers;
+        
+		SurfaceTriMesh& surface = model.surface[0]; //todo handle matrix transformation
+		auto edges = identify_feature_edges(surface, domain.feature_angle, domain.min_feature_quality, debug);
 		
-        
-		if (false) {
-			tvector<Boundary> boundary;
-			tvector<vertex_handle> boundary_verts;
+		SurfaceCrossField cross_field(surface, debug, edges);
+		cross_field.propagate();
 
-			for (uint i = 0; i < 1000; i++) {
-				vec3 pos;
-				pos.x = (float)rand() / INT_MAX * 10;
-				pos.y = (float)rand() / INT_MAX * 10;
-				pos.z = (float)rand() / INT_MAX * 10;
+		PointOctotree octotree(surface.positions, domain_bounds);
+		SurfacePointPlacement surface_point_placement(surface, cross_field, octotree, bvh);
 
-				boundary_verts.append({ (int)result.vertices.length });
-				result.vertices.append({ pos });
-			}
-
-			build_deluanay(result, boundary_verts, boundary);
-			return result;
-		}
-	
-        //Advancing Front
-        
-        
-        vector<vertex_handle> boundary_verts;
-        
-        {
-            CFDSurface surface = surface_from_mesh(result.vertices, model_m, model->meshes[0]);
-            
-            Delaunay* delaunay = make_Delaunay(result, domain_bounds);
-            generate_n_layers(*delaunay, surface, n, initial, domain.contour_thickness_expontent);
-            destroy_Delaunay(delaunay);
-        }
-
-		tvector<Boundary> boundary;
-
-		//tvector<vertex_handle> boundary_verts_a;
-		//tvector<vertex_handle> boundary_verts_b;
-
-		boundary_verts.reserve(result.vertices.length - extruded_vertice_watermark);
-		for (int i = extruded_vertice_watermark; i < result.vertices.length; i++) {
-			boundary_verts.append({ i });
-		}
-
-		boundary.reserve(result.cells.length - extruded_cells_watermark);
-		for (int i = extruded_cells_watermark; i < result.cells.length; i++) {
-			//assume top face is unconnected
-			Boundary face;
-			face.cell = { i };
-			for (uint j = 0; j < 4; j++) {
-				face.vertices[j] = result.cells[i].vertices[j + 4];
-			}
-
-			boundary.append(face);
-		}
-
-		uint seed = 0;
-
-		//result.cells.clear();
-		uint prev = result.cells.length;
-		//boundary_verts.clear();
-        
-        //build_grid(result, boundary_verts, boundary, extruded_vertice_watermark, extruded_cells_watermark, domain.grid_resolution, domain.grid_layers);
-		
-		//std::shuffle(boundary_verts.begin(), boundary_verts.end(), std::default_random_engine(seed));
-
-		/*tvector<vertex_handle> boundary_verts;
-		uint len = min(boundary_verts_a.length, boundary_verts_b.length);
-		for (uint i = 0; i < len; i++) {
-			boundary_verts.append(boundary_verts_a[i]);
-			boundary_verts.append(boundary_verts_b[i]);
-		}
-		for (uint i = len; i < boundary_verts_a.length; i++) {
-			boundary_verts.append(boundary_verts_a[i]);
-		}
-		for (uint i = len; i < boundary_verts_b.length; i++) {
-			boundary_verts.append(boundary_verts_b[i]);
-		}*/
-
-		//boundary_verts.length = 300;
-
-		prev = result.cells.length;
-		//advancing_front_triangulation(result, extruded_vertice_watermark, extruded_cells_watermark, domain_bounds);
-		
-		//printf("================\nOccupied %ull\n", boundary_verts.allocator->occupied);
-
-		//result.cells.clear();
-		//build_deluanay(result, boundary_verts, boundary);
-
-
-		printf("Deluanay generated %i cells\n", result.cells.length - prev);
-		/*Front front(result.vertices, result.cells, domain_bounds);
-
-		for (uint i = 0; i < domain.tetrahedron_layers; i++) {
-			advancing_front_triangulation(result, front, extruded_vertice_watermark, extruded_cells_watermark, 0.1);
-		}*/
+        //Delaunay* delaunay = make_Delaunay(result, domain_bounds, debug);
+        //generate_n_layers(*delaunay, surface, n, initial, domain.contour_thickness_expontent, domain.grid_resolution, domain.grid_layers, domain.quad_quality);
+        //destroy_Delaunay(delaunay);
 	}
 	else {
 		err.type = CFDMeshError::NoMeshOrDomain;

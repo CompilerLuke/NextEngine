@@ -520,6 +520,20 @@ LayedOutUIView& Spacer::compute_layout(UI& ui, const BoxConstraint& constraint) 
     return result;
 }
 
+LayedOutUIView& GeometryView::compute_layout(UI& ui, const BoxConstraint& constraint) {
+    LayedOutGeometry& result = alloc_layed_out_view<LayedOutGeometry>(ui, this);
+    
+    //todo support multiple children
+    LayedOutUIView** result_children = TEMPORARY_ARRAY(LayedOutUIView*, 1);
+    result_children[0] = &children[0]->compute_layout(ui, constraint);
+    
+    result.change = std::move(change);
+    result.children = { result_children,1 };
+    result.geo = result.children[0]->geo;
+
+    return result;
+}
+
 glm::vec2 calc_size_of(FontInfo& info, string_view text) {
     Font& font = *info.font;
     glm::vec2 font_scale = info.font_scale;

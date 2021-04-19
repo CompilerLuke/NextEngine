@@ -1,11 +1,30 @@
 #include "generated.h"
 #include "engine/types.h"
-#include "./components.h"
+#include "./cfd_components.h"
+
+refl::Struct init_input_model_handle() {
+	refl::Struct type("input_model_handle", sizeof(input_model_handle));
+	type.fields.append({"id", offsetof(input_model_handle, id), get_uint_type()});
+	return type;
+}
+
+void write_input_model_handle_to_buffer(SerializerBuffer& buffer, input_model_handle& data) {
+    write_n_to_buffer(buffer, &data, sizeof(input_model_handle));
+}
+
+void read_input_model_handle_from_buffer(DeserializerBuffer& buffer, input_model_handle& data) {
+    read_n_from_buffer(buffer, &data, sizeof(input_model_handle));
+}
+
+refl::Struct* get_input_model_handle_type() {
+	static refl::Struct type = init_input_model_handle();
+	return &type;
+}
 
 refl::Struct init_CFDMesh() {
 	refl::Struct type("CFDMesh", sizeof(CFDMesh));
 	type.fields.append({"concave", offsetof(CFDMesh, concave), get_bool_type()});
-	type.fields.append({"model", offsetof(CFDMesh, model), get_model_handle_type()});
+	type.fields.append({"model", offsetof(CFDMesh, model), get_input_model_handle_type()});
 	type.fields.append({"color", offsetof(CFDMesh, color), get_vec4_type()});
 	return type;
 }
@@ -34,6 +53,9 @@ refl::Struct init_CFDDomain() {
 	type.fields.append({"grid_layers", offsetof(CFDDomain, grid_layers), get_int_type()});
 	type.fields.append({"center", offsetof(CFDDomain, center), get_vec3_type()});
 	type.fields.append({"plane", offsetof(CFDDomain, plane), get_vec3_type()});
+	type.fields.append({"quad_quality", offsetof(CFDDomain, quad_quality), get_float_type()});
+	type.fields.append({"feature_angle", offsetof(CFDDomain, feature_angle), get_float_type()});
+	type.fields.append({"min_feature_quality", offsetof(CFDDomain, min_feature_quality), get_float_type()});
 	return type;
 }
 

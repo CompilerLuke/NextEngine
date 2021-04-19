@@ -6,10 +6,10 @@
 //
 
 #include <stdio.h>
-#include "internal.h"
-#include "ui.h"
-#include "draw.h"
-#include "layout.h"
+#include "ui/internal.h"
+#include "ui/ui.h"
+#include "ui/draw.h"
+#include "ui/layout.h"
 #include "graphics/assets/texture.h"
 #include "core/memory/linear_allocator.h"
 #include "core/container/hash_map.h"
@@ -17,6 +17,7 @@
 #include "engine/input.h"
 #include "graphics/assets/assets.h"
 #include "graphics/rhi/rhi.h"
+#include "core/math/vec3.h"
 
 UI* make_ui() {
     UI* ui = PERMANENT_ALLOC(UI);
@@ -201,6 +202,16 @@ ImageView& image(UI& ui, string_view filename) {
     return image(ui, load_Texture(filename));
 }
 
+GeometryView& begin_geo(UI& ui, std::function<void(glm::vec2,glm::vec2)>&& change) {
+    GeometryView& view = push_container<GeometryView>(ui);
+    view.change = std::move(change);
+    return view;
+}
+
+void end_geo(UI& ui) {
+    pop_container(ui);
+}
+
 StackView& begin_stack(UI& ui, Size spacing, bool axis, uint alignment) {
     if (spacing.value == -1) spacing = ui.theme.size(ThemeSize::StackSpacing);
     
@@ -381,7 +392,7 @@ InputFloatView& input(UI& ui, float* value, float min, float max, float px_per_i
     input.input.px_per_inc = px_per_inc;
     input.input.hover = ui.theme.color(ThemeColor::InputHover);
     init_input_style(ui, input);
-    
+
     return input;
 }
 

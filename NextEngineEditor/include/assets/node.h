@@ -93,8 +93,8 @@ struct AssetNode {
 	REFL_FALSE ~AssetNode();
 	REFL_FALSE AssetNode(AssetNode::Type type);
     REFL_FALSE AssetNode(const AssetNode&);
-    REFL_FALSE void operator=(const AssetNode&);
-	REFL_FALSE void operator=(AssetNode&&);
+    REFL_FALSE void operator=(AssetNode&&);
+	REFL_FALSE AssetNode(AssetNode&&);
 };
 
 constexpr const char* drop_types[AssetNode::Count] = {

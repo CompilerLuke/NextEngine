@@ -4,11 +4,8 @@
 #include "core/container/vector.h"
 #include "core/container/array.h"
 #include "core/math/vec3.h"
-#include "graphics/culling/aabb.h"
-
-struct vertex_handle {
-	int id = -1;
-};
+#include "core/math/aabb.h"
+#include "cfd_core.h"
 
 struct polygon_handle {
 	int id = -1;
@@ -227,8 +224,8 @@ void compute_normals(slice<CFDVertex> vertices, CFDCell& cell);
 vec3 triangle_normal(vec3 positions[3]);
 vec3 quad_normal(vec3 positions[4]);
 void advancing_front_triangulation(CFDVolume& mesh, uint& extruded_vertices_offset, uint& extruded_cell_offset, const AABB&);
-void build_deluanay(CFDVolume& volume, slice<vertex_handle> verts, slice<Boundary> boundary);
-CFDVolume generate_mesh(World& world, CFDMeshError&);
+//void build_delaunay(CFDVolume& volume, slice<vertex_handle> verts, slice<Boundary> boundary);
+CFDVolume generate_mesh(World& world, struct InputMeshRegistry&, CFDMeshError&, struct CFDDebugRenderer&);
 void log_error(CFDMeshError& error);
 
 inline void get_positions(slice<CFDVertex> vertices, const CFDPolygon& polygon, vec3* positions) {
