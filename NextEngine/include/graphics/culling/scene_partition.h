@@ -1,7 +1,7 @@
 #pragma once
 
 #include "engine/core.h"
-#include "aabb.h"
+#include "core/math/aabb.h"
 #include <atomic>
 
 #define MAX_NODES 500

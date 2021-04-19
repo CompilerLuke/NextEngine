@@ -60,7 +60,7 @@
     <IntDir>..\bin-int\Debug-windows-x86_64\CFD\</IntDir>
     <TargetName>CFD</TargetName>
     <TargetExt>.dll</TargetExt>
-    <IncludePath>..\..\..\..\Desktop\Game Engine\freetype-windows-binaries\include;..\vendor\glm;$(IncludePath)</IncludePath>
+    <IncludePath>vendor\lapack\LAPACKE\include;vendor\lapack\CBLAS\include;..\vendor\glm;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -68,7 +68,7 @@
     <IntDir>..\bin-int\Release-windows-x86_64\CFD\</IntDir>
     <TargetName>CFD</TargetName>
     <TargetExt>.dll</TargetExt>
-    <IncludePath>..\..\..\..\Desktop\Game Engine\freetype-windows-binaries\include;..\vendor\glm;$(IncludePath)</IncludePath>
+    <IncludePath>vendor\lapack\LAPACKE\include;vendor\lapack\CBLAS\include;..\vendor\glm;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -76,7 +76,7 @@
     <IntDir>..\bin-int\Dist-windows-x86_64\CFD\</IntDir>
     <TargetName>CFD</TargetName>
     <TargetExt>.dll</TargetExt>
-    <IncludePath>..\..\..\..\Desktop\Game Engine\freetype-windows-binaries\include;..\vendor\glm;$(IncludePath)</IncludePath>
+    <IncludePath>vendor\lapack\LAPACKE\include;vendor\lapack\CBLAS\include;..\vendor\glm;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -84,7 +84,7 @@
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NE_PLATFORM_WINDOWS;NE_DEBUG;CFD_DLL;CFD_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;..\NextUI\include;..\vendor\opennurbs;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <MinimalRebuild>false</MinimalRebuild>
@@ -96,12 +96,12 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>freetype.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\Desktop\Game Engine\freetype-windows-binaries\win64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>blas.lib;lapack.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>vendor\lapack\build\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImportLibrary>..\bin\Debug-windows-x86_64\CFD\CFD.lib</ImportLibrary>
     </Link>
     <PreBuildEvent>
-      <Command>"../bin/Debug-windows-x86_64/ReflectionTool/ReflectionTool.exe" -b "." -i "include" components.h -c "cfd_ids.h" -o src/generated</Command>
+      <Command>"../bin/Debug-windows-x86_64/ReflectionTool/ReflectionTool.exe" -b "." -i "include" cfd_components.h -c "cfd_ids.h" -o src/generated</Command>
     </PreBuildEvent>
     <PostBuildEvent>
       <Command>IF EXIST ..\bin\Debug-windows-x86_64\CFD\CFD.dll\ (xcopy /Q /E /Y /I ..\bin\Debug-windows-x86_64\CFD\CFD.dll ..\bin\Debug-windows-x86_64\TheUnpluggingRunner &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Debug-windows-x86_64\CFD\CFD.dll ..\bin\Debug-windows-x86_64\TheUnpluggingRunner &gt; nul)</Command>
@@ -113,7 +113,7 @@
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NE_PLATFORM_WINDOWS;NE_RELEASE;CFD_DLL;CFD_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;..\NextUI\include;..\vendor\opennurbs;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -130,12 +130,12 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>freetype.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\Desktop\Game Engine\freetype-windows-binaries\win64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>blas.lib;lapack.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>vendor\lapack\build\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImportLibrary>..\bin\Release-windows-x86_64\CFD\CFD.lib</ImportLibrary>
     </Link>
     <PreBuildEvent>
-      <Command>"../bin/Release-windows-x86_64/ReflectionTool/ReflectionTool.exe" -b "." -i "include" components.h -c "cfd_ids.h" -o src/generated</Command>
+      <Command>"../bin/Release-windows-x86_64/ReflectionTool/ReflectionTool.exe" -b "." -i "include" cfd_components.h -c "cfd_ids.h" -o src/generated</Command>
     </PreBuildEvent>
     <PostBuildEvent>
       <Command>IF EXIST ..\bin\Release-windows-x86_64\CFD\CFD.dll\ (xcopy /Q /E /Y /I ..\bin\Release-windows-x86_64\CFD\CFD.dll ..\bin\Release-windows-x86_64\TheUnpluggingRunner &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Release-windows-x86_64\CFD\CFD.dll ..\bin\Release-windows-x86_64\TheUnpluggingRunner &gt; nul)</Command>
@@ -147,7 +147,7 @@
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NE_PLATFORM_WINDOWS;NE_DIST;CFD_DLL;CFD_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;..\NextUI\include;..\vendor\opennurbs;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -162,60 +162,83 @@
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>freetype.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\..\..\Desktop\Game Engine\freetype-windows-binaries\win64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>blas.lib;lapack.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>vendor\lapack\build\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImportLibrary>..\bin\Dist-windows-x86_64\CFD\CFD.lib</ImportLibrary>
     </Link>
     <PreBuildEvent>
-      <Command>"../bin/Dist-windows-x86_64/ReflectionTool/ReflectionTool.exe" -b "." -i "include" components.h -c "cfd_ids.h" -o src/generated</Command>
+      <Command>"../bin/Dist-windows-x86_64/ReflectionTool/ReflectionTool.exe" -b "." -i "include" cfd_components.h -c "cfd_ids.h" -o src/generated</Command>
     </PreBuildEvent>
     <PostBuildEvent>
       <Command>IF EXIST ..\bin\Dist-windows-x86_64\CFD\CFD.dll\ (xcopy /Q /E /Y /I ..\bin\Dist-windows-x86_64\CFD\CFD.dll ..\bin\Dist-windows-x86_64\TheUnpluggingRunner &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Dist-windows-x86_64\CFD\CFD.dll ..\bin\Dist-windows-x86_64\TheUnpluggingRunner &gt; nul)</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="include\UI\draw.h" />
-    <ClInclude Include="include\UI\event.h" />
-    <ClInclude Include="include\UI\font.h" />
-    <ClInclude Include="include\UI\internal.h" />
-    <ClInclude Include="include\UI\layout.h" />
-    <ClInclude Include="include\UI\ui.h" />
+    <ClInclude Include="include\cfd_components.h" />
+    <ClInclude Include="include\cfd_core.h" />
     <ClInclude Include="include\cfd_ids.h" />
     <ClInclude Include="include\collision.h" />
-    <ClInclude Include="include\components.h" />
     <ClInclude Include="include\editor\inspector.h" />
     <ClInclude Include="include\editor\lister.h" />
     <ClInclude Include="include\editor\selection.h" />
+    <ClInclude Include="include\editor\viewport.h" />
+    <ClInclude Include="include\editor\viewport_interaction.h" />
     <ClInclude Include="include\generated.h" />
     <ClInclude Include="include\geo\predicates.h" />
     <ClInclude Include="include\mesh.h" />
+    <ClInclude Include="include\mesh\edge_graph.h" />
+    <ClInclude Include="include\mesh\feature_edges.h" />
+    <ClInclude Include="include\mesh\input_mesh.h" />
+    <ClInclude Include="include\mesh\input_mesh_bvh.h" />
+    <ClInclude Include="include\mesh\surface_tet_mesh.h" />
+    <ClInclude Include="include\mesh\vert_graph.h" />
+    <ClInclude Include="include\mesh\volume_tet_mesh.h" />
+    <ClInclude Include="include\mesh_generation\cross_field.h" />
     <ClInclude Include="include\mesh_generation\delaunay.h" />
     <ClInclude Include="include\mesh_generation\delaunay_advancing_front.h" />
     <ClInclude Include="include\mesh_generation\front_octotree.h" />
+    <ClInclude Include="include\mesh_generation\point_octotree.h" />
+    <ClInclude Include="include\mesh_generation\surface_point_placement.h" />
+    <ClInclude Include="include\numerical\matrix.h" />
+    <ClInclude Include="include\numerical\sparse_matrix.h" />
+    <ClInclude Include="include\numerical\spline.h" />
+    <ClInclude Include="include\numerical\vector.h" />
+    <ClInclude Include="include\scene.h" />
     <ClInclude Include="include\solver.h" />
-    <ClInclude Include="include\visualizer.h" />
+    <ClInclude Include="include\visualization\color_map.h" />
+    <ClInclude Include="include\visualization\debug_renderer.h" />
+    <ClInclude Include="include\visualization\input_mesh_viewer.h" />
+    <ClInclude Include="include\visualization\render_backend.h" />
+    <ClInclude Include="include\visualization\visualizer.h" />
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\UI\backend.cpp" />
-    <ClCompile Include="src\UI\draw.cpp" />
-    <ClCompile Include="src\UI\font.cpp" />
-    <ClCompile Include="src\UI\layout.cpp" />
-    <ClCompile Include="src\UI\ui.cpp" />
     <ClCompile Include="src\application.cpp" />
     <ClCompile Include="src\editor\inspector.cpp" />
     <ClCompile Include="src\editor\lister.cpp" />
+    <ClCompile Include="src\editor\scene_viewport.cpp" />
+    <ClCompile Include="src\editor\scene_viewport_interactions.cpp" />
     <ClCompile Include="src\generated.cpp" />
     <ClCompile Include="src\geo\predicates.cpp" />
+    <ClCompile Include="src\mesh\cross_field.cpp" />
+    <ClCompile Include="src\mesh\edge_graph.cpp" />
+    <ClCompile Include="src\mesh\input\input_model.cpp" />
+    <ClCompile Include="src\mesh\input\load_mesh.cpp" />
+    <ClCompile Include="src\mesh\input\mesh_registry.cpp" />
+    <ClCompile Include="src\mesh\surface_tri_mesh.cpp" />
+    <ClCompile Include="src\mesh\vert_graph.cpp" />
     <ClCompile Include="src\mesh_generation\advancing_front.cpp" />
     <ClCompile Include="src\mesh_generation\delanuay.cpp" />
     <ClCompile Include="src\mesh_generation\deluanay_advancing_front.cpp" />
-    <ClCompile Include="src\mesh_generation\failed.cpp" />
     <ClCompile Include="src\mesh_generation\hilbert_sort.cpp" />
     <ClCompile Include="src\mesh_generation\isotropic_advancing_front.cpp" />
     <ClCompile Include="src\mesh_generation\mesh_generation.cpp" />
+    <ClCompile Include="src\mesh_generation\surface_point_placement.cpp" />
     <ClCompile Include="src\solver.cpp" />
-    <ClCompile Include="src\visualization.cpp" />
+    <ClCompile Include="src\visualization\debug_renderer.cpp" />
+    <ClCompile Include="src\visualization\input_mesh_viewer.cpp" />
+    <ClCompile Include="src\visualization\render_backend.cpp" />
+    <ClCompile Include="src\visualization\visualization.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
@@ -226,6 +249,9 @@
     </ProjectReference>
     <ProjectReference Include="..\NextEngine\NextEngine.vcxproj">
       <Project>{BAC032AF-A678-74FC-0F80-4D58FB560FED}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\NextUI\NextUI.vcxproj">
+      <Project>{E2D638C5-CE78-639B-B733-77EFA374EAEB}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

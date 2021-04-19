@@ -4,23 +4,26 @@
     <Filter Include="include">
       <UniqueIdentifier>{89AF369E-F58E-B539-FEA6-40106A051C9B}</UniqueIdentifier>
     </Filter>
-    <Filter Include="include\UI">
-      <UniqueIdentifier>{1642B8DA-02FA-F927-6B01-D38357D89418}</UniqueIdentifier>
-    </Filter>
     <Filter Include="include\editor">
       <UniqueIdentifier>{BF0C0E4A-ABDA-0150-946E-727680DBDDB4}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\geo">
       <UniqueIdentifier>{73D5C031-DF8A-3927-687F-33FED433302B}</UniqueIdentifier>
     </Filter>
+    <Filter Include="include\mesh">
+      <UniqueIdentifier>{05CFDE69-F131-6E0E-9AB7-A6C486F93991}</UniqueIdentifier>
+    </Filter>
     <Filter Include="include\mesh_generation">
       <UniqueIdentifier>{70B92C87-DCF0-741E-E5FA-D84151B19B17}</UniqueIdentifier>
     </Filter>
+    <Filter Include="include\numerical">
+      <UniqueIdentifier>{18022998-8418-272E-CD8F-B24F39E5F7B5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\visualization">
+      <UniqueIdentifier>{CA481C4B-36B5-D745-FFA8-6FA36BD4F9AD}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src">
       <UniqueIdentifier>{2DAB880B-99B4-887C-2230-9F7C8E38947C}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\UI">
-      <UniqueIdentifier>{3A4B661C-26ED-90F2-0FA8-A446FBE81743}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\editor">
       <UniqueIdentifier>{E3072458-CFBF-65A5-38C7-3E01249E0096}</UniqueIdentifier>
@@ -28,36 +31,30 @@
     <Filter Include="src\geo">
       <UniqueIdentifier>{170330A9-83E2-AE44-8CFA-391BF85815A6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\mesh">
+      <UniqueIdentifier>{29B133CF-157E-8EDA-3E97-7C822AC3C368}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\mesh\input">
+      <UniqueIdentifier>{08ECD4F6-F4B9-C8FC-DD4D-3923C9BAA461}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\mesh_generation">
       <UniqueIdentifier>{147DA92A-80DE-8638-094C-CDEA75ACBDF7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\visualization">
+      <UniqueIdentifier>{6ED38BD4-DAE9-896A-2361-158C8FB65AF2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\UI\draw.h">
-      <Filter>include\UI</Filter>
+    <ClInclude Include="include\cfd_components.h">
+      <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="include\UI\event.h">
-      <Filter>include\UI</Filter>
-    </ClInclude>
-    <ClInclude Include="include\UI\font.h">
-      <Filter>include\UI</Filter>
-    </ClInclude>
-    <ClInclude Include="include\UI\internal.h">
-      <Filter>include\UI</Filter>
-    </ClInclude>
-    <ClInclude Include="include\UI\layout.h">
-      <Filter>include\UI</Filter>
-    </ClInclude>
-    <ClInclude Include="include\UI\ui.h">
-      <Filter>include\UI</Filter>
+    <ClInclude Include="include\cfd_core.h">
+      <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="include\cfd_ids.h">
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="include\collision.h">
-      <Filter>include</Filter>
-    </ClInclude>
-    <ClInclude Include="include\components.h">
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="include\editor\inspector.h">
@@ -69,6 +66,12 @@
     <ClInclude Include="include\editor\selection.h">
       <Filter>include\editor</Filter>
     </ClInclude>
+    <ClInclude Include="include\editor\viewport.h">
+      <Filter>include\editor</Filter>
+    </ClInclude>
+    <ClInclude Include="include\editor\viewport_interaction.h">
+      <Filter>include\editor</Filter>
+    </ClInclude>
     <ClInclude Include="include\generated.h">
       <Filter>include</Filter>
     </ClInclude>
@@ -77,6 +80,30 @@
     </ClInclude>
     <ClInclude Include="include\mesh.h">
       <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\mesh\edge_graph.h">
+      <Filter>include\mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="include\mesh\feature_edges.h">
+      <Filter>include\mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="include\mesh\input_mesh.h">
+      <Filter>include\mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="include\mesh\input_mesh_bvh.h">
+      <Filter>include\mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="include\mesh\surface_tet_mesh.h">
+      <Filter>include\mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="include\mesh\vert_graph.h">
+      <Filter>include\mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="include\mesh\volume_tet_mesh.h">
+      <Filter>include\mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="include\mesh_generation\cross_field.h">
+      <Filter>include\mesh_generation</Filter>
     </ClInclude>
     <ClInclude Include="include\mesh_generation\delaunay.h">
       <Filter>include\mesh_generation</Filter>
@@ -87,30 +114,48 @@
     <ClInclude Include="include\mesh_generation\front_octotree.h">
       <Filter>include\mesh_generation</Filter>
     </ClInclude>
+    <ClInclude Include="include\mesh_generation\point_octotree.h">
+      <Filter>include\mesh_generation</Filter>
+    </ClInclude>
+    <ClInclude Include="include\mesh_generation\surface_point_placement.h">
+      <Filter>include\mesh_generation</Filter>
+    </ClInclude>
+    <ClInclude Include="include\numerical\matrix.h">
+      <Filter>include\numerical</Filter>
+    </ClInclude>
+    <ClInclude Include="include\numerical\sparse_matrix.h">
+      <Filter>include\numerical</Filter>
+    </ClInclude>
+    <ClInclude Include="include\numerical\spline.h">
+      <Filter>include\numerical</Filter>
+    </ClInclude>
+    <ClInclude Include="include\numerical\vector.h">
+      <Filter>include\numerical</Filter>
+    </ClInclude>
+    <ClInclude Include="include\scene.h">
+      <Filter>include</Filter>
+    </ClInclude>
     <ClInclude Include="include\solver.h">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="include\visualizer.h">
-      <Filter>include</Filter>
+    <ClInclude Include="include\visualization\color_map.h">
+      <Filter>include\visualization</Filter>
+    </ClInclude>
+    <ClInclude Include="include\visualization\debug_renderer.h">
+      <Filter>include\visualization</Filter>
+    </ClInclude>
+    <ClInclude Include="include\visualization\input_mesh_viewer.h">
+      <Filter>include\visualization</Filter>
+    </ClInclude>
+    <ClInclude Include="include\visualization\render_backend.h">
+      <Filter>include\visualization</Filter>
+    </ClInclude>
+    <ClInclude Include="include\visualization\visualizer.h">
+      <Filter>include\visualization</Filter>
     </ClInclude>
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\UI\backend.cpp">
-      <Filter>src\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="src\UI\draw.cpp">
-      <Filter>src\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="src\UI\font.cpp">
-      <Filter>src\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="src\UI\layout.cpp">
-      <Filter>src\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="src\UI\ui.cpp">
-      <Filter>src\UI</Filter>
-    </ClCompile>
     <ClCompile Include="src\application.cpp">
       <Filter>src</Filter>
     </ClCompile>
@@ -120,11 +165,38 @@
     <ClCompile Include="src\editor\lister.cpp">
       <Filter>src\editor</Filter>
     </ClCompile>
+    <ClCompile Include="src\editor\scene_viewport.cpp">
+      <Filter>src\editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor\scene_viewport_interactions.cpp">
+      <Filter>src\editor</Filter>
+    </ClCompile>
     <ClCompile Include="src\generated.cpp">
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="src\geo\predicates.cpp">
       <Filter>src\geo</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mesh\cross_field.cpp">
+      <Filter>src\mesh</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mesh\edge_graph.cpp">
+      <Filter>src\mesh</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mesh\input\input_model.cpp">
+      <Filter>src\mesh\input</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mesh\input\load_mesh.cpp">
+      <Filter>src\mesh\input</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mesh\input\mesh_registry.cpp">
+      <Filter>src\mesh\input</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mesh\surface_tri_mesh.cpp">
+      <Filter>src\mesh</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mesh\vert_graph.cpp">
+      <Filter>src\mesh</Filter>
     </ClCompile>
     <ClCompile Include="src\mesh_generation\advancing_front.cpp">
       <Filter>src\mesh_generation</Filter>
@@ -133,9 +205,6 @@
       <Filter>src\mesh_generation</Filter>
     </ClCompile>
     <ClCompile Include="src\mesh_generation\deluanay_advancing_front.cpp">
-      <Filter>src\mesh_generation</Filter>
-    </ClCompile>
-    <ClCompile Include="src\mesh_generation\failed.cpp">
       <Filter>src\mesh_generation</Filter>
     </ClCompile>
     <ClCompile Include="src\mesh_generation\hilbert_sort.cpp">
@@ -147,11 +216,23 @@
     <ClCompile Include="src\mesh_generation\mesh_generation.cpp">
       <Filter>src\mesh_generation</Filter>
     </ClCompile>
+    <ClCompile Include="src\mesh_generation\surface_point_placement.cpp">
+      <Filter>src\mesh_generation</Filter>
+    </ClCompile>
     <ClCompile Include="src\solver.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="src\visualization.cpp">
-      <Filter>src</Filter>
+    <ClCompile Include="src\visualization\debug_renderer.cpp">
+      <Filter>src\visualization</Filter>
+    </ClCompile>
+    <ClCompile Include="src\visualization\input_mesh_viewer.cpp">
+      <Filter>src\visualization</Filter>
+    </ClCompile>
+    <ClCompile Include="src\visualization\render_backend.cpp">
+      <Filter>src\visualization</Filter>
+    </ClCompile>
+    <ClCompile Include="src\visualization\visualization.cpp">
+      <Filter>src\visualization</Filter>
     </ClCompile>
     <ClCompile Include="stdafx.cpp" />
   </ItemGroup>

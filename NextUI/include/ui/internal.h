@@ -36,6 +36,11 @@ struct StableAddID {
     tvector<StableID> children;
 };
 
+struct GeometryState {
+    glm::vec2 position;
+    glm::vec2 size;
+};
+
 struct ScrollState {
     float offset;
 };
@@ -58,6 +63,7 @@ struct SplitterState {
 constexpr uint MAX_SCROLL_BARS = 13;
 constexpr uint MAX_PANELS = 23;
 constexpr uint MAX_SPLITTERS = 13;
+constexpr uint MAX_GEO = 13;
 constexpr uint MAX_GUIDS = 103;
 
 struct UI {
@@ -82,6 +88,7 @@ struct UI {
     hash_map<u64, ScrollState, MAX_SCROLL_BARS> scrolls;
     hash_map<u64, PanelState, MAX_PANELS> panels;
     hash_map<u64, SplitterState, MAX_SPLITTERS> splitters;
+    hash_map<u64, GeometryState, MAX_GEO> geometries;
     
     char buffer[100];
     UI_GUID active;

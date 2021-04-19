@@ -3,6 +3,7 @@
 #include "engine/core.h"
 #include "ecs/id.h"
 #include <glm/mat4x4.hpp>
+#include "core/math/intersection.h"
 
 COMP
 struct Camera {
@@ -23,3 +24,5 @@ ENGINE_API void update_camera_matrices(Transform& trans, Camera& camera, Viewpor
 ENGINE_API void update_camera_matrices(World& world, EntityQuery layermask, Viewport& viewport);
 
 ENGINE_API ID get_camera(World& world, EntityQuery layermask);
+
+ENGINE_API Ray ray_from_mouse(struct Viewport&, glm::vec2 mouse_position);

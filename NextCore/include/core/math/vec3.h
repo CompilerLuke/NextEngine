@@ -4,6 +4,9 @@
 #include <math.h>
 #include <glm/vec3.hpp>
 
+#undef min
+#undef max
+
 using real = double;
 
 //todo merge vec3.h and vec4.h into one file
@@ -101,4 +104,15 @@ inline vec3 abs(vec3 vec) {
 inline float max(vec3 vec) {
     if (vec.x > vec.y) return vec.x > vec.z ? vec.x : vec.z;
     else return vec.y > vec.z ? vec.y : vec.z;
+}
+
+const double PI = 3.1415926535897932384626433832795028;
+
+//todo: move into seperate file
+inline float to_radians(float angle) {
+	return angle * PI / 180;
+}
+
+inline float to_degrees(float angle) {
+	return angle * 180 / PI;
 }

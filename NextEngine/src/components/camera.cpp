@@ -44,3 +44,24 @@ ID get_camera(World& world, EntityQuery layermask) {
 	auto [e,_] = *world.first<Camera>(layermask);
 	return e.id;
 }
+
+Ray ray_from_mouse(Viewport& viewport, glm::vec2 mouse_position) {
+	glm::mat4 inv_proj_view = glm::inverse(viewport.proj * viewport.view);
+
+	glm::vec2 mouse_position_clip = mouse_position / glm::vec2(viewport.width, viewport.height);
+	mouse_position_clip.y = 1.0 - mouse_position_clip.y;
+	mouse_position_clip = mouse_position_clip * 2.0f - 1.0f;
+
+	glm::vec4 end = inv_proj_view * glm::vec4(mouse_position_clip, 1, 1.0);
+
+#ifdef GLM_FORCE_DEPTH_ZERO_TO_ONE
+	glm::vec4 start = inv_proj_view * glm::vec4(mouse_position_clip, 0.0f, 1.0);
+#else 
+	glm::vec4 start = inv_proj_view * glm::vec4(mouse_position_clip, -1, 1.0);
+#endif
+
+	start /= start.w;
+	end /= end.w;
+
+	return Ray(start, glm::normalize(end - start), glm::length(end - start));
+}

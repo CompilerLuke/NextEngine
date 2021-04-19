@@ -5,8 +5,9 @@
 #include "core/container/tvector.h"
 #include "graphics/rhi/draw.h"
 #include <glm/vec2.hpp>
-#include "UI/event.h"
-#include "UI/font.h"
+#include "ui/event.h"
+#include "ui/font.h"
+#include "ui/core.h"
 #include "graphics/rhi/window.h"
 
 struct UI;
@@ -39,7 +40,7 @@ struct Size {
     Size(float value) : mode(Px), value(value) {}
     Size(SizeMode mode, float value) : mode(mode), value(value) {}
     
-    bool operator==(Size& other) {
+    inline bool operator==(Size& other) {
         return mode==other.mode && value==other.value;
     }
 };
@@ -420,7 +421,7 @@ struct InputFloat {
     Color hover;
 };
 
-struct InputFloatView : UIContainer {
+struct InputFloatView : UIView {
     TextStyle text_style;
     InputFloat input;
     
@@ -430,10 +431,16 @@ struct InputFloatView : UIContainer {
     LayedOutUIView& compute_layout(UI& ui, const BoxConstraint&) override;
 };
 
-UI* make_ui();
-void destroy_UI(UI* ui);
+struct GeometryView : UIContainer {
+    std::function<void(glm::vec2 pos, glm::vec2 size)> change;
 
-void set_default_font(UI& ui, font_handle font);
+    LayedOutUIView& compute_layout(UI& ui, const BoxConstraint&) override;
+};
+
+UI_API UI* make_ui();
+UI_API void destroy_UI(UI* ui);
+
+UI_API void set_default_font(UI& ui, font_handle font);
 
 struct ScreenInfo {
     uint window_width;
@@ -505,60 +512,62 @@ struct UITheme {
     }
 };
 
-void begin_ui_frame(UI& ui, const ScreenInfo&, const Input&, CursorShape cursor_shape);
-void end_ui_frame(UI& ui);
-ScreenInfo get_screen_info(struct Window&);
-UITheme& get_ui_theme(UI& ui);
-UIDrawData& get_ui_draw_data(UI& ui);
-CursorShape get_ui_cursor_shape(UI& ui);
-bool is_cursor_active(UI& ui);
+UI_API void begin_ui_frame(UI& ui, const ScreenInfo&, const Input&, CursorShape cursor_shape);
+UI_API void end_ui_frame(UI& ui);
+UI_API ScreenInfo get_screen_info(struct Window&);
+UI_API UITheme& get_ui_theme(UI& ui);
+UI_API UIDrawData& get_ui_draw_data(UI& ui);
+UI_API CursorShape get_ui_cursor_shape(UI& ui);
+UI_API bool is_cursor_active(UI& ui);
 
-font_handle load_font(UI& ui, string_view path);
+UI_API font_handle load_font(UI& ui, string_view path);
 
-Text& title1(UI& ui, string_view);
-Text& title2(UI& ui, string_view);
-Text& title3(UI& ui, string_view);
-Text& text(UI& ui, string_view);
-Text& button(UI& ui, string_view);
-ImageView& image(UI& ui, texture_handle image);
-ImageView& image(UI& ui, string_view src);
-Spacer& spacer(UI& ui, uint flex = 1);
-StackView& divider(UI& ui, Color color);
+UI_API Text& title1(UI& ui, string_view);
+UI_API Text& title2(UI& ui, string_view);
+UI_API Text& title3(UI& ui, string_view);
+UI_API Text& text(UI& ui, string_view);
+UI_API Text& button(UI& ui, string_view);
+UI_API ImageView& image(UI& ui, texture_handle image);
+UI_API ImageView& image(UI& ui, string_view src);
+UI_API Spacer& spacer(UI& ui, uint flex = 1);
+UI_API StackView& divider(UI& ui, Color color);
 
-StackView& begin_vstack(UI& ui, Size spacing = -1.0f, HAlignment alignment = HLeading);
-StackView& begin_vstack(UI& ui, HAlignment alignment);
-void end_vstack(UI& ui);
+UI_API GeometryView& begin_geo(UI& ui, std::function<void(glm::vec2 pos, glm::vec2 size)>&&);
+UI_API void end_geo(UI& ui);
 
-StackView& begin_hstack(UI& ui, Size spacing = -1.0f, VAlignment alignment = VCenter);
-StackView& begin_hstack(UI& ui, VAlignment alignment);
-void end_hstack(UI& ui);
+UI_API StackView& begin_vstack(UI& ui, Size spacing = -1.0f, HAlignment alignment = HLeading);
+UI_API StackView& begin_vstack(UI& ui, HAlignment alignment);
+UI_API void end_vstack(UI& ui);
 
-PanelView& begin_panel(UI& ui);
-void end_panel(UI& ui);
+UI_API StackView& begin_hstack(UI& ui, Size spacing = -1.0f, VAlignment alignment = VCenter);
+UI_API StackView& begin_hstack(UI& ui, VAlignment alignment);
+UI_API void end_hstack(UI& ui);
 
-SplitterView& begin_hsplitter(UI& ui);
-SplitterView& begin_vsplitter(UI& ui);
-void end_hsplitter(UI& ui);
-void end_vsplitter(UI& ui);
+UI_API PanelView& begin_panel(UI& ui);
+UI_API void end_panel(UI& ui);
 
-void open_panel(UI& ui);
-void close_panel(UI& ui);
+UI_API SplitterView& begin_hsplitter(UI& ui);
+UI_API SplitterView& begin_vsplitter(UI& ui);
+UI_API void end_hsplitter(UI& ui);
+UI_API void end_vsplitter(UI& ui);
 
+UI_API void open_panel(UI& ui);
+UI_API void close_panel(UI& ui);
 
-InputStringView& input(UI& ui, char* buffer, uint len);
-InputStringView& input(UI& ui, string_buffer*);
-InputStringView& input(UI& ui, sstring*);
-InputIntView& input(UI& ui, int* value, int min = -INT_MAX, int max = INT_MAX, int px_per_inc = 10);
-InputFloatView& input(UI& ui, float* value, float min = -FLT_MAX, float max = FLT_MAX, float px_per_inc = 1.0);
-StackView& input(UI& ui, glm::vec3* vec, float min = -FLT_MAX, float max = FLT_MAX, float px_per_inc = 10.0);
-StackView& input(UI& ui, glm::vec4* vec, float min = -FLT_MAX, float max = FLT_MAX, float px_per_inc = 10.0);
+UI_API InputStringView& input(UI& ui, char* buffer, uint len);
+UI_API InputStringView& input(UI& ui, string_buffer*);
+UI_API InputStringView& input(UI& ui, sstring*);
+UI_API InputIntView& input(UI& ui, int* value, int min = -INT_MAX, int max = INT_MAX, int px_per_inc = 10);
+UI_API InputFloatView& input(UI& ui, float* value, float min = -FLT_MAX, float max = FLT_MAX, float px_per_inc = 1.0);
+UI_API StackView& input(UI& ui, glm::vec3* vec, float min = -FLT_MAX, float max = FLT_MAX, float px_per_inc = 10.0);
+UI_API StackView& input(UI& ui, glm::vec4* vec, float min = -FLT_MAX, float max = FLT_MAX, float px_per_inc = 10.0);
 
-ScrollView& begin_scroll_view(UI& ui);
-void end_scroll_view(UI& ui);
+UI_API ScrollView& begin_scroll_view(UI& ui);
+UI_API void end_scroll_view(UI& ui);
 
 #include <typeindex>
 
-UI_GUID get_stable_id(UI& ui, std::type_index type, UI_ID id);
+UI_API UI_GUID get_stable_id(UI& ui, std::type_index type, UI_ID id);
 
 template<typename T, uint N = 103>
 T& get_state(UI& ui, UI_ID id = {}) {
@@ -568,9 +577,9 @@ T& get_state(UI& ui, UI_ID id = {}) {
     return states[guid];
 }
 
-void push_element(UI& ui, UIView* view);
-
-void* talloc(UI& ui, size_t size);
+//need to export them, for template helpers to work
+UI_API void push_element(UI& ui, UIView* view);
+UI_API void* talloc(UI& ui, size_t size);
 
 template<typename T>
 T& make_element(UI& ui) {

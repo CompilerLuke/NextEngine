@@ -4,10 +4,11 @@
 //which means the elements got smaller instead of larger
 
 
-#include "graphics/culling/aabb.h"
+#include "core/math/aabb.h"
 #include "mesh.h"
 #include "core/memory/linear_allocator.h"
 #include "mesh_generation/front_octotree.h"
+#include "core/math/intersection.h"
 
 void test_front() {
 	vector<CFDVertex> vertices;

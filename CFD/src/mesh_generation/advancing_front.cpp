@@ -1,44 +1,7 @@
 #include "mesh_generation/front_octotree.h"
 #include "core/math/vec3.h"
+#include "core/math/intersection.h"
 #include "core/memory/linear_allocator.h"
-
-bool ray_triangle_intersection(const Ray& ray, vec3 p[3], float* t) {
-    vec3 orig = ray.orig;
-    vec3 dir = ray.dir;
-    float max_t = ray.max_t;
-    
-    vec3 v0v1 = p[1] - p[0];
-    vec3 v0v2 = p[2] - p[0];
-
-    vec3 pvec = cross(dir, v0v2);
-
-    float det = dot(v0v1, pvec);
-
-    if (fabs(det) < FLT_EPSILON) {
-        //printf("Parallel\n");
-        return false;
-    }
-
-    float invDet = 1.0 / det;
-
-    vec3 tvec = orig - p[0];
-
-    float u = dot(tvec, pvec) * invDet;
-
-    if (u < 0 || u > 1)
-        return false;
-
-    vec3 qvec = cross(tvec, v0v1);
-
-    float v = dot(dir, qvec) * invDet;
-
-    if (v < 0 || u + v > 1)
-        return false;
-
-    *t = dot(v0v2, qvec) * invDet;
-    return *t > 0 && *t < max_t;
-}
-
 
 Front::Front(vector<CFDVertex>& vertices, vector<CFDCell>& cells, const AABB& aabb)
     : vertices(vertices), cells(cells) {
@@ -107,12 +70,12 @@ bool Front::intersects(Subdivision& subdivision, const Ray& ray, const AABB& aab
                 get_positions(vertices, cell, shape.faces[f], p);
                 
                 float t;
-                if (ray_triangle_intersection(ray, p, &t)) {
+                if (ray_triangle_intersect(ray, p, &t)) {
                     return true;
                 }
                 if (shape.faces[f].num_verts == 4) {
                     vec3 t2[] = {p[0], p[2], p[3]};
-                    if (ray_triangle_intersection(ray, t2, &t)) {
+                    if (ray_triangle_intersect(ray, t2, &t)) {
                         return true;
                     }
                 }
@@ -131,7 +94,7 @@ bool Front::intersects(const Ray& ray) {
     Subdivision* start_from = last_visited;
 
     vec3 a = ray.orig;
-    vec3 b = ray.orig + ray.max_t * ray.dir;
+    vec3 b = ray.orig + ray.t * ray.dir;
 
     AABB aabb;
     aabb.update(a);

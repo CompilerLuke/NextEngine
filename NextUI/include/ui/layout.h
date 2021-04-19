@@ -112,15 +112,21 @@ struct LayedOutInputFloat : LayedOutUIView {
     void loose_focus(UI& ui) override;
 };
 
+struct LayedOutGeometry : LayedOutUIContainer {
+    std::function<void(glm::vec2 pos, glm::vec2 size)> change;
+
+    bool render(UI& ui, LayedOutUIView& parent) override;
+};
+
 inline float gtz(float value) {
     return value > 0 ? value : 0;
 }
 
-glm::vec2 calc_size_of(FontInfo& info, string_view text);
-void to_size_bounds(float* result, Size size, float max_size);
-BoxConstraint compute_inner(UI& ui, LayoutStyle& layout, const BoxConstraint constraint, float padding[4], float margin[4]);
-UIElementGeo compute_geometry(UI& ui, LayoutStyle& layout, glm::vec2 content, const BoxConstraint& inner, const BoxConstraint& constraint, float padding[4], float margin[4]);
-void to_absolute_position(UIElementGeo& geo, LayedOutUIView& parent);
+UI_API glm::vec2 calc_size_of(FontInfo& info, string_view text);
+UI_API void to_size_bounds(float* result, Size size, float max_size);
+UI_API BoxConstraint compute_inner(UI& ui, LayoutStyle& layout, const BoxConstraint constraint, float padding[4], float margin[4]);
+UI_API UIElementGeo compute_geometry(UI& ui, LayoutStyle& layout, glm::vec2 content, const BoxConstraint& inner, const BoxConstraint& constraint, float padding[4], float margin[4]);
+UI_API void to_absolute_position(UIElementGeo& geo, LayedOutUIView& parent);
 
 template<typename T>
 T& alloc_layed_out_view(UI& ui, UIView* view) {

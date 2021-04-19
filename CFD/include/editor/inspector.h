@@ -2,11 +2,11 @@
 
 struct UI;
 struct World;
-struct Selection;
+struct SceneSelection;
 struct Inspector;
 struct Lister;
 
-Inspector* make_inspector(World&,Selection&,UI&,Lister&);
+Inspector* make_inspector(World&,SceneSelection&,UI&,Lister&);
 void destroy_inspector(Inspector*);
 
 void render_inspector(Inspector&);

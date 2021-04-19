@@ -13,6 +13,7 @@ struct ShaderConfig;
 struct Input;
 struct Camera;
 struct Assets;
+struct Ray;
 
 const uint GIZMO_TAG = 1 << 0;
 const uint MAX_PICKING_NODES = 100;
@@ -22,21 +23,6 @@ struct PickingScenePartition : Partition {
 	AABB aabbs[MAX_PICKING_INSTANCES];
 	ID ids[MAX_PICKING_INSTANCES];
 	uint tags[MAX_PICKING_INSTANCES];
-};
-
-struct Ray {
-	glm::vec3 orig, dir;
-	glm::vec3 invdir;
-	float t;
-
-	int sign[3];
-
-	inline Ray(glm::vec3 o, glm::vec3 d, float t = FLT_MAX) : orig(o), dir(d), t(t) {
-		invdir = 1.0f / d;
-		sign[0] = invdir.x < 0;
-		sign[1] = invdir.y < 0;
-		sign[2] = invdir.z < 0;
-	}
 };
 
 struct RayHit {

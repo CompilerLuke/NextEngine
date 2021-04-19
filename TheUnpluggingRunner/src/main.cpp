@@ -105,7 +105,7 @@ void fiber_main(void* data) {
 	const char* game_dll_path = "bin/" NE_BUILD_DIR "/CFD/CFD.dll";
 	const char* editor_dll_path = "bin/" NE_BUILD_DIR "/TheUnpluggingRunner/NextEngineEditor.dll";
 #endif
-    //convert_thread_to_fiber();
+    convert_thread_to_fiber();
     
     {
         Context& context = get_context();
@@ -115,7 +115,7 @@ void fiber_main(void* data) {
 
     
 #ifdef BUILD_STANDALONE
-	Application game(modules, "bin/" NE_BUILD_DIR "/Notec/libCFD.dylib");
+	Application game(modules, game_dll_path);
 	game.init();
 	game.run();
 #else
@@ -142,7 +142,7 @@ void init_workers(void*) {
 }
 
 int main() {
-	uint num_workers = 1;
+	uint num_workers = 2;
 	make_job_system(20, num_workers);
 
 	JobDesc init_jobs[MAX_THREADS];

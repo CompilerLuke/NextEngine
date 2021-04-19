@@ -1,6 +1,6 @@
 #include "core/core.h"
 #include "mesh.h"
-#include "graphics/culling/aabb.h"
+#include "core/math/aabb.h"
 #include "geo/predicates.h"
 #include "core/container/tvector.h"
 
@@ -273,7 +273,7 @@ static inline uint32_t fast_hash(uint32_t x) {
 
 
 /****************************************** BRIO *****************************************************/
-/* automatic biased ranomized insertion order */
+/* automatic biased randomized insertion order */
 void brio_vertices(CFDVolume& mesh, const AABB& aabb, slice<vertex_handle> vertices) {
     LinearRegion region(get_temporary_allocator());
     u64* dist = TEMPORARY_ARRAY(u64, vertices.length);

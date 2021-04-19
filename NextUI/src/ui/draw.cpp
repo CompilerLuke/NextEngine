@@ -1,5 +1,5 @@
-#include "internal.h"
-#include "layout.h"
+#include "ui/internal.h"
+#include "ui/layout.h"
 #include "graphics/assets/assets.h"
 #include "engine/input.h"
 
@@ -671,4 +671,19 @@ void LayedOutInputString::loose_focus(UI& ui) {
     if (input.type == InputString::CString) memcpy(input.cstring_buffer, ui.buffer, input.max);
     if (input.type == InputString::StringBuffer) *input.string_buffer = ui.buffer;
     if (input.type == InputString::SString) *input.sstring = ui.buffer;
+}
+
+bool LayedOutGeometry::render(UI& ui, LayedOutUIView& parent) {
+    to_absolute_position(geo, parent);
+
+    GeometryState& state = ui.geometries[id];
+    
+    if (state.position != geo.extent.pos || state.size != geo.extent.size) {
+        change(geo.extent.pos * ui.draw_data.px_to_screen, geo.extent.size * ui.draw_data.px_to_screen);
+        
+        state.position = geo.extent.pos;
+        state.size = geo.extent.size;
+    }
+    
+    return children[0]->render(ui, *this);
 }

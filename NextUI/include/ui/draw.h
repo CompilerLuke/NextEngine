@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ui/core.h"
 #include "engine/handle.h"
 #include "core/container/tvector.h"
 #include "core/container/array.h"
@@ -55,22 +56,22 @@ struct UIElementGeo;
 struct BgStyle;
 struct Input;
 
-UIRenderer* make_ui_renderer();
-void submit_draw_data(UIRenderer&, CommandBuffer&, UIDrawData& data);
-void destroy_ui_renderer(UIRenderer*);
+UI_API UIRenderer* make_ui_renderer();
+UI_API void submit_draw_data(UIRenderer&, CommandBuffer&, UIDrawData& data);
+UI_API void destroy_ui_renderer(UIRenderer*);
 
-UICmdBuffer& current_layer(UI& ui);
+UI_API UICmdBuffer& current_layer(UI& ui);
 
-float center(float size_container, float size);
-glm::vec2 center(glm::vec2 size_container, glm::vec2 size);
+UI_API float center(float size_container, float size);
+UI_API glm::vec2 center(glm::vec2 size_container, glm::vec2 size);
 
-Input& get_input(UI&);
+UI_API Input& get_input(UI&);
 
-void draw_quad(UICmdBuffer& cmd_buffer, glm::vec2 pos, glm::vec2 size, texture_handle texture, glm::vec4 col = glm::vec4(1), glm::vec2 a = glm::vec2(0,0), glm::vec2 b = glm::vec2(1,1));
-void draw_quad(UICmdBuffer& cmd_buffer, glm::vec2 pos, glm::vec2 size, glm::vec4 col);
-void draw_quad(UICmdBuffer& cmd_buffer, Rect2D rect, glm::vec4 col);
+UI_API void draw_quad(UICmdBuffer& cmd_buffer, glm::vec2 pos, glm::vec2 size, texture_handle texture, glm::vec4 col = glm::vec4(1), glm::vec2 a = glm::vec2(0,0), glm::vec2 b = glm::vec2(1,1));
+UI_API void draw_quad(UICmdBuffer& cmd_buffer, glm::vec2 pos, glm::vec2 size, glm::vec4 col);
+UI_API void draw_quad(UICmdBuffer& cmd_buffer, Rect2D rect, glm::vec4 col);
 
-void draw_text(UICmdBuffer& cmd_buffer, string_view text, glm::vec2 pos, Font& font, glm::vec2 scale, glm::vec4 color);
-void draw_text(UICmdBuffer& cmd_buffer, string_view text, glm::vec2 pos, FontInfo& info);
+UI_API void draw_text(UICmdBuffer& cmd_buffer, string_view text, glm::vec2 pos, Font& font, glm::vec2 scale, glm::vec4 color);
+UI_API void draw_text(UICmdBuffer& cmd_buffer, string_view text, glm::vec2 pos, FontInfo& info);
 
-void render_bg(UI& ui, UIElementGeo& geo, const BgStyle& bg);
+UI_API void render_bg(UI& ui, UIElementGeo& geo, const BgStyle& bg);

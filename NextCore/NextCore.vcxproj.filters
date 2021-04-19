@@ -42,6 +42,9 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\core\algorithm.h">
+      <Filter>include\core</Filter>
+    </ClInclude>
     <ClInclude Include="include\core\atomic.h">
       <Filter>include\core</Filter>
     </ClInclude>
@@ -125,6 +128,12 @@
     </ClInclude>
     <ClInclude Include="include\core\job_system\work_stealing_queue.h">
       <Filter>include\core\job_system</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\math\aabb.h">
+      <Filter>include\core\math</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\math\intersection.h">
+      <Filter>include\core\math</Filter>
     </ClInclude>
     <ClInclude Include="include\core\math\vec2.h">
       <Filter>include\core\math</Filter>

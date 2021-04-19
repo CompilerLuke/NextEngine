@@ -3,6 +3,7 @@
 #include <cstddef>
 #include "core/core.h"
 #include <string.h>
+#include <assert.h>
 
 struct CORE_API Allocator {
 	virtual void* allocate(std::size_t) { return NULL;  };
@@ -71,6 +72,13 @@ void destruct(T* ptr) {
 template<typename T>
 void memcpy_t(T* a, const T* b, u64 count) {
 	memcpy(a, b, count * sizeof(T));
+}
+
+template<typename T>
+T* realloc_t(T* prev, u64 count) {
+	T* ptr = (T*)realloc(prev, count * sizeof(T));
+	assert(ptr);
+	return ptr;
 }
 
 template<typename T, typename Allocator>

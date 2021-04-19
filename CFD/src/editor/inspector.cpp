@@ -1,10 +1,10 @@
 #include "editor/inspector.h"
 #include "editor/selection.h"
 #include "editor/lister.h"
-#include "UI/ui.h"
+#include "ui/ui.h"
 #include "components/transform.h"
 #include "components/camera.h"
-#include "components.h"
+#include "cfd_components.h"
 #include "cfd_ids.h"
 #include "ecs/ecs.h"
 #include "graphics/assets/assets.h"
@@ -13,12 +13,12 @@
 
 struct Inspector {
     World& world;
-    Selection& selection;
+    SceneSelection& selection;
     UI& ui;
     Lister& lister;
 };
 
-Inspector* make_inspector(World& world, Selection& selection, UI& ui, Lister& lister) {
+Inspector* make_inspector(World& world, SceneSelection& selection, UI& ui, Lister& lister) {
     Inspector* inspector = PERMANENT_ALLOC(Inspector, { world,selection,ui, lister });
 
     return inspector;
@@ -36,8 +36,8 @@ void field(UI& ui, string_view field, T* value, float min = -FLT_MAX, float max 
     end_hstack(ui);
 }
 
-void field(UI& ui, string_view field, model_handle* handle) {
-    Model* model = get_Model(*handle);
+void field(UI& ui, string_view field, input_model_handle* handle) {
+    //Model* model = get_Model(*handle);
 
     begin_hstack(ui);
     text(ui, field);
@@ -113,6 +113,12 @@ void render_domain_component(UI& ui, CFDDomain& domain) {
     field(ui, "center", &domain.center);
     field(ui, "plane", &domain.plane);
     end_component(ui);
+
+    begin_component(ui, "Hex Mesh");
+    field(ui, "quad quality", &domain.quad_quality);
+    field(ui, "feature angle", &domain.feature_angle);
+    field(ui, "feature quality", &domain.min_feature_quality);
+    end_component(ui);
 }
 
 void render_inspector(Inspector& inspector) {
@@ -121,8 +127,9 @@ void render_inspector(Inspector& inspector) {
 
     begin_vstack(ui).padding(0);
 
-    ID selected = inspector.selection.selected;
-    if (selected != 0) {
+    if (inspector.selection.active()) {
+        ID selected = inspector.selection.get_active();
+
         sstring& name = name_of_entity(inspector.lister, selected);
     
         input(ui, &name).width({Perc,100}).margin(4);

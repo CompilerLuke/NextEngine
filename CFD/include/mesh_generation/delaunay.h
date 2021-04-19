@@ -16,9 +16,10 @@ struct TetMesh {
 struct Delaunay;
 struct CFDVolume;
 struct CFDSurface;
+struct CFDDebugRenderer;
 
-Delaunay* make_Delaunay(CFDVolume&, const AABB&);
+Delaunay* make_Delaunay(CFDVolume&, const AABB&, CFDDebugRenderer&);
 void destroy_Delaunay(Delaunay*);
-void generate_n_layers(Delaunay& d, CFDSurface& surface, uint n, float initial, float g);
+void generate_n_layers(Delaunay& d, CFDSurface& surface, uint n, float initial, float g, float resolution, uint layers, float min_quad_quality);
 TetMesh generate_uniform_tri_mesh(Delaunay& d, CFDSurface& surface, float size);
 bool add_vertices(Delaunay& d, slice<vertex_handle> verts, float min_dist = 0.0f);

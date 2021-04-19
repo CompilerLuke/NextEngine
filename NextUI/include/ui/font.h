@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ui/core.h"
 #include "engine/handle.h"
 #include <glm/vec2.hpp>
 
@@ -32,6 +33,6 @@ struct Font {
     glm::vec2 atlas_size;
 };
 
-Font& query_font(struct FontCache& cache, const FontDesc& desc);
-Font& query_font(struct UI& ui, float* font_size_ptr, glm::vec2* font_scale, struct TextStyle& text_style);
+UI_API Font& query_font(struct FontCache& cache, const FontDesc& desc);
+UI_API Font& query_font(struct UI& ui, float* font_size_ptr, glm::vec2* font_scale, struct TextStyle& text_style);
 

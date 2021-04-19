@@ -81,7 +81,7 @@ void execute(Job job) {
     assert(job.func);
 	job.func(job.data);
 	if (job.counter) {
-		uint current = --(*job.counter);
+		int current = --(*job.counter);
 		/*if (current > 1000) {
 			printf("Unsigned overflow!! %u\n", current);
 			abort();
@@ -129,7 +129,7 @@ void run_fiber(void* fiber) {
 
 			for (uint i = 0; i < wait_list.length; i++) {
 				uint counter = wait_list[i].counter->load(std::memory_order_relaxed);
-				if (counter == wait_list[i].value) {
+				if (counter <= wait_list[i].value) {
 					Fiber* fiber = wait_list[i].fiber;
 					wait_list.data[i] = wait_list.data[--wait_list.length];
 					resumed = true;
@@ -156,7 +156,7 @@ void run_fiber(void* fiber) {
 
 void wait_for_counter(atomic_counter* counter, uint value) {
     assert(counter);
-    if (counter->load(std::memory_order_relaxed) == value) return;
+    if (counter->load(std::memory_order_relaxed) <= value) return;
 	
 	uint worker_id = get_worker_id();
 	WaitList& wait_list = wait_lists[worker_id];
@@ -169,7 +169,7 @@ void wait_for_counter(atomic_counter* counter, uint value) {
 	Fiber* yield_to = nullptr;
 
 	for (uint i = 0; i < wait_list.length; i++) {
-		if (wait_list[i].counter->load(std::memory_order_relaxed) == wait_list[i].value) {
+		if (wait_list[i].counter->load(std::memory_order_relaxed) <= wait_list[i].value) {
 			yield_to = wait_list[i].fiber;
 			wait_list[i] = { fiber, counter, value };
 			break;

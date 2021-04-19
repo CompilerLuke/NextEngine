@@ -195,8 +195,6 @@ project "NextEngine"
 		"LinearMath"
 	}
 
-	print(reflection_exe)
-
 	prebuildcommands (reflection_exe .. ' -b "." -i "include" -d graphics/assets -d ecs components/transform.h components/camera.h components/flyover.h components/skybox.h components/terrain.h components/lights.h components/grass.h graphics/rhi/forward.h engine/handle.h physics/physics.h graphics/pass/volumetric.h -h engine/types -c ecs/component_ids.h -o src/generated -l ENGINE_API')
 
 	defines "RENDER_API_VULKAN"
@@ -311,11 +309,14 @@ project "Notec"
     includedirs { "NextEngine/include", "NextCore/include", "NextUI/include" }
     includedirs {"Notec/vendor/inst/include"}
     libdirs {"Notec/vendor/inst/lib"}
-    links { "NextCore", "NextEngine", "NextUI", "cling" }
+    links { "NextCore", "NextEngine", "NextUI" }
 
-    postbuildcommands {
-        ("{COPY} vendor/inst/lib/libCling.dylib ../bin/" .. outputdir .. "/TheUnpluggingRunner")
-    }
+	filter "system:macosx"
+		postbuildcommands {
+			("{COPY} vendor/inst/lib/libCling.dylib ../bin/" .. outputdir .. "/TheUnpluggingRunner")
+		}
+		links { "cling" }
+	filter "*"
 
     dll_config()
 
@@ -328,10 +329,13 @@ project "CFD"
 	    "%{prj.name}/src/generated.cpp"
 	}
 
-	includedirs { "NextEngine/include", "NextCore/include", "NextUI/include" }
-	links { "NextCore", "NextEngine", "NextUI" }
 
-	prebuildcommands (reflection_exe .. ' -b "." -i "include" components.h -c "cfd_ids.h" -o src/generated')
+	includedirs { "NextEngine/include", "NextCore/include", "NextUI/include", "vendor/opennurbs" }
+	sysincludedirs { "CFD/vendor/lapack/LAPACKE/include", "CFD/vendor/lapack/CBLAS/include"}
+	libdirs { "CFD/vendor/lapack/build/lib/Release" }
+	links { "NextCore", "NextEngine", "NextUI", "blas", "lapack" }
+
+	prebuildcommands (reflection_exe .. ' -b "." -i "include" cfd_components.h -c "cfd_ids.h" -o src/generated')
 	dll_config()
 
 project "TheUnpluggingGame"

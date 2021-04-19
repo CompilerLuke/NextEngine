@@ -3,14 +3,13 @@
 #include <stdint.h>
 
 #ifdef NE_PLATFORM_WINDOWS
-#ifdef NEXTCORE_EXPORTS
-#define CORE_API __declspec(dllexport)
-#endif
-#ifndef NEXTCORE_EXPORTS
-#define CORE_API __declspec(dllimport)
-#endif
+	#ifdef NEXTCORE_EXPORTS
+	#define CORE_API __declspec(dllexport)
+	#else
+	#define CORE_API __declspec(dllimport)
+	#endif
 #else 
-#define CORE_API
+	#define CORE_API
 #endif
 
 using uint = uint32_t;

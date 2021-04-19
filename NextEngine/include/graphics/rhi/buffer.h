@@ -110,13 +110,13 @@ struct CPUVisibleBuffer {
     buffer_handle buffer;
     device_memory_handle memory;
     u64 capacity;
-    void* mapped;
+    u8* mapped;
 };
 
 ENGINE_API device_memory_handle alloc_device_memory(uint size, uint resource_type, DeviceMemoryFlags);
 ENGINE_API void dealloc_device_memory(device_memory_handle);
 
-ENGINE_API void* map_memory(device_memory_handle, u64 offset, u64 size);
+ENGINE_API u8* map_memory(device_memory_handle, u64 offset, u64 size);
 ENGINE_API void unmap_memory(device_memory_handle);
 
 ENGINE_API MemoryRequirements query_buffer_memory_requirements(buffer_handle);

@@ -6,39 +6,64 @@
 #include "components/transform.h"
 #include "components/flyover.h"
 #include "components/camera.h"
-#include "UI/ui.h"
+#include "ui/ui.h"
 
-#include "visualizer.h"
+#include "visualization/debug_renderer.h"
+#include "visualization/render_backend.h"
+#include "visualization/visualizer.h"
+#include "visualization/input_mesh_viewer.h"
 #include "solver.h"
 #include "mesh.h"
-#include "components.h"
+#include "cfd_components.h"
 
 #include "graphics/rhi/frame_buffer.h"
 #include "graphics/rhi/rhi.h"
 
 #include "graphics/assets/assets.h"
 
-#include "UI/draw.h"
+#include "ui/draw.h"
 #include "editor/lister.h"
 #include "editor/inspector.h"
 #include "editor/selection.h"
 #include "cfd_ids.h"
 
+#include "core/job_system/job.h"
+
+#include "editor/viewport.h"
+#include "editor/viewport_interaction.h"
+
 struct CFD {
+    Modules* modules;
 	CFDSolver solver;
     Lister* lister;
     Inspector* inspector;
-    Selection selection;
-	CFDVisualization* visualization;
+    CFDRenderBackend* backend;
+    CFDDebugRenderer* debug_renderer;
+	
+    InputMeshRegistry mesh_registry;
+    CFDVisualization* visualization;
+    InputMeshViewer input_mesh_viewer;
+
+    SceneViewport scene_viewport;
+
     UI* ui;
     UIRenderer* ui_renderer;
-
-    CFDSceneRenderData render_data; 
 
     texture_handle mesh;
     texture_handle play;
     texture_handle pause;
+
+    CFD(Modules& modules);
 };
+
+CFD::CFD(Modules& modules) 
+    : modules(&modules), 
+    scene_viewport(*modules.window),
+    backend(make_cfd_render_backend({})),
+    debug_renderer(make_cfd_debug_renderer(*backend)),
+    input_mesh_viewer(*modules.world, *backend, mesh_registry, scene_viewport),
+    mesh_registry(*debug_renderer)
+{}
 
 void set_theme(UITheme& theme) {
     theme
@@ -68,14 +93,15 @@ void set_theme(UITheme& theme) {
     .size(ThemeSize::InputMaxWidth, {Perc, 20});
 }
 
-void default_scene(Lister& lister, World& world) {
-    model_handle model = load_Model("fighter_jet2.obj");
+void default_scene(Lister& lister, InputMeshRegistry& registry, World& world) {
+    Transform model_trans;
+    model_trans.scale = glm::vec3(0.7);
+    model_trans.rotation = glm::angleAxis(to_radians(-90.0f), glm::vec3(1, 0, 0));
+    
+    input_model_handle model = registry.load_model("fighter_jet.obj", compute_model_matrix(model_trans));
 
     {
         auto [e, trans, mesh] = world.make<Transform, CFDMesh>();
-        trans.position.z = 39.2f;
-        trans.scale = glm::vec3(1.6);
-        trans.rotation = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1.0, 0.0, 0.0));
         mesh.model = model;
         mesh.color = glm::vec4(1,1,0,1);
 
@@ -87,6 +113,9 @@ void default_scene(Lister& lister, World& world) {
         domain.tetrahedron_layers = 3;
         domain.contour_initial_thickness = 0.5;
         domain.contour_thickness_expontent = 1.4;
+
+        domain.feature_angle = 250;
+        domain.min_feature_quality = 0.6;
         
         register_entity(lister, "Domain", e.id);
     }
@@ -105,13 +134,19 @@ APPLICATION_API CFD* init(void* args, Modules& engine) {
     //insphere_test();
     
     World& world = *engine.world;
+
+
+    CFDRenderBackendOptions options = {};
     
-    CFD* cfd = new CFD();
+    CFD* cfd = new CFD(engine);
+    cfd->modules = &engine;
     cfd->ui = make_ui();
     cfd->ui_renderer = make_ui_renderer();
-    cfd->visualization = make_cfd_visualization();
-    cfd->lister = make_lister(world, cfd->selection, *cfd->ui);
-    cfd->inspector = make_inspector(world, cfd->selection, *cfd->ui, *cfd->lister);
+    //cfd->backend = make_cfd_render_backend(options);
+    cfd->visualization = make_cfd_visualization(*cfd->backend);
+    //cfd->debug_renderer = make_cfd_debug_renderer(*cfd->backend);
+    cfd->lister = make_lister(world, cfd->scene_viewport.scene_selection, *cfd->ui);
+    cfd->inspector = make_inspector(world, cfd->scene_viewport.scene_selection, *cfd->ui, *cfd->lister);
     
     set_theme(get_ui_theme(*cfd->ui));
     
@@ -120,7 +155,7 @@ APPLICATION_API CFD* init(void* args, Modules& engine) {
     cfd->pause = load_Texture("pause_icon.png");
     cfd->mesh = load_Texture("mesh_icon.png");
     
-    default_scene(*cfd->lister, world);
+    default_scene(*cfd->lister, cfd->mesh_registry, world);
     
     //todo move out of application init and into engine init
     Dependency dependencies[1] = {
@@ -141,6 +176,35 @@ APPLICATION_API void enter_play_mode(CFD& cfd, Modules& modules) {
 	cfd.solver.phase = SOLVER_PHASE_NONE;
 }
 
+void generate_mesh_in_background(CFD& cfd) {
+    World& world = *cfd.modules->world;
+
+    auto some_mesh = world.first<Transform, CFDMesh>();
+    auto some_domain = world.first<Transform, CFDDomain>();
+    
+    if (!(some_domain && some_mesh)) return;
+
+    auto [e1, mesh_trans, mesh] = *some_mesh;
+    auto [e2, domain_trans, domain] = *some_domain;
+
+    vec4 plane(domain.plane, dot(domain.plane, domain.center));
+
+    cfd.solver.phase = SOLVER_PHASE_MESH_GENERATION;
+    
+    CFDMeshError err;
+    cfd.solver.mesh = generate_mesh(*cfd.modules->world, cfd.mesh_registry, err, *cfd.debug_renderer);
+
+    if (err.type == CFDMeshError::None) {
+        cfd.solver.phase = SOLVER_PHASE_SIMULATION;
+    }
+    else {
+        log_error(err);
+        cfd.solver.phase = SOLVER_PHASE_FAIL;
+    }
+
+    build_vertex_representation(*cfd.visualization, cfd.solver.mesh, plane, true);
+}
+
 APPLICATION_API void update(CFD& cfd, Modules& modules) {
 	World& world = *modules.world;
 	CFDSolver& solver = cfd.solver;
@@ -148,33 +212,16 @@ APPLICATION_API void update(CFD& cfd, Modules& modules) {
 	UpdateCtx update_ctx(*modules.time, *modules.input);
 	update_ctx.layermask = EntityQuery().with_none(EDITOR_ONLY);
 	update_flyover(world, update_ctx);
-    
-    auto some_mesh = world.first<Transform, CFDMesh>();
+    handle_scene_interactions(world, cfd.mesh_registry, cfd.scene_viewport, *cfd.debug_renderer);
+   
     auto some_domain = world.first<Transform, CFDDomain>();
 
-    if (some_domain && some_mesh) {
-        auto [e1, mesh_trans, mesh] = *some_mesh;
-        auto [e2, domain_trans, domain] = *some_domain;
-        
-        vec4 plane(domain.plane, dot(domain.plane, domain.center));
-        
-        if (solver.phase == SOLVER_PHASE_MESH_GENERATION) {
-            CFDMeshError err;
-            solver.mesh = generate_mesh(world, err);
-            
-            if (err.type == CFDMeshError::None) {
-                solver.phase = SOLVER_PHASE_SIMULATION;
-            }
-            else {
-                log_error(err);
-                solver.phase = SOLVER_PHASE_FAIL;
-            }
-
-            build_vertex_representation(*cfd.visualization, solver.mesh, plane, true);
-        } else {
-            build_vertex_representation(*cfd.visualization, solver.mesh, plane, false);
-        }
+    if (solver.phase > SOLVER_PHASE_MESH_GENERATION) {
+        //auto [e2, domain_trans, domain] = *some_domain;
+        //vec4 plane(domain.plane, dot(domain.plane, domain.center));
+        //build_vertex_representation(*cfd.visualization, solver.mesh, plane, false);
     }
+    
 }
 
 void nav_bar_li(UI& ui, string_view name) {
@@ -239,7 +286,10 @@ void render_editor_ui(CFD& cfd, Modules& engine) {
         begin_hstack(ui, 1);
             icon(ui, cfd.mesh)
                 .background(shade2)
-                .on_click([&] { cfd.solver.phase = SOLVER_PHASE_MESH_GENERATION; });
+                .on_click([&] {         
+                    JobDesc job(generate_mesh_in_background, &cfd);
+                    add_jobs(PRIORITY_HIGH, job, nullptr);
+                });
             icon(ui, cfd.play).background(shade2);
             icon(ui, cfd.pause).background(shade2);
         end_hstack(ui);
@@ -249,16 +299,44 @@ void render_editor_ui(CFD& cfd, Modules& engine) {
     {
         begin_hsplitter(ui);
             render_lister(lister);
+            
+            begin_geo(ui, [&](glm::vec2 pos, glm::vec2 size) { cfd.scene_viewport.update(pos, size); });
             image(ui, engine.renderer->scene_map)
-                .scale_to_fill();
+                .resizeable();
+            end_geo(ui);
+        
         end_hsplitter(ui);
 
         render_inspector(inspector);
     }
     end_hsplitter(ui);
 
-
     end_vstack(ui);
+
+    begin_panel(ui)
+        .movable()
+        .resizeable()
+        .padding(5);
+
+        text(ui, "Debug Viewer").font(15);
+
+        bool& is_hovered = get_state<bool>(ui);
+        int& inc = get_state<int>(ui);
+
+        button(ui, "Next")
+            .on_click([&]() { resume_execution(*cfd.debug_renderer, inc); })
+            .on_hover([&](bool hover) { is_hovered = hover;  })
+            .background(is_hovered ? blue : shade2);
+
+        button(ui, "Clear")
+            .on_click([&]() { clear_debug_stack(*cfd.debug_renderer); });
+
+        begin_hstack(ui);
+            text(ui, "Increments");
+            input(ui, &inc);
+        end_hstack(ui);
+
+    end_panel(ui);
 
     end_ui_frame(ui);
 
@@ -266,20 +344,17 @@ void render_editor_ui(CFD& cfd, Modules& engine) {
 }
 
 APPLICATION_API void extract_render_data(CFD& cfd, Modules& engine, FrameData& data) {
-    Viewport viewport = {};
-    viewport.width = engine.window->width;
-    viewport.height = engine.window->height;
+    render_editor_ui(cfd, engine);
+    
+    Viewport& viewport = cfd.scene_viewport.viewport;
     
     World& world = *engine.world;
-
-    cfd.render_data = {};
 
     EntityQuery query;
     update_camera_matrices(world, query, viewport);
 
     fill_pass_ubo(data.pass_ubo, viewport);
-    extract_cfd_scene_render_data(cfd.render_data, world, query);
-    render_editor_ui(cfd, engine);
+    cfd.input_mesh_viewer.extract_render_data(query);
 }
 
 
@@ -287,27 +362,31 @@ APPLICATION_API void extract_render_data(CFD& cfd, Modules& engine, FrameData& d
 APPLICATION_API void render(CFD& cfd, Modules& engine, GPUSubmission& _gpu_submission, FrameData& data) {
     Renderer& renderer = *engine.renderer;
     CFDSolver& solver = cfd.solver;
+    CFDRenderBackend& backend = *cfd.backend;
     CFDVisualization& visualization = *cfd.visualization;
-    CFDSceneRenderData& cfd_render_data = cfd.render_data;
     World& world = *engine.world;
     
     RenderPass screen = begin_render_frame();
 
     //RENDER SCENE
     {
-        RenderPass render_pass = begin_cfd_scene_pass(visualization, renderer, data);
+        RenderPass render_pass = begin_cfd_scene_pass(backend, renderer, data);
         CommandBuffer& cmd_buffer = render_pass.cmd_buffer;
+        descriptor_set_handle frame_descriptor = get_frame_descriptor(*cfd.backend);
+        
+        cfd.input_mesh_viewer.render(cmd_buffer, frame_descriptor);
+        render_debug(*cfd.debug_renderer, cmd_buffer);
 
         if (solver.phase > SOLVER_PHASE_MESH_GENERATION) {
             render_cfd_mesh(visualization, cmd_buffer);
         }
 
-        render_cfd_scene(visualization, cfd_render_data, cmd_buffer);
         end_render_pass(render_pass);
     }
     
     submit_draw_data(*cfd.ui_renderer, screen.cmd_buffer, get_ui_draw_data(*cfd.ui));
     
+    cfd.scene_viewport.input.clear();
     end_render_frame(screen);
 }
 

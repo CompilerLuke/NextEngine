@@ -1,6 +1,7 @@
 #include "gap.h"
 #include <assert.h>
 #include <string.h>
+#include <stdlib.h>
 
 void remove_char(GapBuffer& gap) {
     if (gap.gap_begin > 0) gap.gap_begin--;

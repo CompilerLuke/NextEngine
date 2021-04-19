@@ -8,6 +8,9 @@
       <FullPath>C:\Users\User\source\repos\NextEngine\bin\Debug-windows-x86_64\NextEngine\NextEngine.dll</FullPath>
     </ProjectOutput>
     <ProjectOutput>
+      <FullPath>C:\Users\User\source\repos\NextEngine\bin\Debug-windows-x86_64\NextUI\NextUI.dll</FullPath>
+    </ProjectOutput>
+    <ProjectOutput>
       <FullPath>C:\Users\User\source\repos\NextEngine\bin\Debug-windows-x86_64\CFD\CFD.dll</FullPath>
     </ProjectOutput>
   </ProjectOutputs>

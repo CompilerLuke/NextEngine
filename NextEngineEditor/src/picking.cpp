@@ -19,6 +19,7 @@
 #include "core/profiler.h"
 #include "core/job_system/job.h"
 #include "graphics/rhi/primitives.h"
+#include "core/math/intersection.h"
 
 #define MAX_ENTITIES_PER_NODE 10
 #define MAX_PICKING_DEPTH 6
@@ -223,76 +224,26 @@ void build_acceleration_structure(PickingScenePartition& scene_partition, World&
 	subdivide_BVH(job);
 }
 
-Ray ray_from_mouse(Viewport& viewport, glm::vec2 mouse_position) {
-	glm::mat4 inv_proj_view = glm::inverse(viewport.proj * viewport.view);
-
-	glm::vec2 mouse_position_clip = mouse_position / glm::vec2(viewport.width, viewport.height);
-	mouse_position_clip.y = 1.0 - mouse_position_clip.y;
-	mouse_position_clip = mouse_position_clip * 2.0f - 1.0f;
-
-	glm::vec4 end = inv_proj_view * glm::vec4(mouse_position_clip, 1, 1.0);
-	
-#ifdef GLM_FORCE_DEPTH_ZERO_TO_ONE
-	glm::vec4 start = inv_proj_view * glm::vec4(mouse_position_clip, 0.0f, 1.0);
-#else 
-	glm::vec4 start = inv_proj_view * glm::vec4(mouse_position_clip, -1, 1.0);
-#endif
-
-	start /= start.w;
-	end /= end.w;
-
-	return Ray(start, glm::normalize(end - start), glm::length(end - start));
-}
-
 #undef max
 
 float max(glm::vec3 vec) {
 	return vec.x > vec.y ? (vec.x > vec.z ? vec.x : vec.z) : (vec.y > vec.z ? vec.y : vec.z);
 }
 
-//Math from - https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-box-intersection
-float intersect(const AABB& bounds, const Ray &r) {
-	float tmin, tmax, tymin, tymax, tzmin, tzmax;
-
-	tmin = (bounds[r.sign[0]].x - r.orig.x) * r.invdir.x;
-	tmax = (bounds[1 - r.sign[0]].x - r.orig.x) * r.invdir.x;
-	tymin = (bounds[r.sign[1]].y - r.orig.y) * r.invdir.y;
-	tymax = (bounds[1 - r.sign[1]].y - r.orig.y) * r.invdir.y;
-
-	if ((tmin > tymax) || (tymin > tmax))
-		return FLT_MAX;
-	if (tymin > tmin)
-		tmin = tymin;
-	if (tymax < tmax)
-		tmax = tymax;
-
-	tzmin = (bounds[r.sign[2]].z - r.orig.z) * r.invdir.z;
-	tzmax = (bounds[1 - r.sign[2]].z - r.orig.z) * r.invdir.z;
-
-	if ((tmin > tzmax) || (tzmin > tmax))
-		return FLT_MAX;
-	if (tzmin > tmin)
-		tmin = tzmin;
-	if (tzmax < tmax)
-		tmax = tzmax;
-
-	return tmin;
-}
-
 void ray_cast_node(PickingScenePartition& partition, Node& node, const Ray& ray, RayHit& hit) {
 	for (int i = 0; i < node.child_count; i++) { //could use count instead
 		Node& child = partition.nodes[node.child[i]];
-		if (intersect(child.aabb, ray) < ray.t) ray_cast_node(partition, child, ray, hit);
+		if (ray_aabb_intersect(child.aabb, ray)) ray_cast_node(partition, child, ray, hit);
 	}
 
 	for (int i = node.offset; i < node.offset + node.count; i++) {
 		AABB& aabb = partition.aabbs[i];
 
 		glm::vec3 new_hit;
-		float t = intersect(aabb, ray);
+		float t;
 		bool always_visible = partition.tags[i] & GIZMO_TAG;
 
-		if (0 < t && t < hit.t && t < ray.t) {
+		if (ray_aabb_intersect(aabb, ray, &t)) {
 			hit.id = partition.ids[i];
 			hit.t = t;
 		}
@@ -345,14 +296,12 @@ void render_node(RenderPass& ctx, material_handle mat, PickingScenePartition& pa
 
 	for (int i = 0; i < node.child_count; i++) {
 		Node& child = partition.nodes[node.child[i]];
-		if (intersect(child.aabb, ray) < FLT_MAX)
-        render_node(ctx, mat, partition, child, ray);
+		if (ray_aabb_intersect(child.aabb, ray)) render_node(ctx, mat, partition, child, ray);
 	}
 
 	for (int i = node.offset; i < node.offset + node.count; i++) {
 		AABB& aabb = partition.aabbs[i];
-		if (intersect(aabb, ray) < FLT_MAX)
-        render_cube(ctx, mat, (aabb.max + aabb.min) * 0.5f, aabb.max - aabb.min);
+		if (ray_aabb_intersect(aabb, ray)) render_cube(ctx, mat, (aabb.max + aabb.min) * 0.5f, aabb.max - aabb.min);
 	}
 }
 

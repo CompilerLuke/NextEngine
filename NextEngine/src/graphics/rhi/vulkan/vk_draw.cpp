@@ -143,6 +143,10 @@ void draw_mesh(CommandBuffer& cmd_buffer, VertexBuffer vertex_buffer) {
 	vkCmdDrawIndexed(cmd_buffer.cmd_buffer, vertex_buffer.length, 1, vertex_buffer.index_base, vertex_buffer.vertex_base, 0);
 }
 
+void draw_indexed(CommandBuffer& cmd_buffer, uint index_count, uint instance, uint index_base, uint vertex_base) {
+	vkCmdDrawIndexed(cmd_buffer.cmd_buffer, index_count, instance, index_base, vertex_base, 0);
+}
+
 void push_constant(CommandBuffer& cmd_buffer, Stage stage, uint offset, uint size, const void* ptr) {
 	VkPipelineLayout pipeline_layout = get_pipeline_layout(rhi.pipeline_cache, cmd_buffer.bound_pipeline_layout);
 
