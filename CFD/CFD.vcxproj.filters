@@ -78,6 +78,9 @@
     <ClInclude Include="include\geo\predicates.h">
       <Filter>include\geo</Filter>
     </ClInclude>
+    <ClInclude Include="include\lapacke_config.h">
+      <Filter>include</Filter>
+    </ClInclude>
     <ClInclude Include="include\mesh.h">
       <Filter>include</Filter>
     </ClInclude>
@@ -207,6 +210,9 @@
     <ClCompile Include="src\mesh_generation\deluanay_advancing_front.cpp">
       <Filter>src\mesh_generation</Filter>
     </ClCompile>
+    <ClCompile Include="src\mesh_generation\feature_edges.cpp">
+      <Filter>src\mesh_generation</Filter>
+    </ClCompile>
     <ClCompile Include="src\mesh_generation\hilbert_sort.cpp">
       <Filter>src\mesh_generation</Filter>
     </ClCompile>
@@ -214,6 +220,9 @@
       <Filter>src\mesh_generation</Filter>
     </ClCompile>
     <ClCompile Include="src\mesh_generation\mesh_generation.cpp">
+      <Filter>src\mesh_generation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mesh_generation\point_octotree.cpp">
       <Filter>src\mesh_generation</Filter>
     </ClCompile>
     <ClCompile Include="src\mesh_generation\surface_point_placement.cpp">
