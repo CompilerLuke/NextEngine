@@ -12,4 +12,4 @@ struct FeatureCurves {
 	tvector<edge_handle> edges;
 };
 
-FeatureCurves identify_feature_edges(SurfaceTriMesh& surface, float feature_angle, float min_quality, CFDDebugRenderer& debug)
+FeatureCurves identify_feature_edges(SurfaceTriMesh& surface, float feature_angle, float min_quality, CFDDebugRenderer& debug);

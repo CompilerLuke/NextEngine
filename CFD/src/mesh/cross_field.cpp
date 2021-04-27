@@ -1,3 +1,4 @@
+#include "mesh/surface_tet_mesh.h"
 #include "mesh_generation/cross_field.h"
 #include "visualization/debug_renderer.h"
 #include "visualization/color_map.h"

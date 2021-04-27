@@ -333,7 +333,8 @@ project "CFD"
 	includedirs { "NextEngine/include", "NextCore/include", "NextUI/include", "vendor/opennurbs" }
 	sysincludedirs { "CFD/vendor/lapack/LAPACKE/include", "CFD/vendor/lapack/CBLAS/include"}
 	libdirs { "CFD/vendor/lapack/build/lib/Release" }
-	links { "NextCore", "NextEngine", "NextUI", "blas", "lapack" }
+	links { "NextCore", "NextEngine", "NextUI", "blas", "lapack", "lapacke" }
+	-- defines { "HAVE_LAPACK_CONFIG_H"}
 
 	prebuildcommands (reflection_exe .. ' -b "." -i "include" cfd_components.h -c "cfd_ids.h" -o src/generated')
 	dll_config()

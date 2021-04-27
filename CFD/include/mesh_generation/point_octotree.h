@@ -1,5 +1,6 @@
 #pragma once
 
+#include "cfd_core.h"
 #include "core/math/aabb.h"
 #include "mesh.h"
 #include "core/container/vector.h"
@@ -13,7 +14,7 @@ struct PointOctotree {
     union Payload;
 
     struct Subdivision {
-        AABB aabb; //adjusts to content
+        AABB aabb;
         uint count;
         Payload* p; //to avoid recursion
         Subdivision* parent;
@@ -22,8 +23,7 @@ struct PointOctotree {
     union Payload {
         Subdivision children[8];
         struct {
-            AABB aabbs[MAX_PER_CELL];
-            cell_handle cells[MAX_PER_CELL];
+            vertex_handle vertices[MAX_PER_CELL];
         };
         Payload* free_next;
 
@@ -37,37 +37,24 @@ struct PointOctotree {
         uint index;
     };
 
-    struct Result {
-        uint cell_count;
-        cell_handle cells[16];
-        vertex_handle vertex;
-        float dist = FLT_MAX;
-        float dist_to_center = FLT_MAX;
-    };
-
     Payload* free_payload;
     Subdivision root;
     AABB grid_bounds;
-    slice<vec3>* positions;
+    vector<vec3>& positions;
 
     Subdivision* last_visited;
 
 
-    PointOctotree(slice<vec3> positions, const AABB& aabb);
+    PointOctotree(vector<vec3>& positions, const AABB& aabb);
     bool is_leaf(Subdivision& subdivision);
-    bool intersects(const Ray& ray);
-    Result find_closest(glm::vec3 position, vec3 base, float radius, cell_handle curr);
+    vertex_handle find_closest(vec3 position, float radius);
     uint centroid_to_index(glm::vec3 centroid, glm::vec3 min, glm::vec3 half_size);
-    void add_cell(cell_handle handle);
+    void add_vert(vertex_handle vert);
 
 private:
     void init(Subdivision& subdivision);
     void deinit(Subdivision& subdivision);
     void alloc_new_block();
-    bool intersects(Subdivision& subdivision, const Ray& ray, const AABB& aabb);
-    Result find_closest(Subdivision& subdivision, vec3 base, AABB& aabb, cell_handle curr);
-    void remove_cell(cell_handle handle);
-    void add_cell_to_leaf(Subdivision& subdivision, cell_handle handle, const AABB& aabb);
-    void add_cell_to_sub(Subdivision divisions[8], cell_handle cell, const AABB& aabb, glm::vec3 min, glm::vec3 half_size);
-    void add_cell(Subdivision& subdivision, cell_handle handle, glm::vec3 centroid, const AABB& aabb);
+    void find_closest(Subdivision& subdivision, AABB& aabb, vertex_handle& closest_vert, float& min_dist);
+    void add_vert_to_leaf(Subdivision& subdivision, vertex_handle vert);
 };

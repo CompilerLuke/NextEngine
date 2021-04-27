@@ -96,7 +96,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>blas.lib;lapack.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>blas.lib;lapack.lib;lapacke.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>vendor\lapack\build\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImportLibrary>..\bin\Debug-windows-x86_64\CFD\CFD.lib</ImportLibrary>
     </Link>
@@ -130,7 +130,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>blas.lib;lapack.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>blas.lib;lapack.lib;lapacke.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>vendor\lapack\build\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImportLibrary>..\bin\Release-windows-x86_64\CFD\CFD.lib</ImportLibrary>
     </Link>
@@ -162,7 +162,7 @@
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>blas.lib;lapack.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>blas.lib;lapack.lib;lapacke.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>vendor\lapack\build\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImportLibrary>..\bin\Dist-windows-x86_64\CFD\CFD.lib</ImportLibrary>
     </Link>
@@ -185,6 +185,7 @@
     <ClInclude Include="include\editor\viewport_interaction.h" />
     <ClInclude Include="include\generated.h" />
     <ClInclude Include="include\geo\predicates.h" />
+    <ClInclude Include="include\lapacke_config.h" />
     <ClInclude Include="include\mesh.h" />
     <ClInclude Include="include\mesh\edge_graph.h" />
     <ClInclude Include="include\mesh\feature_edges.h" />
@@ -230,9 +231,11 @@
     <ClCompile Include="src\mesh_generation\advancing_front.cpp" />
     <ClCompile Include="src\mesh_generation\delanuay.cpp" />
     <ClCompile Include="src\mesh_generation\deluanay_advancing_front.cpp" />
+    <ClCompile Include="src\mesh_generation\feature_edges.cpp" />
     <ClCompile Include="src\mesh_generation\hilbert_sort.cpp" />
     <ClCompile Include="src\mesh_generation\isotropic_advancing_front.cpp" />
     <ClCompile Include="src\mesh_generation\mesh_generation.cpp" />
+    <ClCompile Include="src\mesh_generation\point_octotree.cpp" />
     <ClCompile Include="src\mesh_generation\surface_point_placement.cpp" />
     <ClCompile Include="src\solver.cpp" />
     <ClCompile Include="src\visualization\debug_renderer.cpp" />

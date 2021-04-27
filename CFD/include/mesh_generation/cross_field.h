@@ -1,6 +1,11 @@
 #pragma once
 
-#include "mesh/surface_tet_mesh.h"
+#include "cfd_core.h"
+#include "core/math/vec3.h"
+#include "core/container/slice.h"
+#include "core/container/vector.h"
+
+struct SurfaceTriMesh;
 
 struct CFDDebugRenderer;
 

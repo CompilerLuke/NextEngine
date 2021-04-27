@@ -13,7 +13,7 @@ enum class MeshPrimitive;
 //does it make sense to seperately store triangles, edges, vertices
 //when both can be derived from the triangle
 struct InputModelBVH {
-	SurfaceTriMesh& model;
+	struct SurfaceTriMesh& model;
 	CFDDebugRenderer& debug;
 
 	using tri_handle = uint;
@@ -38,7 +38,7 @@ struct InputModelBVH {
 	vector<uint> vertices;
 	vector<Node> nodes;
 
-	InputModelBVH(SurfaceTriMesh&, CFDDebugRenderer&);
+	InputModelBVH(struct SurfaceTriMesh&, CFDDebugRenderer&);
 	uint build_node(const AABB& aabb, slice<uint> triangles, slice<uint> vertices, uint depth);
 	void build();
 
