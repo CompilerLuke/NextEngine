@@ -53,9 +53,9 @@ Modules::Modules(const char* app_name, const char* level_path, const char* engin
 	vk_desc.validation_layers = validation_layers;
 	
 #ifdef NE_DEBUG
-	vk_desc.num_validation_layers = 1;
+	vk_desc.num_validation_layers = 0;
 #else
-	vk_desc.num_validation_layers = 1;
+	vk_desc.num_validation_layers = 0;
 #endif
 
 	//todo move into hardware layer

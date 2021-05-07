@@ -17,7 +17,11 @@
 #include "cfd_components.h"
 #include "graphics/assets/assets.h"
 #include "graphics/assets/model.h"
+
 #include <algorithm>
+#include <queue>
+#include <set>
+
 
 //essentially a precomputed modulus
 const uint vert_for_edge[3][3] = {
@@ -411,9 +415,267 @@ void compute_normals(slice<CFDVertex> vertices, CFDCell& cell) {
 #include <random>
 
 #include "core/profiler.h"
-
-
 #include "mesh_generation/cross_field.h"
+#include "mesh/edge_graph.h"
+#include "visualization/debug_renderer.h"
+#include "core/math/aabb.h"
+
+#include <set>
+
+struct HexcoreCell {
+    u64 morton;
+    uint depth; //todo could compute this implicitly, but probably more error prone
+    union {
+        HexcoreCell* parent;
+        HexcoreCell* next_free;
+    };
+    HexcoreCell* children;
+};
+
+const uint CHUNK_SIZE = mb(50);
+
+HexcoreCell* alloc_8_hexcore_cell(HexcoreCell** pool) {
+    if (!*pool) {
+        *pool = (HexcoreCell*)malloc(CHUNK_SIZE);
+        uint n = CHUNK_SIZE/(8*sizeof(HexcoreCell));
+        for (uint i = 0; i < n-1; i++) {
+            (*pool)[i*8].next_free = *pool + (i+1)*8;
+        }
+        (*pool)[(n-1)*8].next_free = nullptr;
+    }
+    
+    HexcoreCell* current = *pool;
+    *pool = current->next_free;
+    return current;
+}
+
+void hexcore_to_mesh(CFDVolume& volume, HexcoreCell* root, const AABB& aabb) {
+    struct Data {
+        AABB aabb;
+        HexcoreCell* cells;
+    };
+    
+    tvector<Data> stack;
+    stack.append({aabb, root->children});
+    
+    while (stack.length > 0) {
+        Data data = stack.pop();
+        
+        AABB child_aabbs[8];
+        subdivide_aabb(data.aabb, child_aabbs);
+        
+        for (uint i = 0; i < 8; i++) {
+            if (!data.cells[i].children) {
+                uint subdivision = 2;
+                vec3 dx = child_aabbs[i].size() / subdivision;
+                
+                for (uint x = 0; x < subdivision; x++) {
+                    for (uint y = 0; y < subdivision; y++) {
+                        for (uint z = 0; z < subdivision; z++) {
+                            AABB aabb;
+                            aabb.min = child_aabbs[i].min + vec3(x,y,z)*dx;
+                            aabb.max = aabb.min + dx;
+                            
+                            glm::vec3 points[8];
+                            aabb.to_verts(points);
+                            
+                            CFDCell cell{CFDCell::HEXAHEDRON};
+                            
+                            for (uint j = 0; j < 8; j++) {
+                                cell.vertices[j] = {(int)volume.vertices.length};
+                                volume.vertices.append({points[j]});
+                            }
+                            
+                            volume.cells.append(cell);
+                        }
+                    }
+                }
+                
+                
+            } else {
+                stack.append({child_aabbs[i], data.cells[i].children});
+            }
+        }
+    }
+}
+
+#define MORTON_MASK(depth, i) ((u64)(i) << (depth-1)*3)
+#define MORTON_AXIS(depth, k) ((u64)(1) << ((depth-1)*3+k))
+
+//todo clean up leak
+HexcoreCell* find_cell(HexcoreCell* start, u64 morton, uint f) {
+    if (morton == UINT64_MAX) return nullptr;
+    
+    HexcoreCell* current = start;
+    while (current && current->depth >= f) { //(current->morton & morton) != current->morton ) {
+        current = current->parent;
+    }
+    if (!current) return nullptr;
+    
+    while (current->children && current->depth < start->depth+1) {
+        uint index = (morton >> 3*current->depth) & (1<<3)-1;
+        current = current->children + index;
+    }
+    
+    if (current->children) return nullptr;
+    else return current;
+}
+
+// Assumes little endian
+void printBits(size_t const size, void const * const ptr)
+{
+    unsigned char *b = (unsigned char*) ptr;
+    unsigned char byte;
+    int i, j;
+    
+    for (i = size-1; i >= 0; i--) {
+        for (j = 7; j >= 0; j--) {
+            byte = (b[i] >> j) & 1;
+            printf("%u", byte);
+        }
+    }
+    puts("");
+}
+
+u64 neighbor_code(u64 code, uint depth, uint k, uint* f) {
+    u64 mask = MORTON_AXIS(depth, k);
+    bool b = code & mask;
+    u64 result = code ^ mask;
+    for (uint i = depth-1; i > 0; i--) {
+        u64 mask = MORTON_AXIS(i, k);
+        result ^= mask;
+        if (b != bool(code & mask)) {
+            *f = i;
+            return result;
+        }
+    }
+    
+    return UINT64_MAX;
+}
+
+void build_hexcore(HexcoreCell** pool, HexcoreCell* root, PointOctotree& octo) {
+    struct Data {
+        HexcoreCell* parent;
+        HexcoreCell* cells;
+        PointOctotree::Payload* payload;
+    };
+    
+    root->children = alloc_8_hexcore_cell(pool);
+                       
+    tvector<Data> stack;
+    stack.append({root, root->children, octo.root.p});
+    
+    while (stack.length > 0) {
+        Data data = stack.pop();
+        HexcoreCell* cells = data.cells;
+        u64 morton = data.parent->morton;
+        uint depth = data.parent->depth + 1;
+        
+        for (uint i = 0; i < 8; i++) {
+            auto& subdivision = data.payload->children[i];
+            u64 child_morton = morton | MORTON_MASK(depth, i);
+            cells[i].morton = child_morton;
+            cells[i].parent = data.parent;
+            cells[i].depth = depth;
+            
+            if (subdivision.count <= PointOctotree::MAX_PER_CELL) {
+                cells[i].children = nullptr;
+            } else {
+                cells[i].children = alloc_8_hexcore_cell(pool);
+                stack.append({ cells+i, cells[i].children, subdivision.p });
+            }
+        }
+    }
+}
+
+struct HexRefinementQueue {
+    vector<HexcoreCell*> refine;
+    std::set<u64> morton_codes;
+};
+
+void refine_if_needed(HexRefinementQueue& queue, uint depth, HexcoreCell* neighbor) {
+    if (!neighbor) return;
+    
+    if (queue.morton_codes.find(neighbor->morton) != queue.morton_codes.end()) return;
+    if (neighbor->depth >= depth-1) return;
+    
+    //printf("Refined!\n");
+        
+    queue.refine.append(neighbor);
+    queue.morton_codes.insert(neighbor->morton);
+}
+
+void refine_children_if_needed(HexRefinementQueue& queue, HexcoreCell* children, uint n) {
+    for (uint i = 0; i < n; i++) {
+        HexcoreCell& cell = children[i];
+        uint depth = cell.depth;
+        u64 morton = cell.morton;
+        
+        for (uint k = 0; k < 3; k++) {
+            uint f;
+            
+            //HexcoreCell* sibling = find_cell(cell.parent, morton ^ MORTON_AXIS(depth, k));
+            HexcoreCell* neighbor = find_cell(cell.parent, neighbor_code(morton, depth, k, &f), f);
+            
+            //refine_if_needed(queue, depth, sibling);
+            refine_if_needed(queue, depth, neighbor);
+        }
+    }
+}
+
+void balance_hexcore(HexcoreCell* root, HexcoreCell** pool) {
+    struct Data {
+        HexcoreCell* cells;
+    };
+    
+    HexRefinementQueue queue;
+    
+    tvector<Data> stack;
+    
+    uint count = 0;
+    while (count++ < 10) {
+        stack.append({root->children});
+        
+        while (stack.length > 0) {
+            Data data = stack.pop();
+            
+            for (uint i = 0; i < 8; i++) {
+                HexcoreCell& cell = data.cells[i];
+                
+                if (cell.children) {
+                    stack.append({cell.children});
+                    continue;
+                }
+                
+                refine_children_if_needed(queue, &cell, 1);
+            }
+        }
+        
+        if (queue.refine.length == 0) break;
+        
+        for (HexcoreCell* cell : queue.refine) {
+            cell->children = alloc_8_hexcore_cell(pool);
+            
+            for (uint i = 0; i < 8; i++) {
+                cell->children[i].parent = cell;
+                cell->children[i].depth = cell->depth + 1;
+                cell->children[i].morton = cell->morton | MORTON_MASK(cell->depth+1, i);
+                cell->children[i].children = 0;
+            }
+        }
+        
+        queue.refine.clear();
+        queue.morton_codes.clear();
+    }
+}
+
+void hexcore(PointOctotree& octo, CFDVolume& volume, CFDDebugRenderer& debug) {
+    HexcoreCell* pool = nullptr;
+    HexcoreCell root = {};
+    build_hexcore(&pool, &root, octo);
+    balance_hexcore(&root, &pool);
+    hexcore_to_mesh(volume, &root, octo.root.aabb);
+}
 
 CFDVolume generate_mesh(World& world, InputMeshRegistry& registry, CFDMeshError& err, CFDDebugRenderer& debug) {
 	auto some_mesh = world.first<Transform, CFDMesh>();
@@ -422,6 +684,8 @@ CFDVolume generate_mesh(World& world, InputMeshRegistry& registry, CFDMeshError&
 	CFDVolume result;
     
     Profile profile("Generate mesh");
+    
+    clear_debug_stack(debug);
 
 	if (some_domain && some_mesh) {
 		auto [mesh_entity, mesh_trans, mesh] = *some_mesh;
@@ -448,13 +712,29 @@ CFDVolume generate_mesh(World& world, InputMeshRegistry& registry, CFDMeshError&
 		float n = domain.contour_layers;
         
 		SurfaceTriMesh& surface = model.surface[0]; //todo handle matrix transformation
-		FeatureCurves features = identify_feature_edges(surface, domain.feature_angle, domain.min_feature_quality, debug);
 		
-		SurfaceCrossField cross_field(surface, debug, features.edges);
+        EdgeGraph edge_graph = build_edge_graph(surface);
+        
+        tvector<float> vert_curvatures = curvature_at_verts(surface, edge_graph, debug);
+        tvector<FeatureCurve> features = identify_feature_edges(surface, edge_graph, domain.feature_angle, domain.min_feature_quality, debug);
+        
+        tvector<edge_handle> feature_edges;
+        for (FeatureCurve curve : features) {
+            feature_edges += curve.edges;
+        }
+		
+        vector<vec3> points;
+        
+		SurfaceCrossField cross_field(surface, debug, feature_edges);
 		cross_field.propagate();
 
-		PointOctotree octotree(surface.positions, domain_bounds);
-		SurfacePointPlacement surface_point_placement(surface, cross_field, octotree, bvh);
+		PointOctotree octotree(points, domain_bounds);
+		SurfacePointPlacement surface_point_placement(surface, cross_field, octotree, vert_curvatures);
+        
+        surface_point_placement.propagate(features, debug);
+        
+        hexcore(octotree, result, debug);
+        
 
         //Delaunay* delaunay = make_Delaunay(result, domain_bounds, debug);
         //generate_n_layers(*delaunay, surface, n, initial, domain.contour_thickness_expontent, domain.grid_resolution, domain.grid_layers, domain.quad_quality);

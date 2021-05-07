@@ -58,6 +58,7 @@
 		363A91588CC7FBCA65410F98 /* event.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = event.h; path = include/ui/event.h; sourceTree = "<group>"; };
 		63273AD092B909C26DC64910 /* layout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = layout.h; path = include/ui/layout.h; sourceTree = "<group>"; };
 		6B7E62CA6C315FBCE013310A /* ui.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ui.cpp; path = src/ui/ui.cpp; sourceTree = "<group>"; };
+		6F8B06065A772BF8A25CF446 /* core.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = core.h; path = include/ui/core.h; sourceTree = "<group>"; };
 		79DDC15FA003F111070AE79F /* libNextUI.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; name = libNextUI.dylib; path = libNextUI.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		7B96193ED6D76CB0AA31B77E /* backend.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = backend.cpp; path = src/ui/backend.cpp; sourceTree = "<group>"; };
 		D9568A7EF06925B0E08520BE /* stdafx.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = stdafx.cpp; path = stdafx.cpp; sourceTree = "<group>"; };
@@ -136,6 +137,7 @@
 		A469541747B4DD496285AA57 /* ui */ = {
 			isa = PBXGroup;
 			children = (
+				6F8B06065A772BF8A25CF446 /* core.h */,
 				1AF240B005DE66A24DC42EF0 /* draw.h */,
 				363A91588CC7FBCA65410F98 /* event.h */,
 				024FAD22ED3BD31435219B62 /* font.h */,
@@ -315,12 +317,12 @@
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
-					/usr/local/Cellar/freetype/2.10.2/include/freetype2,
+					/usr/local/Cellar/freetype/2.10.4/include/freetype2,
 					../vendor/glm,
 					"$(inherited)",
 				);
 				LIBRARY_SEARCH_PATHS = (
-					/usr/local/Cellar/freetype/2.10.2/lib,
+					/usr/local/Cellar/freetype/2.10.4/lib,
 				);
 				OBJROOT = "../bin-int/Debug-macosx-x86_64/NextUI";
 				ONLY_ACTIVE_ARCH = YES;
@@ -371,12 +373,12 @@
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
-					/usr/local/Cellar/freetype/2.10.2/include/freetype2,
+					/usr/local/Cellar/freetype/2.10.4/include/freetype2,
 					../vendor/glm,
 					"$(inherited)",
 				);
 				LIBRARY_SEARCH_PATHS = (
-					/usr/local/Cellar/freetype/2.10.2/lib,
+					/usr/local/Cellar/freetype/2.10.4/lib,
 				);
 				OBJROOT = "../bin-int/Release-macosx-x86_64/NextUI";
 				ONLY_ACTIVE_ARCH = NO;
@@ -440,12 +442,12 @@
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				HEADER_SEARCH_PATHS = (
-					/usr/local/Cellar/freetype/2.10.2/include/freetype2,
+					/usr/local/Cellar/freetype/2.10.4/include/freetype2,
 					../vendor/glm,
 					"$(inherited)",
 				);
 				LIBRARY_SEARCH_PATHS = (
-					/usr/local/Cellar/freetype/2.10.2/lib,
+					/usr/local/Cellar/freetype/2.10.4/lib,
 				);
 				OBJROOT = "../bin-int/Dist-macosx-x86_64/NextUI";
 				ONLY_ACTIVE_ARCH = NO;

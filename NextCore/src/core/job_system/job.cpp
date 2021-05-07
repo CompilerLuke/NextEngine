@@ -39,7 +39,9 @@ queue<Job, 10> private_queue[MAX_THREADS] = {};
 FiberPool fiber_pools[MAX_THREADS] = {};
 WaitList wait_lists[MAX_THREADS] = {};
 
-
+std::mutex work_mutex;
+bool sleeping_workers;
+std::condition_variable work;
 
 uint hardware_thread_count() {
 	return std::thread::hardware_concurrency();
@@ -71,6 +73,15 @@ void dealloc_fiber(Fiber* fiber) {
 }
 
 
+void resume_sleeping_workers() {
+    if (sleeping_workers) {
+        std::unique_lock lock(work_mutex);
+        sleeping_workers = false;
+        work.notify_all();
+    }
+}
+
+
 void execute(Job job) {
 	if (job.func == nullptr) {
 		printf("Executing null job!");
@@ -82,6 +93,7 @@ void execute(Job job) {
 	job.func(job.data);
 	if (job.counter) {
 		int current = --(*job.counter);
+        resume_sleeping_workers();
 		/*if (current > 1000) {
 			printf("Unsigned overflow!! %u\n", current);
 			abort();
@@ -117,11 +129,15 @@ void run_fiber(void* fiber) {
 	Fiber* worker_fiber = get_current_fiber();
 
 	uint workers_len = workers.length;
+    uint sleep_cycles = 10;
+    
+    uint steal_from = 0;
 
 	while (!workers_exit) {
 		Job job = {};
 
 		if (pop_job(worker, &job)) { //pop doesn't work reliably!
+            //printf("Executing job on %i\n", worker);
 			execute(job);
 		}
 		else {
@@ -140,15 +156,26 @@ void run_fiber(void* fiber) {
 			}
 			
 			if (!resumed) {
-				uint steal_from = rand() % workers_len;
-
 				for (uint i = 0; i < workers_len; i++) {
+                    steal_from = (steal_from + 1) % workers_len;
+                    
 					if (steal_from != worker && steal_job(steal_from, &job)) break;
-					steal_from = (steal_from + 1) % workers_len;
 				}
 
-				if (job.func) execute(job);
-				else thread_sleep(1);
+                if (job.func) {
+                    execute(job);
+                }
+                else {
+                    //if (sleep_cycles++ < 10) {
+                    //    thread_sleep(1);
+                    //} else {
+                        std::unique_lock lock{work_mutex};
+                        sleeping_workers = true;
+                        work.wait(lock);
+                        
+                        sleep_cycles = 0;
+                    //}
+                }
 			}
 		}
 	}
@@ -206,14 +233,17 @@ void wait_for_counter_on_thread(atomic_counter* counter, uint value) {
 void run_worker(uint worker) {
 	//printf("Starting worker %i\n", worker);
 
-	worker_handle = { worker + 1 };
-
 	convert_thread_to_fiber();
+    worker_handle = { worker + 1 };
 	run_fiber(nullptr);
 }
 
 
 FLS* fls_context;
+
+void init_main_thread() {
+    worker_handle = { 1 };
+}
 
 void make_job_system(uint num_fibers, uint num_workers) {
 	assert(num_workers <= MAX_THREADS);
@@ -228,11 +258,10 @@ void make_job_system(uint num_fibers, uint num_workers) {
 			fiber_pools[worker].append(make_fiber(kb(128), run_fiber));
 		}
 
-		if (worker == main_thread) workers.append(std::thread());
+        if (worker == main_thread) workers.append(std::thread());
 		else {
 			//std::thread thread(run_worker, worker);
 			//SetThreadAffinityMask(thread.native_handle(), (1 << worker));
-
 			workers.append(std::thread(run_worker, worker));
 		}
 	}
@@ -267,6 +296,8 @@ void schedule_jobs_on(slice<uint> workers, slice<JobDesc> jobs, atomic_counter* 
             thread_sleep(0);
         }
 	}
+    
+    resume_sleeping_workers();
 }
 
 void add_jobs(Priority priority, slice<JobDesc> jobs, atomic_counter* counter) {
@@ -274,7 +305,7 @@ void add_jobs(Priority priority, slice<JobDesc> jobs, atomic_counter* counter) {
 
 	uint worker = get_worker_id();
 	Fiber* fiber = get_current_fiber();
-	
+    
 	for (JobDesc& desc : jobs) { 
 		//Could we enqueue multiple jobs at a time?
 		//and save on sychronization
@@ -288,6 +319,8 @@ void add_jobs(Priority priority, slice<JobDesc> jobs, atomic_counter* counter) {
 			counter
 		}));
 	}
+    
+    resume_sleeping_workers();
 }
 
 void wait_for_jobs(Priority priority, slice<JobDesc> jobs) {

@@ -5,10 +5,11 @@
 #include "mesh.h"
 #include "core/container/vector.h"
 
+struct Cross;
 struct Ray;
 
 struct PointOctotree {
-    static constexpr uint MAX_PER_CELL = 16;
+    static constexpr uint MAX_PER_CELL = 64;
     static constexpr uint BLOCK_SIZE = kb(16);
 
     union Payload;
@@ -47,7 +48,7 @@ struct PointOctotree {
 
     PointOctotree(vector<vec3>& positions, const AABB& aabb);
     bool is_leaf(Subdivision& subdivision);
-    vertex_handle find_closest(vec3 position, float radius);
+    vertex_handle find_closest(vec3 position, const Cross& cross, float radius);
     uint centroid_to_index(glm::vec3 centroid, glm::vec3 min, glm::vec3 half_size);
     void add_vert(vertex_handle vert);
 
@@ -55,6 +56,30 @@ private:
     void init(Subdivision& subdivision);
     void deinit(Subdivision& subdivision);
     void alloc_new_block();
-    void find_closest(Subdivision& subdivision, AABB& aabb, vertex_handle& closest_vert, float& min_dist);
+    void find_closest(Subdivision& subdivision, AABB& aabb, vertex_handle& closest_vert, const glm::mat4& tensor, float& min_dist);
     void add_vert_to_leaf(Subdivision& subdivision, vertex_handle vert);
 };
+
+inline void subdivide_aabb(const AABB& aabb, AABB* children) {
+    vec3 min = aabb.min;
+    vec3 half_size = aabb.size()/2;
+    
+    glm::vec3 mins[8] = {
+        //bottom
+        {glm::vec3(min.x,               min.y,               min.z)}, //left front
+        {glm::vec3(min.x + half_size.x, min.y,               min.z)}, //right front
+        {glm::vec3(min.x,               min.y,               min.z + half_size.z)}, //left back
+        {glm::vec3(min.x + half_size.x, min.y,               min.z + half_size.z)}, //right back
+        //top
+        {glm::vec3(min.x,               min.y + half_size.y, min.z)}, //left front
+        {glm::vec3(min.x + half_size.x, min.y + half_size.y, min.z)}, //right front
+        {glm::vec3(min.x,               min.y + half_size.y, min.z + half_size.z)}, //left back
+        {glm::vec3(min.x + half_size.x, min.y + half_size.y, min.z + half_size.z)}, //right back
+    };
+
+
+    for (uint i = 0; i < 8; i++) {
+        children[i].min = mins[i];
+        children[i].max = mins[i] + half_size;
+    }
+}

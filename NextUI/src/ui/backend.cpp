@@ -1,3 +1,4 @@
+#include "ui/core.h"
 #include "ui/draw.h"
 #include <stdio.h>
 #include <stdint.h>

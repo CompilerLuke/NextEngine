@@ -41,7 +41,7 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
         
         uint n = shapes[cell.type].num_verts;
         
-#if 1
+#if 0
         bool is_visible = true;
         for (uint i = 0; i < n; i++) {
             vec3 position = mesh[cell.vertices[i]].position;
@@ -54,6 +54,7 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
 #else
         vec3 centroid = compute_centroid(mesh, cell.vertices, n);
         bool is_visible = dot(plane, centroid) > plane.w-epsilon;
+        //is_visible = is_visible && dot(plane, centroid) < (plane.w+3.0)-epsilon;
 #endif
         
         //is_visible = true;
@@ -73,8 +74,8 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
     CFDTriangleBuffer& triangle_buffer = visualization.triangles[visualization.frame_index];
     CFDLineBuffer& line_buffer = visualization.lines[visualization.frame_index];
 
-    vec4 line_color = vec4(vec3(0), 1.0);
-    vec4 face_color = vec4(vec3(1), 1.0);
+    vec4 line_color = vec4(vec3(0,0,0), 1.0);
+    vec4 face_color = vec4(vec3(1.0), 1.0);
 
     triangle_buffer.clear();
     line_buffer.clear();
@@ -107,7 +108,7 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
             }
         }
         
-        if (!is_contour) continue;
+        //if (!is_contour) continue;
 #endif
         
         for (uint i = 0; i < desc.num_faces; i++) {

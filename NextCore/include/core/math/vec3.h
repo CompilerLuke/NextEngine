@@ -21,7 +21,7 @@ struct vec3 {
 	inline vec3(real x) : x(x), y(x), z(x) {}
 
 	inline vec3(glm::vec3 v) : x(v.x), y(v.y), z(v.z) {}
-	inline operator glm::vec3() { return glm::vec3(x,y,z); }
+	inline operator glm::vec3() const { return glm::vec3(x,y,z); }
     inline real& operator[](uint i) { return (&this->x)[i]; }
 };
 

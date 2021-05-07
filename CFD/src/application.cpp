@@ -95,6 +95,7 @@ void set_theme(UITheme& theme) {
 
 void default_scene(Lister& lister, InputMeshRegistry& registry, World& world) {
     Transform model_trans;
+    model_trans.position.x = 4.375;
     model_trans.scale = glm::vec3(0.7);
     model_trans.rotation = glm::angleAxis(to_radians(-90.0f), glm::vec3(1, 0, 0));
     
@@ -217,9 +218,9 @@ APPLICATION_API void update(CFD& cfd, Modules& modules) {
     auto some_domain = world.first<Transform, CFDDomain>();
 
     if (solver.phase > SOLVER_PHASE_MESH_GENERATION) {
-        //auto [e2, domain_trans, domain] = *some_domain;
-        //vec4 plane(domain.plane, dot(domain.plane, domain.center));
-        //build_vertex_representation(*cfd.visualization, solver.mesh, plane, false);
+        auto [e2, domain_trans, domain] = *some_domain;
+        vec4 plane(domain.plane, dot(domain.plane, domain.center));
+        build_vertex_representation(*cfd.visualization, solver.mesh, plane, false);
     }
     
 }

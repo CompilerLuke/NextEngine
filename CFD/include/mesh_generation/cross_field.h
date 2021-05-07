@@ -2,6 +2,7 @@
 
 #include "cfd_core.h"
 #include "core/math/vec3.h"
+#include "core/math/vec4.h"
 #include "core/container/slice.h"
 #include "core/container/vector.h"
 
@@ -58,6 +59,16 @@ struct Cross {
 		}
 		return angle;
 	}
+    
+    inline glm::mat4 rotation_mat() const {
+        glm::mat4 result(
+            glm::vec4(glm::vec3(tangent),0.0f),
+            glm::vec4(glm::vec3(bitangent),0.0f),
+            glm::vec4(glm::vec3(normal),0.0f),
+            glm::vec4(0,0,0,1)
+        );
+        return result;
+    }
 };
 
 /*
@@ -74,8 +85,8 @@ class SurfaceCrossField {
 	slice<edge_handle> feature_edges;
 
 	vector<vec3> centers;
-	vector<bool> edge_flux_stencil;
 	vector<Cross> edge_flux_boundary;
+    vector<uint> edge_flux_stencil[2];
 	vector<Cross> theta_cell_center[2];
 	vector<float> distance_cell_center[2];
 	bool current;
@@ -86,5 +97,10 @@ public:
 	void propagate();
 
 	//vector<FeatureEdge> get_feature_edges();
-	vec3 interpolate(tri_handle tet, vec3 location);
+    
+    Cross at_edge(edge_handle edge);
+	Cross at_tri(tri_handle tet, vec3 location);
+    Cross at_tri(tri_handle tet);
 };
+
+void draw_cross(CFDDebugRenderer&, vec3 position, Cross cross, vec4 color);

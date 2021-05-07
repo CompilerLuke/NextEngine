@@ -60,6 +60,18 @@ struct SurfaceTriMesh {
 		*p0 = position(edge, 0);
 		*p1 = position(TRI(edge), (TRI_EDGE(edge) + 1) % 3);
 	}
+    
+    inline vec3 edge_center(edge_handle edge) {
+        vec3 v0, v1;
+        edge_verts(edge, &v0, &v1);
+        return (v0 + v1) / 2.0f;
+    }
+    
+    inline vec3 triangle_center(tri_handle tri) {
+        vec3 v[3];
+        triangle_verts(tri, v);
+        return (v[0] + v[1] + v[2]) / 3.0f;
+    }
 
 	inline SurfaceTriMeshIt begin() { return { 3 }; }
 	inline SurfaceTriMeshIt end() { return {tri_count * 3}; }

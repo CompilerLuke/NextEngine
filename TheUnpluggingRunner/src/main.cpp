@@ -81,12 +81,24 @@ void job_system_test_main() {
 
 #define BUILD_STANDALONE
 
+void init_workers(void*) {
+    printf("Initialized worker %i\n", get_worker_id());
+    get_thread_local_permanent_allocator() = LinearAllocator(mb(10));
+    get_thread_local_temporary_allocator() = LinearAllocator(mb(100));
+
+    Context& ctx = get_context();
+    ctx.allocator = &default_allocator;
+    ctx.temporary_allocator = &get_thread_local_temporary_allocator();
+
+    //printf("Linear allocator %p on fiber %i\n", &get_thread_local_temporary_allocator(), get_worker_id());
+}
+
 void fiber_main(void* data) {
 	LinearAllocator& permanent_allocator = get_thread_local_permanent_allocator(); 
 	LinearAllocator& temporary_allocator = get_thread_local_temporary_allocator();
 
-	permanent_allocator = LinearAllocator(mb(500));
-	temporary_allocator = LinearAllocator(gb(1));
+	permanent_allocator = LinearAllocator(mb(200));
+	temporary_allocator = LinearAllocator(mb(200));
 
 	Context& context = get_context();
 	context.temporary_allocator = &get_thread_local_temporary_allocator();
@@ -95,6 +107,8 @@ void fiber_main(void* data) {
 	const char* level = "CFD/data/test1/";
     const char* engine_asset_path = "NextEngine/data/";
 	const char* app_name = "CFD";
+    
+    printf("Initializing on worker %i\n", get_worker_id());
 
 	Modules modules(app_name, level, engine_asset_path);
 
@@ -105,14 +119,13 @@ void fiber_main(void* data) {
 	const char* game_dll_path = "bin/" NE_BUILD_DIR "/CFD/CFD.dll";
 	const char* editor_dll_path = "bin/" NE_BUILD_DIR "/TheUnpluggingRunner/NextEngineEditor.dll";
 #endif
-    convert_thread_to_fiber();
+    //convert_thread_to_fiber();
     
     {
         Context& context = get_context();
         context.temporary_allocator = &get_thread_local_temporary_allocator();
         context.allocator = &default_allocator;
     }
-
     
 #ifdef BUILD_STANDALONE
 	Application game(modules, game_dll_path);
@@ -129,20 +142,8 @@ void fiber_main(void* data) {
     //convert_fiber_to_thread();
 }
 
-void init_workers(void*) {
-	//printf("Initialized worker %i\n", get_worker_id());
-	get_thread_local_permanent_allocator() = LinearAllocator(mb(10));
-	get_thread_local_temporary_allocator() = LinearAllocator(mb(100));
-
-	Context& ctx = get_context();
-	ctx.allocator = &default_allocator;
-	ctx.temporary_allocator = &get_thread_local_temporary_allocator();
-
-	//printf("Linear allocator %p on fiber %i\n", &get_thread_local_temporary_allocator(), get_worker_id());
-}
-
 int main() {
-	uint num_workers = 2;
+	uint num_workers = 4;
 	make_job_system(20, num_workers);
 
 	JobDesc init_jobs[MAX_THREADS];
@@ -154,8 +155,11 @@ int main() {
 	}
 
 	atomic_counter counter = 0;
-	schedule_jobs_on({ init_jobs_on, num_workers }, { init_jobs, num_workers - 1 }, &counter);
-	
+	schedule_jobs_on({ init_jobs_on, num_workers-1 }, { init_jobs, num_workers - 1 }, &counter);
+    
+    convert_thread_to_fiber();
+    wait_for_counter(&counter, 0);
+    
     fiber_main(nullptr);
 
 	destroy_job_system();

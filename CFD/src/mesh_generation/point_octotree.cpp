@@ -1,4 +1,6 @@
 #include "mesh_generation/point_octotree.h"
+#include "mesh_generation/cross_field.h"
+#include <glm/gtc/matrix_transform.hpp>
 
 PointOctotree::PointOctotree(vector<vec3>& positions, const AABB& aabb)
     : positions(positions) {
@@ -51,8 +53,8 @@ void PointOctotree::alloc_new_block() {
     free_payload = payloads;
 }
 
-//todo use L-infinity norm
-void PointOctotree::find_closest(Subdivision& subdivision, AABB& aabb, vertex_handle& closest_vert, float& min_dist) {
+//can be optimized with an early out if you only care about wether a point is smaller than a certain length
+void PointOctotree::find_closest(Subdivision& subdivision, AABB& aabb, vertex_handle& closest_vert, const glm::mat4& tensor, float& min_dist) {
     if (!aabb.intersects(subdivision.aabb)) return;
 
     vec3 center = aabb.centroid();
@@ -65,8 +67,15 @@ void PointOctotree::find_closest(Subdivision& subdivision, AABB& aabb, vertex_ha
 
         for (uint i = 0; i < subdivision.count; i++) {
             vertex_handle vert = p.vertices[i];
-            vec3 position = positions[vert.id];
-            float dist = length(position - center);
+            glm::vec4 in_tensor_space = tensor * glm::vec4(glm::vec3(positions[vert.id]), 1.0);
+            
+            vec3 relative = positions[vert.id] - center;
+            float dist2 = length(relative);
+            float dist3 = length(vec3(in_tensor_space));
+            
+            //L-infinity norm
+            float dist = fmaxf(fmaxf(fabs(in_tensor_space.x), fabs(in_tensor_space.y)), fabs(in_tensor_space.z));
+            //L-2 norm: float dist = length(position - center);
 
             if (dist < min_dist) {
                 closest_vert = vert;
@@ -76,21 +85,34 @@ void PointOctotree::find_closest(Subdivision& subdivision, AABB& aabb, vertex_ha
     }
     else {
         for (uint i = 0; i < 8; i++) {
-            find_closest(subdivision.p->children[i], aabb, closest_vert, min_dist);
+            find_closest(subdivision.p->children[i], aabb, closest_vert, tensor, min_dist);
         }
     }
 }
 
-vertex_handle PointOctotree::find_closest(vec3 position, float radius) {
+vertex_handle PointOctotree::find_closest(vec3 position, const Cross& cross, float radius) {
     uint depth = 0;
+    
+    glm::mat4 translation = glm::translate(glm::mat4(1.0), glm::vec3(position));
+    glm::mat4 rotation = cross.rotation_mat();
+    glm::mat4 tensor;
+    if (cross.tangent == 0) {
+        tensor = translation;
+    }
+    else tensor = translation * rotation;
 
-    AABB sphere_aabb;
-    sphere_aabb.min = position - glm::vec3(radius);
-    sphere_aabb.max = position + glm::vec3(radius);
+    AABB aabb;
+    aabb.min = -glm::vec3(radius);
+    aabb.max = glm::vec3(radius);
+    aabb = aabb.apply(tensor);
+    
+    vec3 center = aabb.centroid();
+    
+    glm::mat4 inv_tensor = glm::inverse(tensor);
 
     Subdivision* start_from = last_visited;
 
-    while (!sphere_aabb.inside(start_from->aabb)) {
+    while (!aabb.inside(start_from->aabb)) {
         if (!start_from->parent) break; //found root
         start_from = start_from->parent;
     }
@@ -98,7 +120,7 @@ vertex_handle PointOctotree::find_closest(vec3 position, float radius) {
     vertex_handle result;
     float closest_distance = radius;
 
-    find_closest(*start_from, sphere_aabb, result, closest_distance);
+    find_closest(*start_from, aabb, result, inv_tensor, closest_distance);
 
     return result;
 }
@@ -109,6 +131,7 @@ uint PointOctotree::centroid_to_index(glm::vec3 centroid, glm::vec3 min, glm::ve
     assert(vec.y >= 0.0f && vec.y <= 2.0f);
     return (int)floorf(vec.x) + 4 * (int)floorf(vec.y) + 2 * (int)floorf(vec.z);
 }
+
 
 void PointOctotree::add_vert_to_leaf(Subdivision& subdivision, vertex_handle vert) {
     uint index = subdivision.count++;
@@ -135,23 +158,13 @@ void PointOctotree::add_vert(vertex_handle vert) {
             else { //Subdivide the cell
                 vertex_handle vertices[MAX_PER_CELL];
                 memcpy_t(vertices, subdivision->p->vertices, subdivision->count);
-
-                glm::vec3 mins[8] = {
-                    //bottom
-                    {glm::vec3(min.x,               min.y,               min.z)}, //left front
-                    {glm::vec3(min.x + half_size.x, min.y,               min.z)}, //right front
-                    {glm::vec3(min.x,               min.y,               min.z + half_size.z)}, //left back
-                    {glm::vec3(min.x + half_size.x, min.y,               min.z + half_size.z)}, //right back
-                    //top
-                    {glm::vec3(min.x,               min.y + half_size.y, min.z)}, //left front
-                    {glm::vec3(min.x + half_size.x, min.y + half_size.y, min.z)}, //right front
-                    {glm::vec3(min.x,               min.y + half_size.y, min.z + half_size.z)}, //left back
-                    {glm::vec3(min.x + half_size.x, min.y + half_size.y, min.z + half_size.z)}, //right back
-                };
+                
+                AABB child_aabbs[8];
+                subdivide_aabb(subdivision->aabb, child_aabbs);
 
                 for (uint i = 0; i < 8; i++) {
                     init(subdivision->p->children[i]);
-                    subdivision->p->children[i].aabb = { mins[i], mins[i] + half_size };
+                    subdivision->p->children[i].aabb = child_aabbs[i];
                     subdivision->p->children[i].parent = subdivision;
                 }
 

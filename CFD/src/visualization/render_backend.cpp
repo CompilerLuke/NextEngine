@@ -68,6 +68,7 @@ CFDRenderBackend* make_cfd_render_backend(const CFDRenderBackendOptions& options
     pipeline_desc.render_pass = RenderPass::Scene;
     pipeline_desc.state = 0;
     pipeline_desc.vertex_layout = backend->triangle_vertex_layout;
+    pipeline_desc.state = Cull_None;
     memset(pipeline_desc.range, 0, sizeof(pipeline_desc.range));
     backend->pipeline_triangle = query_Pipeline(pipeline_desc);
 

@@ -290,8 +290,8 @@ project "NextUI"
         links "freetype"
 
     filter "system:macosx"
-        sysincludedirs { "/usr/local/Cellar/freetype/2.10.2/include/freetype2" }
-        libdirs { "/usr/local/Cellar/freetype/2.10.2/lib" } --maybe it is better to include freetype through git submodules
+        sysincludedirs { "/usr/local/Cellar/freetype/2.10.4/include/freetype2" }
+        libdirs { "/usr/local/Cellar/freetype/2.10.4/lib" } --maybe it is better to include freetype through git submodules
         links "freetype"
 
     filter "*"
@@ -329,12 +329,18 @@ project "CFD"
 	    "%{prj.name}/src/generated.cpp"
 	}
 
+	filter "system:macosx"
+		libdirs { "/usr/local/cellar/gcc/10.2.0_4/lib/gcc/10" }
+		links { "gfortran" }
+
+	filter "*"
 
 	includedirs { "NextEngine/include", "NextCore/include", "NextUI/include", "vendor/opennurbs" }
 	sysincludedirs { "CFD/vendor/lapack/LAPACKE/include", "CFD/vendor/lapack/CBLAS/include"}
 	libdirs { "CFD/vendor/lapack/build/lib/Release" }
 	links { "NextCore", "NextEngine", "NextUI", "blas", "lapack", "lapacke" }
 	-- defines { "HAVE_LAPACK_CONFIG_H"}
+
 
 	prebuildcommands (reflection_exe .. ' -b "." -i "include" cfd_components.h -c "cfd_ids.h" -o src/generated')
 	dll_config()

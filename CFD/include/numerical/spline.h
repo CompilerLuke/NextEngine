@@ -70,9 +70,15 @@ class Spline {
 	vector<float> lengths;
 
 public:
+    float total_length;
+    
 	Spline(slice<vec3> points) {
 		build(points);
 	}
+    
+    uint points() {
+        return lengths.length;
+    }
 
 	void build(slice<vec3> points) {
 		uint n = points.length - 1;
@@ -94,7 +100,7 @@ public:
 				float a2 = points[i + 1][k];
 
 				DL[i - 1] = 1.0;
-				D[i] = 2;
+				D[i] = 4.0;
 				DU[i] = 1.0;
 				B[i] = 3.0*(a2 - a1) + 3.0*(a1 - a0);
 			}
@@ -102,9 +108,20 @@ public:
 			B[0] = 0; B[n] = 0;
 			D[0] = 1; D[n] = 1;
 
-			DL[n - 1] = 1;
+			DL[n - 1] = 0;
 			DU[0] = 0;
-
+            
+            if (n < 10) {
+                char spaces[256];
+                for (uint i = 0; i < 256; i++) spaces[i] = ' ';
+                
+                for (uint i = 0; i < n+1; i++) {
+                    if (i == 0) printf("[ %.2f, %.2f,%.*s]\n", D[i], DU[0], (n-1)*6, spaces);
+                    else if (i == n) printf("[%.*s %.2f, %.2f ]\n", (i-1)*6, spaces, DL[i-1], D[i], DU[i]);
+                    else printf("[%.*s %.2f, %.2f, %.2f,%.*s]\n", (i-1)*6, spaces, DL[i-1], D[i], DU[i], (n-1-i)*6, spaces);
+                }
+            }
+            
 			int info = LAPACKE_sgtsv(LAPACK_ROW_MAJOR, n + 1, 1, DL, D, DU, B, 1);
 			assert(info == 0);
 
@@ -122,8 +139,10 @@ public:
 			}
 		}
 
+        total_length = 0;
 		for (uint i = 0; i < n; i++) {
-			lengths[i] = arc_length_integrand(i,1.0);
+			lengths[i] = integrate(i,1.0);
+            total_length += lengths[i];
 		}
 	}
 
@@ -136,20 +155,21 @@ public:
 		vec3 result = coeff[i].a + coeff[i].b * x + coeff[i].c * xx + coeff[i].d * xxx;
 		return result;
 	}
+    
+    vec3 tangent(float t) {
+        uint i = t;
+        float x = t - i;
+        float xx = x * x;
+        
+        vec3 result = coeff[i].b + 2.0f * coeff[i].c * x + 3.0f * coeff[i].d * xx;
+        return normalize(result);
+    }
 
 	float arc_length_integrand(uint spline, float t) {
 		float tt = t * t;
 
 		vec3 result = coeff[spline].b + 2.0f * coeff[spline].c * t + 3.0f * coeff[spline].d * tt;
 		return length(result);
-	}
-
-	float get_total_length() {
-		float total = 0.0f;
-		for (uint i = 0; i < lengths.length; i++) {
-			total += lengths[i];
-		}
-		return total;
 	}
 
 	float integrate(uint spline, float t) {
@@ -169,24 +189,33 @@ public:
 		float XI = h * (XI0 + 2 * XI2 + 4 * XI1) / 3.0f;
 		return XI;
 	}
+    
+    float const_speed_reparam(float t, float speed) {
+        float desired_distance = speed * t;
 
-	vec3 constant_speed_at_time(float t, float speed) {
-		float total_length = get_total_length();
-		float desired_distance = speed * t;
+        float distance = 0.0f;
 
-		float distance = 0.0f;
+        uint spline;
+        for (spline = 0; spline < lengths.length; spline++) {
+            distance += lengths[spline];
+            if (distance > desired_distance) break;
+        }
+        
+        assert(spline < lengths.length);
+        float d = desired_distance - (distance - lengths[spline]);
 
-		uint spline;
-		for (spline = 0; spline < lengths.length; spline++) {
-			distance += integrate(spline, 1.0);
-			if (distance > desired_distance) break;
-		}
+        float s = 0.5f;
+        for (uint i = 0; i < 10.0f; i++) {
+            float arc_length = integrate(spline, s);
+            float arc_speed = arc_length_integrand(spline, s);
+            //printf("S %f, arc length %f, arc speed %f\n", s, arc_length, arc_speed);
+            s = s - (arc_length - d) / arc_speed;
+        }
+        
+        return spline + s;
+    }
 
-		float s = 0.0f;
-		for (uint i = 0; i < 6; i++) {
-			s = (integrate(spline, s) - t) / arc_length_integrand(spline, s);
-		}
-
-		return at_time(spline + s);
+	vec3 const_speed_at_time(float t, float speed) {
+		return at_time(const_speed_reparam(t, speed));
 	}
 };

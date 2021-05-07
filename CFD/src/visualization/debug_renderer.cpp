@@ -45,7 +45,7 @@ void draw_triangle(CFDDebugRenderer& renderer, vec3 v[3], vec4 color) {
 
 void draw_triangle(CFDDebugRenderer& renderer, vec3 v0, vec3 v1, vec3 v2, vec4 color) {
     vec3 v[3] = { v0,v1,v2 };
-    draw_triangle(renderer, v0, v1, v2, color);
+    draw_triangle(renderer, v, color);
 }
 
 void draw_quad(CFDDebugRenderer& renderer, vec3 v[4], vec4 color) {

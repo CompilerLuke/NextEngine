@@ -4,13 +4,48 @@
 #include "mesh/edge_graph.h"
 #include <algorithm>
 
-FeatureCurves identify_feature_edges(SurfaceTriMesh& surface, float feature_angle, float min_quality, CFDDebugRenderer& debug) {
+tvector<float> curvature_at_verts(SurfaceTriMesh& surface, EdgeGraph& graph, CFDDebugRenderer& debug) {
+    tvector<float> vert_curvatures;
+    vert_curvatures.resize(surface.positions.length);
+    
+    for (int i = 1; i < surface.positions.length; i++) {
+        auto neighbors = graph.neighbors({i});
+        vec3 v0 = surface.positions[i];
+        
+        float total_angle = 0.0f;
+        float total_area = 0.0f;
+        
+        for (uint i = 0; i < neighbors.length; i++) {
+            edge_handle e0 = neighbors[i];
+            edge_handle e1 = TRI(e0) + (TRI_EDGE(e0) + 2)%3;
+            
+            vec3 v1 = surface.position(e0);
+            vec3 v2 = surface.position(e1);
+            
+            //draw_line(debug, v0, v1);
+            //draw_line(debug, v0, v2);
+            //suspend_execution(debug);
+            
+            float angle = acosf(dot(v1-v0, v2-v0) / (length(v1-v0) * length(v2-v0)));
+            total_angle += angle;
+            
+            total_area += length(cross(v1-v0, v2-v0))/2.0f; //magnitude is parallelgram of two vectors -> divided by two, becomes area of triangle
+        }
+        
+        float A = total_area/3;
+        float curvature = (2*M_PI - total_angle) / A;
+        vert_curvatures[i] = curvature;
+    }
+    
+    return vert_curvatures;
+}
+
+tvector<FeatureCurve> identify_feature_edges(SurfaceTriMesh& surface, EdgeGraph& edge_graph, float feature_angle, float min_quality, CFDDebugRenderer& debug) {
 	struct DihedralID {
 		float dihedral;
 		edge_handle edge;
 	};
 
-	EdgeGraph edge_graph = build_edge_graph(surface);
 	vec3* normals = TEMPORARY_ZEROED_ARRAY(vec3, surface.tri_count);
 	vec3* centers = TEMPORARY_ZEROED_ARRAY(vec3, surface.tri_count);
 	float* dihedrals = TEMPORARY_ZEROED_ARRAY(float, 3 * surface.tri_count);
@@ -32,7 +67,7 @@ FeatureCurves identify_feature_edges(SurfaceTriMesh& surface, float feature_angl
 		centers[i / 3] = center; // +episilon * normals[i / 3];
 	}
 
-	FeatureCurves result;
+	tvector<FeatureCurve> result;
 
 	feature_angle = to_radians(feature_angle);
 
@@ -62,8 +97,8 @@ FeatureCurves identify_feature_edges(SurfaceTriMesh& surface, float feature_angl
 			uint count = 0;
 
 			edge_handle current_edge = i == 1 ? surface.edges[starting_edge] : starting_edge;
-			possible_strong_edges.length = 0;
-			positions.length = 0;
+            possible_strong_edges.clear();
+            positions.clear();
 
 			while (count++ < 10000) {
 				visited[current_edge] = true;
@@ -116,19 +151,23 @@ FeatureCurves identify_feature_edges(SurfaceTriMesh& surface, float feature_angl
 			}
 
 			if (possible_strong_edges.length > 5) {
-				result.splines.append(Spline(positions));
-				result.edges += possible_strong_edges;
+                result.append({
+                    Spline(positions),
+                    possible_strong_edges
+                });
 			}
 		}
 	}
 
-	for (edge_handle edge : result.edges) {
-		vec3 p0, p1;
-		surface.edge_verts(edge, &p0, &p1);
-		p0 += normals[edge / 3] * episilon;
-		p1 += normals[edge / 3] * episilon;
-		draw_line(debug, p0, p1, vec4(1, 0, 0, 1));
-	}
+    for (FeatureCurve curve : result) {
+        for (edge_handle edge : curve.edges) {
+            vec3 p0, p1;
+            surface.edge_verts(edge, &p0, &p1);
+            p0 += normals[edge / 3] * episilon;
+            p1 += normals[edge / 3] * episilon;
+            draw_line(debug, p0, p1, vec4(1, 0, 0, 1));
+        }
+    }
 
 	return result;
 }
