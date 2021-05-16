@@ -1,6 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup><EnableUnitySupport>true</EnableUnitySupport></PropertyGroup>
+  <PropertyGroup>
+    <EnableUnitySupport>true</EnableUnitySupport>
+  </PropertyGroup>
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
@@ -97,7 +99,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>blas.lib;lapack.lib;lapacke.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>vendor\lapack\build\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Program Files (x86)\Intel\oneAPI\compiler\2021.2.0\windows\compiler\lib\intel64_win;vendor\lapack\build\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImportLibrary>..\bin\Debug-windows-x86_64\CFD\CFD.lib</ImportLibrary>
     </Link>
     <PreBuildEvent>
@@ -131,7 +133,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>blas.lib;lapack.lib;lapacke.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>vendor\lapack\build\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Program Files (x86)\Intel\oneAPI\compiler\2021.2.0\windows\compiler\lib\intel64_win;vendor\lapack\build\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImportLibrary>..\bin\Release-windows-x86_64\CFD\CFD.lib</ImportLibrary>
     </Link>
     <PreBuildEvent>
@@ -163,7 +165,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>blas.lib;lapack.lib;lapacke.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>vendor\lapack\build\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Program Files (x86)\Intel\oneAPI\compiler\2021.2.0\windows\compiler\lib\intel64_win;vendor\lapack\build\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImportLibrary>..\bin\Dist-windows-x86_64\CFD\CFD.lib</ImportLibrary>
     </Link>
     <PreBuildEvent>
@@ -185,6 +187,7 @@
     <ClInclude Include="include\editor\viewport_interaction.h" />
     <ClInclude Include="include\generated.h" />
     <ClInclude Include="include\geo\predicates.h" />
+    <ClInclude Include="include\mesh_generation\hexcore.h" />
     <ClInclude Include="include\lapacke_config.h" />
     <ClInclude Include="include\mesh.h" />
     <ClInclude Include="include\mesh\edge_graph.h" />
@@ -232,6 +235,8 @@
     <ClCompile Include="src\mesh_generation\delanuay.cpp" />
     <ClCompile Include="src\mesh_generation\deluanay_advancing_front.cpp" />
     <ClCompile Include="src\mesh_generation\feature_edges.cpp" />
+    <ClCompile Include="src\mesh_generation\hexcore.cpp" />
+    <ClCompile Include="src\mesh_generation\hexcore_old.cpp" />
     <ClCompile Include="src\mesh_generation\hilbert_sort.cpp" />
     <ClCompile Include="src\mesh_generation\isotropic_advancing_front.cpp" />
     <ClCompile Include="src\mesh_generation\mesh_generation.cpp" />

@@ -36,7 +36,7 @@ SurfaceTriMesh surface_from_mesh(const glm::mat4& mat, Mesh& mesh) {
 	slice<uint> mesh_indices = mesh.indices[lod];
 	slice<Vertex> mesh_vertices = mesh.vertices[lod];
 
-	uint hash_map_size = mesh_indices.length * 2;
+	uint hash_map_size = mesh_indices.length * 3;
 
 	spatial_hash_map<uint> vertex_hash_map = make_t_hash_map<uint>(hash_map_size);
 

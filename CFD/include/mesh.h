@@ -84,7 +84,20 @@ struct TriangleFaceSet {
 };
 
 inline u64 hash_func(const TriangleFaceSet& set) {
-	return (u64)set.verts[0].id | (u64)set.verts[1].id << 22 | (u64)set.verts[2].id << 44;
+	return (u64)set.verts[0].id | (u64)set.verts[1].id << 21 | (u64)set.verts[2].id << 42;
+}
+
+namespace std {
+
+	template <>
+	struct hash<TriangleFaceSet>
+	{
+		std::size_t operator()(const TriangleFaceSet& set) const
+		{
+			return (u64)set.verts[0].id | (u64)set.verts[1].id << 21 | (u64)set.verts[2].id << 42;
+		}
+	};
+
 }
 
 struct Boundary {
@@ -222,6 +235,7 @@ constexpr ShapeDesc shapes[4] = {
 void compute_normals(slice<CFDVertex> vertices, CFDCell& cell);
 
 vec3 triangle_normal(vec3 positions[3]);
+vec3 triangle_center(vec3 positions[3]);
 vec3 quad_normal(vec3 positions[4]);
 void advancing_front_triangulation(CFDVolume& mesh, uint& extruded_vertices_offset, uint& extruded_cell_offset, const AABB&);
 //void build_delaunay(CFDVolume& volume, slice<vertex_handle> verts, slice<Boundary> boundary);

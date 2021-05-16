@@ -1,14 +1,15 @@
 #include "stdafx.h"
+#include "core/job_system/thread.h"
 #include "core/job_system/fiber.h"
 #include "core/job_system/job.h"
 #include "core/job_system/work_stealing_queue.h"
 #include "core/container/queue.h"
 #include "core/container/array.h"
 
-
+#include <mutex>
 #include <thread>
 
-thread_local worker_handle worker_handle;
+thread_local worker_handle worker;
 
 constexpr uint MAX_FIBERS = 1000;
 constexpr uint MAX_JOBS = 10000;
@@ -52,8 +53,8 @@ uint worker_thread_count() {
 }
 
 uint get_worker_id() {
-	assert(worker_handle.id);
-	return worker_handle.id - 1;
+	assert(worker.id);
+	return worker.id - 1;
 }
 
 Fiber* alloc_fiber() {
@@ -234,7 +235,7 @@ void run_worker(uint worker) {
 	//printf("Starting worker %i\n", worker);
 
 	convert_thread_to_fiber();
-    worker_handle = { worker + 1 };
+    ::worker = { worker + 1 };
 	run_fiber(nullptr);
 }
 
@@ -242,7 +243,7 @@ void run_worker(uint worker) {
 FLS* fls_context;
 
 void init_main_thread() {
-    worker_handle = { 1 };
+    worker = { 1 };
 }
 
 void make_job_system(uint num_fibers, uint num_workers) {
@@ -270,7 +271,7 @@ void make_job_system(uint num_fibers, uint num_workers) {
 		workers[worker].detach();
 	}
 
-	worker_handle = { main_thread + 1 };
+	worker = { main_thread + 1 };
     fls_context = make_FLS(nullptr);
 }
 

@@ -333,6 +333,9 @@ project "CFD"
 		libdirs { "/usr/local/cellar/gcc/10.2.0_4/lib/gcc/10" }
 		links { "gfortran" }
 
+	filter "system:windows"
+		libdirs { "C:/Program Files (x86)/Intel/oneAPI/compiler/2021.2.0/windows/compiler/lib/intel64_win" }
+
 	filter "*"
 
 	includedirs { "NextEngine/include", "NextCore/include", "NextUI/include", "vendor/opennurbs" }

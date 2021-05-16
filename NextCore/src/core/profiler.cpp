@@ -146,6 +146,12 @@ void Profile::end() {
 	Profiler::record_profile(*this);
 }
 
+void Profile::log() {
+	uint depth = Profiler::profile_depth[get_worker_id()];
+	end();
+	printf("==== %*cCompleted %s in %f ms ====\n", depth*4, ' ', name, duration() * 1000);
+}
+
 Profile::~Profile() {
 	if (!ended) end();
 };

@@ -774,7 +774,8 @@ static real orient3dadapt(const real* __restrict__ pa, const real* __restrict__ 
 
 real orient3d(const real* const __restrict__ pa, const real* const __restrict__ pb, const real* const __restrict__ pc, const real* const __restrict__ pd)
 {
-  // return orient3dexact(pa, pb, pc, pd);
+  
+//return orient3dexact(pa, pb, pc, pd);
 
   real adx, bdx, cdx, ady, bdy, cdy, adz, bdz, cdz;
   real bdxcdy, cdxbdy, cdxady, adxcdy, adxbdy, bdxady;

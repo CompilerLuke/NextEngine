@@ -9,7 +9,7 @@ struct Cross;
 struct Ray;
 
 struct PointOctotree {
-    static constexpr uint MAX_PER_CELL = 64;
+    static constexpr uint MAX_PER_CELL = 8;
     static constexpr uint BLOCK_SIZE = kb(16);
 
     union Payload;

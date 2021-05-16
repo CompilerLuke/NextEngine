@@ -19,6 +19,21 @@ SurfaceTriMesh::SurfaceTriMesh(SurfaceTriMesh&& other) {
 	other.indices = nullptr;
 }
 
+SurfaceTriMesh::SurfaceTriMesh(const SurfaceTriMesh& other) {
+	tri_capacity = other.tri_capacity;
+	tri_count = other.tri_count;
+	positions = other.positions;
+
+	uint n = tri_count * 3;
+	edges = new edge_handle[n];
+	indices = new vertex_handle[n];
+
+	memcpy_t(edges, other.edges, n);
+	memcpy_t(indices, other.indices, n);
+
+	aabb = other.aabb;
+}
+
 void SurfaceTriMesh::operator=(SurfaceTriMesh&& other) {
 	//todo free previous
 	
@@ -43,7 +58,7 @@ void SurfaceTriMesh::reserve_tris(uint count) {
 
 void SurfaceTriMesh::resize_tris(uint count) {
 	reserve_tris(count);
-	for (uint i = tri_count*3; i < count*3; i++) {
+	for (uint i = 0; i < count*3; i++) {
 		indices[i] = {};
 		edges[i] = {};
 	}

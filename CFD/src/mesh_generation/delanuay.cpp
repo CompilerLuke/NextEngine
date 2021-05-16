@@ -17,6 +17,8 @@
 
 #include "visualization/debug_renderer.h"
 
+#include <unordered_map>
+
 struct CavityFace {
 	tet_handle tet;
 	vertex_handle verts[3];
@@ -38,15 +40,16 @@ struct Delaunay {
 	CFDVolume& volume;
 	vector<CFDVertex>& vertices;
 	CFDDebugRenderer& debug;
-	hash_map_base<TriangleFaceSet, tet_handle> shared_face;
+	std::unordered_map<TriangleFaceSet, tet_handle> shared_face;
+	//hash_map_base<TriangleFaceSet, tet_handle> shared_face;
 	AABB aabb;
 	uint max_shared_face;
 	uint super_vert_offset;
 	uint boundary_vert_offset;
-	tvector<CavityFace> cavity;
+	vector<CavityFace> cavity;
 	tvector<tet_handle> stack;
 	tet_handle last;
-	tvector<tet_handle> free;
+	vector<tet_handle> free;
 
 	//Mesh
 	uint tet_capacity;
@@ -405,11 +408,18 @@ vec3 compute_centroid(Delaunay& d, tet_handle tet) {
 	return centroid;
 }
 
-tet_handle find_enclosing_tet(Delaunay& d, vec3 pos, float min_dist = 0.0) {
+void get_positions(Delaunay& d, tet_handle tet, uint face, vec3 verts[3]) {
+	for (uint i = 0; i < 3; i++) {
+		verts[i] = d.vertices[d.indices[tet + tetra_shape[face][i]].id].position;
+	}
+}
+
+tet_handle find_enclosing_tet(Delaunay& d, vec3 pos, float min_dist = 0.0, bool stop_at_boundary = false) {
 	//Walk structure to get to enclosing triangle, starting from the last inserted
 	tet_handle current = d.last;
-	tet_handle prev = 0;
+	tet_handle prev = UINT_MAX;
 
+	vec3 last_pos = compute_centroid(d, current);
 	//printf("==============\n");
 	//printf("Starting at %i\n", current.id);
 
@@ -420,27 +430,40 @@ tet_handle find_enclosing_tet(Delaunay& d, vec3 pos, float min_dist = 0.0) {
 loop: {
 	uint offset = rand();
 
+	/*if (stop_at_boundary) {
+		vec3 current_pos = compute_centroid(d, current);
+		draw_line(d.debug, last_pos, current_pos, vec4(0, 1, 0, 1));
+		last_pos = current_pos;
+	}*/
+
 	for (uint it = 0; it < 4; it++) {
 		uint i = (it + offset) % 4;
 		tet_handle neighbor = d.faces[current + i] & NEIGH;
-		if (!neighbor || neighbor == prev) continue;
-
+		if ((!neighbor && !stop_at_boundary) || neighbor == prev) continue;
+		
 		vec3 verts[3];
-		for (uint j = 0; j < 3; j++) {
-			verts[j] = d.vertices[d.indices[current + tetra_shape[i][j]].id].position;
-			//add_box_cell(d.volume, verts[j], 0.1);
-		}
+		get_positions(d, current, i, verts);
+		
+		float epsilon = neighbor == 0 ? -0.2 : 0;
+
+		/*if (!neighbor) {
+			draw_triangle(d.debug, verts, vec4(1, 1, 1, 1));
+			draw_triangle(d.debug, verts[2], verts[1], verts[0], vec4(1, 0, 0, 1));
+		}*/
 
 		//vec3 n = triangle_normal(verts);
 
-		float det =
+		real det =
 			//dot(n, pos - verts[0]);
 			-orient3d(verts[0], verts[1], verts[2], pos);
-		if (det > 0) {
+		if (det > epsilon) {
+			if (neighbor == 0) return 0;
 			//vec3 start = compute_centroid(d, current);
 			//vec3 end = compute_centroid(d, neighbor);
 
 			//draw_ray(d.volume, start, normalize(end-start), length(end-start));
+
+			last_pos = (verts[0] + verts[1] + verts[2]) / 3.0f;
 
 			prev = current;
 			current = neighbor;
@@ -449,6 +472,8 @@ loop: {
 		}
 	}
 	};
+
+	//if (stop_at_boundary) draw_line(d.debug, last_pos, pos, vec4(0, 0, 1, 1));
 
 	if (false && min_dist != 0.0f) {
 		for (uint i = 0; i < 4; i++) {
@@ -463,25 +488,16 @@ return current;
 }
 
 bool is_deallocated(Delaunay& d, tet_handle tet) {
-	return d.subdets[tet + 3] == -1;
+	return d.subdets[tet & NEIGH + 3] == -1;
 }
 
 void dealloc_tet(Delaunay& d, tet_handle tet) {
-	d.subdets[tet + 3] = -1; //Mark for deletion and that it is already visited
+	d.subdets[tet & NEIGH + 3] = -1; //Mark for deletion and that it is already visited
 	d.free.append(tet);
 }
 
-int find_in_circum(Delaunay& d, vertex_handle v, float min_dist = 0.0f) {
-	vec3 pos = d.vertices[v.id].position;
+int find_cavity_faces(Delaunay& d, tet_handle current, vertex_handle v, float min_dist = 0.0f) {
 	//printf("Inserting %i,  (%f, %f, %f)\n", v.id, pos.x, pos.y, pos.z);
-	tet_handle current = find_enclosing_tet(d, pos, min_dist);
-	if (!current) {
-		add_box_cell(d.volume, pos, 1);
-		draw_debug_boxes(d.volume);
-		printf("Could not find enclosing tet!\n");
-		return false;
-	}
-	if (current == 1) return 2; //too close
 
 	//if (!point_inside(d, current, pos)) return false;
 	//assert(insphere(d, current, v) < 0);
@@ -490,8 +506,17 @@ int find_in_circum(Delaunay& d, vertex_handle v, float min_dist = 0.0f) {
 	d.stack.append(current);
 	dealloc_tet(d, current);
 
+	vec3 last_pos = compute_centroid(d, current);
+
 	while (d.stack.length > 0) {
 		tet_handle current = d.stack.pop();
+		vec3 current_pos = compute_centroid(d, current);
+
+		if (min_dist == 1) {
+			draw_line(d.debug, last_pos, current_pos, vec4(1, 0, 0, 1));
+			last_pos = current_pos;
+		}
+
 		//Tet& cell = d.tets[current];
 		//stack = cell.prev;
 
@@ -508,21 +533,17 @@ int find_in_circum(Delaunay& d, vertex_handle v, float min_dist = 0.0f) {
 
 			if (neighbor) {
 				bool visited = is_deallocated(d, neighbor);
-				bool inside = visited;
-				if (!visited) {
-					float value = insphere(d, neighbor, v);
-					//printf("Insphere %f\n", value);
-					inside |= value < 0;
-				}
+				if (visited) continue;
 
-				if (!visited && inside) {
+				bool inside = insphere(d, neighbor, v) < 0;
+				if (inside) {
 					//printf("Neighbor %i: adding to stack\n", neighbor.id);
 					dealloc_tet(d, neighbor);
 					d.stack.append(neighbor);
 				}
 
 				//printf("Face %i, neighbor %i, %s\n", i, neighbor.id, inside ? "not unique" : "unique");
-				if (!inside) { //face is unique
+				else { //face is unique
 					//printf("Neighbor %i: Unique face %i\n", neighbor.id, i);
 					//assert_neighbors(volume, neighbor, verts);
 					d.cavity.append({ d.faces[current + i], verts[0], verts[1], verts[2] });
@@ -539,9 +560,17 @@ int find_in_circum(Delaunay& d, vertex_handle v, float min_dist = 0.0f) {
 
 	//assert(cavity.length >= 3);
 	if (d.cavity.length < 4) {
+		CFDDebugRenderer& debug = d.debug;
+		for (CavityFace face : d.cavity) {
+			vec3 pos[3];
+			get_positions(d.vertices, { face.verts,3 }, pos);
+
+			//draw_triangle(debug, pos, vec4(1,0,0,1));
+		}
+		suspend_execution(debug);
 		printf("Cavity does not enclose point\n");
 	}
-	return d.cavity.length >= 3;
+	return d.cavity.length > 3;
 }
 
 /*
@@ -638,22 +667,18 @@ bool is_or_was_active_vert(Delaunay& d, vertex_handle v) {
 	return v.id >= d.prev_active_vert_offset && !is_super_vert(d, v);
 }
 
-bool add_vertex(Delaunay& d, vertex_handle vert, float min_dist = 0.0f) {
-	uint res = find_in_circum(d, vert, min_dist);
-	if (res == 2) return true; //too close
-	if (res == 0) return false; //failed
-
-	d.shared_face.capacity = d.cavity.length * 4;
+bool retriangulate_cavity(Delaunay& d, slice<CavityFace> cavity, vertex_handle vert) {
+	/*d.shared_face.capacity = cavity.length * 4;
 	if (d.shared_face.capacity > d.max_shared_face) {
 		printf("Cavity is too large!!\n");
 		return false;
 	}
-
+	*/
 	d.shared_face.clear();
 
 	//printf("======== Retriangulating with %i faces\n", d.cavity.length);
 
-	for (CavityFace& cavity : d.cavity) {
+	for (CavityFace& cavity : cavity) {
 		tet_handle tet = alloc_tet(d);
 		//printf("Alloc   %i\n", tet);
 
@@ -712,8 +737,7 @@ bool add_vertex(Delaunay& d, vertex_handle vert, float min_dist = 0.0f) {
 			}
 
 			tet_handle face = tet + i;
-			uint index = d.shared_face.add(verts);
-			tet_handle& neigh = d.shared_face.values[index];
+			tet_handle& neigh = d.shared_face[verts];
 			if (!neigh) {
 				neigh = face;
 				d.faces[face] = {};
@@ -731,6 +755,25 @@ bool add_vertex(Delaunay& d, vertex_handle vert, float min_dist = 0.0f) {
 		compute_subdet(d, tet);
 	}
 
+	return true;
+}
+
+bool add_vertex(Delaunay& d, vertex_handle vert, float min_dist = 0.0f) {
+	vec3 pos = d.vertices[vert.id].position;
+	tet_handle current = find_enclosing_tet(d, pos, min_dist, false);
+	if (!current) {
+		draw_line(d.debug, pos, pos + vec3(0, 10, 0), vec4(0, 1, 0, 1));
+		suspend_execution(d.debug);
+		printf("Could not find enclosing tet!\n");
+		return false;
+	}
+	if (current == 1) return 2; //too close
+	
+	uint res = find_cavity_faces(d, current, vert, min_dist);
+	if (res == 2) return true; //too close
+	if (res == 0) return false; //failed
+
+	retriangulate_cavity(d, d.cavity, vert);
 	//assert(free_cells.length == 0);
 
 	return true;
@@ -773,24 +816,143 @@ void start_with_non_coplanar(CFDVolume& mesh, slice<vertex_handle> vertices) {
 
 void brio_vertices(CFDVolume& mesh, const AABB& aabb, slice<vertex_handle> vertices);
 
+#include <queue>
+
+void constrain_triangulation(Delaunay& d, slice<Boundary> boundaries) {
+	CFDDebugRenderer& debug = d.debug;
+
+	uint* boundary = TEMPORARY_ZEROED_ARRAY(uint, divceil(d.tet_count*4, 32));
+
+	tvector<Boundary> tri_boundaries;
+	for (Boundary b : boundaries) {
+		bool is_quad = b.vertices[3].id != -1;
+		tri_boundaries.append({ b.cell, { b.vertices[0], b.vertices[1], b.vertices[2] } });
+		if (is_quad) {
+			tri_boundaries.append({ b.cell, { b.vertices[0], b.vertices[2], b.vertices[3] } });
+
+			tri_boundaries.append({ b.cell, { b.vertices[0], b.vertices[1], b.vertices[3] } }); //Alternative triangulation of quad
+			tri_boundaries.append({ b.cell, { b.vertices[1], b.vertices[2], b.vertices[3] } });
+		}
+	}
+
+	for (Boundary tri : tri_boundaries) {
+		vec3 pos[3];
+		get_positions(d.vertices, { tri.vertices, 3 }, pos);
+
+		vec3 normal = triangle_normal(pos);
+		vec3 center = triangle_center(pos);
+
+		//draw_line(debug, center, center + normal*0.2, vec4(0, 0, 0, 1));
+
+		vec3 search_pos = center + normal * 0.2;
+
+		TriangleFaceSet triangle(tri.vertices);
+
+		tet_handle boundary_tet = find_enclosing_tet(d, search_pos);
+
+		if (!boundary_tet) {
+			printf("Could not find boundary tet!\n");
+			continue;
+		}
+		d.last = boundary_tet;
+
+		float smallest_disp = FLT_MAX;
+		
+		bool found = true;
+		for (uint i = 0; i < 4; i++) {
+			vertex_handle verts[3];
+			for (uint j = 0; j < 3; j++) {
+				verts[j] = d.indices[boundary_tet + tetra_shape[i][j]];
+			}
+
+			/*for (uint j = 0; j < 3; j++) {
+				vec3 pos0 = d.vertices[verts[j].id].position;
+				vec3 pos1 = d.vertices[verts[(j + 1) % 3].id].position;
+
+				draw_line(debug, pos0, pos1, vec4(0, 0, 0, 1));
+			}*/
+
+			TriangleFaceSet neigh_triangle(verts);
+
+			if (triangle == neigh_triangle) {
+				found = true;
+
+				tet_handle face = boundary_tet + i;
+				tet_handle neigh = d.faces[face];
+
+				boundary[face / 32] |= 1 << (face % 32);
+				boundary[neigh / 32] |= 1 << (neigh % 32);
+
+				break;
+			}
+		}
+
+	}
+
+	tet_handle outside_tet = 0; 
+	for (uint i = 4; i < d.tet_count * 4; i++) {
+		vertex_handle v = d.indices[i];
+		if (is_super_vert(d, v)) {
+			outside_tet = i & NEIGH;
+			break;
+		}
+	}
+
+	vec3 last = compute_centroid(d, outside_tet);
+
+	dealloc_tet(d, outside_tet);
+
+	//std::queue<tet_handle> queue;
+	//queue.push(outside_tet);
+	d.stack.append(outside_tet);
+	while (d.stack.length > 0) {
+		tet_handle outside = d.stack.pop();
+		vec3 current = compute_centroid(d, outside);
+		//draw_line(debug, last, current, vec4(1,0,0,1));
+		//suspend_execution(debug);
+		last = current;
+
+		for (uint i = 0; i < 4; i++) {
+			uint face = outside + i;
+			bool is_boundary = boundary[face / 32] & (1 << (face % 32));
+			tet_handle neigh = d.faces[face];
+			
+
+			if (is_boundary) {
+				d.faces[neigh] = 0;
+
+				vec3 pos[3];
+				get_positions(d, outside, i, pos);
+
+				draw_triangle(debug, pos[2], pos[1], pos[0], vec4(1));
+			}
+
+			if (is_boundary || !neigh || is_deallocated(d, neigh & NEIGH)) continue;
+
+			dealloc_tet(d, neigh & NEIGH);
+			d.stack.append(neigh & NEIGH);
+		}
+	}
+}
+
 Delaunay* make_Delaunay(CFDVolume& volume, const AABB& aabb, CFDDebugRenderer& debug) {
 
 	//Delaunay::Delaunay(CFDVolume& volume, const AABB& aabb) : vertices(volume.vertices), volume(volume) {
 
 	Delaunay* d = PERMANENT_ALLOC(Delaunay, { volume, volume.vertices, debug });
 	d->vertices = volume.vertices;
-	d->max_shared_face = kb(32);
+	d->max_shared_face = kb(64);
 	d->aabb = aabb;
 	d->tet_count = 1; //leave 0 as empty
 
 	LinearAllocator& allocator = get_temporary_allocator();
 
-	d->shared_face = {
+	/*d->shared_face = {
 		d->max_shared_face,
 		alloc_t<hash_meta>(allocator, d->max_shared_face),
 		alloc_t<TriangleFaceSet>(allocator, d->max_shared_face),
 		alloc_t<tet_handle>(allocator, d->max_shared_face)
-	};
+	};*/
 
 	vec3 centroid = aabb.centroid();
 
@@ -1161,15 +1323,16 @@ void find_hex(Delaunay& del, VertGraph& graph) {
 }
 
 bool complete(Delaunay& d) {
-	uint cell_offset = d.volume.cells.length + 1;
+	uint cell_offset = d.volume.cells.length;
 
 	//super_cell_base
 	for (tet_handle i = 4; i < 4 * d.tet_count; i += 4) {
-		if (d.subdets[i + 3] == -1) continue; //Assume continous
+		if (is_deallocated(d, i)) continue; //Assume continous
 		CFDCell cell{ CFDCell::TETRAHEDRON };
 		for (uint j = 0; j < 4; j++) {
 			cell.vertices[j] = d.indices[i + j];
-			cell.faces[j].neighbor = { (int)((d.faces[i + j] & NEIGH) / 4 - cell_offset) };
+			if (d.faces[i + j]) cell.faces[j].neighbor = { (int)((d.faces[i + j] / 4) + cell_offset) };
+			else cell.faces[j].neighbor = {};
 		}
 
 		compute_normals(d.vertices, cell);
@@ -1185,8 +1348,16 @@ bool add_vertices(Delaunay& d, slice<vertex_handle> verts, float min_dist) {
 		aabb.update(d.vertices[verts[i].id].position);
 	}
 
-	//start_with_non_coplanar(d.volume, verts);
 	brio_vertices(d.volume, aabb, verts);
+	start_with_non_coplanar(d.volume, verts);
+
+	/*vec3 last = d.vertices[verts[0].id].position;
+	for (uint i = 1; i < verts.length; i++) {
+		vec3 current = d.vertices[verts[i].id].position;
+		draw_line(d.debug, last, current, vec4(0, 0, 0, 1));
+		last = current;
+	}
+	suspend_execution(d.debug);*/
 
 	for (uint i = 0; i < verts.length; i++) {
 		if (!add_vertex(d, verts[i], min_dist)) {
@@ -1415,15 +1586,15 @@ float avg_edge(Delaunay& d, tet_handle tet) {
 	return avg_edge / count;
 }
 
-bool refine(Delaunay& d, float size = FLT_MAX) {
-	uint num_it = 5;
+bool refine(Delaunay& d, float size) {
+	uint num_it = 1;
 	for (uint it = 0; it < num_it; it++) {
 		uint n = 4 * d.tet_count;
 
-		LinearRegion region(get_temporary_allocator());
+		//LinearRegion region(get_temporary_allocator());
 
-		for (tet_handle i = 4; i < 4 * d.tet_count; i += 4) {
-			if (d.subdets[i + 3] == -1) continue;
+		for (tet_handle i = 4; i < n; i += 4) {
+			if (is_deallocated(d, i)) continue;
 			vec3 positions[4];
 			bool super = false;
 
@@ -1449,7 +1620,7 @@ bool refine(Delaunay& d, float size = FLT_MAX) {
 			shortest_edge = sqrtf(shortest_edge);
 			longest_edge = sqrtf(longest_edge);
 
-			bool bad = longest_edge / shortest_edge > 4/3 || shortest_edge > 4 / 3 * size;
+			bool bad = longest_edge / shortest_edge > 5/3 || shortest_edge > 4 / 3 * size;
 
 			//circum.radius / longest_edge > 0.8
 			//2*circum.radius / longest_edge > 0.8
@@ -1458,16 +1629,41 @@ bool refine(Delaunay& d, float size = FLT_MAX) {
 			if (bad) {
 				vec3 avg = (positions[0] + positions[1] + positions[2] + positions[3]) / 4;
 				Circumsphere circum = circumsphere(positions);
-				//if (sq_distance(circum.center, avg) > 8*longest_edge*longest_edge) continue;
+
+				if (sq_distance(circum.center, avg) > longest_edge * longest_edge) continue;
 				vec3 pos = circum.center;
 
-				if (!d.aabb.inside(pos)) pos = avg;
+				if (!d.aabb.inside(pos)) continue; // pos = avg;
 
+				vertex_handle v = {d.vertices.length};
+				d.vertices.append({ pos });
+
+				d.last = i;
+				bool inside_boundary = find_enclosing_tet(d, pos, 0, true);
+				if (!inside_boundary) continue;
+
+				//draw_line(d.debug, pos, pos + vec3(0, 0.1, 0), vec4(0, 1, 0, 1));
+
+				if (!find_cavity_faces(d, i, v)) {
+					draw_line(d.debug, pos, pos + vec3(0, 1.0, 0), vec4(1, 0, 0, 1));
+					suspend_execution(d.debug);
+
+					printf("Failed at %i out of %i, on it %i out of %i", i / 4 + 1, d.tet_count, it + 1, num_it);
+					return false;
+				}
+				
+				if (!retriangulate_cavity(d, d.cavity, v)) {
+					printf("Failed at %i out of %i, on it %i out of %i", i / 4 + 1, d.tet_count, it + 1, num_it);
+					return false;
+				}
+
+				/*
 				d.last = i;
 				if (!add_point(d, pos, 0)) {
 					printf("Failed at %i out of %i, on it %i out of %i", i / 4 + 1, d.tet_count, it + 1, num_it);
 					return false;
 				}
+				*/
 			}
 		}
 	}
@@ -1482,39 +1678,46 @@ bool refine(Delaunay& d, float size = FLT_MAX) {
 
 bool smooth(Delaunay& d) {
 	LinearRegion region(get_temporary_allocator());
+	
+	VertGraph graph;
+	build_vertex_graph(d, graph);
+
+	for (tet_handle i = 4; i < 4 * d.tet_capacity; i += 4) {
+		for (uint j = 0; j < 4; j++) {
+			bool is_boundary = d.faces[i + j];
+			if (is_boundary) {
+				for (uint k = 0; k < 3; k++) {
+					vertex_handle v = d.indices[i + tetra_shape[j][k]];
+					graph.id_to_neighbors[v.id].count = 0;
+				}
+			}
+		}
+	}
+	
 	vec4* avg = TEMPORARY_ZEROED_ARRAY(vec4, d.vertices.length);
 
 	uint num_it = 5;
 	for (uint i = 0; i < num_it; i++) {
 		uint n = 4 * d.tet_capacity;
-		for (tet_handle i = 4; i < n; i += 4) {
-			for (uint a = 0; a < 4; a++) {
-				for (uint b = a + 1; b < 4; b++) {
-					uint v = d.indices[i + a].id;
-					uint v2 = d.indices[i + b].id;
 
-					vec3 pos1 = d.vertices[v].position;
-					vec3 pos2 = d.vertices[v2].position;
+		for (int i = 0; i < d.vertices.length; i++) {
+			slice<vertex_handle> neighbors = graph.neighbors({ i });
+			if (neighbors.length == 0) continue;
 
-					float weight = 1.0;
+			vec3 p0 = d.vertices[i].position;
 
-					// && v < d.active_vert_offset
-					// && v2 < d.active_vert_offset
-					if ((v < d.grid_vert_begin || v >= d.grid_vert_end) && v > d.active_vert_offset) avg[v] += vec4(pos2, weight);
-					if ((v2 < d.grid_vert_begin || v2 >= d.grid_vert_end) && v2 > d.active_vert_offset) avg[v2] += vec4(pos1, weight);
+			vec3 avg = {};
+			float total_weight = 0.0f;
 
-					//vec3 position = d.vertices[d.indices[i+b].id].position;
-					//avg[v] += vec4(position, weight);
-				}
+			for (vertex_handle v : neighbors) {
+				vec3 p1 = d.vertices[v.id].position;
+				float weight = 1 / sq(p0 - p1);
+				avg += weight * p1;
+				total_weight += weight;
 			}
-		}
+			avg /= total_weight;
 
-		for (uint i = 0; i < d.vertices.length; i++) {
-			vec3 orig = d.vertices[i].position;
-			vec3 smoothed = avg[i].w == 0 ? orig : vec3(avg[i]) / avg[i].w;
-			d.vertices[i].position = smoothed;
-			//vec3(avg[i]) / avg[i].w;
-			avg[i] = {};
+			d.vertices[i].position = avg;
 		}
 	}
 
@@ -1584,287 +1787,6 @@ TetMesh generate_uniform_tri_mesh(Delaunay& d, CFDSurface& surface, float size) 
 	return get_tri_mesh(d);
 }
 
-struct Grid {
-	bool* occupied;
-	vertex_handle* vertices;
-	uint width;
-	uint height;
-	uint depth;
-
-	glm::vec3 min;
-	float resolution;
-
-	uint index(glm::ivec3 vec) {
-		return vec.x + vec.y * width + vec.z * width * height;
-	}
-
-	glm::ivec3 pos(uint index) {
-		int wh = width * height;
-		glm::ivec3 pos;
-		pos.z = index / wh;
-		int rem = index - pos.z * wh;
-		pos.y = rem / width;
-		pos.x = rem % width;
-		return pos;
-	}
-
-	bool is_valid(glm::ivec3 p) {
-		return p.x >= 0 && p.x < width
-			&& p.y >= 0 && p.y < height
-			&& p.z >= 0 && p.z < depth;
-	}
-
-	bool& operator[](glm::ivec3 vec) {
-		return occupied[index(vec)];
-	}
-};
-
-glm::ivec3 grid_offsets[6] = {
-	glm::ivec3(0,-1,0),
-	glm::ivec3(-1,0 ,0),
-	glm::ivec3(0 ,0 ,-1),
-	glm::ivec3(1 ,0 ,0),
-	glm::ivec3(0 ,0 ,1),
-	glm::ivec3(0 ,1 ,0)
-};
-
-uint opposing_face[6] = {
-	5,
-	3,
-	4,
-	1,
-	2,
-	0
-};
-
-vertex_handle add_grid_vertex(CFDVolume& volume, Grid& grid, uint x, uint y, uint z, bool* unique) {
-	uint index = x + y * (grid.width + 1) + z * (grid.width + 1) * (grid.height + 1);
-	vertex_handle& result = grid.vertices[index];
-
-	if (result.id == -1) {
-		float resolution = grid.resolution;
-		glm::vec3 min = grid.min;
-		glm::vec3 pos = { min.x + x * resolution, min.y + y * resolution, min.z + z * resolution };
-
-		result = { (int)volume.vertices.length };
-		volume.vertices.append({ pos });
-		*unique = true;
-	}
-	else {
-		*unique = false;
-	}
-
-	assert(result.id != 16843009);
-	return result;
-}
-
-float frand() {
-	return (float)rand() / INT_MAX * 2.0 - 1.0;
-}
-
-void build_grid(Delaunay& mesh, vector<vertex_handle>& boundary_verts, vector<Boundary>& boundary, float resolution, uint layers) {
-	LinearRegion region(get_temporary_allocator());
-
-	uint cell_count = mesh.tet_count;
-
-	AABB domain_bounds;
-	for (uint i = mesh.active_vert_offset; i < mesh.vertices.length; i++) {
-		domain_bounds.update(mesh.vertices[i].position);
-	}
-
-	domain_bounds.min -= resolution * layers;
-	domain_bounds.max += resolution * layers;
-
-	mesh.aabb = domain_bounds;
-
-	glm::vec3 size = domain_bounds.size();
-
-	Grid grid;
-	grid.resolution = resolution;
-	grid.min = domain_bounds.min;
-	grid.width = (size.x + 1) / resolution;
-	grid.height = (size.y + 1) / resolution;
-	grid.depth = (size.z + 1) / resolution;
-
-	/*if (grid.width  % 2 != 0) {
-		grid.min.x -= 0.5*resolution;
-		grid.width++;
-	}
-	if (grid.height % 2 != 0) {
-		grid.min.y -= 0.5*resolution;
-		grid.height++;
-	}
-	if (grid.depth  % 2 != 0) {
-		grid.min.z -= 0.5*resolution;
-		grid.depth++;
-	}*/
-
-	//grid.width = ceilf(grid.width/2.0) * 2;
-	//grid.height = ceilf(grid.height/2.0) * 2;
-	//grid.depth = ceilf(grid.depth/2.0) * 2;
-
-	mesh.grid_vert_begin = mesh.vertices.length;
-
-	uint grid_cells = grid.width * grid.height * grid.depth;
-	uint grid_cells_plus1 = (grid.width + 1) * (grid.height + 1) * (grid.depth + 1);
-	grid.occupied = TEMPORARY_ZEROED_ARRAY(bool, grid_cells);
-	grid.vertices = TEMPORARY_ZEROED_ARRAY(vertex_handle, grid_cells_plus1);
-	//quite a large allocation, maybe a hashmap is more efficient, since it will be mostly empty
-
-	glm::vec3 offset = glm::vec3(2*resolution);
-
-	//RASTERIZE OUTLINE TO GRID
-	for (tet_handle cell_id = mesh.active_tet; cell_id < cell_count; cell_id += 4) {
-		//CFDCell& cell = mesh.cells[cell_id];
-		AABB aabb;
-		uint verts = 4; // shapes[cell.type].num_verts;
-		for (uint i = 0; i < verts; i++) {
-			vertex_handle v = mesh.indices[cell_id + i];
-			if (is_super_vert(mesh, v)) break;
-			vec3 position = mesh.vertices[v.id].position; // cell.vertices[i].id].position;
-			aabb.update(position);
-		}
-
-		aabb.min -= offset;
-		aabb.max += offset;
-
-		//RASTERIZE AABB
-		glm::ivec3 min_i = glm::ivec3(glm::floor((aabb.min - grid.min) / grid.resolution));
-		glm::ivec3 max_i = glm::ivec3(glm::ceil((aabb.max - grid.min) / grid.resolution));
-
-		for (uint z = min_i.z; z < max_i.z; z++) {
-			for (uint y = min_i.y; y < max_i.y; y++) {
-				for (uint x = min_i.x; x < max_i.x; x++) {
-					grid[glm::ivec3(x, y, z)] = true;
-				}
-			}
-		}
-	}
-
-	//Flood Fill to determine what's inside and out
-	//Any Cell that is visited is outside if we start at the corner
-	bool* visited = TEMPORARY_ZEROED_ARRAY(bool, grid_cells);
-
-	tvector<uint> stack;
-	stack.append(0);
-	visited[0] = true; //todo assert corner is empty
-
-	while (stack.length > 0) {
-		uint index = stack.pop();
-		glm::ivec3 pos = grid.pos(index);
-
-		for (uint i = 0; i < 6; i++) {
-			glm::ivec3 p = pos + grid_offsets[i];
-			if (!grid.is_valid(p)) continue;
-
-			uint neighbor_index = grid.index(p);
-			if (!grid.occupied[neighbor_index] && !visited[neighbor_index]) {
-				visited[neighbor_index] = true;
-				stack.append(neighbor_index);
-			}
-		}
-	}
-
-	cell_handle* cell_ids = TEMPORARY_ARRAY(cell_handle, grid_cells);
-
-	//GENERATE OUTLINE
-	bool* empty = grid.occupied;
-	grid.occupied = visited;
-
-	for (uint n = 0; n < layers; n++) {
-		for (uint z = 0; z < grid.depth; z++) {
-			for (uint y = 0; y < grid.height; y++) {
-				for (uint x = 0; x < grid.width; x++) {
-					glm::ivec3 pos = glm::ivec3(x, y, z);
-
-					uint index = grid.index(pos);
-					bool is_empty = grid.occupied[index];
-					bool fill = false;
-
-					bool neighbor[6] = {};
-
-					if (is_empty) {
-						for (uint i = 0; i < 6; i++) {
-							glm::ivec3 p = pos + grid_offsets[i];
-							if (grid.is_valid(p)) {
-								bool boundary = !grid[p];
-								neighbor[i] = boundary;
-								fill |= boundary;
-							}
-						}
-					}
-
-					if (fill) {
-						empty[index] = false;
-
-						CFDCell cell;
-						cell.type = CFDCell::HEXAHEDRON;
-						cell_handle curr = { (int)mesh.volume.cells.length };
-
-						//todo: counter-clockwise
-						bool is_unique[8];
-						cell.vertices[0] = add_grid_vertex(mesh.volume, grid, x, y, z + 1, is_unique + 0);
-						cell.vertices[1] = add_grid_vertex(mesh.volume, grid, x + 1, y, z + 1, is_unique + 1);
-						cell.vertices[2] = add_grid_vertex(mesh.volume, grid, x + 1, y, z, is_unique + 2);
-						cell.vertices[3] = add_grid_vertex(mesh.volume, grid, x, y, z, is_unique + 3);
-
-						cell.vertices[4] = add_grid_vertex(mesh.volume, grid, x, y + 1, z + 1, is_unique + 4);
-						cell.vertices[5] = add_grid_vertex(mesh.volume, grid, x + 1, y + 1, z + 1, is_unique + 5);
-						cell.vertices[6] = add_grid_vertex(mesh.volume, grid, x + 1, y + 1, z, is_unique + 6);
-						cell.vertices[7] = add_grid_vertex(mesh.volume, grid, x, y + 1, z, is_unique + 7);
-
-						for (uint i = 0; i < 6; i++) {
-							glm::vec3 p = pos + grid_offsets[i];
-							if (grid.is_valid(p)) {
-								cell_handle neighbor = cell_ids[grid.index(p)];
-								if (neighbor.id != -1) {
-									cell.faces[i].neighbor = neighbor; //mantain doubly linked connections
-									mesh.volume[neighbor].faces[opposing_face[i]].neighbor = curr;
-								}
-							}
-							else {
-								cell.faces[i].neighbor.id = -1;
-							}
-						}
-
-						if (n == 0) {
-							for (uint i = 0; i < 6; i++) {
-								if (!neighbor[i]) continue;
-								cell.faces[i].neighbor.id = -1;
-
-								Boundary face;
-								face.cell = { (int)mesh.volume.cells.length };
-								for (uint j = 0; j < 4; j++) {
-									uint index = hexahedron_shape.faces[i].verts[j];
-									vertex_handle v = cell.vertices[index];
-									face.vertices[j] = v;
-									if (is_unique[index]) {
-										boundary_verts.append(v);
-										is_unique[index] = false;
-									}
-								}
-
-								boundary.append(face);
-							}
-
-						}
-
-						cell_ids[index] = curr;
-						mesh.volume.cells.append(cell);
-					}
-					else {
-						empty[index] = is_empty;
-					}
-				}
-			}
-		}
-
-		std::swap(grid.occupied, empty);
-	}
-
-	mesh.grid_vert_end = mesh.vertices.length;
-}
-
 void generate_n_layers(Delaunay& d, CFDSurface& surface, uint n, float initial, float g, float resolution, uint layers, float min_quad_quality) {
 	if (!generate_contour(d, surface, initial)) return;
 	printf("Generated contour\n");
@@ -1886,10 +1808,10 @@ void generate_n_layers(Delaunay& d, CFDSurface& surface, uint n, float initial, 
 
 	vector<vertex_handle> boundary_verts;
 	vector<Boundary> boundary;
-	build_grid(d, boundary_verts, boundary, resolution, layers);
-	add_vertices(d, boundary_verts);
+	//build_grid(d, boundary_verts, boundary, resolution, layers);
+	//add_vertices(d, boundary_verts);
 
-	//generate_grid(d, 10.0f, aabb.min, size);
+	generate_grid(d, 10.0f, aabb.min, size);
 
 	printf("Generated grid!\n");
 

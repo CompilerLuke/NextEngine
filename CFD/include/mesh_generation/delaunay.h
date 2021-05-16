@@ -22,4 +22,11 @@ Delaunay* make_Delaunay(CFDVolume&, const AABB&, CFDDebugRenderer&);
 void destroy_Delaunay(Delaunay*);
 void generate_n_layers(Delaunay& d, CFDSurface& surface, uint n, float initial, float g, float resolution, uint layers, float min_quad_quality);
 TetMesh generate_uniform_tri_mesh(Delaunay& d, CFDSurface& surface, float size);
+
+//should this be exposed?
 bool add_vertices(Delaunay& d, slice<vertex_handle> verts, float min_dist = 0.0f);
+bool refine(Delaunay& d, float size = FLT_MAX);
+bool smooth(Delaunay& d);
+void constrain_triangulation(Delaunay& d, slice<Boundary> boundaries);
+void remove_super(Delaunay& d);
+bool complete(Delaunay& d);

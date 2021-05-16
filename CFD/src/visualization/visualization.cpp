@@ -12,6 +12,7 @@
 #include "core/math/vec3.h"
 #include "core/math/vec4.h"
 #include "visualization/render_backend.h"
+#include "visualization/color_map.h"
 
 struct CFDVisualization {
     CFDRenderBackend& backend;
@@ -23,8 +24,8 @@ struct CFDVisualization {
 
 CFDVisualization* make_cfd_visualization(CFDRenderBackend& backend) {
     CFDVisualization* visualization = PERMANENT_ALLOC(CFDVisualization, {backend});
-    alloc_triangle_buffer(backend, visualization->triangles, mb(100), mb(100));
-    alloc_line_buffer(backend, visualization->lines, mb(100), mb(100));
+    alloc_triangle_buffer(backend, visualization->triangles, mb(200), mb(200));
+    alloc_line_buffer(backend, visualization->lines, mb(200), mb(200));
 
 	return visualization;
 }
@@ -33,7 +34,7 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
     if (!rebuild && plane == visualization.last_plane) return;
     
     //Identify contour
-    uint* visible = TEMPORARY_ZEROED_ARRAY(uint, (mesh.cells.length+1) / 32);
+    uint* visible = TEMPORARY_ZEROED_ARRAY(uint, divceil(mesh.cells.length, 32));
     float epsilon = 0.1;
     
     for (int i = 0; i < mesh.cells.length; i++) {
@@ -41,7 +42,7 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
         
         uint n = shapes[cell.type].num_verts;
         
-#if 0
+#if 1
         bool is_visible = true;
         for (uint i = 0; i < n; i++) {
             vec3 position = mesh[cell.vertices[i]].position;
@@ -96,10 +97,13 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
         const CFDCell& cell = mesh.cells[i];
         const ShapeDesc& desc = shapes[cell.type];
         
-#if 0
+#if 1
         bool is_contour = false;
         for (uint i = 0; i < desc.num_faces; i++) {
             int neigh = cell.faces[i].neighbor.id;
+            if (neigh > 10000000) {
+                printf("Invalid neighbor!!\n");
+            }
             bool has_no_neighbor = neigh == -1 || !(visible[neigh/32] & (1 << neigh%32));
             
             if (has_no_neighbor) {
@@ -108,9 +112,26 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
             }
         }
         
-        //if (!is_contour) continue;
+        if (!is_contour) continue;
 #endif
+
+        float size = 0;
+        uint count = 0.0f;
+        for (uint i = 0; i < desc.num_faces; i++) {
+            const ShapeDesc::Face& face = desc.faces[i];
+
+            for (uint j = 0; j < desc[i].num_verts; j++) {
+                vertex_handle v0 = cell.vertices[face.verts[j]];
+                vertex_handle v1 = cell.vertices[face.verts[(j + 1) % face.num_verts]];
+
+                size += length(mesh[v0].position - mesh[v1].position);
+                count++;
+            }
+        }
         
+        size /= count;
+        vec4 face_color = color_map(log2f(size), -5, 5);
+
         for (uint i = 0; i < desc.num_faces; i++) {
             const ShapeDesc::Face& face = desc.faces[i];
             

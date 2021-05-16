@@ -223,6 +223,9 @@ void SurfaceCrossField::propagate() {
 	}
 
 	uint max_it = 1000;
+    const uint MAX_CHUNK = 100;
+    uint chunks = min(worker_thread_count(), MAX_CHUNK);
+
 	for (uint i = 0; i < max_it; i++) {
         //bool draw = i = i % 1 == 0;
 		//if (draw) {
@@ -231,12 +234,10 @@ void SurfaceCrossField::propagate() {
 		//}
 
 		bool past = !current;
-
-        const uint chunks = 6;
         
-        float residuals[chunks] = {};
-        JobDesc jobs[chunks];
-        PropagateJob data[chunks];
+        float residuals[MAX_CHUNK] = {};
+        JobDesc jobs[MAX_CHUNK];
+        PropagateJob data[MAX_CHUNK];
         
         uint n_per_chunk = (int)ceilf((float)(mesh.tri_count-1) / chunks);
         

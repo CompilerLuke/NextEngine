@@ -124,8 +124,10 @@ tvector<FeatureCurve> identify_feature_edges(SurfaceTriMesh& surface, EdgeGraph&
 				//draw_line(debug, p0, p1, vec4(1, 0, 0, 1));
 				//suspend_execution(debug);
 
-				for (edge_handle edge : neighbors) {
+				for (edge_handle edge : neighbors) {					
+					if (!edge) continue;
 					vec3 p2 = surface.position(edge, 0);
+
 					if (p2 == p1) continue;
 					vec3 p12 = p2 - p0;
 					float dihedral2 = dihedrals[edge];

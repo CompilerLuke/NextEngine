@@ -29,8 +29,8 @@ struct CFDLineVertex {
 };
 
 struct CFDRenderBackendOptions {
-    u64 vertex_buffer_size = mb(300);
-    u64 index_buffer_size = mb(300);
+    u64 vertex_buffer_size = mb(700);
+    u64 index_buffer_size = mb(700);
 };
 
 struct CFDTriangleBuffer {

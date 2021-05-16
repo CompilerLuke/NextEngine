@@ -36,7 +36,7 @@ EdgeGraph build_edge_graph(SurfaceTriMesh& surface) {
 
 			neighbor_vertices[neighbors[v0.id].offset + neighbors[v0.id].count++] = surface.edges[i + j];
 
-			assert(surface.indices[surface.edges[i + j]].id == v1.id);
+			//assert(surface.indices[surface.edges[i + j]].id == v1.id);
 
 			neighbor_vertices[neighbors[v1.id].offset + neighbors[v1.id].count++] = i + j;
 		}

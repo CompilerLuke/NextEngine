@@ -39,11 +39,17 @@ uint hilbert_advised_bits(uint32_t n)
   return MIN(63, nlog2>15?(nlog2+10)/11*11:nlog2); // we prefer multiple of 11
 }
 
+struct VertDist {
+    vertex_handle vert;
+    u64 dist;
+};
+
+
 /*================================= compute the hilberts distance ===========================================
  *
  * This part is for computing the hilbert coordinates of the vertices (X,Y,Z)
  */
-void hilbert_dist(CFDVolume& mesh, const AABB& aabb, vertex_handle* vertices, u64* dist, uint n, uint32_t* nbits) {
+void hilbert_dist(CFDVolume& mesh, const AABB& aabb, VertDist* vert_dist, uint n, uint32_t* nbits) {
     uint level;
     if(*nbits==0) *nbits = hilbert_advised_bits(n);
     else if(*nbits>63) *nbits = 63;
@@ -58,7 +64,7 @@ void hilbert_dist(CFDVolume& mesh, const AABB& aabb, vertex_handle* vertices, u6
     real divZ = nextbefore(nmax/(aabb.max.z-aabb.min.z));
     
     for (uint i = 0; i < n; i++) {
-        vec3 position = mesh[vertices[i]].position;
+        vec3 position = mesh[vert_dist[i].vert].position;
           
         uint x = (position.x - aabb.min.x)*divX;
         uint y = (position.y - aabb.min.y)*divY;
@@ -119,7 +125,7 @@ void hilbert_dist(CFDVolume& mesh, const AABB& aabb, vertex_handle* vertices, u6
             }
           }
         }
-        dist[i] = bits;
+        vert_dist[i].dist = bits;
     }
 }
 
@@ -271,23 +277,34 @@ static inline uint32_t fast_hash(uint32_t x) {
   return x;
 }
 
+#include <algorithm>
 
 /****************************************** BRIO *****************************************************/
 /* automatic biased randomized insertion order */
 void brio_vertices(CFDVolume& mesh, const AABB& aabb, slice<vertex_handle> vertices) {
     LinearRegion region(get_temporary_allocator());
-    u64* dist = TEMPORARY_ARRAY(u64, vertices.length);
+    VertDist* vert_dist = TEMPORARY_ARRAY(VertDist, vertices.length);
     uint n = vertices.length;
     
     for (uint i=0; i<n; i++){
-        dist[i] = fast_hash(i);
+        vert_dist[i].vert = vertices[i];
+        //; fast_hash(i);
     }
 
-    sort_vertices(vertices.data, dist, n, 22); // just make two pass of the sort (no copy needed)
+    //sort_vertices(vertices.data, dist, n, 22); // just make two pass of the sort (no copy needed)
 
     uint32_t nbits=0;
-    hilbert_dist(mesh, aabb, vertices.data, dist, n, &nbits);
+    hilbert_dist(mesh, aabb, vert_dist, n, &nbits);
 
+    std::sort(vert_dist, vert_dist + n, [&](const VertDist& a, const VertDist& b) {
+        return a.dist < b.dist;
+    });
+
+    for (uint i = 0; i < n; i++) {
+        vertices[i] = vert_dist[i].vert;
+    }
+
+    /*
     // sort the 32768 first number, than, because there will be approximately 7* more tetrahedron, make it times 7 every time
     uint end = n;
     // int to_copy = 1;
@@ -297,4 +314,5 @@ void brio_vertices(CFDVolume& mesh, const AABB& aabb, slice<vertex_handle> verti
         sort_vertices(vertices.data+start, dist+start, end-start, nbits);
         end = start;
     }
+    */
 }

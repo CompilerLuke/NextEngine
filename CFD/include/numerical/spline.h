@@ -111,7 +111,7 @@ public:
 			DL[n - 1] = 0;
 			DU[0] = 0;
             
-            if (n < 10) {
+            if (false) {
                 char spaces[256];
                 for (uint i = 0; i < 256; i++) spaces[i] = ' ';
                 

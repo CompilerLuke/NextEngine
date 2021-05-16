@@ -38,9 +38,20 @@ void draw_line(CFDDebugRenderer& renderer, vec3 start, vec3 end, vec4 color) {
     lines.draw_line(start, end, color);
 }
 
+vec3 triangle_normal(vec3 v[3]);
+
 void draw_triangle(CFDDebugRenderer& renderer, vec3 v[3], vec4 color) {
     auto& triangles = renderer.triangles[renderer.frame_index];
-    triangles.draw_triangle(v, vec3(0,0,0), color); //no normal needed, flat shading
+    auto& lines = renderer.lines[renderer.frame_index];
+    
+    vec3 normal = triangle_normal(v);
+    triangles.draw_triangle(v, normal, color); //no normal needed, flat shading
+
+    vec3 dt = normal * 0.001;
+
+    lines.draw_line(v[0] + dt, v[1] + dt, vec4(0,0,0,1));
+    lines.draw_line(v[1] + dt, v[2] + dt, vec4(0, 0, 0, 1));
+    lines.draw_line(v[2] + dt, v[0] + dt, vec4(0, 0, 0, 1));
 }
 
 void draw_triangle(CFDDebugRenderer& renderer, vec3 v0, vec3 v1, vec3 v2, vec4 color) {

@@ -24,12 +24,22 @@ struct SurfaceTriMesh {
 	AABB aabb;
 
 	SurfaceTriMesh();
+	SurfaceTriMesh(const SurfaceTriMesh&);
 	SurfaceTriMesh(SurfaceTriMesh&&);
 	void operator=(SurfaceTriMesh&&);
 	~SurfaceTriMesh();
 
 	void reserve_tris(uint count);
 	void resize_tris(uint count);
+
+	inline tri_handle alloc_tri(uint count = 1) {
+		if (tri_count+count > tri_capacity) {
+			reserve_tris(max(tri_count * 2, tri_count + count));
+		}
+		tri_handle base = tri_count * 3;
+		tri_count += count;
+		return base;
+	}
 
 	inline vec3 position(tri_handle tri, uint j = 0) {
 		return positions[indices[tri + j].id];

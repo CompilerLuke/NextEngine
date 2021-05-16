@@ -19,6 +19,7 @@ struct CORE_API Profile {
 	}
 
 	void end();
+	void log();
 
 	~Profile();
 };

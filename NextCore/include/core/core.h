@@ -42,4 +42,8 @@ inline constexpr int min(int a, int b) {
 	return a < b ? a : b;
 }
 
+inline constexpr int divceil(int a, int b) {
+	return (a - 1) / b + 1;
+}
+
 #define assert_mesg(cond, mesg) if (!(cond)) { fprintf(stderr, mesg); exit(1); }
