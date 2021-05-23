@@ -22,9 +22,11 @@ SurfacePointPlacement::SurfacePointPlacement(SurfaceTriMesh& tri_mesh, SurfaceCr
 }
 
 void draw_point(CFDDebugRenderer& debug, vec3 pos, vec4 color) {
-    draw_line(debug, pos - vec3(0,0.01,0), pos + vec3(0,0.01,0), color);
-    //draw_line(debug, pos - vec3(0.1,0,0), pos + vec3(0.1,0,0), color);
-    //draw_line(debug, pos - vec3(0,0,0.1), pos + vec3(0,0,0.1), color);
+    float dt = 0.1;
+    
+    draw_line(debug, pos - vec3(0,dt,0), pos + vec3(0,dt,0), color);
+    draw_line(debug, pos - vec3(dt,0,0), pos + vec3(dt,0,0), color);
+    draw_line(debug, pos - vec3(0,0,dt), pos + vec3(0,0,dt), color);
 }
 
 vertex_handle add_vertex(PointOctotree& octo, vec3 pos) {
@@ -65,105 +67,9 @@ float distance_to_triangle(vec3 v[3], vec3 pos) {
     return distance;
 }
 
-
-
-tri_handle search_tri(SurfaceTriMesh& mesh, SurfaceCrossField& cross_field, CFDDebugRenderer& debug, tri_handle start, vec3* pos_ptr) {
-    vec3 pos = *pos_ptr;
-    
-    tri_handle current = start;
-    tri_handle last = 0;
-    uint counter = 5;
-    
-    const uint n = 20;
-#ifdef DEBUG_TRACE_TRISEARCH
-    array<n, vec3> path;
-    path.append(mesh.triangle_center(current));
-#endif
-
-    while (true) {
-        vec3 v[3];
-        mesh.triangle_verts(current, v);
-        vec3 normal = triangle_normal(v);
-        vec3 center = (v[0]+v[1]+v[2])/3.0f;
-        
-        float disp = dot(pos - center, normal);
-        vec3 project = pos - disp*normal;
-
-        vec3 e0 = v[1]-v[0];
-        vec3 e1 = v[2]-v[1];
-        vec3 e2 = v[0]-v[2];
-    
-        vec3 c0 = project - v[0];
-        vec3 c1 = project - v[1];
-        vec3 c2 = project - v[2];
-    
-        bool inside = dot(normal, cross(e0, c0)) > 0 &&
-                      dot(normal, cross(e1, c1)) > 0 &&
-                      dot(normal, cross(e2, c2)) > 0;
-        
-        if (inside) {
-            *pos_ptr = project;
-            return current;
-        }
-        
-        float min_length = FLT_MAX; // sq(project - center);
-        tri_handle closest_neighbor = 0;
-        
-        for (uint j = 0; j < 3; j++) {
-            tri_handle tri = mesh.neighbor(current, j);
-            if (tri == last) continue;
-            
-            vec3 v0 = v[j];
-            vec3 v1 = v[(j+1)%3];
-            vec3 e = v0-v1;
-            vec3 c = (v0+v1)/2.0f;
-            
-            //Plane test with edge
-            vec3 b = normalize(cross(normal, e));
-            float distance_to_edge = dot(project - c, b);
-            
-            //sq(pos - center);
-            if (distance_to_edge > 0 && distance_to_edge < min_length) {
-                closest_neighbor = tri;
-                min_length = distance_to_edge;
-            }
-        }
-     
-        if (closest_neighbor) {
-            last = current;
-            current = closest_neighbor;
-            
-#ifdef DEBUG_TRACE_TRISEARCH
-            path.append(center);
-#endif
-            
-            if (++counter >= n) {
-#ifdef DEBUG_TRACE_TRISEARCH
-                for (uint i = 0; i < path.length-1; i++) {
-                    draw_line(debug, path[i], path[i+1], vec4(0,0,1,1));
-                }
-                draw_line(debug, path[path.length-1], pos, vec4(0,1,0,1));
-
-                draw_point(debug, path[0], vec4(0,1,0,1));
-                draw_point(debug, pos, vec4(0,0,1,1));
-#endif                
-                //suspend_execution(debug);
-                
-                return 0;
-            }
-        } else {
-            break;
-        }
-    }
-       
-    return 0;
-}
-
 struct QMorphFront {
 
 };
-
-void propagate_points(PointOctotree& octo, SurfaceTriMesh& mesh, SurfaceCrossField& cross_field, CFDDebugRenderer& debug, slice<FeatureCurve> curves);
 
 void link_edge(SurfaceTriMesh& mesh, edge_handle edge, edge_handle neigh) {
     mesh.edges[edge] = neigh;
@@ -185,13 +91,11 @@ void draw_triangle(CFDDebugRenderer& debug, SurfaceTriMesh& mesh, tri_handle tri
     //draw_line(debug, points[1], points[2], color);
     //draw_line(debug, points[2], points[0], color);
 
-    for (uint i = 0; i < 3; i++) points[i] += normal * 0.001;
+    for (uint i = 0; i < 3; i++) points[i] += normal * 0.0001;
     draw_triangle(debug, points, color);
 }
 
-void SurfacePointPlacement::propagate(slice<FeatureCurve> curves, CFDDebugRenderer& debug) {
-	//vector<FeatureEdge> features = cross_field.get_feature_edges();
-    
+void qmorph(SurfaceTriMesh& mesh, CFDDebugRenderer& debug, SurfaceCrossField& cross_field, slice<FeatureCurve> curves) {
     QMorphFront front;
     
     float mesh_size = 0.1;
@@ -209,7 +113,7 @@ void SurfacePointPlacement::propagate(slice<FeatureCurve> curves, CFDDebugRender
         uint last_segment = UINT_MAX;
         edge_handle last_edge = 0;
 
-        for (uint i = 0; i <= n; i++) {
+        for (uint i = 0; i < n; i++) {
             float t = spline.const_speed_reparam(i, mesh_size);
             vec3 pos = spline.at_time(t);
             vec3 tangent = spline.tangent(t);
@@ -222,7 +126,7 @@ void SurfacePointPlacement::propagate(slice<FeatureCurve> curves, CFDDebugRender
 
             vec3 bitangent0 = cross_field.at_edge(e[0]).bitangent;
             vec3 bitangent1 = cross_field.at_edge(e[1]).bitangent;
-
+            
             if (last_segment == segment) {
                 e[0] = last_edge;
                 e[1] = result.edges[last_edge];
@@ -239,22 +143,31 @@ void SurfacePointPlacement::propagate(slice<FeatureCurve> curves, CFDDebugRender
             float dist1 = sq(v0 - pos);
             float dist2 = sq(v1 - pos);
 
-            float threshold = edge_length * 0.4;
-
-            last_edge = e[0];
-            last_segment = segment;
-
-            draw_triangle(debug, result, t0, vec4(1));
-            draw_triangle(debug, result, t1, vec4(1));
-
-            if (dist1 < threshold) result.positions[result.indices[e[0]].id] = pos;
-            else if (dist2 < threshold) result.positions[result.indices[e[1]].id] = pos;
+            float threshold = fminf(edge_length, mesh_size) * 0.4;
+            threshold = threshold*threshold; //distance is sq
+            
+            bool move_vert = (last_segment != segment) && (dist1 < threshold || dist2 < threshold);
+            vec4 color = move_vert ? vec4(0,0,1,1) : vec4(1,0,0,1);
+            
+            draw_line(debug, pos, pos + vec3(0,1,0), color);
+            
+            if (move_vert) {
+                if (dist1 < threshold) result.positions[result.indices[e[0]].id] = pos;
+                else if (dist2 < threshold) result.positions[result.indices[e[1]].id] = pos;
+                
+                draw_triangle(debug, result, t0, vec4(1));
+                draw_triangle(debug, result, t1, vec4(1));
+            }
             else {
                 //split triangle
                 tri_handle t2 = result.alloc_tri();
                 tri_handle t3 = result.alloc_tri();
+                
+                draw_triangle(debug, result, t0, vec4(1));
+                draw_triangle(debug, result, t1, vec4(1));
+                suspend_execution(debug);
 
-                vertex_handle v = { result.positions.length };
+                vertex_handle v = { (int)result.positions.length };
                 result.positions.append(pos);
 
                 edge_handle en0 = TRI_NEXT_EDGE(e[0]);
@@ -263,24 +176,40 @@ void SurfacePointPlacement::propagate(slice<FeatureCurve> curves, CFDDebugRender
                 result.indices[t2] = v;
                 result.indices[t3] = v;
 
-                link_edge(result, t2, t3 + 2);
                 link_edge(result, t2 + 1, result.edges[en0]);
                 link_edge(result, t3 + 1, result.edges[en1]);
-                link_edge(result, t2 + 2, en0);
-                link_edge(result, t3, en1);
+                //3 verts are set
+            
+                link_edge(result, t2, t3 + 2);
+                
+                link_edge(result, en0, t2 + 2);
+                link_edge(result, en1, t3);
 
+                draw_triangle(debug, result, t0, vec4(1));
+                draw_triangle(debug, result, t1, vec4(1));
                 draw_triangle(debug, result, t2, vec4(1));
                 draw_triangle(debug, result, t3, vec4(1));
 
                 last_edge = t2;
             }
-
+            
+            last_edge = e[0];
+            last_segment = segment;
+            
             suspend_execution(debug);
         }
     }
+}
 
-    suspend_execution(debug);
-    //propagate_points(octo, mesh, cross_field, debug, curves);
+void propagate_points(PointOctotree& octo, SurfaceTriMesh& mesh, SurfaceCrossField& cross_field, CFDDebugRenderer& debug, slice<FeatureCurve> curves);
+
+void SurfacePointPlacement::propagate(slice<FeatureCurve> curves, CFDDebugRenderer& debug) {
+	//vector<FeatureEdge> features = cross_field.get_feature_edges();
+    
+
+
+    //suspend_execution(debug);
+    propagate_points(octo, mesh, cross_field, debug, curves);
 }
 
 void propagate_points(PointOctotree& octo, SurfaceTriMesh& mesh, SurfaceCrossField& cross_field, CFDDebugRenderer& debug, slice<FeatureCurve> curves) {
@@ -298,8 +227,8 @@ void propagate_points(PointOctotree& octo, SurfaceTriMesh& mesh, SurfaceCrossFie
     //suspend_execution(debug);
     //clear_debug_stack(debug);
 
-    float mesh_size = 1.0;
-    float dist_mult = 0.0;
+    float mesh_size = 0.4;
+    float dist_mult = 0.4;
 
     /*
 
@@ -325,17 +254,25 @@ void propagate_points(PointOctotree& octo, SurfaceTriMesh& mesh, SurfaceCrossFie
         for (uint i = 0; i < n; i++) {
             float t = spline.const_speed_reparam(i, mesh_size);
             vec3 pos = spline.at_time(t);
+            
             vec3 tangent = spline.tangent(t);
 
             edge_handle e0 = curve.edges[(uint)t];
             edge_handle e1 = mesh.edges[e0];
+            
+            Cross cross1 = cross_field.at_edge(e0);
+            Cross cross2 = cross_field.at_edge(e1);
+            
+            if (octo.find_closest(pos, cross1, 0.5*mesh_size).id != -1) continue;
+            //if (octo.find_closest(pos, cross2, 0.5*mesh_size).id != -1) continue;
 
-            vec3 normal0 = cross_field.at_edge(e0).normal;
-            vec3 normal1 = cross_field.at_edge(e1).normal;
+            vec3 normal0 = cross1.normal;
+            vec3 normal1 = cross2.normal;
 
             vec3 bitangent0 = normalize(cross(normal0, tangent));
             vec3 bitangent1 = normalize(cross(normal1, tangent));
 
+            
             add_vertex(octo, pos);
             //draw_point(debug, pos, vec4(1,0,0,1));
             //draw_line(debug, pos, pos + tangent * mesh_size, vec4(1,0,0,1));
@@ -344,8 +281,8 @@ void propagate_points(PointOctotree& octo, SurfaceTriMesh& mesh, SurfaceCrossFie
             //draw_line(debug, pos, pos - bitangent0 * mesh_size, vec4(0,0,1,1));
             //draw_line(debug, pos, pos + bitangent1 * mesh_size, vec4(0,0,1,1));
 
-            Point point0{ TRI(e0), pos - bitangent0 * mesh_size, mesh_size, mesh_size };
-            Point point1{ TRI(e1), pos + bitangent1 * mesh_size, mesh_size, mesh_size };
+            Point point0{ TRI(e0), pos + bitangent0 * mesh_size, mesh_size, mesh_size };
+            Point point1{ TRI(e1), pos - bitangent1 * mesh_size, mesh_size, mesh_size };
 
             point_queue.push_back(point0);
             point_queue.push_back(point1);
@@ -362,7 +299,7 @@ void propagate_points(PointOctotree& octo, SurfaceTriMesh& mesh, SurfaceCrossFie
         Point point = point_queue.front();
         point_queue.pop_front();
 
-        tri_handle tri = search_tri(mesh, cross_field, debug, point.tri, &point.position);
+        tri_handle tri = mesh.project(point.tri, &point.position, nullptr);
         if (!tri) continue;
 
         //float curvature = curvatures[mesh.indices[tri].id];
@@ -371,7 +308,7 @@ void propagate_points(PointOctotree& octo, SurfaceTriMesh& mesh, SurfaceCrossFie
 
         Cross cross = cross_field.at_tri(tri, point.position);
 
-        vertex_handle found = octo.find_closest(point.position, cross, 0.7 * (point.last_dt + dt) / 2.0f);
+        vertex_handle found = octo.find_closest(point.position, cross, 0.7 * dt); // / 2.0f);
         if (found.id != -1) {
             //draw_point(debug, point.position, vec4(0,0,1,1));
             continue;
@@ -406,4 +343,6 @@ void propagate_points(PointOctotree& octo, SurfaceTriMesh& mesh, SurfaceCrossFie
     for (uint i = watermark; i < octo.positions.length; i++) {
         draw_point(debug, octo.positions[i], vec4(1, 0, 0, 0));
     }
+    
+    suspend_execution(debug);
 }

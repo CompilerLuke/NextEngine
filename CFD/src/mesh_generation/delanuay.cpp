@@ -19,6 +19,10 @@
 
 #include <unordered_map>
 
+#include "mesh/input_mesh_bvh.h"
+#include "editor/selection.h"
+#include "core/math/intersection.h"
+
 struct CavityFace {
 	tet_handle tet;
 	vertex_handle verts[3];
@@ -535,7 +539,7 @@ int find_cavity_faces(Delaunay& d, tet_handle current, vertex_handle v, float mi
 				bool visited = is_deallocated(d, neighbor);
 				if (visited) continue;
 
-				bool inside = insphere(d, neighbor, v) < 0;
+				bool inside = insphere(d, neighbor, v) < -FLT_EPSILON;
 				if (inside) {
 					//printf("Neighbor %i: adding to stack\n", neighbor.id);
 					dealloc_tet(d, neighbor);
@@ -817,128 +821,244 @@ void start_with_non_coplanar(CFDVolume& mesh, slice<vertex_handle> vertices) {
 void brio_vertices(CFDVolume& mesh, const AABB& aabb, slice<vertex_handle> vertices);
 
 #include <queue>
+tvector<Boundary> quad_to_tri_boundary(slice<Boundary> boundaries) {
+    tvector<Boundary> tri_boundaries;
+    
+    for (Boundary b : boundaries) {
+        bool is_quad = b.vertices[3].id != -1;
+        tri_boundaries.append({ b.cell, { b.vertices[0], b.vertices[1], b.vertices[2] } });
+        if (is_quad) {
+            tri_boundaries.append({ b.cell, { b.vertices[0], b.vertices[2], b.vertices[3] } });
 
-void constrain_triangulation(Delaunay& d, slice<Boundary> boundaries) {
+            tri_boundaries.append({ b.cell, { b.vertices[0], b.vertices[1], b.vertices[3] } }); //Alternative triangulation of quad
+            tri_boundaries.append({ b.cell, { b.vertices[1], b.vertices[2], b.vertices[3] } });
+        }
+    }
+    
+    return tri_boundaries;
+}
+
+void identify_boundary_faces(Delaunay& d, slice<Boundary> tri_boundaries, uint* boundary) {
+    for (Boundary tri : tri_boundaries) {
+        vec3 pos[3];
+        get_positions(d.vertices, { tri.vertices, 3 }, pos);
+
+        vec3 normal = triangle_normal(pos);
+        vec3 center = triangle_center(pos);
+
+        //draw_line(debug, center, center + normal*0.2, vec4(0, 0, 0, 1));
+
+        vec3 search_pos = center + normal * 0.2;
+
+        TriangleFaceSet triangle(tri.vertices);
+
+        tet_handle boundary_tet = find_enclosing_tet(d, search_pos);
+
+        if (!boundary_tet) {
+            printf("Could not find boundary tet!\n");
+            continue;
+        }
+        d.last = boundary_tet;
+
+        float smallest_disp = FLT_MAX;
+        
+        bool found = true;
+        for (uint i = 0; i < 4; i++) {
+            vertex_handle verts[3];
+            for (uint j = 0; j < 3; j++) {
+                verts[j] = d.indices[boundary_tet + tetra_shape[i][j]];
+            }
+
+            /*for (uint j = 0; j < 3; j++) {
+                vec3 pos0 = d.vertices[verts[j].id].position;
+                vec3 pos1 = d.vertices[verts[(j + 1) % 3].id].position;
+
+                draw_line(debug, pos0, pos1, vec4(0, 0, 0, 1));
+            }*/
+
+            TriangleFaceSet neigh_triangle(verts);
+
+            if (triangle == neigh_triangle) {
+                
+                //draw_triangle(d.debug, pos, vec4(1));
+                tet_handle face = boundary_tet + i;
+                tet_handle neigh = d.faces[face];
+
+                boundary[face / 32] |= 1 << (face % 32);
+                boundary[neigh / 32] |= 1 << (neigh % 32);
+
+                break;
+            }
+        }
+
+    }
+}
+
+struct IdentifyBoundaryJob {
+    InputModelBVH* bvh;
+    Delaunay* d;
+    uint* boundary;
+    uint begin;
+    uint end;
+};
+
+//todo doing double the work
+void identify_boundary_faces_job(IdentifyBoundaryJob& job) {
+    Delaunay& d = *job.d;
+    InputModelBVH& bvh = *job.bvh;
+    
+    for (uint i = job.begin; i < job.end; i++) {
+        tet_handle tet = i & NEIGH;
+        uint face = i & NEIGH_FACE;
+        
+        vec3 verts[3];
+        get_positions(d, tet, face, verts);
+        
+        vec3 pos = triangle_center(verts);
+        vec3 normal = triangle_normal(verts);
+        
+        float threshold = 0.01;
+        
+        vec3 p0 = pos - normal*threshold;
+        vec3 p1 = pos + normal*threshold;
+        
+        float len = length(p1 - p0);
+        
+        Ray ray(p0, (p1 - p0) / len, len);
+        InputModelBVH::RayHit hit;
+        
+        if (!bvh.ray_intersect(ray, glm::mat4(1.0), hit, MeshPrimitive::Triangle)) continue;
+    
+        draw_triangle(d.debug, verts, vec4(1,0,0,1));
+        
+        tet_handle neigh = d.faces[i];
+        job.boundary[i / 32] |= 1 << (i % 32);
+        //job.boundary[neigh / 32] |= 1 << (neigh % 32);
+        
+        //draw_triangle(d.debug, pos[2], pos[1], pos[0], vec4(1));
+    }
+}
+
+#include "core/job_system/job.h"
+
+
+//todo doing double the work
+void identify_boundary_faces(Delaunay& d, InputModelBVH& bvh, uint* boundary) {
+    const uint MAX_WORKERS = 128;
+    
+    IdentifyBoundaryJob data[MAX_WORKERS];
+    JobDesc jobs[MAX_WORKERS];
+    
+    uint begin = 0;
+    uint end = 4*d.tet_count;
+    
+    uint num_chunks = divceil(end - begin, 32);
+    uint num_jobs = 1; //4 * worker_thread_count();
+    uint chunks_per_job = divceil(num_chunks, num_jobs);
+    
+    printf("Launching jobs, chunks %i, jobs %i, chunks_per_job %i\n", num_chunks, num_jobs, chunks_per_job);
+    
+    for (uint i = 0; i < num_jobs; i++) {
+        data[i].bvh = &bvh;
+        data[i].d = &d;
+        data[i].boundary = boundary;
+        data[i].begin = max(begin + i*chunks_per_job*32, 4);
+        data[i].end = min(begin + (i+1)*chunks_per_job*32, end);
+        
+        jobs[i] = JobDesc(identify_boundary_faces_job, data + i);
+    }
+    
+    wait_for_jobs(PRIORITY_HIGH, {jobs, num_jobs});
+    
+    printf("Identified boundary\n");
+}
+
+void remove_tets_outside_boundary(Delaunay& d, uint* boundary) {
+    uint* visited = TEMPORARY_ZEROED_ARRAY(uint, divceil(d.tet_count, 32));
+    
+    tet_handle outside_tet = 0;
+    for (uint i = 4; i < d.tet_count * 4; i++) {
+        vertex_handle v = d.indices[i];
+        if (is_super_vert(d, v)) {
+            outside_tet = i & NEIGH;
+            break;
+        }
+    }
+
+    vec3 last = compute_centroid(d, outside_tet);
+
+    dealloc_tet(d, outside_tet);
+
+    //std::queue<tet_handle> queue;
+    //queue.push(outside_tet);
+    //tvector<tet_handle> stack;
+    //stack.append(outside_tet);
+    
+    d.stack.append(outside_tet);
+    visited[outside_tet/4] = 1ull << (outside_tet/4)%32;
+    
+    while (d.stack.length > 0) {
+        uint data = d.stack.pop();
+        
+        tet_handle tet = data & NEIGH;
+        bool is_tet_inside = data & NEIGH_FACE;
+        
+        vec3 current = compute_centroid(d, tet);
+        //draw_line(d.debug, last, current, is_tet_inside ? vec4(0,1,0,1) : vec4(1,0,0,1));
+        //suspend_execution(d.debug);
+        last = current;
+
+        for (uint i = 0; i < 4; i++) {
+            uint face = tet + i;
+            tet_handle neigh = d.faces[face];
+            
+            uint mask = 1ull << (neigh/4 % 32);
+            
+            bool is_boundary = boundary[face / 32] & (1 << (face % 32));
+
+            if (is_boundary) {
+                d.faces[neigh] = 0;
+                d.faces[face] = 0;
+
+                vec3 pos[3];
+                get_positions(d, tet, i, pos);
+
+                //draw_triangle(d.debug, pos[2], pos[1], pos[0], vec4(1,0,0,1));
+                //draw_triangle(d.debug, pos[0], pos[1], pos[2], vec4(1,0,0,1));
+            }
+            
+            ///32] & mask
+            if (!neigh || visited[neigh/4/32] & mask) continue;
+            visited[neigh/4/32] |= mask;
+            
+            bool is_neigh_inside = is_tet_inside ^ is_boundary;
+
+            if (!is_neigh_inside) dealloc_tet(d, neigh & NEIGH);
+            d.stack.append((neigh & NEIGH) | is_neigh_inside);
+        }
+    }
+    
+    suspend_execution(d.debug);
+}
+
+void constrain_triangulation(Delaunay& d, slice<Boundary> boundaries, InputModelBVH& bvh) {
 	CFDDebugRenderer& debug = d.debug;
 
-	uint* boundary = TEMPORARY_ZEROED_ARRAY(uint, divceil(d.tet_count*4, 32));
+    uint* boundary = new uint[divceil(d.tet_count*4, 32)](); //todo check if overwritten and use temporary allocation
+    //TEMPORARY_ZEROED_ARRAY(uint, divceil(d.tet_count*4, 32));
 
-	tvector<Boundary> tri_boundaries;
-	for (Boundary b : boundaries) {
-		bool is_quad = b.vertices[3].id != -1;
-		tri_boundaries.append({ b.cell, { b.vertices[0], b.vertices[1], b.vertices[2] } });
-		if (is_quad) {
-			tri_boundaries.append({ b.cell, { b.vertices[0], b.vertices[2], b.vertices[3] } });
-
-			tri_boundaries.append({ b.cell, { b.vertices[0], b.vertices[1], b.vertices[3] } }); //Alternative triangulation of quad
-			tri_boundaries.append({ b.cell, { b.vertices[1], b.vertices[2], b.vertices[3] } });
-		}
-	}
-
-	for (Boundary tri : tri_boundaries) {
-		vec3 pos[3];
-		get_positions(d.vertices, { tri.vertices, 3 }, pos);
-
-		vec3 normal = triangle_normal(pos);
-		vec3 center = triangle_center(pos);
-
-		//draw_line(debug, center, center + normal*0.2, vec4(0, 0, 0, 1));
-
-		vec3 search_pos = center + normal * 0.2;
-
-		TriangleFaceSet triangle(tri.vertices);
-
-		tet_handle boundary_tet = find_enclosing_tet(d, search_pos);
-
-		if (!boundary_tet) {
-			printf("Could not find boundary tet!\n");
-			continue;
-		}
-		d.last = boundary_tet;
-
-		float smallest_disp = FLT_MAX;
-		
-		bool found = true;
-		for (uint i = 0; i < 4; i++) {
-			vertex_handle verts[3];
-			for (uint j = 0; j < 3; j++) {
-				verts[j] = d.indices[boundary_tet + tetra_shape[i][j]];
-			}
-
-			/*for (uint j = 0; j < 3; j++) {
-				vec3 pos0 = d.vertices[verts[j].id].position;
-				vec3 pos1 = d.vertices[verts[(j + 1) % 3].id].position;
-
-				draw_line(debug, pos0, pos1, vec4(0, 0, 0, 1));
-			}*/
-
-			TriangleFaceSet neigh_triangle(verts);
-
-			if (triangle == neigh_triangle) {
-				found = true;
-
-				tet_handle face = boundary_tet + i;
-				tet_handle neigh = d.faces[face];
-
-				boundary[face / 32] |= 1 << (face % 32);
-				boundary[neigh / 32] |= 1 << (neigh % 32);
-
-				break;
-			}
-		}
-
-	}
-
-	tet_handle outside_tet = 0; 
-	for (uint i = 4; i < d.tet_count * 4; i++) {
-		vertex_handle v = d.indices[i];
-		if (is_super_vert(d, v)) {
-			outside_tet = i & NEIGH;
-			break;
-		}
-	}
-
-	vec3 last = compute_centroid(d, outside_tet);
-
-	dealloc_tet(d, outside_tet);
-
-	//std::queue<tet_handle> queue;
-	//queue.push(outside_tet);
-	d.stack.append(outside_tet);
-	while (d.stack.length > 0) {
-		tet_handle outside = d.stack.pop();
-		vec3 current = compute_centroid(d, outside);
-		//draw_line(debug, last, current, vec4(1,0,0,1));
-		//suspend_execution(debug);
-		last = current;
-
-		for (uint i = 0; i < 4; i++) {
-			uint face = outside + i;
-			bool is_boundary = boundary[face / 32] & (1 << (face % 32));
-			tet_handle neigh = d.faces[face];
-			
-
-			if (is_boundary) {
-				d.faces[neigh] = 0;
-
-				vec3 pos[3];
-				get_positions(d, outside, i, pos);
-
-				draw_triangle(debug, pos[2], pos[1], pos[0], vec4(1));
-			}
-
-			if (is_boundary || !neigh || is_deallocated(d, neigh & NEIGH)) continue;
-
-			dealloc_tet(d, neigh & NEIGH);
-			d.stack.append(neigh & NEIGH);
-		}
-	}
+    tvector<Boundary> tri_boundaries = quad_to_tri_boundary(boundaries);
+    identify_boundary_faces(d, tri_boundaries, boundary);
+    identify_boundary_faces(d, bvh, boundary);
+    
+    remove_tets_outside_boundary(d, boundary);
+    delete boundary;
 }
 
 Delaunay* make_Delaunay(CFDVolume& volume, const AABB& aabb, CFDDebugRenderer& debug) {
 
 	//Delaunay::Delaunay(CFDVolume& volume, const AABB& aabb) : vertices(volume.vertices), volume(volume) {
-
+    
 	Delaunay* d = PERMANENT_ALLOC(Delaunay, { volume, volume.vertices, debug });
 	d->vertices = volume.vertices;
 	d->max_shared_face = kb(64);
@@ -1635,7 +1755,7 @@ bool refine(Delaunay& d, float size) {
 
 				if (!d.aabb.inside(pos)) continue; // pos = avg;
 
-				vertex_handle v = {d.vertices.length};
+				vertex_handle v = {(int)d.vertices.length};
 				d.vertices.append({ pos });
 
 				d.last = i;

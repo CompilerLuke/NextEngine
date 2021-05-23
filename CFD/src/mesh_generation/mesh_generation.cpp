@@ -533,11 +533,11 @@ CFDVolume generate_mesh(World& world, InputMeshRegistry& registry, CFDMeshError&
 			last = current;
 		}
 #endif
-#if 1
+#if 0
 		for (CFDVertex& vertex : result.vertices) {
-			vertex.position.x += ((float)rand() / INT_MAX) * 0.01;
-			vertex.position.y += ((float)rand() / INT_MAX) * 0.01;
-			vertex.position.z += ((float)rand() / INT_MAX) * 0.01;
+			vertex.position.x += ((float)rand() / INT_MAX) * 0.02;
+			vertex.position.y += ((float)rand() / INT_MAX) * 0.02;
+			vertex.position.z += ((float)rand() / INT_MAX) * 0.02;
 		}
 #endif
 
@@ -552,7 +552,8 @@ CFDVolume generate_mesh(World& world, InputMeshRegistry& registry, CFDMeshError&
         Delaunay* delaunay = make_Delaunay(result, del_bounds, debug);
 
 		add_vertices(*delaunay, boundary_verts);
-		constrain_triangulation(*delaunay, boundary);
+		constrain_triangulation(*delaunay, boundary, bvh);
+        //suspend_execution(debug);
 		refine(*delaunay);
 		//constrain_triangulation(*delaunay, boundary);
 		//remove_super(*delaunay);

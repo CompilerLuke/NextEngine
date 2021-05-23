@@ -165,6 +165,7 @@ void InputModelBVH::ray_intersect(Node& node, Ray& ray, RayHit& hit, MeshPrimiti
 			if (primitive == MeshPrimitive::Triangle || primitive == MeshPrimitive::Edge) {
 				if (ray_triangle_intersect(ray, p, &t)) {
 					hit.t = t;
+                    //hit.node = &node;
 					ray.t = t; //next intersection must be closer
 					hit.id = triangle; //todo not triangle id
 				}

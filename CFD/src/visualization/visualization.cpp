@@ -42,7 +42,7 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
         
         uint n = shapes[cell.type].num_verts;
         
-#if 1
+#if 0
         bool is_visible = true;
         for (uint i = 0; i < n; i++) {
             vec3 position = mesh[cell.vertices[i]].position;

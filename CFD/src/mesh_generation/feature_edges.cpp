@@ -111,9 +111,9 @@ tvector<FeatureCurve> identify_feature_edges(SurfaceTriMesh& surface, EdgeGraph&
 
 				vec3 p0 = surface.positions[v0.id];
 				vec3 p1 = surface.positions[v1.id];
-				vec3 p01 = p0 - p1;
+				vec3 p01 = p1 - p0;
 
-				auto neighbors = edge_graph.neighbors(v0);
+				auto neighbors = edge_graph.neighbors(v1);
 				float best_score = 0.0f;
 
 				uint best_edge = 0;
@@ -128,8 +128,8 @@ tvector<FeatureCurve> identify_feature_edges(SurfaceTriMesh& surface, EdgeGraph&
 					if (!edge) continue;
 					vec3 p2 = surface.position(edge, 0);
 
-					if (p2 == p1) continue;
-					vec3 p12 = p2 - p0;
+					if (p2 == p0) continue;
+					vec3 p12 = p2 - p1;
 					float dihedral2 = dihedrals[edge];
 
 					float edge_dot = dot(normalize(p01), normalize(p12));
@@ -143,7 +143,7 @@ tvector<FeatureCurve> identify_feature_edges(SurfaceTriMesh& surface, EdgeGraph&
 					}
 				}
 
-				if (best_score > min_quality) current_edge = best_edge;
+				if (best_score > min_quality) current_edge = surface.edges[best_edge]; //p0 --> p0 <-- p2 : p0 --> p1 --> p2
 				else break;
 
 				if (visited[current_edge]) {
