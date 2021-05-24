@@ -31,6 +31,8 @@ struct SurfaceTriMesh {
 
 	void reserve_tris(uint count);
 	void resize_tris(uint count);
+    
+    tri_handle project(tri_handle start, vec3* pos, float* disp);
 
 	inline tri_handle alloc_tri(uint count = 1) {
 		if (tri_count+count > tri_capacity) {
