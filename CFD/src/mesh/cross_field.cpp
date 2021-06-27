@@ -207,8 +207,8 @@ void SurfaceCrossField::propagate() {
 		Cross cross1{ tangent,normal1,bitangent1 };
 		Cross cross2{ tangent,normal2,bitangent2 };
 
-		//draw_cross(debug, center, cross1);
-		//draw_cross(debug, center, cross2);
+		//draw_cross(debug, center, cross1, RED_DEBUG_COLOR);
+		//draw_cross(debug, center, cross2, RED_DEBUG_COLOR);
         
         tri1 /= 3;
         tri2 /= 3;
@@ -270,10 +270,10 @@ void SurfaceCrossField::propagate() {
         current = !current;
     }
     
-    /*for (tri_handle tri : mesh) {
+    for (tri_handle tri : mesh) {
         Cross cross = theta_cell_center[current][tri/3];
-        //draw_cross(debug, centers[tri/3], theta_cell_center[current][tri/3], vec4(0,0,0,1));
-    }*/
+        draw_cross(debug, centers[tri/3], theta_cell_center[current][tri/3], vec4(0,0,0,1));
+    }
     //suspend_execution(debug);
 }
 

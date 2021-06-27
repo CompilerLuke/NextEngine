@@ -209,10 +209,10 @@ constexpr ShapeDesc triprism_shape = { 6, 5, {
 } };
 
 constexpr ShapeDesc tetra_shape = { 4, 4, {
-	{3, {2,1,0}}, //bottom
-	{3, {0,3,2}}, //left
-	{3, {1,2,3}}, //right
-	{3, {0,1,3}}, //front
+	{3, {2,1,0, 3}}, //bottom
+	{3, {0,3,2, 1}}, //left
+	{3, {1,2,3, 0}}, //right
+	{3, {0,1,3, 2}}, //front
 } };
 
 constexpr uint tetra_opposite[4] = { 3, 1, 0, 2 };

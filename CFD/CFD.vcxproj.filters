@@ -178,7 +178,7 @@
     <ClCompile Include="src\generated.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="src\geo\predicates.cpp">
+    <ClCompile Include="src\geo\predicates.c">
       <Filter>src\geo</Filter>
     </ClCompile>
     <ClCompile Include="src\mesh\cross_field.cpp">

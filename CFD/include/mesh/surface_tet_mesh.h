@@ -15,12 +15,16 @@ struct SurfaceTriMeshIt {
 	inline bool operator!=(SurfaceTriMeshIt& it) { return i != it.i; }
 };
 
+constexpr char TRI_DELETED = 1 << 0;
+
 struct SurfaceTriMesh {
 	uint tri_capacity = 0;
 	uint tri_count = 0;
 	vector<vec3> positions;
+	vector<tri_handle> free_tris;
 	edge_handle* edges = nullptr;
 	vertex_handle* indices = nullptr;
+	char* flags = nullptr;
 	AABB aabb;
 
 	SurfaceTriMesh();
@@ -32,13 +36,22 @@ struct SurfaceTriMesh {
 	void reserve_tris(uint count);
 	void resize_tris(uint count);
     
-    tri_handle project(tri_handle start, vec3* pos, float* disp);
+	void dealloc_tri(tri_handle tri);
+
+    tri_handle project(CFDDebugRenderer& debug, tri_handle start, vec3* pos, float* disp);
 
 	inline tri_handle alloc_tri(uint count = 1) {
+		if (free_tris.length > 0) {
+			tri_handle tri = free_tris.pop();
+			flags[tri / 3] = 0;
+			return tri;
+		}
+		
 		if (tri_count+count > tri_capacity) {
 			reserve_tris(max(tri_count * 2, tri_count + count));
 		}
 		tri_handle base = tri_count * 3;
+		flags[tri_count] = 0;
 		tri_count += count;
 		return base;
 	}
@@ -84,6 +97,10 @@ struct SurfaceTriMesh {
         triangle_verts(tri, v);
         return (v[0] + v[1] + v[2]) / 3.0f;
     }
+
+	inline bool is_deallocated(tri_handle tri) {
+		return flags[tri/3] & TRI_DELETED;
+	}
 
 	inline SurfaceTriMeshIt begin() { return { 3 }; }
 	inline SurfaceTriMeshIt end() { return {tri_count * 3}; }

@@ -2,6 +2,7 @@
 #include "mesh/surface_tet_mesh.h"
 #include "mesh/feature_edges.h"
 #include "mesh/edge_graph.h"
+#include "visualization/color_map.h"
 #include <algorithm>
 
 tvector<float> curvature_at_verts(SurfaceTriMesh& surface, EdgeGraph& graph, CFDDebugRenderer& debug) {
@@ -33,8 +34,10 @@ tvector<float> curvature_at_verts(SurfaceTriMesh& surface, EdgeGraph& graph, CFD
         }
         
         float A = total_area/3;
-        float curvature = (2*M_PI - total_angle) / A;
+        float curvature = (2*PI - total_angle) / A;
         vert_curvatures[i] = curvature;
+
+
     }
     
     return vert_curvatures;
@@ -50,19 +53,14 @@ tvector<FeatureCurve> identify_feature_edges(SurfaceTriMesh& surface, EdgeGraph&
 	vec3* centers = TEMPORARY_ZEROED_ARRAY(vec3, surface.tri_count);
 	float* dihedrals = TEMPORARY_ZEROED_ARRAY(float, 3 * surface.tri_count);
 	bool* visited = TEMPORARY_ZEROED_ARRAY(bool, 3 * surface.tri_count);
-	DihedralID* largest_dihedral = TEMPORARY_ZEROED_ARRAY(DihedralID, 3 * surface.tri_count);
 
 	const float episilon = 0.002;
 
 	for (tri_handle i : surface) {
 		vec3 positions[3];
-		vec3 center;
-		for (uint j = 0; j < 3; j++) {
-			positions[j] = surface.positions[surface.indices[i + j].id];
-			center += positions[j];
-		}
+		surface.triangle_verts(i, positions);
 
-		center /= 3;
+		vec3 center = (positions[0]+positions[1]+positions[2])/3;
 		normals[i / 3] = triangle_normal(positions);
 		centers[i / 3] = center; // +episilon * normals[i / 3];
 	}
@@ -71,6 +69,8 @@ tvector<FeatureCurve> identify_feature_edges(SurfaceTriMesh& surface, EdgeGraph&
 
 	feature_angle = to_radians(feature_angle);
 
+	tvector<DihedralID> largest_dihedral;
+
 	for (tri_handle i : surface) {
 		for (uint j = 0; j < 3; j++) {
 			tri_handle neighbor = surface.neighbor(i, j);
@@ -78,53 +78,64 @@ tvector<FeatureCurve> identify_feature_edges(SurfaceTriMesh& surface, EdgeGraph&
 			dihedrals[i + j] = acos(dot(normals[i / 3], normals[neighbor / 3]));
 
 			if (surface.indices[i + j].id > surface.indices[i + (j + 1) % 3].id) continue;
-			largest_dihedral[i + j].dihedral = dihedrals[i + j] / dist;
-			largest_dihedral[i + j].edge = i + j;
+			
+			float dihedral = dihedrals[i + j] / dist;
+			
+			if (dihedral > feature_angle) largest_dihedral.append({ dihedral, i + j });
 		}
 	}
 
-	std::sort(largest_dihedral, largest_dihedral + 3 * surface.tri_capacity, [](DihedralID& a, DihedralID& b) { return a.dihedral > b.dihedral; });
+	std::sort(largest_dihedral.begin(), largest_dihedral.end(), [](DihedralID& a, DihedralID& b) { return a.dihedral > b.dihedral; });
 
-	tvector<edge_handle> possible_strong_edges;
+
+	tvector<edge_handle> strong_edges;
 	tvector<vec3> positions;
 
-	for (uint i = 0; i < 3 * surface.tri_capacity; i++) {
-		if (largest_dihedral[i].dihedral < feature_angle) break;
+	tvector<edge_handle> possible_strong_edges[2];
+	tvector<vec3> possible_positions[2];
 
-		edge_handle starting_edge = largest_dihedral[i].edge;
+	for (DihedralID id : largest_dihedral) {
+		edge_handle starting_edge = id.edge;
+		if (visited[starting_edge]) continue;
 
-		for (uint i = 0; i < 1; i++) {
+		//vec3 p0, p1;
+		//surface.edge_verts(starting_edge, &p0, &p1);
+		//draw_line(debug, p0, p1, vec4(0, 1, 0, 1));
+
+		for (uint i = 0; i < 2; i++) {
 			uint count = 0;
 
 			edge_handle current_edge = i == 1 ? surface.edges[starting_edge] : starting_edge;
-            possible_strong_edges.clear();
-            positions.clear();
+			possible_strong_edges[i].clear();
+			possible_positions[i].clear();
 
 			while (count++ < 10000) {
 				visited[current_edge] = true;
 				visited[surface.edges[current_edge]] = true;
 
-				possible_strong_edges.append(current_edge);
+				possible_strong_edges[i].append(current_edge);
 
 				vertex_handle v0, v1;
 				surface.edge_verts(current_edge, &v0, &v1);
 
+
+
 				vec3 p0 = surface.positions[v0.id];
 				vec3 p1 = surface.positions[v1.id];
 				vec3 p01 = p1 - p0;
+
+				//draw_line(debug, p0, p1, RED_DEBUG_COLOR);
 
 				auto neighbors = edge_graph.neighbors(v1);
 				float best_score = 0.0f;
 
 				uint best_edge = 0;
 
-				positions.append(p0);
+				possible_positions[i].append(p0);
 
 				float dihedral1 = dihedrals[current_edge];
-				//draw_line(debug, p0, p1, vec4(1, 0, 0, 1));
-				//suspend_execution(debug);
 
-				for (edge_handle edge : neighbors) {					
+				for (edge_handle edge : neighbors) {
 					if (!edge) continue;
 					vec3 p2 = surface.position(edge, 0);
 
@@ -137,6 +148,9 @@ tvector<FeatureCurve> identify_feature_edges(SurfaceTriMesh& surface, EdgeGraph&
 
 					float score = edge_dot * dihedral_simmilarity;
 
+					//draw_line(debug, p2, p1, color_map(score, 0, 1));
+					//suspend_execution(debug);
+
 					if (score > best_score) {
 						best_edge = edge;
 						best_score = score;
@@ -146,20 +160,49 @@ tvector<FeatureCurve> identify_feature_edges(SurfaceTriMesh& surface, EdgeGraph&
 				if (best_score > min_quality) current_edge = surface.edges[best_edge]; //p0 --> p0 <-- p2 : p0 --> p1 --> p2
 				else break;
 
-				if (visited[current_edge]) {
-					//strong_edges += possible_strong_edges;
-					break;
-				}
+				if (visited[current_edge]) break;
 			}
 
-			if (possible_strong_edges.length > 5) {
-                result.append({
-                    Spline(positions),
-                    possible_strong_edges
-                });
+			vec3 p1 = surface.position(surface.edges[current_edge]);
+			possible_positions[i].append(p1);
+		}
+
+		strong_edges.clear();
+		positions.clear();
+
+		bool edge_loop1 = possible_strong_edges[0].length > 1;
+		bool edge_loop2 = possible_strong_edges[1].length > 1;
+		bool merge = edge_loop1 && edge_loop2;
+
+		if (merge) {
+			//edge_loop1           m--------------------->
+			//edge_loop2 <---------m
+			//merge      ----------m---------------------->
+
+			uint n = possible_positions[1].length;
+			for (uint i = n - 1; i > 1; i--) {
+				strong_edges.append(surface.edges[possible_strong_edges[1][i-1]]);
+				positions.append(possible_positions[1][i]);
 			}
+
+			strong_edges += possible_strong_edges[0];
+			positions += possible_positions[0];
+		}
+		else {
+			uint index = edge_loop2;
+			strong_edges += possible_strong_edges[index];
+			positions += possible_positions[index];
+		}
+
+		if (strong_edges.length > 0) {
+			result.append({
+				Spline(positions),
+				strong_edges
+			});
 		}
 	}
+
+	//suspend_execution(debug);
 
     for (FeatureCurve curve : result) {
         for (edge_handle edge : curve.edges) {
@@ -168,7 +211,9 @@ tvector<FeatureCurve> identify_feature_edges(SurfaceTriMesh& surface, EdgeGraph&
             p0 += normals[edge / 3] * episilon;
             p1 += normals[edge / 3] * episilon;
             draw_line(debug, p0, p1, vec4(1, 0, 0, 1));
+			//suspend_execution(debug);
         }
+		//printf("=============\n");
     }
 
 	return result;

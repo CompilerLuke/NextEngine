@@ -46,4 +46,9 @@ inline constexpr int divceil(int a, int b) {
 	return (a - 1) / b + 1;
 }
 
+template<typename T>
+inline constexpr int signnum(T a) {
+	return (a > 0) - (a < 0);
+}
+
 #define assert_mesg(cond, mesg) if (!(cond)) { fprintf(stderr, mesg); exit(1); }

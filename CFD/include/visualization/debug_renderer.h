@@ -17,6 +17,7 @@ const vec4 RED_DEBUG_COLOR = vec4(1, 0, 0, 1);
 const vec4 GREEN_DEBUG_COLOR = vec4(0, 1, 0, 1);
 const vec4 BLUE_DEBUG_COLOR = vec4(0, 0, 1, 1);
 
+void draw_point(CFDDebugRenderer& debug, vec3 pos, vec4 color);
 void draw_line(CFDDebugRenderer&, vec3 start, vec3 end, vec4 color = vec4(vec3(0),1));
 void draw_triangle(CFDDebugRenderer&, vec3 v0, vec3 v1, vec3 v2, vec4 color = DEFAULT_DEBUG_COLOR);
 void draw_triangle(CFDDebugRenderer&, vec3 v[3], vec4 color = DEFAULT_DEBUG_COLOR);

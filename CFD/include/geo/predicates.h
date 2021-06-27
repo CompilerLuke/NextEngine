@@ -2,11 +2,30 @@
 
 using real = double;
 
-extern real o3dstaticfilter;
-extern real o3derrboundA;
-extern real ispstaticfilter;
-extern real isperrboundA;
+#ifdef __cplusplus
+extern "C" {
+#endif
+	extern real o3dstaticfilter;
+	extern real o3derrboundA;
+	extern real ispstaticfilter;
+	extern real isperrboundA;
 
-void exactinit(real, real, real);
-real insphere(const real *pa, const real *pb, const real *pc, const real *pd, const real *pe);
-real orient3d(const real *pa, const real *pb, const real *pc, const real *pd);
+	void exactinit(real,real,real);
+
+#if 0
+	typedef float IGL_PREDICATES_REAL;
+	float orient2d(float pa[2], float pb[2], float pc[2]);
+	float orient3d(float pa[3], float pb[3], float pc[3], float pd[3]);
+	float incircle(float pa[2], float pb[2], float pc[2], float pd[2]);
+	float insphere(float pa[3], float pb[3], float pc[3], float pd[3], float pe[3]);
+#else
+	typedef double IGL_PREDICATES_REAL;
+	double orient2d(const double pa[2], const double pb[2], const double pc[2]);
+	double orient3d(const double pa[3], const double pb[3], const double pc[3], const double pd[3]);
+	double incircle(const double pa[2], const double pb[2], const double pc[2], const double pd[2]);
+	double insphere(const double pa[3], const double pb[3], const double pc[3], const double pd[3], double pe[3]);
+#endif
+
+#ifdef __cplusplus
+}
+#endif

@@ -31,6 +31,6 @@ bool smooth(Delaunay& d);
 
 struct InputModelBVH;
 
-void constrain_triangulation(Delaunay& d, slice<Boundary> boundaries, InputModelBVH& bvh);
+void constrain_triangulation(Delaunay& d, slice<Boundary> boundaries, uint shadow_watermark);
 void remove_super(Delaunay& d);
 bool complete(Delaunay& d);

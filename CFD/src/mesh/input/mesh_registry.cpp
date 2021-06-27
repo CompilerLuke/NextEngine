@@ -16,7 +16,7 @@ InputMeshRegistry::~InputMeshRegistry() {
 input_model_handle InputMeshRegistry::register_model(InputModel&& model) {
 	models.append(std::move(model));
 	bvh.append(InputModelBVH(models[models.length - 1].surface[0], debug)); //todo: this will cause memory corruption on resize
-	bvh[models.length - 1].build();
+	//bvh[models.length - 1].build();
 	return { models.length-1 };
 }
 

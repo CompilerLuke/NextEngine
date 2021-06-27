@@ -223,7 +223,9 @@
     <ClCompile Include="src\editor\scene_viewport.cpp" />
     <ClCompile Include="src\editor\scene_viewport_interactions.cpp" />
     <ClCompile Include="src\generated.cpp" />
-    <ClCompile Include="src\geo\predicates.cpp" />
+    <ClCompile Include="src\geo\predicates.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="src\mesh\cross_field.cpp" />
     <ClCompile Include="src\mesh\edge_graph.cpp" />
     <ClCompile Include="src\mesh\input\input_model.cpp" />

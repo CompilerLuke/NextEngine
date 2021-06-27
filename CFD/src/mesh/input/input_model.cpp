@@ -10,8 +10,8 @@ InputModelBVH::InputModelBVH(SurfaceTriMesh& model, CFDDebugRenderer& debug) : m
 }
 
 uint InputModelBVH::build_node(const AABB& aabb, slice<tri_handle> triangles, slice<uint> vertices, uint depth) {
-	const uint MAX_DEPTH = 8;
-	const uint MAX_PER_NODE = 20;
+	const uint MAX_DEPTH = 20;
+	const uint MAX_PER_NODE = 4;
 
 	if ((triangles.length < MAX_PER_NODE && vertices.length < MAX_PER_NODE) || depth == MAX_DEPTH) {
 		Node node = {};

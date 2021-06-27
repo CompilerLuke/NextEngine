@@ -47,7 +47,7 @@ void draw_triangle(CFDDebugRenderer& renderer, vec3 v[3], vec4 color) {
     vec3 normal = triangle_normal(v);
     triangles.draw_triangle(v, normal, color); //no normal needed, flat shading
 
-    vec3 dt = normal * 0.001;
+    vec3 dt = normal * 0.005;
 
     lines.draw_line(v[0] + dt, v[1] + dt, vec4(0,0,0,1));
     lines.draw_line(v[1] + dt, v[2] + dt, vec4(0, 0, 0, 1));
@@ -78,6 +78,14 @@ void draw_quad(CFDDebugRenderer& renderer, vec3 origin, vec2 size, vec3 rot, vec
         v[i] += origin;
     }
     draw_quad(renderer, v, color);
+}
+
+void draw_point(CFDDebugRenderer& debug, vec3 pos, vec4 color) {
+    float dt = 0.01;
+
+    draw_line(debug, pos - vec3(0, dt, 0), pos + vec3(0, dt, 0), color);
+    draw_line(debug, pos - vec3(dt, 0, 0), pos + vec3(dt, 0, 0), color);
+    draw_line(debug, pos - vec3(0, 0, dt), pos + vec3(0, 0, dt), color);
 }
 
 void suspend_execution(CFDDebugRenderer& renderer) {

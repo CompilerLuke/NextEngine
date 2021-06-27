@@ -469,7 +469,7 @@ CFDVolume generate_mesh(World& world, InputMeshRegistry& registry, CFDMeshError&
             Profile profile("Feature edge detection");
             edge_graph = build_edge_graph(surface);
         
-            //vert_curvatures = curvature_at_verts(surface, edge_graph, debug);
+            vert_curvatures = curvature_at_verts(surface, edge_graph, debug);
             features = identify_feature_edges(surface, edge_graph, domain.feature_angle, domain.min_feature_quality, debug);
 
             profile.log();
@@ -481,6 +481,7 @@ CFDVolume generate_mesh(World& world, InputMeshRegistry& registry, CFDMeshError&
         }
 		
         vector<vec3> points;
+		tvector<vec3> shadow_points;
         
 		SurfaceCrossField cross_field(surface, debug, feature_edges);
 		
@@ -491,8 +492,10 @@ CFDVolume generate_mesh(World& world, InputMeshRegistry& registry, CFDMeshError&
             profile.log();
         }
 
+		
+
 		PointOctotree octotree(points, domain_bounds);
-		SurfacePointPlacement surface_point_placement(surface, cross_field, octotree, vert_curvatures);
+		SurfacePointPlacement surface_point_placement(surface, cross_field, octotree, shadow_points, vert_curvatures);
         
         {
             Profile profile("Surface point placement");
@@ -509,6 +512,8 @@ CFDVolume generate_mesh(World& world, InputMeshRegistry& registry, CFDMeshError&
 			result.vertices.append({ points[i] });
 		}
 
+
+
         {
             Profile profile("Hexcore");
 
@@ -518,6 +523,13 @@ CFDVolume generate_mesh(World& world, InputMeshRegistry& registry, CFDMeshError&
 
             profile.log();
         }
+
+		uint shadow_point_watermark = result.vertices.length;
+		for (int i = 0; i < shadow_points.length; i++) {
+			boundary_verts.append({ (int)result.vertices.length });
+			result.vertices.append({ shadow_points[i] });
+		}		
+
 
 #if 0
 		std::sort(boundary_verts.begin(), boundary_verts.end(), [&](vertex_handle v0, vertex_handle v1) {
@@ -535,9 +547,9 @@ CFDVolume generate_mesh(World& world, InputMeshRegistry& registry, CFDMeshError&
 #endif
 #if 0
 		for (CFDVertex& vertex : result.vertices) {
-			vertex.position.x += ((float)rand() / INT_MAX) * 0.02;
-			vertex.position.y += ((float)rand() / INT_MAX) * 0.02;
-			vertex.position.z += ((float)rand() / INT_MAX) * 0.02;
+			vertex.position.x += ((float)rand()) / INT_MAX * 0.2;
+			vertex.position.y += ((float)rand()) / INT_MAX * 0.2;
+			vertex.position.z += ((float)rand()) / INT_MAX * 0.2;
 		}
 #endif
 
@@ -552,7 +564,7 @@ CFDVolume generate_mesh(World& world, InputMeshRegistry& registry, CFDMeshError&
         Delaunay* delaunay = make_Delaunay(result, del_bounds, debug);
 
 		add_vertices(*delaunay, boundary_verts);
-		constrain_triangulation(*delaunay, boundary, bvh);
+		constrain_triangulation(*delaunay, boundary, shadow_point_watermark);
         //suspend_execution(debug);
 		refine(*delaunay);
 		//constrain_triangulation(*delaunay, boundary);

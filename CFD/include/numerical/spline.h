@@ -147,7 +147,7 @@ public:
 	}
 
 	vec3 at_time(float t) {
-		uint i = t;
+		uint i = min(t, coeff.length-1);
 		float x = t - i;
 		float xx = x * x;
 		float xxx = xx * x;
@@ -157,7 +157,7 @@ public:
 	}
     
     vec3 tangent(float t) {
-        uint i = t;
+        uint i = min(t, coeff.length - 1);
         float x = t - i;
         float xx = x * x;
         
@@ -197,12 +197,13 @@ public:
 
         uint spline;
         for (spline = 0; spline < lengths.length; spline++) {
-            distance += lengths[spline];
-            if (distance > desired_distance) break;
+            float new_distance = distance + lengths[spline];
+            if (new_distance >= desired_distance) break;
+			distance = new_distance;
         }
         
         assert(spline < lengths.length);
-        float d = desired_distance - (distance - lengths[spline]);
+        float d = desired_distance - distance;
 
         float s = 0.5f;
         for (uint i = 0; i < 10.0f; i++) {

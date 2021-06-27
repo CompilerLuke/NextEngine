@@ -117,10 +117,12 @@ Circumsphere circumsphere(vec3 p[4]) {
 	center += p[3];
 	float r = l1_norm(center, p[0]);
 #else
+	float det = 2 * dot(u1, cross(u2, u3));
+	//if (fabs(det) < 0.001) return { 0, 0 };
 	vec3 center = (sq_distance(p[0], p[3]) * cross(u2, u3)
 		+ sq_distance(p[1], p[3]) * cross(u3, u1)
 		+ sq_distance(p[2], p[3]) * cross(u1, u2))
-		/ (2 * dot(u1, cross(u2, u3)));
+		/ det;
 	center += p[3];
 	float r = length(center - p[0]);
 #endif
@@ -492,12 +494,77 @@ return current;
 }
 
 bool is_deallocated(Delaunay& d, tet_handle tet) {
-	return d.subdets[tet & NEIGH + 3] == -1;
+	return d.subdets[(tet & NEIGH) + 3] == -1;
 }
 
 void dealloc_tet(Delaunay& d, tet_handle tet) {
-	d.subdets[tet & NEIGH + 3] = -1; //Mark for deletion and that it is already visited
+	d.subdets[(tet & NEIGH) + 3] = -1; //Mark for deletion and that it is already visited
 	d.free.append(tet);
+}
+
+bool is_sliver(Delaunay& d, tet_handle tet) {
+	float highest_volume = 0;
+
+	tet = tet & NEIGH;
+
+	vec3 tet_verts[4];
+	for (uint i = 0; i < 4; i++) tet_verts[i] = d.vertices[d.indices[tet + i].id].position;
+
+	
+	for (uint i = 0; i < 4; i++) {
+		vec3 verts[4];
+		for (uint j = 0; j < 4; j++) verts[j] = tet_verts[tetra_shape[i][j]];
+
+		/*vec3 ab = verts[1] - verts[0];
+		vec3 ac = verts[2] - verts[0];
+		vec3 ad = verts[3] - verts[0];*/
+
+		float volume = fabs(orient3d(verts[0], verts[1], verts[2], verts[3]));
+		//fabs(dot(normalize(ad), normalize(cross(ac, ab))));
+		highest_volume = fmaxf(highest_volume, fabs(volume));
+	}
+	
+
+	return highest_volume < 0.15;
+
+	//return fabs(orient3d(tet_verts[0], tet_verts[1], tet_verts[2], tet_verts[3])) < 0.01;
+
+	/*
+	vec3 verts[4];
+	for (uint i = 0; i < 4; i++) verts[i] = d.vertices[d.indices[tet + i].id].position;
+
+	//return fabs(orient3d(verts[0], verts[1], verts[2], verts[3])) < 0.1;
+
+	float l = 0.0f; // FLT_MAX;
+	float sl = FLT_MAX;
+	uint count = 0;
+	for (uint i = 0; i < 4; i++) {
+		for (uint j = i + 1; j < 4; j++) {
+			float edge = length(verts[i] - verts[j]);
+			l += edge; // fmaxf(l, edge);
+			sl = fminf(sl, edge);
+			count++;
+		}
+	}
+
+	l /= 6.0f;
+	//l = sqrtf(l);
+
+	vec3 ab = verts[1] - verts[0];
+	vec3 ac = verts[2] - verts[0];
+	vec3 ad = verts[3] - verts[0];
+
+	float volume = dot(ad, -cross(ac, ab)); // / 6.0f;
+	//float radius = circumsphere(verts).radius;
+	float p = l / sl;
+
+	float vl = volume / (3*sl);
+	
+	const float p0 = 3.0;
+	const float vl0 = 0.2;
+
+	//p <= p0 &&
+	return p <= p0 && vl <= vl0;*/
 }
 
 int find_cavity_faces(Delaunay& d, tet_handle current, vertex_handle v, float min_dist = 0.0f) {
@@ -510,6 +577,7 @@ int find_cavity_faces(Delaunay& d, tet_handle current, vertex_handle v, float mi
 	d.stack.append(current);
 	dealloc_tet(d, current);
 
+	vec3 v_pos = d.vertices[v.id].position;
 	vec3 last_pos = compute_centroid(d, current);
 
 	while (d.stack.length > 0) {
@@ -539,7 +607,7 @@ int find_cavity_faces(Delaunay& d, tet_handle current, vertex_handle v, float mi
 				bool visited = is_deallocated(d, neighbor);
 				if (visited) continue;
 
-				bool inside = insphere(d, neighbor, v) < -FLT_EPSILON;
+				bool inside = insphere(d, neighbor, v) > 0;
 				if (inside) {
 					//printf("Neighbor %i: adding to stack\n", neighbor.id);
 					dealloc_tet(d, neighbor);
@@ -909,6 +977,14 @@ void identify_boundary_faces_job(IdentifyBoundaryJob& job) {
     
     for (uint i = job.begin; i < job.end; i++) {
         tet_handle tet = i & NEIGH;
+		tet_handle neigh = d.faces[i];
+
+		bool tet_is_sliver = is_sliver(d, tet);
+		bool neigh_is_sliver = is_sliver(d, neigh & NEIGH);
+
+		//if (tet_is_sliver) continue;
+		if (neigh < tet) continue; //
+
         uint face = i & NEIGH_FACE;
         
         vec3 verts[3];
@@ -916,8 +992,10 @@ void identify_boundary_faces_job(IdentifyBoundaryJob& job) {
         
         vec3 pos = triangle_center(verts);
         vec3 normal = triangle_normal(verts);
+
+		//float size = (sq(verts[0] - verts[1]) + sq(verts[1] - verts[2]) + sq(verts[2] - verts[0])) / 3.0f;
         
-        float threshold = 0.01;
+		float threshold = 0.1; // fminf(size * 0.5, 0.1);
         
         vec3 p0 = pos - normal*threshold;
         vec3 p1 = pos + normal*threshold;
@@ -929,13 +1007,13 @@ void identify_boundary_faces_job(IdentifyBoundaryJob& job) {
         
         if (!bvh.ray_intersect(ray, glm::mat4(1.0), hit, MeshPrimitive::Triangle)) continue;
     
-        draw_triangle(d.debug, verts, vec4(1,0,0,1));
+        //draw_triangle(d.debug, verts, vec4(1,0,0,1));
         
-        tet_handle neigh = d.faces[i];
         job.boundary[i / 32] |= 1 << (i % 32);
         //job.boundary[neigh / 32] |= 1 << (neigh % 32);
         
-        //draw_triangle(d.debug, pos[2], pos[1], pos[0], vec4(1));
+        draw_triangle(d.debug, verts[2], verts[1], verts[0], vec4(1));
+        draw_triangle(d.debug, verts[0], verts[1], verts[2], vec4(1));
     }
 }
 
@@ -953,7 +1031,7 @@ void identify_boundary_faces(Delaunay& d, InputModelBVH& bvh, uint* boundary) {
     uint end = 4*d.tet_count;
     
     uint num_chunks = divceil(end - begin, 32);
-    uint num_jobs = 1; //4 * worker_thread_count();
+	uint num_jobs = 1; // 4 * worker_thread_count();
     uint chunks_per_job = divceil(num_chunks, num_jobs);
     
     printf("Launching jobs, chunks %i, jobs %i, chunks_per_job %i\n", num_chunks, num_jobs, chunks_per_job);
@@ -971,6 +1049,7 @@ void identify_boundary_faces(Delaunay& d, InputModelBVH& bvh, uint* boundary) {
     wait_for_jobs(PRIORITY_HIGH, {jobs, num_jobs});
     
     printf("Identified boundary\n");
+	suspend_execution(d.debug);
 }
 
 void remove_tets_outside_boundary(Delaunay& d, uint* boundary) {
@@ -978,6 +1057,8 @@ void remove_tets_outside_boundary(Delaunay& d, uint* boundary) {
     
     tet_handle outside_tet = 0;
     for (uint i = 4; i < d.tet_count * 4; i++) {
+		if (is_deallocated(d, i)) continue;
+
         vertex_handle v = d.indices[i];
         if (is_super_vert(d, v)) {
             outside_tet = i & NEIGH;
@@ -1014,7 +1095,8 @@ void remove_tets_outside_boundary(Delaunay& d, uint* boundary) {
             
             uint mask = 1ull << (neigh/4 % 32);
             
-            bool is_boundary = boundary[face / 32] & (1 << (face % 32));
+            bool is_boundary = boundary[face / 32] & (1 << (face % 32))
+							 || boundary[neigh / 32] & (1 << (neigh % 32));
 
             if (is_boundary) {
                 d.faces[neigh] = 0;
@@ -1023,8 +1105,8 @@ void remove_tets_outside_boundary(Delaunay& d, uint* boundary) {
                 vec3 pos[3];
                 get_positions(d, tet, i, pos);
 
-                //draw_triangle(d.debug, pos[2], pos[1], pos[0], vec4(1,0,0,1));
-                //draw_triangle(d.debug, pos[0], pos[1], pos[2], vec4(1,0,0,1));
+                draw_triangle(d.debug, pos[2], pos[1], pos[0], vec4(1,0,0,1));
+                draw_triangle(d.debug, pos[0], pos[1], pos[2], vec4(1,0,0,1));
             }
             
             ///32] & mask
@@ -1041,7 +1123,71 @@ void remove_tets_outside_boundary(Delaunay& d, uint* boundary) {
     suspend_execution(d.debug);
 }
 
-void constrain_triangulation(Delaunay& d, slice<Boundary> boundaries, InputModelBVH& bvh) {
+void draw_point(CFDDebugRenderer& debug, vec3 pos, vec4 color);
+
+void identify_shadow_tets(Delaunay& d, uint shadow_watermark) {
+	uint face_masks[4] = {};
+	for (uint i = 0; i < 4; i++) {
+		for (uint j = 0; j < 3; j++) {
+			face_masks[i] |= 1 << tetra_shape[i][j];
+		}
+	}
+
+	for (uint i = 4; i < d.tet_count * 4; i += 4) {
+		if (is_deallocated(d, i)) continue;
+
+		uint shadow_mask = 0;
+
+		for (uint j = 0; j < 4; j++) {
+			vertex_handle v = d.indices[i + j];
+			if (v.id >= shadow_watermark && !is_super_vert(d,v)) {
+				shadow_mask |= 1 << j;
+				draw_point(d.debug, d.vertices[d.indices[i + j].id].position, vec4(0,0,0,1));
+			}
+		}
+
+		if (!shadow_mask) continue;
+
+		bool error = false;
+		for (uint j = 0; j < 4; j++) {
+			bool remove_face = face_masks[j] & shadow_mask;
+			tet_handle neigh = d.faces[i + j];
+			if (!neigh && !remove_face) error = true;
+		}
+
+		for (uint j = 0; j < 4; j++) {
+			bool remove_face = face_masks[j] & shadow_mask;
+
+			tet_handle neigh = d.faces[i + j];
+			d.faces[neigh] = 0;
+
+#if 1
+			if (!error) continue;
+
+			vec3 verts[3];
+			get_positions(d, i, j, verts);
+			
+			if (!remove_face) {
+				vec3 normal = triangle_normal(verts);
+				//for (uint i = 0; i < 3; i++) verts[i] += 0.01 * normal;
+
+				draw_triangle(d.debug, verts, RED_DEBUG_COLOR);
+			}
+			else {
+				draw_triangle(d.debug, verts, vec4(1, 1, 1, 1));
+			}
+#endif
+		}
+
+		dealloc_tet(d, i);
+	}
+
+	d.vertices.length = shadow_watermark;
+
+	suspend_execution(d.debug);
+}
+
+void constrain_triangulation(Delaunay& d, slice<Boundary> boundaries, uint shadow_watermark) {
 	CFDDebugRenderer& debug = d.debug;
 
     uint* boundary = new uint[divceil(d.tet_count*4, 32)](); //todo check if overwritten and use temporary allocation
@@ -1049,9 +1195,12 @@ void constrain_triangulation(Delaunay& d, slice<Boundary> boundaries, InputModel
 
     tvector<Boundary> tri_boundaries = quad_to_tri_boundary(boundaries);
     identify_boundary_faces(d, tri_boundaries, boundary);
-    identify_boundary_faces(d, bvh, boundary);
+	remove_tets_outside_boundary(d, boundary);
+
+	identify_shadow_tets(d, shadow_watermark);
+    //identify_boundary_faces(d, bvh, boundary);
     
-    remove_tets_outside_boundary(d, boundary);
+
     delete boundary;
 }
 
@@ -1803,6 +1952,8 @@ bool smooth(Delaunay& d) {
 	build_vertex_graph(d, graph);
 
 	for (tet_handle i = 4; i < 4 * d.tet_capacity; i += 4) {
+		//if (is_deallocated(d, i)) continue;
+
 		for (uint j = 0; j < 4; j++) {
 			bool is_boundary = d.faces[i + j];
 			if (is_boundary) {

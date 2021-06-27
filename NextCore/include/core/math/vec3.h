@@ -116,3 +116,13 @@ inline float to_radians(float angle) {
 inline float to_degrees(float angle) {
 	return angle * 180 / PI;
 }
+
+inline real vec_angle_cos(vec3 v0, vec3 v1, vec3 v2) {
+	vec3 v01 = v0 - v1;
+	vec3 v21 = v2 - v1;
+	return dot(v01, v21) / (length(v01) * length(v21));
+}
+
+inline real vec_angle(vec3 v0, vec3 v1, vec3 v2) {
+	return acosf(vec_angle_cos(v0, v1, v2));
+}
