@@ -22,3 +22,6 @@
 [submodule "CFD/vendor/lapack"]
 	path = CFD/vendor/lapack
 	url = https://github.com/Reference-LAPACK/lapack
+[submodule "CFD/vendor/thekla_atlas"]
+	path = CFD/vendor/thekla_atlas
+	url = https://github.com/Thekla/thekla_atlas.git
