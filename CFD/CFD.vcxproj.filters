@@ -16,6 +16,9 @@
     <Filter Include="include\mesh_generation">
       <UniqueIdentifier>{70B92C87-DCF0-741E-E5FA-D84151B19B17}</UniqueIdentifier>
     </Filter>
+    <Filter Include="include\mesh_generation\surface">
+      <UniqueIdentifier>{E89CFAE4-5480-0925-5D83-3761C9E5CF75}</UniqueIdentifier>
+    </Filter>
     <Filter Include="include\numerical">
       <UniqueIdentifier>{18022998-8418-272E-CD8F-B24F39E5F7B5}</UniqueIdentifier>
     </Filter>
@@ -37,8 +40,14 @@
     <Filter Include="src\mesh\input">
       <UniqueIdentifier>{08ECD4F6-F4B9-C8FC-DD4D-3923C9BAA461}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\mesh\surface">
+      <UniqueIdentifier>{A13DF611-8D36-1564-B668-FAE8A2C0F46F}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\mesh_generation">
       <UniqueIdentifier>{147DA92A-80DE-8638-094C-CDEA75ACBDF7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\mesh_generation\surface">
+      <UniqueIdentifier>{8CC442AE-F8D1-7094-81B8-6C7FEDC43C4B}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\visualization">
       <UniqueIdentifier>{6ED38BD4-DAE9-896A-2361-158C8FB65AF2}</UniqueIdentifier>
@@ -117,10 +126,22 @@
     <ClInclude Include="include\mesh_generation\front_octotree.h">
       <Filter>include\mesh_generation</Filter>
     </ClInclude>
+    <ClInclude Include="include\mesh_generation\hexcore.h">
+      <Filter>include\mesh_generation</Filter>
+    </ClInclude>
     <ClInclude Include="include\mesh_generation\point_octotree.h">
       <Filter>include\mesh_generation</Filter>
     </ClInclude>
+    <ClInclude Include="include\mesh_generation\qmorph.h">
+      <Filter>include\mesh_generation</Filter>
+    </ClInclude>
+    <ClInclude Include="include\mesh_generation\surface\delaunay.h">
+      <Filter>include\mesh_generation\surface</Filter>
+    </ClInclude>
     <ClInclude Include="include\mesh_generation\surface_point_placement.h">
+      <Filter>include\mesh_generation</Filter>
+    </ClInclude>
+    <ClInclude Include="include\mesh_generation\surface_reconstruction.h">
       <Filter>include\mesh_generation</Filter>
     </ClInclude>
     <ClInclude Include="include\numerical\matrix.h">
@@ -157,7 +178,6 @@
       <Filter>include\visualization</Filter>
     </ClInclude>
     <ClInclude Include="stdafx.h" />
-    <ClInclude Include="include\mesh_generation\hexcore.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\application.cpp">
@@ -196,8 +216,11 @@
     <ClCompile Include="src\mesh\input\mesh_registry.cpp">
       <Filter>src\mesh\input</Filter>
     </ClCompile>
-    <ClCompile Include="src\mesh\surface_tri_mesh.cpp">
-      <Filter>src\mesh</Filter>
+    <ClCompile Include="src\mesh\surface\mesh_operations.cpp">
+      <Filter>src\mesh\surface</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mesh\surface\tri_mesh.cpp">
+      <Filter>src\mesh\surface</Filter>
     </ClCompile>
     <ClCompile Include="src\mesh\vert_graph.cpp">
       <Filter>src\mesh</Filter>
@@ -214,6 +237,12 @@
     <ClCompile Include="src\mesh_generation\feature_edges.cpp">
       <Filter>src\mesh_generation</Filter>
     </ClCompile>
+    <ClCompile Include="src\mesh_generation\hexcore.cpp">
+      <Filter>src\mesh_generation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mesh_generation\hexcore_old.cpp">
+      <Filter>src\mesh_generation</Filter>
+    </ClCompile>
     <ClCompile Include="src\mesh_generation\hilbert_sort.cpp">
       <Filter>src\mesh_generation</Filter>
     </ClCompile>
@@ -226,8 +255,17 @@
     <ClCompile Include="src\mesh_generation\point_octotree.cpp">
       <Filter>src\mesh_generation</Filter>
     </ClCompile>
-    <ClCompile Include="src\mesh_generation\surface_point_placement.cpp">
-      <Filter>src\mesh_generation</Filter>
+    <ClCompile Include="src\mesh_generation\surface\delaunay.cpp">
+      <Filter>src\mesh_generation\surface</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mesh_generation\surface\qmorph.cpp">
+      <Filter>src\mesh_generation\surface</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mesh_generation\surface\reconstruct_surface.cpp">
+      <Filter>src\mesh_generation\surface</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mesh_generation\surface\surface_point_placement.cpp">
+      <Filter>src\mesh_generation\surface</Filter>
     </ClCompile>
     <ClCompile Include="src\solver.cpp">
       <Filter>src</Filter>
@@ -245,7 +283,5 @@
       <Filter>src\visualization</Filter>
     </ClCompile>
     <ClCompile Include="stdafx.cpp" />
-    <ClCompile Include="src\mesh_generation\hexcore.cpp" />
-    <ClCompile Include="src\mesh_generation\hexcore_old.cpp" />
   </ItemGroup>
 </Project>

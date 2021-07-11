@@ -24,8 +24,8 @@ struct Cubemap {
 	VkImageView view;
 };
 
-#define MAX_IMAGE_UPLOAD gb(1)
-#define MAX_IMAGE_DATA gb(1.5)
+#define MAX_IMAGE_UPLOAD gb(0.1)
+#define MAX_IMAGE_DATA gb(0.5)
 #define MAX_TEXTURES 200
 #define MAX_MIP 14 //MAX TEXTURE SIZE is 8k
 

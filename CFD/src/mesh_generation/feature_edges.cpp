@@ -79,7 +79,7 @@ tvector<FeatureCurve> identify_feature_edges(SurfaceTriMesh& surface, EdgeGraph&
 
 			if (surface.indices[i + j].id > surface.indices[i + (j + 1) % 3].id) continue;
 			
-			float dihedral = dihedrals[i + j] / dist;
+			float dihedral = dihedrals[i + j]; // / dist;
 			
 			if (dihedral > feature_angle) largest_dihedral.append({ dihedral, i + j });
 		}
@@ -204,15 +204,46 @@ tvector<FeatureCurve> identify_feature_edges(SurfaceTriMesh& surface, EdgeGraph&
 
 	//suspend_execution(debug);
 
+	const uint n = 11;
+	vec4 colors[n] = {
+		rgb(9, 189, 75),
+		rgb(250, 179, 15),
+		rgb(187, 250, 15),
+		rgb(17, 209, 199),
+		rgb(190, 14, 235),
+		rgb(81, 76, 237),
+		rgb(76, 237, 181),
+		rgb(181, 13, 24),
+		rgb(53, 79, 130),
+		rgb(58, 148, 97),
+		rgb(227, 146, 48),
+	};
+
+	uint i = 0; 
     for (FeatureCurve curve : result) {
-        for (edge_handle edge : curve.edges) {
+		vec3 p0, p1;
+		uint res = 10;
+		
+		/*for (uint i = 0; i < curve.edges.length * res; i++) {
+			p1 = curve.spline.at_time((float)i / res);
+			if (i > 0) {
+				draw_line(debug, p0, p1, RED_DEBUG_COLOR);
+			}
+
+			p0 = p1;
+		}
+
+		suspend_execution(debug);*/
+        /*for (edge_handle edge : curve.edges) {
             vec3 p0, p1;
             surface.edge_verts(edge, &p0, &p1);
             p0 += normals[edge / 3] * episilon;
             p1 += normals[edge / 3] * episilon;
-            draw_line(debug, p0, p1, vec4(1, 0, 0, 1));
+			vec4 color = colors[i % n];
+            draw_line(debug, p0, p1, color);
 			//suspend_execution(debug);
-        }
+        }*/
+		i++;
 		//printf("=============\n");
     }
 

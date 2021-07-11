@@ -83,11 +83,42 @@ public:
 	void build(slice<vec3> points) {
 		uint n = points.length - 1;
 
-		coeff.resize(n);
+		coeff.resize(n+1);
 		lengths.resize(n);
 
 		LinearRegion region(get_temporary_allocator());
 
+		vec3* a = TEMPORARY_ARRAY(vec3, n + 1);
+		for (int i = 1; i <= n - 1; i++)
+			a[i] = 3 * ((points[i + 1] - 2 * points[i] + points[i - 1]));
+
+		float* l = TEMPORARY_ARRAY(float, n+1);
+		float* mu = TEMPORARY_ARRAY(float, n + 1); 
+		vec3* z = TEMPORARY_ARRAY(vec3, n + 1);
+
+		l[0] = l[n] = 1;
+		mu[0] = 0;
+		z[0] = z[n] = vec3();
+		coeff[n].c = vec3();
+
+		for (int i = 1; i <= n - 1; i++)
+		{
+			l[i] = 4 - mu[i - 1];
+			mu[i] = 1 / l[i];
+			z[i] = (a[i] - z[i - 1]) / l[i];
+		}
+
+		for (int i = 0; i < n+1; i++)
+			coeff[i].a = points[i];
+
+		for (int j = n - 1; j >= 0; j--)
+		{
+			coeff[j].c = z[j] - mu[j] * coeff[j + 1].c;
+			coeff[j].d = (1.0f / 3.0f) * (coeff[j + 1].c - coeff[j].c);
+			coeff[j].b = points[j + 1] - points[j] - coeff[j].c - coeff[j].d;
+		}
+
+		/*		
 		float* DL = TEMPORARY_ARRAY(float, n);
 		float* D = TEMPORARY_ARRAY(float, n + 1);
 		float* DU = TEMPORARY_ARRAY(float, n);
@@ -111,14 +142,14 @@ public:
 			DL[n - 1] = 0;
 			DU[0] = 0;
             
-            if (false) {
+            if (true) {
                 char spaces[256];
                 for (uint i = 0; i < 256; i++) spaces[i] = ' ';
                 
                 for (uint i = 0; i < n+1; i++) {
-                    if (i == 0) printf("[ %.2f, %.2f,%.*s]\n", D[i], DU[0], (n-1)*6, spaces);
-                    else if (i == n) printf("[%.*s %.2f, %.2f ]\n", (i-1)*6, spaces, DL[i-1], D[i], DU[i]);
-                    else printf("[%.*s %.2f, %.2f, %.2f,%.*s]\n", (i-1)*6, spaces, DL[i-1], D[i], DU[i], (n-1-i)*6, spaces);
+                    if (i == 0) printf("[ %.2f, %.2f,%.*s][%i] = [%f]\n", D[i], DU[0], (n-1)*6, spaces, i, B[i]);
+                    else if (i == n) printf("[%.*s %.2f, %.2f ][%i] = [%f]\n", (i-1)*6, spaces, DL[i-1], D[i], i, B[i]);
+                    else printf("[%.*s %.2f, %.2f, %.2f,%.*s][%i] = [%f]\n", (i-1)*6, spaces, DL[i-1], D[i], DU[i], (n-1-i)*6, spaces, i, B[i]);
                 }
             }
             
@@ -138,6 +169,7 @@ public:
 				coeff[i].d[k] = (c1 - c0) / 3.0;
 			}
 		}
+		*/
 
         total_length = 0;
 		for (uint i = 0; i < n; i++) {
@@ -206,7 +238,7 @@ public:
         float d = desired_distance - distance;
 
         float s = 0.5f;
-        for (uint i = 0; i < 10.0f; i++) {
+        for (uint i = 0; i < 10; i++) {
             float arc_length = integrate(spline, s);
             float arc_speed = arc_length_integrand(spline, s);
             //printf("S %f, arc length %f, arc speed %f\n", s, arc_length, arc_speed);

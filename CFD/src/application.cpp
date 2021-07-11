@@ -100,7 +100,7 @@ void default_scene(Lister& lister, InputMeshRegistry& registry, World& world) {
     //model_trans.scale = glm::vec3(3);
     model_trans.rotation = glm::angleAxis(to_radians(-90.0f), glm::vec3(1, 0, 0));
     
-    input_model_handle model = registry.load_model("airfoil.fbx", compute_model_matrix(model_trans));
+    input_model_handle model = registry.load_model("part.fbx", compute_model_matrix(model_trans));
 
     {
         auto [e, trans, mesh] = world.make<Transform, CFDMesh>();
@@ -116,7 +116,7 @@ void default_scene(Lister& lister, InputMeshRegistry& registry, World& world) {
         domain.contour_initial_thickness = 0.5;
         domain.contour_thickness_expontent = 1.4;
 
-        domain.feature_angle = 250;
+        domain.feature_angle = 45;
         domain.min_feature_quality = 0.6;
         
         register_entity(lister, "Domain", e.id);

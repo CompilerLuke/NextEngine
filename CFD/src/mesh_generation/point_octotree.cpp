@@ -75,7 +75,8 @@ void PointOctotree::find_closest(Subdivision& subdivision, AABB& aabb, vertex_ha
             
             //L-infinity norm
             float dist = fmaxf(fmaxf(fabs(in_tensor_space.x), fabs(in_tensor_space.y)), fabs(in_tensor_space.z));
-            //L-2 norm: float dist = length(position - center);
+            //L-2 norm: 
+            //float dist = length(positions[vert.id] - center);
 
             if (dist < min_dist) {
                 closest_vert = vert;

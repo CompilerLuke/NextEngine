@@ -424,6 +424,9 @@ void compute_normals(slice<CFDVertex> vertices, CFDCell& cell) {
 #include "mesh/edge_graph.h"
 #include "visualization/debug_renderer.h"
 #include "core/math/aabb.h"
+#include "mesh_generation/surface_reconstruction.h"
+#include "mesh_generation/surface/delaunay.h"
+#include "mesh_generation/qmorph.h"
 
 #include <set>
 
@@ -483,26 +486,30 @@ CFDVolume generate_mesh(World& world, InputMeshRegistry& registry, CFDMeshError&
         vector<vec3> points;
 		tvector<vec3> shadow_points;
         
-		SurfaceCrossField cross_field(surface, debug, feature_edges);
-		
-        {
-            Profile profile("Compute cross field");
-            cross_field.propagate();
+		float mesh_size = 0.1;
 
-            profile.log();
-        }
+		SurfaceTriMesh remeshed = surface;
+		vector<stable_edge_handle> surface_edges;
+		{
+			Profile profile("Remesh tri surface");
+			surface_edges = remesh_surface(remeshed, debug, features, mesh_size);
 
-		
+			profile.log();
+		}
 
-		PointOctotree octotree(points, domain_bounds);
-		SurfacePointPlacement surface_point_placement(surface, cross_field, octotree, shadow_points, vert_curvatures);
-        
-        {
-            Profile profile("Surface point placement");
-			surface_point_placement.propagate(features, debug);
-            
-            profile.log();
-        }
+		SurfaceCrossField cross_field(remeshed, debug);
+
+		{
+			Profile profile("Compute cross field");
+			cross_field.propagate(surface_edges);
+
+			profile.log();
+		}
+
+		{
+			Profile profile("QMorph");
+			qmorph(remeshed, debug, cross_field, surface_edges);
+		}
         
 		vector<vertex_handle> boundary_verts;
 		vector<Boundary> boundary;

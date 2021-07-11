@@ -143,7 +143,7 @@ void fiber_main(void* data) {
 }
 
 int main() {
-	uint num_workers = 8;
+	uint num_workers = 2;
 	make_job_system(20, num_workers);
 
 	JobDesc init_jobs[MAX_THREADS];

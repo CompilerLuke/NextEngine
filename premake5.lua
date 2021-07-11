@@ -326,8 +326,12 @@ project "CFD"
 	files {
 	    "%{prj.name}/include/generated.h",
 	    "%{prj.name}/include/cfd_ids.h",
-	    "%{prj.name}/src/generated.cpp"
+		"%{prj.name}/src/generated.cpp",
+		"CFD/src/geo/predicates.c"
 	}
+
+	filter "files:**.c"
+		flags { "NoPCH" }
 
 	filter "system:macosx"
 		libdirs { "/usr/local/cellar/gcc/10.2.0_4/lib/gcc/10" }
@@ -335,13 +339,20 @@ project "CFD"
 
 	filter "system:windows"
 		libdirs { "C:/Program Files (x86)/Intel/oneAPI/compiler/2021.2.0/windows/compiler/lib/intel64_win" }
+		libdirs { 
+			"CFD/vendor/thekla_atlas/build/Release", 
+			"CFD/vendor/thekla_atlas/build/src/nvcore/Release",
+			"CFD/vendor/thekla_atlas/build/src/nvimage/Release",
+			"CFD/vendor/thekla_atlas/build/src/nvmath/Release",
+			"CFD/vendor/thekla_atlas/build/src/nvmesh/Release",
+		}
 
 	filter "*"
 
-	includedirs { "NextEngine/include", "NextCore/include", "NextUI/include", "vendor/opennurbs" }
-	sysincludedirs { "CFD/vendor/lapack/LAPACKE/include", "CFD/vendor/lapack/CBLAS/include"}
+	includedirs { "NextEngine/include", "NextCore/include", "NextUI/include" }
+	sysincludedirs { "CFD/vendor/lapack/LAPACKE/include", "CFD/vendor/lapack/CBLAS/include", "CFD/vendor/thekla_atlas/src"}
 	libdirs { "CFD/vendor/lapack/build/lib/Release" }
-	links { "NextCore", "NextEngine", "NextUI", "blas", "lapack", "lapacke" }
+	links { "NextCore", "NextEngine", "NextUI", "blas", "lapack", "lapacke", "libthekla_atlas", "nvcore", "nvimage", "nvmath", "nvmesh" }
 	-- defines { "HAVE_LAPACK_CONFIG_H"}
 
 

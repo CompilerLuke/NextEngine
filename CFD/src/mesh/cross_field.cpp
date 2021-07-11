@@ -6,8 +6,8 @@
 #include "core/job_system/job.h"
 #include "core/memory/linear_allocator.h"
 
-SurfaceCrossField::SurfaceCrossField(SurfaceTriMesh& mesh, CFDDebugRenderer& debug, slice<edge_handle> feature_edges)
-: mesh(mesh), feature_edges(feature_edges), debug(debug) {
+SurfaceCrossField::SurfaceCrossField(SurfaceTriMesh& mesh, CFDDebugRenderer& debug)
+: mesh(mesh), debug(debug) {
 
 	centers.resize(mesh.tri_count);
 	theta_cell_center[0].resize(mesh.tri_count);
@@ -22,16 +22,9 @@ SurfaceCrossField::SurfaceCrossField(SurfaceTriMesh& mesh, CFDDebugRenderer& deb
 	current = 0;
 }
 
-float angle_between(vec3 v0, vec3 v1, vec3 vn) {
-	float angle = acos(clamp(-1, 1, dot(v0, v1)));
-	vec3 v2 = cross(v0, v1);
-	if (dot(vn, v2) < 0) { // Or > 0
-		angle = -angle;
-	}
-	return angle;
-}
-
 struct PropagateJob {
+    SurfaceTriMesh* mesh; 
+
     uint begin;
     uint end;
     vec3* centers;
@@ -68,7 +61,12 @@ void propagate_cross(PropagateJob& job) {
         vec3 center = job.centers[i];
 
         bool never_assigned = cross1.tangent == 0;
-        vec3 basis = never_assigned ? normalize(cross(cross1.normal, vec3(1, 0, 0))) : cross1.tangent;
+        vec3 basis = cross1.tangent;
+        if (never_assigned) {
+            vec3 v0, v1;
+            job.mesh->edge_verts(i * 3, &v0, &v1);
+            basis = normalize(cross(cross1.normal, v1 - v0));
+        }
 
         //CROSS
         uint active_edges = 0;
@@ -97,6 +95,7 @@ void propagate_cross(PropagateJob& job) {
 
             float theta = cross2.angle_between(basis, cross1.normal);
             
+            
             sum_of_theta += w * theta;
             weight += w;
             active_edges++;
@@ -106,21 +105,23 @@ void propagate_cross(PropagateJob& job) {
 
         sum_of_theta /= weight;
 
-        const float f = 0.7;
+        const float f = 0.9;
+        
+        basis = glm::rotate(glm::vec3(basis), sum_of_theta, glm::vec3(cross1.normal));
 
-        cross1.tangent = glm::rotate(glm::vec3(basis), never_assigned ? sum_of_theta : f * sum_of_theta, glm::vec3(cross1.normal));
-        cross1.bitangent = cross(cross1.normal, cross1.tangent);
+        cross1.tangent = never_assigned ? basis : normalize(cross1.tangent*(1.0-f) + basis*f); //glm::rotate(glm::vec3(basis), never_assigned ? sum_of_theta : f * sum_of_theta, glm::vec3(cross1.normal));
+        cross1.bitangent = normalize(cross(cross1.normal, cross1.tangent));
         
         job.cross_center_out[i] = cross1;
         
-        residual += fabs(sum_of_theta);
+        residual  += sum_of_theta;
     }
     
     residual /= job.end - job.begin;
     job.residual = nskipped ? 1000 : residual;
 }
 
-const float scale = 0.2;
+const float scale = 0.02;
 
 void draw_cross(CFDDebugRenderer& debug, vec3 center, Cross cross, vec4 color) {
     draw_line(debug, center - scale * cross.normal, center + scale * cross.normal, color);
@@ -169,7 +170,7 @@ float average(slice<float> values) {
     return sum / values.length;
 }
 
-void SurfaceCrossField::propagate() {
+void SurfaceCrossField::propagate(slice<stable_edge_handle> feature_edges) {
     //suspend_execution(debug);
     //clear_debug_stack(debug);
     
@@ -184,8 +185,10 @@ void SurfaceCrossField::propagate() {
 		centers[tri / 3] = (p[0] + p[1] + p[2]) / 3.0f;
 	}
 	
-	for (edge_handle edge : feature_edges) {
-		vec3 e0, e1;
+	for (stable_edge_handle handle : feature_edges) {
+        edge_handle edge = mesh.get_edge(handle);
+        
+        vec3 e0, e1;
 		mesh.edge_verts(edge, &e0, &e1);
         
         tri_handle tri1 = TRI(edge);
@@ -243,6 +246,7 @@ void SurfaceCrossField::propagate() {
         
         for (uint i = 0; i < chunks; i++) {
             PropagateJob& job = data[i];
+            job.mesh = &mesh;
             job.begin = i * n_per_chunk + 1;
             job.end = min((i+1) * n_per_chunk + 1, mesh.tri_count);
             
@@ -265,25 +269,31 @@ void SurfaceCrossField::propagate() {
         
         printf("Iteration %i, residual %f\n", i, residual);
         
+        /*clear_debug_stack(debug);
+        for (tri_handle tri : mesh) {
+            Cross cross = theta_cell_center[current][tri/3];
+            draw_cross(debug, centers[tri/3], theta_cell_center[current][tri/3], vec4(0,0,0,1));
+        }
+        suspend_execution(debug);*/
+        
         if (residual < 0.015) break;
         
         current = !current;
     }
     
-    for (tri_handle tri : mesh) {
-        Cross cross = theta_cell_center[current][tri/3];
-        draw_cross(debug, centers[tri/3], theta_cell_center[current][tri/3], vec4(0,0,0,1));
-    }
-    //suspend_execution(debug);
+    suspend_execution(debug);
+    clear_debug_stack(debug);
+
+    
 }
 
-Cross interpolate(vec3 position, Cross cross, uint n, vec3* positions, Cross* neighbors) {
+Cross interpolate(vec3 position, vec3 center, Cross cross, uint n, vec3* positions, Cross* neighbors) {
     float sum_theta = 0.0f;
-    float sum_w = 0.0f;
+    float sum_w = 1.0 / length(center);
     
     for (uint i = 0; i < n; i++) {
-        float theta = neighbors[i].angle_between(cross.normal, cross.tangent);
-        float w = 1.0 / sq(positions[i] - position);
+        float theta = neighbors[i].angle_between(cross.tangent, cross.normal);
+        float w = 1.0 / length(positions[i] - position);
         
         sum_theta += w*theta;
         sum_w += w;
@@ -308,14 +318,46 @@ Cross SurfaceCrossField::at_tri(tri_handle tri, vec3 pos) {
     
     vec3 positions[3];
     Cross neighbors[3];
+    uint n = 0;
     
     for (uint i = 0; i < 3; i++) {
         tri_handle neighbor = mesh.neighbor(tri, i);
-        neighbors[i] = theta_cell_center[current][neighbor / 3];
-        positions[i] = centers[neighbor / 3];
+        if (edge_flux_boundary[tri + i].tangent != vec3()) continue;
+        
+        neighbors[n] = theta_cell_center[current][neighbor / 3];
+        positions[n] = centers[neighbor / 3];
+        n++;
     }
     
-    return cross; //interpolate(pos, cross, 3, positions, neighbors);
+    return interpolate(pos, centers[tri/3], cross, n, positions, neighbors);
+}
+
+vec3 SurfaceCrossField::cross_vector(tri_handle tri, vec3 pos, vec3 basis) {
+    float sum_theta = 0.0;
+    float sum_weight = 0.0;    
+    float w;
+
+    Cross cross = theta_cell_center[current][tri / 3];
+
+    w = 1.0 / length(pos - centers[tri / 3]);
+    sum_theta += w*cross.angle_between(basis, cross.normal);
+    sum_weight += w;
+
+    draw_cross(debug, centers[tri / 3], theta_cell_center[current][tri / 3], color_map(w, 0, 100));
+
+    for (uint i = 0; i < 3; i++) {
+        tri_handle neigh = mesh.neighbor(tri, i);
+        if (edge_flux_boundary[tri + i].tangent != vec3()) continue;
+
+        w = 1.0 / length(pos - centers[neigh / 3]);
+        sum_theta += w * theta_cell_center[current][neigh / 3].angle_between(basis, cross.normal);
+        sum_weight += w;
+
+        draw_cross(debug, centers[neigh / 3], theta_cell_center[current][neigh / 3], color_map(w, 0, 100));
+    }
+    sum_theta /= sum_weight;
+
+    return glm::rotate(glm::vec3(basis), sum_theta, glm::vec3(cross.normal));
 }
 
 Cross SurfaceCrossField::at_edge(edge_handle edge) {

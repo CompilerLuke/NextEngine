@@ -1,8 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup>
-    <EnableUnitySupport>true</EnableUnitySupport>
-  </PropertyGroup>
+  <PropertyGroup><EnableUnitySupport>true</EnableUnitySupport></PropertyGroup>
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
@@ -62,7 +60,7 @@
     <IntDir>..\bin-int\Debug-windows-x86_64\CFD\</IntDir>
     <TargetName>CFD</TargetName>
     <TargetExt>.dll</TargetExt>
-    <IncludePath>vendor\lapack\LAPACKE\include;vendor\lapack\CBLAS\include;..\vendor\glm;$(IncludePath)</IncludePath>
+    <IncludePath>vendor\lapack\LAPACKE\include;vendor\lapack\CBLAS\include;vendor\thekla_atlas\src;..\vendor\glm;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -70,7 +68,7 @@
     <IntDir>..\bin-int\Release-windows-x86_64\CFD\</IntDir>
     <TargetName>CFD</TargetName>
     <TargetExt>.dll</TargetExt>
-    <IncludePath>vendor\lapack\LAPACKE\include;vendor\lapack\CBLAS\include;..\vendor\glm;$(IncludePath)</IncludePath>
+    <IncludePath>vendor\lapack\LAPACKE\include;vendor\lapack\CBLAS\include;vendor\thekla_atlas\src;..\vendor\glm;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -78,7 +76,7 @@
     <IntDir>..\bin-int\Dist-windows-x86_64\CFD\</IntDir>
     <TargetName>CFD</TargetName>
     <TargetExt>.dll</TargetExt>
-    <IncludePath>vendor\lapack\LAPACKE\include;vendor\lapack\CBLAS\include;..\vendor\glm;$(IncludePath)</IncludePath>
+    <IncludePath>vendor\lapack\LAPACKE\include;vendor\lapack\CBLAS\include;vendor\thekla_atlas\src;..\vendor\glm;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -86,7 +84,7 @@
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NE_PLATFORM_WINDOWS;NE_DEBUG;CFD_DLL;CFD_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;..\NextUI\include;..\vendor\opennurbs;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;..\NextUI\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <MinimalRebuild>false</MinimalRebuild>
@@ -98,8 +96,8 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>blas.lib;lapack.lib;lapacke.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\Program Files (x86)\Intel\oneAPI\compiler\2021.2.0\windows\compiler\lib\intel64_win;vendor\lapack\build\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>blas.lib;lapack.lib;lapacke.lib;libthekla_atlas.lib;nvcore.lib;nvimage.lib;nvmath.lib;nvmesh.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Program Files (x86)\Intel\oneAPI\compiler\2021.2.0\windows\compiler\lib\intel64_win;vendor\thekla_atlas\build\Release;vendor\thekla_atlas\build\src\nvcore\Release;vendor\thekla_atlas\build\src\nvimage\Release;vendor\thekla_atlas\build\src\nvmath\Release;vendor\thekla_atlas\build\src\nvmesh\Release;vendor\lapack\build\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImportLibrary>..\bin\Debug-windows-x86_64\CFD\CFD.lib</ImportLibrary>
     </Link>
     <PreBuildEvent>
@@ -115,7 +113,7 @@
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NE_PLATFORM_WINDOWS;NE_RELEASE;CFD_DLL;CFD_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;..\NextUI\include;..\vendor\opennurbs;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;..\NextUI\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -132,8 +130,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>blas.lib;lapack.lib;lapacke.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\Program Files (x86)\Intel\oneAPI\compiler\2021.2.0\windows\compiler\lib\intel64_win;vendor\lapack\build\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>blas.lib;lapack.lib;lapacke.lib;libthekla_atlas.lib;nvcore.lib;nvimage.lib;nvmath.lib;nvmesh.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Program Files (x86)\Intel\oneAPI\compiler\2021.2.0\windows\compiler\lib\intel64_win;vendor\thekla_atlas\build\Release;vendor\thekla_atlas\build\src\nvcore\Release;vendor\thekla_atlas\build\src\nvimage\Release;vendor\thekla_atlas\build\src\nvmath\Release;vendor\thekla_atlas\build\src\nvmesh\Release;vendor\lapack\build\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImportLibrary>..\bin\Release-windows-x86_64\CFD\CFD.lib</ImportLibrary>
     </Link>
     <PreBuildEvent>
@@ -149,7 +147,7 @@
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NE_PLATFORM_WINDOWS;NE_DIST;CFD_DLL;CFD_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;..\NextUI\include;..\vendor\opennurbs;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;..\NextUI\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -164,8 +162,8 @@
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>blas.lib;lapack.lib;lapacke.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\Program Files (x86)\Intel\oneAPI\compiler\2021.2.0\windows\compiler\lib\intel64_win;vendor\lapack\build\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>blas.lib;lapack.lib;lapacke.lib;libthekla_atlas.lib;nvcore.lib;nvimage.lib;nvmath.lib;nvmesh.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\Program Files (x86)\Intel\oneAPI\compiler\2021.2.0\windows\compiler\lib\intel64_win;vendor\thekla_atlas\build\Release;vendor\thekla_atlas\build\src\nvcore\Release;vendor\thekla_atlas\build\src\nvimage\Release;vendor\thekla_atlas\build\src\nvmath\Release;vendor\thekla_atlas\build\src\nvmesh\Release;vendor\lapack\build\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImportLibrary>..\bin\Dist-windows-x86_64\CFD\CFD.lib</ImportLibrary>
     </Link>
     <PreBuildEvent>
@@ -187,7 +185,6 @@
     <ClInclude Include="include\editor\viewport_interaction.h" />
     <ClInclude Include="include\generated.h" />
     <ClInclude Include="include\geo\predicates.h" />
-    <ClInclude Include="include\mesh_generation\hexcore.h" />
     <ClInclude Include="include\lapacke_config.h" />
     <ClInclude Include="include\mesh.h" />
     <ClInclude Include="include\mesh\edge_graph.h" />
@@ -201,8 +198,12 @@
     <ClInclude Include="include\mesh_generation\delaunay.h" />
     <ClInclude Include="include\mesh_generation\delaunay_advancing_front.h" />
     <ClInclude Include="include\mesh_generation\front_octotree.h" />
+    <ClInclude Include="include\mesh_generation\hexcore.h" />
     <ClInclude Include="include\mesh_generation\point_octotree.h" />
+    <ClInclude Include="include\mesh_generation\qmorph.h" />
+    <ClInclude Include="include\mesh_generation\surface\delaunay.h" />
     <ClInclude Include="include\mesh_generation\surface_point_placement.h" />
+    <ClInclude Include="include\mesh_generation\surface_reconstruction.h" />
     <ClInclude Include="include\numerical\matrix.h" />
     <ClInclude Include="include\numerical\sparse_matrix.h" />
     <ClInclude Include="include\numerical\spline.h" />
@@ -224,14 +225,15 @@
     <ClCompile Include="src\editor\scene_viewport_interactions.cpp" />
     <ClCompile Include="src\generated.cpp" />
     <ClCompile Include="src\geo\predicates.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\mesh\cross_field.cpp" />
     <ClCompile Include="src\mesh\edge_graph.cpp" />
     <ClCompile Include="src\mesh\input\input_model.cpp" />
     <ClCompile Include="src\mesh\input\load_mesh.cpp" />
     <ClCompile Include="src\mesh\input\mesh_registry.cpp" />
-    <ClCompile Include="src\mesh\surface_tri_mesh.cpp" />
+    <ClCompile Include="src\mesh\surface\mesh_operations.cpp" />
+    <ClCompile Include="src\mesh\surface\tri_mesh.cpp" />
     <ClCompile Include="src\mesh\vert_graph.cpp" />
     <ClCompile Include="src\mesh_generation\advancing_front.cpp" />
     <ClCompile Include="src\mesh_generation\delanuay.cpp" />
@@ -243,7 +245,10 @@
     <ClCompile Include="src\mesh_generation\isotropic_advancing_front.cpp" />
     <ClCompile Include="src\mesh_generation\mesh_generation.cpp" />
     <ClCompile Include="src\mesh_generation\point_octotree.cpp" />
-    <ClCompile Include="src\mesh_generation\surface_point_placement.cpp" />
+    <ClCompile Include="src\mesh_generation\surface\delaunay.cpp" />
+    <ClCompile Include="src\mesh_generation\surface\qmorph.cpp" />
+    <ClCompile Include="src\mesh_generation\surface\reconstruct_surface.cpp" />
+    <ClCompile Include="src\mesh_generation\surface\surface_point_placement.cpp" />
     <ClCompile Include="src\solver.cpp" />
     <ClCompile Include="src\visualization\debug_renderer.cpp" />
     <ClCompile Include="src\visualization\input_mesh_viewer.cpp" />

@@ -14,14 +14,17 @@ struct CFDDebugRenderer;
 struct FeatureCurve;
 
 class SurfacePointPlacement {
-	SurfaceTriMesh& mesh;
-	SurfaceCrossField& cross_field;
-	PointOctotree& octo;
-    slice<float> curvatures;
-	tvector<vec3>& shadow_points;
-
 public:
-	SurfacePointPlacement(SurfaceTriMesh&, SurfaceCrossField&, PointOctotree&, tvector<vec3>& shadow_points, slice<float> curvatures);
+    CFDDebugRenderer& debug;
+	
+    SurfaceTriMesh& mesh;
+	SurfaceCrossField& cross_field;
+    slice<FeatureCurve> curves;
+    slice<float> curvatures;
+		
+    PointOctotree& octo;
+    tvector<tri_handle> tris;
 
-	void propagate(slice<FeatureCurve> curves, CFDDebugRenderer& debug);
+    vertex_handle add_vertex(tri_handle tri, vec3 pos);
+	void propagate();
 };

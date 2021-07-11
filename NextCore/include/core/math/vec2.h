@@ -60,3 +60,7 @@ inline real dot(vec2 a, vec2 b) {
 inline vec2 normalize(vec2 v) {
 	return v / length(v);
 }
+
+inline real cross(vec2 v0, vec2 v1) {
+	return (v0.x * v1.y) - (v0.y * v1.x);
+}

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/math/vec3.h"
+#include "core/math/vec2.h"
 #include "core/math/aabb.h"
 
 struct Ray {
@@ -72,4 +73,39 @@ inline bool ray_aabb_intersect(const AABB& bounds, const Ray& r, float* t = null
 
 	if (t) *t = tmin;
 	return (allow_inside || tmin > 0) && tmin < r.t;
+}
+
+//p0 --> p1 must lie on the plane
+inline bool edge_edge_intersect(vec3 normal, vec3 p0, vec3 p1, vec3 p2, vec3 p3, vec3* inter = nullptr) {
+    vec3 p01 = p1 - p0;
+    real p01_length = length(p01);
+
+    vec3 tangent = p01 / p01_length;
+    vec3 bitangent = normalize(cross(normal, tangent));
+
+    vec3 p02 = p2 - p0;
+    vec3 p03 = p3 - p0;
+
+    vec2 v2 = vec2(dot(p02, tangent), dot(p02, bitangent));
+    vec2 v3 = vec2(dot(p03, tangent), dot(p03, bitangent));
+
+    vec2 d0 = vec2(p01_length, 0.0f);
+
+    vec2 o1 = v2;
+    vec2 d1 = vec2(v3 - v2);
+
+    real d01 = cross(d0, d1);
+    //Parallel
+    //todo: not handled correctly 
+    if (fabs(d01) < FLT_EPSILON) return false;
+
+    real t0 = cross(o1, d1) / d01;
+    if (t0 < FLT_EPSILON || t0 > 1 - FLT_EPSILON) return false;
+
+    real t1 = cross(o1, d0) / d01;
+    if (t1 < FLT_EPSILON || t1 > 1 - FLT_EPSILON) return false;
+    
+    if (inter) *inter = p0 + t0 * p01;
+
+    return true;
 }

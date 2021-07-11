@@ -45,6 +45,10 @@ inline vec3 operator/(vec3 a, vec3 b) {
 	return { a.x / b.x, a.y / b.y, a.z / b.z };
 }
 
+inline bool operator!=(vec3 a, vec3 b) {
+	return a.x != b.x || a.y != b.y || a.z != b.z;
+}
+
 inline bool operator==(vec3 a, vec3 b) {
 	return a.x == b.x && a.y == b.y && a.z == b.z;
 }
@@ -117,12 +121,41 @@ inline float to_degrees(float angle) {
 	return angle * 180 / PI;
 }
 
+//todo move to seperate file
+inline real clamp(real low, real high, real value) {
+	if (value > high) return high;
+	if (value < low) return low;
+	return value;
+}
+
 inline real vec_angle_cos(vec3 v0, vec3 v1, vec3 v2) {
 	vec3 v01 = v0 - v1;
 	vec3 v21 = v2 - v1;
-	return dot(v01, v21) / (length(v01) * length(v21));
+	return clamp(-1, 1, dot(v01, v21) / (length(v01) * length(v21)));
 }
 
 inline real vec_angle(vec3 v0, vec3 v1, vec3 v2) {
 	return acosf(vec_angle_cos(v0, v1, v2));
+}
+
+inline real vec_sign_angle(vec3 v0, vec3 v1, vec3 vn) {
+	real angle = acos(clamp(-1, 1, dot(v0, v1) / (length(v0) * length(v1))));
+
+	vec3 v2 = cross(-v0, v1);
+	if (dot(vn, v2) < -FLT_EPSILON) { // Or > 0
+		angle = -angle;
+	}
+	return angle;
+}
+
+inline real vec_dir_angle(vec3 v0, vec3 v1, vec3 vn) {
+	real angle = vec_sign_angle(v0, v1, vn);
+	if (angle < 0) { 
+		angle = 2 * PI + angle;
+	}
+	return angle;
+}
+
+inline real vec_angle(vec3 v0, vec3 v1) {
+	return acosf(clamp(-1, 1, dot(v0, v1) / (length(v0) * length(v1))));
 }

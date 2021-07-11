@@ -84,6 +84,15 @@ SurfaceTriMesh surface_from_mesh(const glm::mat4& mat, Mesh& mesh) {
 		}
 	}
 
+	surface.stable_to_edge.resize(surface.tri_count * 3);
+	surface.edge_flags = new char[surface.stable_to_edge.length]();
+
+	//todo: robustness, consider deallocated triangles
+	for (uint i = 0; i < surface.tri_count * 3; i++) {
+		surface.stable_to_edge[i] = i;
+		surface.edge_to_stable[i] = { i };
+	}
+
 	surface.positions.resize(vertex_id);
 
 	for (auto [position, id] : vertex_hash_map) {

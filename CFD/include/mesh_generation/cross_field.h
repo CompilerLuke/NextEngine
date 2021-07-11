@@ -10,12 +10,6 @@ struct SurfaceTriMesh;
 
 struct CFDDebugRenderer;
 
-inline float clamp(float low, float high, float value) {
-	if (value > high) return high;
-	if (value < low) return low;
-	return value;
-}
-
 struct Cross {
 	vec3 tangent;
 	vec3 normal;
@@ -46,8 +40,10 @@ struct Cross {
 			dot(bitangent, basis)
 		};
 
+		vec3 dir[3] = { tangent,normal,bitangent };
+
 		uint idx = fabs(dot_p[0]) > fabs(dot_p[1]) ? (fabs(dot_p[0]) > fabs(dot_p[2]) ? 0 : 2) : (fabs(dot_p[1]) > fabs(dot_p[2]) ? 1 : 2);
-		vec3 closest = (&tangent)[idx];
+		vec3 closest = dir[idx];
 		if (dot_p[idx] < 0) {
 			closest = -closest;
 			dot_p[idx] = -dot_p[idx];
@@ -62,9 +58,9 @@ struct Cross {
     
     inline glm::mat4 rotation_mat() const {
         glm::mat4 result(
-            glm::vec4(glm::vec3(tangent),0.0f),
-            glm::vec4(glm::vec3(bitangent),0.0f),
-            glm::vec4(glm::vec3(normal),0.0f),
+            glm::vec4(glm::vec3(normalize(tangent)),0.0f),
+            glm::vec4(glm::vec3(normalize(bitangent)),0.0f),
+            glm::vec4(glm::vec3(normalize(normal)),0.0f),
             glm::vec4(0,0,0,1)
         );
         return result;
@@ -82,7 +78,6 @@ struct FeatureEdge {
 class SurfaceCrossField {
 	SurfaceTriMesh& mesh;
 	CFDDebugRenderer& debug;
-	slice<edge_handle> feature_edges;
 
 	vector<vec3> centers;
 	vector<Cross> edge_flux_boundary;
@@ -92,15 +87,17 @@ class SurfaceCrossField {
 	bool current;
 
 public:
-	SurfaceCrossField(SurfaceTriMesh&, CFDDebugRenderer& debug, slice<edge_handle> feature_edges);
+	SurfaceCrossField(SurfaceTriMesh&, CFDDebugRenderer& debug);
 
-	void propagate();
+	void propagate(slice<stable_edge_handle>);
 
 	//vector<FeatureEdge> get_feature_edges();
     
     Cross at_edge(edge_handle edge);
 	Cross at_tri(tri_handle tet, vec3 location);
     Cross at_tri(tri_handle tet);
+
+	vec3 cross_vector(tri_handle tri, vec3 pos, vec3 basis);
 };
 
 void draw_cross(CFDDebugRenderer&, vec3 position, Cross cross, vec4 color);

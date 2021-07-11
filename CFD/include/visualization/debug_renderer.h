@@ -27,6 +27,7 @@ void draw_quad(CFDDebugRenderer&, vec3 origin, vec2 size, vec3 rot = vec3(0,0,0)
 void draw_sphere(CFDDebugRenderer&, vec3 origin, float r, vec4 color = DEFAULT_DEBUG_COLOR);
 
 void suspend_execution(CFDDebugRenderer&);
+void suspend_and_reset_execution(CFDDebugRenderer&);
 void resume_execution(CFDDebugRenderer&, uint value = 1);
 
 void clear_debug_stack(CFDDebugRenderer&);

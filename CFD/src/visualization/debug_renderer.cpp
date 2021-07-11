@@ -93,6 +93,11 @@ void suspend_execution(CFDDebugRenderer& renderer) {
     wait_for_counter(&renderer.counter, INT_MAX);
 }
 
+void suspend_and_reset_execution(CFDDebugRenderer& renderer) {
+    renderer.counter = INT_MAX+1;
+    wait_for_counter(&renderer.counter, INT_MAX);
+}
+
 void resume_execution(CFDDebugRenderer& renderer, uint value) {
     renderer.counter -= value;
 }
