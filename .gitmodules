@@ -25,3 +25,6 @@
 [submodule "CFD/vendor/thekla_atlas"]
 	path = CFD/vendor/thekla_atlas
 	url = https://github.com/Thekla/thekla_atlas.git
+[submodule "CFD/vendor/eigen"]
+	path = CFD/vendor/eigen
+	url = https://gitlab.com/libeigen/eigen.git
