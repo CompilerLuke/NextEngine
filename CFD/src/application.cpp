@@ -32,6 +32,8 @@
 #include "editor/viewport.h"
 #include "editor/viewport_interaction.h"
 
+#include "mesh_generation/parametric_shapes.h"
+
 struct CFD {
     Modules* modules;
 	CFDSolver solver;
@@ -96,13 +98,13 @@ void set_theme(UITheme& theme) {
 void default_scene(Lister& lister, InputMeshRegistry& registry, World& world) {
     Transform model_trans;
     //model_trans.position.x = 4.375;
-    //model_trans.scale = glm::vec3(0.3);
+    model_trans.scale = glm::vec3(5);
     //model_trans.scale = glm::vec3(3);
     model_trans.rotation = glm::angleAxis(to_radians(-90.0f), glm::vec3(1, 0, 0));
     
-    input_model_handle model = registry.load_model("part.fbx", compute_model_matrix(model_trans));
+    input_model_handle model = registry.load_model("jet_engine.fbx", compute_model_matrix(model_trans));
 
-    {
+    if (false) {
         auto [e, trans, mesh] = world.make<Transform, CFDMesh>();
         mesh.model = model;
         mesh.color = glm::vec4(1,1,0,1);
@@ -184,9 +186,10 @@ void generate_mesh_in_background(CFD& cfd) {
     auto some_mesh = world.first<Transform, CFDMesh>();
     auto some_domain = world.first<Transform, CFDDomain>();
     
-    if (!(some_domain && some_mesh)) return;
+    // && some_mesh
+    if (!(some_domain)) return;
 
-    auto [e1, mesh_trans, mesh] = *some_mesh;
+    //auto [e1, mesh_trans, mesh] = *some_mesh;
     auto [e2, domain_trans, domain] = *some_domain;
 
     vec4 plane(domain.plane, dot(domain.plane, domain.center));
@@ -194,7 +197,8 @@ void generate_mesh_in_background(CFD& cfd) {
     cfd.solver.phase = SOLVER_PHASE_MESH_GENERATION;
     
     CFDMeshError err;
-    cfd.solver.mesh = generate_mesh(*cfd.modules->world, cfd.mesh_registry, err, *cfd.debug_renderer);
+    //cfd.solver.mesh = generate_mesh(*cfd.modules->world, cfd.mesh_registry, err, *cfd.debug_renderer);
+    cfd.solver.mesh = generate_parametric_mesh();
 
     if (err.type == CFDMeshError::None) {
         cfd.solver.phase = SOLVER_PHASE_SIMULATION;
@@ -205,6 +209,8 @@ void generate_mesh_in_background(CFD& cfd) {
     }
 
     build_vertex_representation(*cfd.visualization, cfd.solver.mesh, plane, true);
+
+    cfd.solver.results = simulate(cfd.solver.mesh, *cfd.debug_renderer);
 }
 
 APPLICATION_API void update(CFD& cfd, Modules& modules) {
@@ -309,7 +315,8 @@ void render_editor_ui(CFD& cfd, Modules& engine) {
         
         end_hsplitter(ui);
 
-        render_inspector(inspector);
+        parametric_ui(ui);
+        //render_inspector(inspector);
     }
     end_hsplitter(ui);
 

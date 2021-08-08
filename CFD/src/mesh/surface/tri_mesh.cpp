@@ -25,6 +25,7 @@ void SurfaceTriMesh::move(SurfaceTriMesh&& other) {
     edge_to_stable = other.edge_to_stable;
     edge_flags = std::move(other.edge_flags);
     free_tris = std::move(other.free_tris);
+    N = other.N;
 
 	other.edges = nullptr;
 	other.indices = nullptr;
@@ -33,24 +34,61 @@ void SurfaceTriMesh::move(SurfaceTriMesh&& other) {
     other.tri_count = 0;
 }
 
-void SurfaceTriMesh::copy(const SurfaceTriMesh& other) {
+uint tri_to_quad_edge(edge_handle tri) {
+    uint base = tri / 3;
+    uint edge = tri - base*3;
+
+    return base * 4 + edge;
+}
+
+void SurfaceTriMesh::copy(const SurfaceTriMesh& other, bool quad) {
     tri_capacity = other.tri_capacity;
 	tri_count = other.tri_count;
 	positions = other.positions;
-    stable_to_edge = other.stable_to_edge;
-    free_tris = std::move(free_tris);
+    
+    free_tris = other.free_tris;
 
-	uint n = tri_capacity * 3;
+    assert_mesg(!other.is_mixed_mesh() || quad, "Cannot copy from mixed quad mesh to tri mesh\n");
+
+    bool to_quad = quad && !other.is_mixed_mesh();
+
+    N = quad ? 4 : 3;
+
+	uint n = tri_capacity * N;
 	edges = new edge_handle[n];
 	indices = new vertex_handle[n];
 	flags = new char[tri_capacity];
     edge_to_stable = new stable_edge_handle[n];
     edge_flags = new char[other.stable_to_edge.length](); // (char*)calloc(1, other.stable_to_edge.length);
 
-	memcpy_t(edges, other.edges, n);
-	memcpy_t(indices, other.indices, n);    
-    memcpy_t(edge_to_stable, other.edge_to_stable, n);
-	memcpy_t(flags, other.flags, tri_count);
+    if (to_quad) {
+        uint tri_offset = 3;
+
+        for (
+            uint tri_offset = 3, quad_offset = 4;
+            tri_offset < 3 * other.tri_count;
+            tri_offset += 3, quad_offset += 4)
+        {
+            for (uint j = 0; j < 3; j++) {
+                edges[quad_offset + j] = tri_to_quad_edge(other.edges[tri_offset + j]);
+                edge_to_stable[quad_offset + j] = other.edge_to_stable[tri_offset + j];
+                indices[quad_offset + j] = other.indices[tri_offset + j];
+            }
+        }
+
+        stable_to_edge.resize(other.stable_to_edge.length);
+        for (uint i = 0; i < other.stable_to_edge.length; i++) {
+            stable_to_edge[i] = tri_to_quad_edge(other.stable_to_edge[i]);
+        }
+    } 
+    else {
+        stable_to_edge = other.stable_to_edge;
+        memcpy_t(edges, other.edges, n);
+        memcpy_t(indices, other.indices, n);
+        memcpy_t(edge_to_stable, other.edge_to_stable, n);
+    }
+
+    memcpy_t(flags, other.flags, tri_count);
 	//if (other.edge_flags) memcpy_t(edge_flags, other.edge_flags, other.stable_to_edge.length);
 
 	aabb = other.aabb;
@@ -68,23 +106,23 @@ void SurfaceTriMesh::operator=(SurfaceTriMesh&& other) {
 
 
 SurfaceTriMesh::SurfaceTriMesh(const SurfaceTriMesh& other) {
-    copy(other);
+    copy(other, other.is_mixed_mesh());
 }
 
 void SurfaceTriMesh::reserve_tris(uint count) {
 	if (count < tri_capacity) return;
 
 	tri_capacity = count;
-	edges = realloc_t(edges, count*3);
-	indices = realloc_t(indices, count*3);
+	edges = realloc_t(edges, count*N);
+	indices = realloc_t(indices, count*N);
 	flags = realloc_t(flags, count);
-	edge_to_stable = realloc_t(edge_to_stable, count*3);
+	edge_to_stable = realloc_t(edge_to_stable, count*N);
 }
 
 //todo this function is incorrect
 void SurfaceTriMesh::resize_tris(uint count) {
 	reserve_tris(count);
-	for (uint i = 0; i < count*3; i++) {
+	for (uint i = 0; i < count*N; i++) {
 		indices[i] = {};
 		edges[i] = {};
         edge_to_stable[i] = {};
@@ -98,7 +136,7 @@ void SurfaceTriMesh::resize_tris(uint count) {
 //#define DEBUG_TRACE_TRISEARCH
 
 void SurfaceTriMesh::dealloc_tri(tri_handle tri) {
-    flags[tri / 3] |= TRI_DELETED;
+    flags[tri / N] |= TRI_DELETED;
     free_tris.append(TRI(tri));
 }
 
@@ -230,10 +268,18 @@ extern float sliver_threshold;
 
 void draw_mesh(CFDDebugRenderer& debug, SurfaceTriMesh& mesh) {
     LinearRegion region(get_temporary_allocator());
-    bool* two_edges = TEMPORARY_ZEROED_ARRAY(bool, mesh.tri_count*3);
+    bool* two_edges = TEMPORARY_ZEROED_ARRAY(bool, mesh.tri_count*mesh.N);
     
     for (tri_handle tri : mesh) {
         if (mesh.is_deallocated(tri)) continue;
+
+        if (mesh.is_quad(tri)) {
+            vec3 verts[4];
+            for (uint i = 0; i < 4; i++) verts[i] = mesh.position(tri, i);
+            draw_quad(debug, verts, vec4(1));
+
+            continue;
+        }
 
         vec3 verts[3];
         mesh.triangle_verts(tri, verts);
@@ -268,7 +314,7 @@ void draw_mesh(CFDDebugRenderer& debug, SurfaceTriMesh& mesh) {
                 continue;
             } 
 
-            if (mesh.is_deallocated(TRI(neigh))) {
+            if (mesh.is_deallocated(mesh.TRI(neigh))) {
                 draw_triangle(debug, verts, RED_DEBUG_COLOR);
                 suspend_execution(debug);
                 printf("Connected to dead triangle!\n");
@@ -282,7 +328,7 @@ void draw_mesh(CFDDebugRenderer& debug, SurfaceTriMesh& mesh) {
             }
 #endif
             vec3 p1 = (mesh.positions[v0.id] + mesh.positions[v1.id]) / 2.0f;
-            vec3 p2 = mesh.triangle_center(TRI(neigh));
+            vec3 p2 = mesh.triangle_center(mesh.TRI(neigh));
 
             draw_line(debug, p0, p1, RED_DEBUG_COLOR);
             draw_line(debug, p1, p2, RED_DEBUG_COLOR);
@@ -294,13 +340,13 @@ void draw_mesh(CFDDebugRenderer& debug, SurfaceTriMesh& mesh) {
 }
 
 //STABLE EDGES
-edge_handle SurfaceTriMesh::get_edge(stable_edge_handle stable) {
+edge_handle SurfaceTriMesh::get_edge(stable_edge_handle stable, int offset) {
     edge_handle result = stable_to_edge[stable.id];
     if (!result) {
         //draw_mesh(debug, *this);
         //suspend_execution(debug);
     }
-    return result;
+    return next_edge(result, offset);
 }
 
 tri_handle SurfaceTriMesh::get_tri(stable_edge_handle stable) {
@@ -311,12 +357,18 @@ stable_edge_handle SurfaceTriMesh::get_stable(edge_handle edge) {
     return edge_to_stable[edge];
 }
 
-edge_handle SurfaceTriMesh::get_opp_edge(stable_edge_handle edge) {
-    return edges[stable_to_edge[edge.id]];
+edge_handle SurfaceTriMesh::get_opp_edge(stable_edge_handle edge, int offset) {
+    return next_edge(edges[stable_to_edge[edge.id]], offset);
 }
 
-stable_edge_handle SurfaceTriMesh::get_opp(stable_edge_handle edge) {
-    return edge_to_stable[edges[stable_to_edge[edge.id]]];
+stable_edge_handle SurfaceTriMesh::get_opp(stable_edge_handle stable) {
+    edge_handle edge = stable_to_edge[stable.id];
+    if (edge == 0) {
+        suspend_and_reset_execution(*debug);
+        draw_mesh(*debug, *this);
+        suspend_execution(*debug);
+    }
+    return edge_to_stable[edges[edge]];
 }
 
 

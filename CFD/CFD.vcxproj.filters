@@ -178,6 +178,7 @@
       <Filter>include\visualization</Filter>
     </ClInclude>
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="include\mesh_generation\parametric_shapes.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\application.cpp">
@@ -283,5 +284,7 @@
       <Filter>src\visualization</Filter>
     </ClCompile>
     <ClCompile Include="stdafx.cpp" />
+    <ClCompile Include="src\mesh_generation\parametric_shapes.cpp" />
+    <ClCompile Include="include\solver\explicit.cpp" />
   </ItemGroup>
 </Project>

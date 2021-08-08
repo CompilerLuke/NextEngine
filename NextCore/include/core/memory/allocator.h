@@ -75,6 +75,11 @@ void memcpy_t(T* a, const T* b, u64 count) {
 }
 
 template<typename T>
+void memclear_t(T* a, u64 count) {
+	memset(a, 0, count * sizeof(T));
+}
+
+template<typename T>
 T* realloc_t(T* prev, u64 count) {
 	T* ptr = (T*)realloc(prev, count * sizeof(T));
 	assert(ptr);

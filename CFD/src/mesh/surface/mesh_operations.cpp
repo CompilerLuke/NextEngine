@@ -15,7 +15,7 @@ void SurfaceTriMesh::link_edge(edge_handle edge, edge_handle neigh) {
     edge_verts(neigh, &v0, &v1);
 
     indices[edge] = v1;
-    indices[TRI_NEXT_EDGE(edge)] = v0;
+    indices[next_edge(edge)] = v0;
 }    
 
 
@@ -53,10 +53,10 @@ edge_handle SurfaceTriMesh::flip_edge(edge_handle edge0, bool force) {
 
     vec3 normal = triangle_normal(TRI(edge0));
 
-    edge_handle n0 = TRI_NEXT_EDGE(edge0, 1);
-    edge_handle n1 = TRI_NEXT_EDGE(edge0, 2);
-    edge_handle n2 = TRI_NEXT_EDGE(edge1, 1);
-    edge_handle n3 = TRI_NEXT_EDGE(edge1, 2);
+    edge_handle n0 = next_edge(edge0, 1);
+    edge_handle n1 = next_edge(edge0, 2);
+    edge_handle n2 = next_edge(edge1, 1);
+    edge_handle n3 = next_edge(edge1, 2);
 
     edge_handle neigh0 = edges[n0];
     edge_handle neigh1 = edges[n1];
@@ -73,8 +73,8 @@ edge_handle SurfaceTriMesh::flip_edge(edge_handle edge0, bool force) {
     link_edge(edge0, flip ? neigh3 : neigh2);
     link_edge(edge1, flip ? neigh1 : neigh0);
 
-    edge0 = TRI_NEXT_EDGE(edge0, flip ? 2 : 1);
-    edge1 = TRI_NEXT_EDGE(edge1, flip ? 2 : 1);
+    edge0 = next_edge(edge0, flip ? 2 : 1);
+    edge1 = next_edge(edge1, flip ? 2 : 1);
     
     link_edge(edge0, edge1);
     mark_new_edge(edge0);
@@ -98,8 +98,8 @@ stable_edge_handle SurfaceTriMesh::split_edge(edge_handle e0, vec3 pos) {
     vertex_handle v = { (int)positions.length };
     positions.append(pos);
 
-    edge_handle en0 = TRI_NEXT_EDGE(e0);
-    edge_handle en1 = TRI_NEXT_EDGE(e1, 2);
+    edge_handle en0 = next_edge(e0);
+    edge_handle en1 = next_edge(e1, 2);
 
     vec3 p4, p5;
     vec3 p6, p7;
@@ -167,9 +167,9 @@ bool SurfaceTriMesh::flip_bad_edge(edge_handle edge0) {
     //suspend_execution(debug);
 
     auto angle = [](SurfaceTriMesh& mesh, edge_handle edge) {
-        vec3 v0 = mesh.position(TRI_NEXT_EDGE(edge, 2));
+        vec3 v0 = mesh.position(mesh.next_edge(edge, 2));
         vec3 v1 = mesh.position(edge);
-        vec3 v2 = mesh.position(TRI_NEXT_EDGE(edge, 1));
+        vec3 v2 = mesh.position(mesh.next_edge(edge, 1));
 
         vec3 v01 = v1 - v0;
         vec3 v02 = v2 - v0;
@@ -201,14 +201,16 @@ bool SurfaceTriMesh::flip_bad_edge(edge_handle edge0) {
 void SurfaceTriMesh::smooth_mesh(uint n) {
     LinearRegion region(get_temporary_allocator());
     uint* vert_smoothed = TEMPORARY_ARRAY(uint, tri_count / 32);
+    bool mixed_mesh = N != 3;
 
     for (uint it = 0; it < n; it++) {
         memset(vert_smoothed, 0, sizeof(uint) * tri_count / 32);
         
-        for (uint i = 3; i < tri_count * 3; i++) {
+        for (uint i = N; i < tri_count * N; i++) {
+            if (is_deallocated(i)) continue;            
+            if (mixed_mesh && TRI_EDGE(i) == 3 && !is_quad(i)) continue;
+                        
             uint mask = 1 << (i % 32);
-            
-            if (is_deallocated(i)) continue;
             if (vert_smoothed[i / 32] & mask) continue;
 
             vertex_handle v = indices[i];
@@ -225,7 +227,7 @@ void SurfaceTriMesh::smooth_mesh(uint n) {
                     break;
                 }
 
-                vec3 pos = position(TRI_NEXT_EDGE(edge));
+                vec3 pos = position(next_edge(edge));
 
                 float weight = 1.0; // length(pos - orig_pos);
                 new_pos += weight * pos;
@@ -314,6 +316,7 @@ void SurfaceTriMesh::flip_bad_edges(tri_handle start, bool smooth) {
     hash_set<tri_handle, 100> visited;
     hash_set<vertex_handle, 100> smoothed;
     array<100, tri_handle> stack;
+    uint count = 0;
 
     start = TRI(start);
     stack.append(start);
@@ -337,7 +340,7 @@ void SurfaceTriMesh::flip_bad_edges(tri_handle start, bool smooth) {
                         break;
                     }
 
-                    vec3 pos = position(TRI_NEXT_EDGE(edge));
+                    vec3 pos = position(next_edge(edge));
 
                     float weight = 1.0; // length(pos - orig_pos);
                     new_pos += weight * pos;
@@ -360,7 +363,7 @@ void SurfaceTriMesh::flip_bad_edges(tri_handle start, bool smooth) {
             if (flip) {
                 stack.append(neigh);
                 visited.add(neigh);
-           
+                if (count++ > 80) return;
             }
         }
     }

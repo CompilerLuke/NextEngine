@@ -82,7 +82,7 @@ void InputMeshViewer::extract_render_data(EntityQuery query) {
 		for (edge_handle feature : model.feature_edges) {
 			
 			vec3 v0 = surface.position(feature);
-			vec3 v1 = surface.position(TRI(feature) + (TRI_EDGE(feature)+1)%3);
+			vec3 v1 = surface.position(surface.TRI(feature) + (surface.TRI_EDGE(feature)+1)%3);
 			lines.draw_line(v0, v1, vec4(1, 0, 0, 1));
 		}
 	}
@@ -108,8 +108,8 @@ void InputMeshViewer::extract_render_data(EntityQuery query) {
 
 		if (viewport.mesh_selection.mode == MeshPrimitive::Edge) {
 			for (uint edge_id : viewport.mesh_selection.get_selected()) {
-				uint triangle = TRI(edge_id);
-				uint edge = TRI_EDGE(edge_id);
+				uint triangle = surface.TRI(edge_id);
+				uint edge = surface.TRI_EDGE(edge_id);
 				
 				vec3 p0 = surface.position(triangle, edge);
 				vec3 p1 = surface.position(triangle, (edge+1)%3);

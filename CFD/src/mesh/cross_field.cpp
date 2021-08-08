@@ -9,6 +9,8 @@
 SurfaceCrossField::SurfaceCrossField(SurfaceTriMesh& mesh, CFDDebugRenderer& debug)
 : mesh(mesh), debug(debug) {
 
+    uint N = mesh.N;
+
 	centers.resize(mesh.tri_count);
 	theta_cell_center[0].resize(mesh.tri_count);
 	theta_cell_center[1].resize(mesh.tri_count);
@@ -17,7 +19,7 @@ SurfaceCrossField::SurfaceCrossField(SurfaceTriMesh& mesh, CFDDebugRenderer& deb
 	distance_cell_center[0].resize(mesh.tri_count);
 	distance_cell_center[1].resize(mesh.tri_count);
 
-	edge_flux_boundary.resize(mesh.tri_count * 3);
+	edge_flux_boundary.resize(mesh.tri_count * N);
 
 	current = 0;
 }
@@ -41,7 +43,7 @@ struct PropagateJob {
 void propagate_cross(PropagateJob& job) {
     float residual = 0.0f;
     uint nskipped = false;
-    
+
     for (uint i = job.begin; i < job.end; i++) {
         uint active = job.active_in[i / 32];
         uint mask = 1 << i%32;
@@ -191,8 +193,8 @@ void SurfaceCrossField::propagate(slice<stable_edge_handle> feature_edges) {
         vec3 e0, e1;
 		mesh.edge_verts(edge, &e0, &e1);
         
-        tri_handle tri1 = TRI(edge);
-        tri_handle tri2 = TRI(mesh.edges[edge]);
+        tri_handle tri1 = mesh.TRI(edge);
+        tri_handle tri2 = mesh.TRI(mesh.edges[edge]);
 		
 		vec3 v0[3];
 		vec3 v1[3];
@@ -271,8 +273,8 @@ void SurfaceCrossField::propagate(slice<stable_edge_handle> feature_edges) {
         
         /*clear_debug_stack(debug);
         for (tri_handle tri : mesh) {
-            Cross cross = theta_cell_center[current][tri/3];
-            draw_cross(debug, centers[tri/3], theta_cell_center[current][tri/3], vec4(0,0,0,1));
+            Cross cross = theta_cell_center[current][tri/N];
+            draw_cross(debug, centers[tri/N], theta_cell_center[current][tri/3], vec4(0,0,0,1));
         }
         suspend_execution(debug);*/
         
@@ -310,11 +312,11 @@ Cross interpolate(vec3 position, vec3 center, Cross cross, uint n, vec3* positio
 }
 
 Cross SurfaceCrossField::at_tri(tri_handle tri) {
-    return theta_cell_center[!current][tri/3];
+    return theta_cell_center[!current][tri/mesh.N];
 }
 
 Cross SurfaceCrossField::at_tri(tri_handle tri, vec3 pos) {
-    Cross cross = theta_cell_center[current][tri/3];
+    Cross cross = theta_cell_center[current][tri/mesh.N];
     
     vec3 positions[3];
     Cross neighbors[3];

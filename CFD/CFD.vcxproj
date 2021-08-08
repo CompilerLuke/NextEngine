@@ -1,6 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup><EnableUnitySupport>true</EnableUnitySupport></PropertyGroup>
+  <PropertyGroup>
+    <EnableUnitySupport>true</EnableUnitySupport>
+  </PropertyGroup>
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
@@ -199,6 +201,7 @@
     <ClInclude Include="include\mesh_generation\delaunay_advancing_front.h" />
     <ClInclude Include="include\mesh_generation\front_octotree.h" />
     <ClInclude Include="include\mesh_generation\hexcore.h" />
+    <ClInclude Include="include\mesh_generation\parametric_shapes.h" />
     <ClInclude Include="include\mesh_generation\point_octotree.h" />
     <ClInclude Include="include\mesh_generation\qmorph.h" />
     <ClInclude Include="include\mesh_generation\surface\delaunay.h" />
@@ -218,6 +221,7 @@
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="include\solver\explicit.cpp" />
     <ClCompile Include="src\application.cpp" />
     <ClCompile Include="src\editor\inspector.cpp" />
     <ClCompile Include="src\editor\lister.cpp" />
@@ -244,6 +248,7 @@
     <ClCompile Include="src\mesh_generation\hilbert_sort.cpp" />
     <ClCompile Include="src\mesh_generation\isotropic_advancing_front.cpp" />
     <ClCompile Include="src\mesh_generation\mesh_generation.cpp" />
+    <ClCompile Include="src\mesh_generation\parametric_shapes.cpp" />
     <ClCompile Include="src\mesh_generation\point_octotree.cpp" />
     <ClCompile Include="src\mesh_generation\surface\delaunay.cpp" />
     <ClCompile Include="src\mesh_generation\surface\qmorph.cpp" />

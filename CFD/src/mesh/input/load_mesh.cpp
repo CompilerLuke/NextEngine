@@ -53,8 +53,11 @@ SurfaceTriMesh surface_from_mesh(const glm::mat4& mat, Mesh& mesh) {
 
 	//leave index 0,3 of tets unoccpied, which is the null value
 	//leave index 0 of positions unoccupied, which is the null value
-	for (uint i = 0; i < mesh_indices.length; i += 3) {
-		uint* indices = mesh_indices.data + i;
+	const uint n = surface.N;
+
+	uint surface_offset = n;
+	for (uint index_offset = 0; index_offset < mesh_indices.length; index_offset += 3, surface_offset += n) {
+		uint* indices = mesh_indices.data + index_offset;
 		vec3 vertex_positions[3] = {};
 
 		for (uint j = 0; j < 3; j++) {
@@ -64,16 +67,16 @@ SurfaceTriMesh surface_from_mesh(const glm::mat4& mat, Mesh& mesh) {
 			uint& id = vertex_hash_map[position]; //deduplicate vertices
 			if (id == 0) { id = vertex_id++; } //assign the vertex an ID
 
-			surface.indices[i + j + 3] = { (int)id };
+			surface.indices[surface_offset + j] = { (int)id };
 		}
 
 		for (uint j = 0; j < 3; j++) {
 			EdgeSet edge_set = {
-				surface.indices[i + j + 3],
-				surface.indices[i + (j + 1) % 3 + 3]
+				surface.indices[surface_offset + j],
+				surface.indices[surface_offset + (j + 1) % 3]
 			};
 
-			edge_handle edge = i + j + 3;
+			edge_handle edge = surface_offset + j;
 
 			edge_handle& neighbor_edge = edge_hash_map[edge_set];
 			if (!neighbor_edge) neighbor_edge = edge;
@@ -84,11 +87,11 @@ SurfaceTriMesh surface_from_mesh(const glm::mat4& mat, Mesh& mesh) {
 		}
 	}
 
-	surface.stable_to_edge.resize(surface.tri_count * 3);
+	surface.stable_to_edge.resize(surface.tri_count * n);
 	surface.edge_flags = new char[surface.stable_to_edge.length]();
 
 	//todo: robustness, consider deallocated triangles
-	for (uint i = 0; i < surface.tri_count * 3; i++) {
+	for (uint i = 0; i < surface.tri_count * n; i++) {
 		surface.stable_to_edge[i] = i;
 		surface.edge_to_stable[i] = { i };
 	}

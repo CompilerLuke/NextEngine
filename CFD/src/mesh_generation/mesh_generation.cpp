@@ -486,7 +486,7 @@ CFDVolume generate_mesh(World& world, InputMeshRegistry& registry, CFDMeshError&
         vector<vec3> points;
 		tvector<vec3> shadow_points;
         
-		float mesh_size = 0.1;
+		float mesh_size = 0.5;
 
 		SurfaceTriMesh remeshed = surface;
 		vector<stable_edge_handle> surface_edges;
@@ -497,31 +497,44 @@ CFDVolume generate_mesh(World& world, InputMeshRegistry& registry, CFDMeshError&
 			profile.log();
 		}
 
-		SurfaceCrossField cross_field(remeshed, debug);
 
-		{
-			Profile profile("Compute cross field");
-			cross_field.propagate(surface_edges);
+		bool quad_meshing = false;
 
-			profile.log();
+		if (quad_meshing) {
+			SurfaceCrossField cross_field(remeshed, debug);
+
+			{
+				Profile profile("Compute cross field");
+				cross_field.propagate(surface_edges);
+
+				profile.log();
+			}
+
+			{
+				Profile profile("QMorph");
+				qmorph(remeshed, debug, cross_field, surface_edges);
+			}
 		}
 
-		{
-			Profile profile("QMorph");
-			qmorph(remeshed, debug, cross_field, surface_edges);
-		}
-        
 		vector<vertex_handle> boundary_verts;
 		vector<Boundary> boundary;
 
-		for (int i = 0; i < points.length; i++) {
-			boundary_verts.append({ (int)result.vertices.length });
-			result.vertices.append({ points[i] });
+		for (int i = 0; i < remeshed.positions.length; i++) {
+			if (i > 0) boundary_verts.append({ i });
+			result.vertices.append({ remeshed.positions[i] });
 		}
 
+		for (tri_handle tri : remeshed) {
+			bool is_quad = remeshed.is_quad(tri);
 
+			Boundary face;
+			memcpy_t(face.vertices, remeshed.indices+tri, is_quad ? 4 : 3);
 
-        {
+			boundary.append(face);
+		}
+
+		bool grid = false;
+        if (grid) {
             Profile profile("Hexcore");
 
             build_grid(result, surface, domain_bounds, boundary_verts, boundary, domain.grid_resolution, domain.grid_layers);
@@ -532,13 +545,13 @@ CFDVolume generate_mesh(World& world, InputMeshRegistry& registry, CFDMeshError&
         }
 
 		uint shadow_point_watermark = result.vertices.length;
-		for (int i = 0; i < shadow_points.length; i++) {
+		/*for (int i = 0; i < shadow_points.length; i++) {
 			boundary_verts.append({ (int)result.vertices.length });
 			result.vertices.append({ shadow_points[i] });
-		}		
+		}*/		
 
 
-#if 0
+#if 1
 		std::sort(boundary_verts.begin(), boundary_verts.end(), [&](vertex_handle v0, vertex_handle v1) {
 			vec3 p0 = result[v0].position;
 			vec3 p1 = result[v1].position;
@@ -552,7 +565,7 @@ CFDVolume generate_mesh(World& world, InputMeshRegistry& registry, CFDMeshError&
 			last = current;
 		}
 #endif
-#if 0
+#if 1
 		for (CFDVertex& vertex : result.vertices) {
 			vertex.position.x += ((float)rand()) / INT_MAX * 0.2;
 			vertex.position.y += ((float)rand()) / INT_MAX * 0.2;
@@ -570,12 +583,13 @@ CFDVolume generate_mesh(World& world, InputMeshRegistry& registry, CFDMeshError&
 
         Delaunay* delaunay = make_Delaunay(result, del_bounds, debug);
 
-		add_vertices(*delaunay, boundary_verts);
-		constrain_triangulation(*delaunay, boundary, shadow_point_watermark);
+		generate_n_layers(*delaunay, remeshed, domain.contour_layers, domain.contour_initial_thickness, domain.contour_thickness_expontent, 0, 0, 0);
+		//add_vertices(*delaunay, boundary_verts);
+		//constrain_triangulation(*delaunay, boundary, shadow_point_watermark);
         //suspend_execution(debug);
 		refine(*delaunay);
 		//constrain_triangulation(*delaunay, boundary);
-		//remove_super(*delaunay);
+		remove_super(*delaunay);
 		smooth(*delaunay);
 
 		complete(*delaunay);

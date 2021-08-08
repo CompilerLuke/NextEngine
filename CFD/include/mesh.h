@@ -123,6 +123,8 @@ struct CFDCell {
 	struct Face {
 		cell_handle neighbor;
 		vec3 normal;
+		real pressure_grad = 0.0f;
+		real velocity_grad = 0.0f;
 	};
 
 	Face faces[6];
@@ -263,7 +265,7 @@ inline void get_positions(slice<CFDVertex> vertices, CFDCell& cell, const ShapeD
 	}
 }
 
-inline vec3 compute_centroid(CFDVolume& volume, vertex_handle vertices[], uint n) {
+inline vec3 compute_centroid(CFDVolume& volume, const vertex_handle vertices[], uint n) {
     vec3 centroid;
     for (uint i = 0; i < n; i++) {
         centroid += volume[vertices[i]].position;

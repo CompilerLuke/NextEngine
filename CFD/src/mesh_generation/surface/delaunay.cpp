@@ -66,7 +66,7 @@ loop: {
 */
 
 void draw_boundary(CFDDebugRenderer& debug, SurfaceTriMesh& mesh) {
-    for (uint i = 3; i <= mesh.tri_count * 3; i++) {
+    for (uint i = mesh.N; i <= mesh.tri_count * mesh.N; i++) {
         if (mesh.is_boundary(i)) {
             draw_edge(debug, mesh, i, RED_DEBUG_COLOR);
         }
@@ -106,7 +106,7 @@ tri_handle insert_point(SurfaceDelaunay& d, tri_handle start, vec3 pos, const re
         for (uint i = 0; i < 3; i++) {
             edge_handle edge = current + i;
             edge_handle neigh_edge = d.mesh.edges[edge];
-            edge_handle neigh = TRI(neigh_edge);
+            edge_handle neigh = d.mesh.TRI(neigh_edge);
 
             bool visited = d.mesh.is_deallocated(neigh);
             if (visited) continue;
@@ -397,10 +397,11 @@ void refine(SurfaceDelaunay& d, float mesh_size) {
     draw_mesh(debug, out);
     suspend_execution(debug);
 
+    uint N = d.mesh.N;
     uint n = 10;
     for (uint i = 0; i < n; i++) {
         uint n_tri = out.tri_count;
-        for (uint tri = 3; tri < n_tri * 3; tri += 3) {
+        for (uint tri = N; tri < n_tri * N; tri += N) {
             vec3 v[3];
             out.triangle_verts(tri, v);
 
@@ -448,6 +449,9 @@ vector<stable_edge_handle> remesh_surface(SurfaceTriMesh& mesh, CFDDebugRenderer
 
     SurfaceDelaunay d{ debug, mesh };
 
+    draw_mesh(debug, mesh);
+    draw_boundary(debug, mesh);
+    suspend_execution(debug);
     auto edges = insert_edges(d, curves, uniform_mesh_size);
 
     

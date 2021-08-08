@@ -7,7 +7,7 @@
 using namespace Thekla;
 
 void reconstruct_surface(SurfaceTriMesh& surface, CFDDebugRenderer& debug, slice<vec3> points, slice<tri_handle> tris) {
-    Atlas_Input_Vertex* vertex_array = TEMPORARY_ZEROED_ARRAY(Atlas_Input_Vertex, surface.tri_count*3);
+    Atlas_Input_Vertex* vertex_array = TEMPORARY_ZEROED_ARRAY(Atlas_Input_Vertex, surface.tri_count*surface.N);
     Atlas_Input_Face* face_array = TEMPORARY_ZEROED_ARRAY(Atlas_Input_Face, surface.tri_count);
     
     for (tri_handle tri : surface) {

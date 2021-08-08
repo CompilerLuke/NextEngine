@@ -122,7 +122,7 @@ void SurfacePointPlacement::propagate() {
             vec3 bitangent1 = normalize(cross(normal1, tangent));
             
             if (octo.find_closest(pos, cross1, 0.5 * mesh_size).id != -1) continue;
-            add_vertex(TRI(e0), pos);
+            add_vertex(mesh.TRI(e0), pos);
 
             //draw_point(debug, pos, vec4(1,0,0,1));
             //draw_line(debug, pos, pos + tangent * mesh_size, vec4(1,0,0,1));
@@ -133,8 +133,8 @@ void SurfacePointPlacement::propagate() {
 
             draw_point(debug, pos, RED_DEBUG_COLOR);
 
-            Point point0{ TRI(e0), pos + bitangent0 * mesh_size, mesh_size, mesh_size };
-            Point point1{ TRI(e1), pos - bitangent1 * mesh_size, mesh_size, mesh_size };
+            Point point0{ mesh.TRI(e0), pos + bitangent0 * mesh_size, mesh_size, mesh_size };
+            Point point1{ mesh.TRI(e1), pos - bitangent1 * mesh_size, mesh_size, mesh_size };
 
             point_queue.push_front(point0);
             point_queue.push_front(point1);

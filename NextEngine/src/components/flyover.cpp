@@ -42,7 +42,7 @@ void update_flyover(World& world, UpdateCtx& ctx) {
 		
 		if (ctx.input.mouse_button_down(MouseButton::Right)) {
 			ctx.input.capture_mouse(true);
-			//mouse_offset = mouse_offset * (1.0f / self.past_movement_speed.length);
+			mouse_offset = mouse_offset * (1.0f / self.past_movement_speed.length);
 		}
 		else {
 			ctx.input.capture_mouse(false);

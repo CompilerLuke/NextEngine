@@ -18,7 +18,7 @@ tvector<float> curvature_at_verts(SurfaceTriMesh& surface, EdgeGraph& graph, CFD
         
         for (uint i = 0; i < neighbors.length; i++) {
             edge_handle e0 = neighbors[i];
-            edge_handle e1 = TRI(e0) + (TRI_EDGE(e0) + 2)%3;
+			edge_handle e1 = surface.next_edge(e0, 2);
             
             vec3 v1 = surface.position(e0);
             vec3 v2 = surface.position(e1);
@@ -47,22 +47,26 @@ tvector<FeatureCurve> identify_feature_edges(SurfaceTriMesh& surface, EdgeGraph&
 	struct DihedralID {
 		float dihedral;
 		edge_handle edge;
-	};
+	};	
+	
+	uint N = surface.N;
 
 	vec3* normals = TEMPORARY_ZEROED_ARRAY(vec3, surface.tri_count);
 	vec3* centers = TEMPORARY_ZEROED_ARRAY(vec3, surface.tri_count);
-	float* dihedrals = TEMPORARY_ZEROED_ARRAY(float, 3 * surface.tri_count);
-	bool* visited = TEMPORARY_ZEROED_ARRAY(bool, 3 * surface.tri_count);
+	float* dihedrals = TEMPORARY_ZEROED_ARRAY(float, N * surface.tri_count);
+	bool* visited = TEMPORARY_ZEROED_ARRAY(bool, N * surface.tri_count);
 
 	const float episilon = 0.002;
+
+
 
 	for (tri_handle i : surface) {
 		vec3 positions[3];
 		surface.triangle_verts(i, positions);
 
 		vec3 center = (positions[0]+positions[1]+positions[2])/3;
-		normals[i / 3] = triangle_normal(positions);
-		centers[i / 3] = center; // +episilon * normals[i / 3];
+		normals[i / N] = triangle_normal(positions);
+		centers[i / N] = center; // +episilon * normals[i / N];
 	}
 
 	tvector<FeatureCurve> result;
@@ -74,8 +78,8 @@ tvector<FeatureCurve> identify_feature_edges(SurfaceTriMesh& surface, EdgeGraph&
 	for (tri_handle i : surface) {
 		for (uint j = 0; j < 3; j++) {
 			tri_handle neighbor = surface.neighbor(i, j);
-			float dist = length(centers[i / 3] - centers[neighbor / 3]);
-			dihedrals[i + j] = acos(dot(normals[i / 3], normals[neighbor / 3]));
+			float dist = length(centers[i / N] - centers[neighbor / N]);
+			dihedrals[i + j] = acos(dot(normals[i / N], normals[neighbor / N]));
 
 			if (surface.indices[i + j].id > surface.indices[i + (j + 1) % 3].id) continue;
 			
@@ -108,6 +112,8 @@ tvector<FeatureCurve> identify_feature_edges(SurfaceTriMesh& surface, EdgeGraph&
 			edge_handle current_edge = i == 1 ? surface.edges[starting_edge] : starting_edge;
 			possible_strong_edges[i].clear();
 			possible_positions[i].clear();
+
+			if (visited[current_edge]) break; //completed full loop
 
 			while (count++ < 10000) {
 				visited[current_edge] = true;
@@ -158,13 +164,18 @@ tvector<FeatureCurve> identify_feature_edges(SurfaceTriMesh& surface, EdgeGraph&
 				}
 
 				if (best_score > min_quality) current_edge = surface.edges[best_edge]; //p0 --> p0 <-- p2 : p0 --> p1 --> p2
-				else break;
+				else {
+					vec3 p1 = surface.position(surface.edges[current_edge]);
+					possible_positions[i].append(p1);
+					break;
+				}
 
-				if (visited[current_edge]) break;
+				if (visited[current_edge]) {
+					vec3 p1 = surface.position(surface.next_edge(surface.edges[current_edge]));
+					possible_positions[i].append(p1);
+					break;
+				}
 			}
-
-			vec3 p1 = surface.position(surface.edges[current_edge]);
-			possible_positions[i].append(p1);
 		}
 
 		strong_edges.clear();
@@ -224,7 +235,8 @@ tvector<FeatureCurve> identify_feature_edges(SurfaceTriMesh& surface, EdgeGraph&
 		vec3 p0, p1;
 		uint res = 10;
 		
-		/*for (uint i = 0; i < curve.edges.length * res; i++) {
+#if 0
+		for (uint i = 0; i < curve.edges.length * res; i++) {
 			p1 = curve.spline.at_time((float)i / res);
 			if (i > 0) {
 				draw_line(debug, p0, p1, RED_DEBUG_COLOR);
@@ -232,20 +244,20 @@ tvector<FeatureCurve> identify_feature_edges(SurfaceTriMesh& surface, EdgeGraph&
 
 			p0 = p1;
 		}
-
-		suspend_execution(debug);*/
-        /*for (edge_handle edge : curve.edges) {
+		suspend_execution(debug);
+#endif
+        for (edge_handle edge : curve.edges) {
             vec3 p0, p1;
             surface.edge_verts(edge, &p0, &p1);
-            p0 += normals[edge / 3] * episilon;
-            p1 += normals[edge / 3] * episilon;
+            p0 += normals[edge / N] * episilon;
+            p1 += normals[edge / N] * episilon;
 			vec4 color = colors[i % n];
             draw_line(debug, p0, p1, color);
 			//suspend_execution(debug);
-        }*/
+        }
 		i++;
 		//printf("=============\n");
     }
-
+	suspend_execution(debug);
 	return result;
 }

@@ -10,9 +10,16 @@ enum CFDSolverPhase {
 	SOLVER_PHASE_FAIL,
 };
 
+struct CFDResults {
+	vector<vec3> velocities;
+	vector<real> pressures;
+};
+
 struct CFDSolver {
 	CFDSolverPhase phase = SOLVER_PHASE_NONE;
 	CFDVolume mesh;
+	CFDResults results;
 };
 
+CFDResults simulate(CFDVolume& volume, CFDDebugRenderer& debug);
 

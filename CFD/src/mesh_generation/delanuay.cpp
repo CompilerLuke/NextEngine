@@ -420,6 +420,29 @@ void get_positions(Delaunay& d, tet_handle tet, uint face, vec3 verts[3]) {
 	}
 }
 
+void draw_tet(Delaunay& d, tet_handle tet) {
+	for (uint j = 0; j < 4; j++) {
+		vec3 verts[3];
+		get_positions(d, tet, j, verts);
+
+		for (uint k = 0; k < 3; k++) {
+			vec3 p0 = verts[k];
+			vec3 p1 = verts[(k + 1) % 3];
+
+			draw_line(d.debug, p0, p1, RED_DEBUG_COLOR);
+		}
+	}
+}
+
+void draw_mesh(Delaunay& d) {
+	CFDDebugRenderer& debug = d.debug;
+	clear_debug_stack(debug);
+
+	for (uint i = 4; i < 4 * d.tet_count; i += 4) {
+		draw_tet(d, i);
+	}
+}
+
 tet_handle find_enclosing_tet(Delaunay& d, vec3 pos, float min_dist = 0.0, bool stop_at_boundary = false) {
 	//Walk structure to get to enclosing triangle, starting from the last inserted
 	tet_handle current = d.last;
@@ -473,22 +496,33 @@ loop: {
 
 			prev = current;
 			current = neighbor;
+			if (count > 500) {
+				draw_tet(d, current);
+				draw_point(d.debug, pos, RED_DEBUG_COLOR);
+				suspend_execution(d.debug);
+			}
 			if (count++ > 1000) return 0;
 			goto loop;
 		}
 	}
 	};
 
+#ifdef DEBUG_DELAUNAY
+	suspend_execution(d.debug);
+	draw_point(d.debug, pos, RED_DEBUG_COLOR);
+	draw_point(d.debug, compute_centroid(d, current), BLUE_DEBUG_COLOR);
+	suspend_execution(d.debug);
+#endif
 	//if (stop_at_boundary) draw_line(d.debug, last_pos, pos, vec4(0, 0, 1, 1));
 
 	if (false && min_dist != 0.0f) {
 		for (uint i = 0; i < 4; i++) {
-		vec3 vert = d.vertices[d.indices[current + i].id].position;
-		if (length(vert - pos) < min_dist) {
-			return 1;
+			vec3 vert = d.vertices[d.indices[current + i].id].position;
+			if (length(vert - pos) < min_dist) {
+				return 1;
+			}
 		}
 	}
-}
 
 return current;
 }
@@ -607,7 +641,7 @@ int find_cavity_faces(Delaunay& d, tet_handle current, vertex_handle v, float mi
 				bool visited = is_deallocated(d, neighbor);
 				if (visited) continue;
 
-				bool inside = insphere(d, neighbor, v) > 0;
+				bool inside = insphere(d, neighbor, v) < 0;
 				if (inside) {
 					//printf("Neighbor %i: adding to stack\n", neighbor.id);
 					dealloc_tet(d, neighbor);
@@ -629,6 +663,15 @@ int find_cavity_faces(Delaunay& d, tet_handle current, vertex_handle v, float mi
 			}
 		}
 	}
+
+#ifdef DEBUG_DELAUNAY
+	for (CavityFace& face : d.cavity) {
+		vec3 v[3];
+		get_positions(d.vertices, { face.verts,3 }, v);
+		draw_triangle(d.debug, v, vec4(1, 1, 1, 1));
+	}
+	suspend_execution(d.debug);
+#endif
 
 	//assert(cavity.length >= 3);
 	if (d.cavity.length < 4) {
@@ -834,6 +877,7 @@ bool add_vertex(Delaunay& d, vertex_handle vert, float min_dist = 0.0f) {
 	vec3 pos = d.vertices[vert.id].position;
 	tet_handle current = find_enclosing_tet(d, pos, min_dist, false);
 	if (!current) {
+		
 		draw_line(d.debug, pos, pos + vec3(0, 10, 0), vec4(0, 1, 0, 1));
 		suspend_execution(d.debug);
 		printf("Could not find enclosing tet!\n");
@@ -916,7 +960,7 @@ void identify_boundary_faces(Delaunay& d, slice<Boundary> tri_boundaries, uint* 
 
         //draw_line(debug, center, center + normal*0.2, vec4(0, 0, 0, 1));
 
-        vec3 search_pos = center + normal * 0.2;
+        vec3 search_pos = center + normal * 0.001;
 
         TriangleFaceSet triangle(tri.vertices);
 
@@ -930,35 +974,48 @@ void identify_boundary_faces(Delaunay& d, slice<Boundary> tri_boundaries, uint* 
 
         float smallest_disp = FLT_MAX;
         
-        bool found = true;
-        for (uint i = 0; i < 4; i++) {
-            vertex_handle verts[3];
-            for (uint j = 0; j < 3; j++) {
-                verts[j] = d.indices[boundary_tet + tetra_shape[i][j]];
-            }
+        bool found = false;
 
-            /*for (uint j = 0; j < 3; j++) {
-                vec3 pos0 = d.vertices[verts[j].id].position;
-                vec3 pos1 = d.vertices[verts[(j + 1) % 3].id].position;
+		for (uint n = 0; !found && n < 5; n++) {
+			tet_handle tet = boundary_tet;
+			if (n != 0) {
+				tet = d.faces[boundary_tet + n - 1] & NEIGH;
+			}
 
-                draw_line(debug, pos0, pos1, vec4(0, 0, 0, 1));
-            }*/
+			for (uint i = 0; i < 4; i++) {
+				vertex_handle verts[3];
+				for (uint j = 0; j < 3; j++) {
+					verts[j] = d.indices[tet + tetra_shape[i][j]];
+				}
 
-            TriangleFaceSet neigh_triangle(verts);
+				/*for (uint j = 0; j < 3; j++) {
+					vec3 pos0 = d.vertices[verts[j].id].position;
+					vec3 pos1 = d.vertices[verts[(j + 1) % 3].id].position;
 
-            if (triangle == neigh_triangle) {
-                
-                //draw_triangle(d.debug, pos, vec4(1));
-                tet_handle face = boundary_tet + i;
-                tet_handle neigh = d.faces[face];
+					draw_line(debug, pos0, pos1, vec4(0, 0, 0, 1));
+				}*/
 
-                boundary[face / 32] |= 1 << (face % 32);
-                boundary[neigh / 32] |= 1 << (neigh % 32);
+				TriangleFaceSet neigh_triangle(verts);
 
-                break;
-            }
-        }
+				if (triangle == neigh_triangle) {
+					found = true;
+					//draw_triangle(d.debug, pos, vec4(1));
+					tet_handle face = tet + i;
+					tet_handle neigh = d.faces[face];
 
+					boundary[face / 32] |= 1 << (face % 32);
+					boundary[neigh / 32] |= 1 << (neigh % 32);
+
+					break;
+				}
+			}
+		}
+
+		if (!found) {
+			draw_triangle(d.debug, pos, RED_DEBUG_COLOR);
+			draw_tet(d, boundary_tet);
+			suspend_execution(d.debug);
+		}
     }
 }
 
@@ -1197,7 +1254,7 @@ void constrain_triangulation(Delaunay& d, slice<Boundary> boundaries, uint shado
     identify_boundary_faces(d, tri_boundaries, boundary);
 	remove_tets_outside_boundary(d, boundary);
 
-	identify_shadow_tets(d, shadow_watermark);
+	//identify_shadow_tets(d, shadow_watermark);
     //identify_boundary_faces(d, bvh, boundary);
     
 
@@ -1629,9 +1686,15 @@ bool add_vertices(Delaunay& d, slice<vertex_handle> verts, float min_dist) {
 	suspend_execution(d.debug);*/
 
 	for (uint i = 0; i < verts.length; i++) {
+#ifdef DEBUG_DELAUNAY
+		draw_point(d.debug, d.vertices[verts[i].id].position, BLUE_DEBUG_COLOR);
+		draw_mesh(d);
+		suspend_execution(d.debug);
+#endif
+
 		if (!add_vertex(d, verts[i], min_dist)) {
-			draw_debug_boxes(d.volume);
-			remove_super(d);
+			//draw_debug_boxes(d.volume);
+			//remove_super(d);
 			complete(d);
 			printf("Failed at %i out of %i\n", i + 1, verts.length);
 			return false;
@@ -1641,6 +1704,7 @@ bool add_vertices(Delaunay& d, slice<vertex_handle> verts, float min_dist) {
 			complete(d);
 			return false;
 		}
+	
 	}
 
 	return true;
@@ -1680,7 +1744,7 @@ bool extrude_verts(Delaunay& d, float height, float min_dist) {
 		if (info.count == 0) continue;
 
 		vec3 p = d.vertices[i].position;
-		vec3 n = info.normal / info.count;
+		vec3 n = normalize(info.normal); // / info.count;
 		float len = height; // (1 + 0.5 * info.curvature)* height; // * info.curvature;
 
 		vec3 pos = p + n * len;
@@ -1792,28 +1856,36 @@ bool generate_layer(Delaunay& d, float height) {
 	return extrude_verts(d, height, 0.25);
 }
 
-bool generate_contour(Delaunay& d, CFDSurface& surface, float height) {
+bool generate_contour(Delaunay& d, SurfaceTriMesh& surface, float height) {
 	d.active_verts = (VertexInfo*)calloc(sizeof(VertexInfo), d.vertices.length);
 	d.active_vert_offset = 0;
 
-	for (CFDPolygon polygon : surface.polygons) {
+	for (tri_handle tri : surface) {
 		vec3 positions[4];
-		for (uint i = 0; i < polygon.type; i++) {
+		vertex_handle verts[4];
+		surface.triangle_verts(tri, positions);
+		surface.triangle_verts(tri, verts);
+		/*for (uint i = 0; i < polygon.type; i++) {
 			positions[i] = d.vertices[polygon.vertices[i].id].position;
-		}
+		}*/
 
-		vec3 normal = polygon.type == CFDPolygon::TRIANGLE ? triangle_normal(positions) : quad_normal(positions);
+		bool is_quad = surface.is_quad(tri);
+		vec3 normal = is_quad ? quad_normal(positions) : triangle_normal(positions);
 
-		for (uint i = 0; i < polygon.type; i++) {
-			vertex_handle v = polygon.vertices[i];
-
+		uint n = is_quad ? 4 : 3;
+		for (uint i = 0; i < n; i++) {
+			vertex_handle v = verts[i];
 			update_normals(d, v, normal);
 		}
 	}
 
-	for (CFDPolygon polygon : surface.polygons) {
-		for (uint i = 0; i < polygon.type; i++) {
-			compute_curvature(d, polygon.vertices[i], polygon.vertices[(i + 1) % 3]);
+	for (tri_handle tri : surface) {
+		uint n = surface.is_quad(tri) ? 4 : 3;
+
+		for (uint i = 0; i < n; i++) {
+			vertex_handle v0, v1;
+			surface.edge_verts(tri + i, &v0, &v1);
+			compute_curvature(d, v0, v1);
 		}
 	}
 
@@ -1824,6 +1896,15 @@ bool generate_contour(Delaunay& d, CFDSurface& surface, float height) {
 
 	start_with_non_coplanar(d.volume, d.insertion_order);
 	if (!add_vertices(d, d.insertion_order, height)) return false;
+
+	vector<Boundary> faces;
+	for (tri_handle tri : surface) {
+		Boundary boundary;
+		surface.triangle_verts(tri, boundary.vertices);
+		faces.append(boundary);
+	}
+
+	constrain_triangulation(d, faces, 0);
 
 	d.boundary_vert_offset = d.vertices.length;
 
@@ -2058,7 +2139,7 @@ TetMesh generate_uniform_tri_mesh(Delaunay& d, CFDSurface& surface, float size) 
 	return get_tri_mesh(d);
 }
 
-void generate_n_layers(Delaunay& d, CFDSurface& surface, uint n, float initial, float g, float resolution, uint layers, float min_quad_quality) {
+void generate_n_layers(Delaunay& d, SurfaceTriMesh& surface, uint n, float initial, float g, float resolution, uint layers, float min_quad_quality) {
 	if (!generate_contour(d, surface, initial)) return;
 	printf("Generated contour\n");
 
@@ -2072,6 +2153,8 @@ void generate_n_layers(Delaunay& d, CFDSurface& surface, uint n, float initial, 
 			break;
 		}
 	}
+
+	return;
 
 	AABB& aabb = d.aabb;
 	vec3 size = aabb.size();

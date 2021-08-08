@@ -110,7 +110,7 @@ inline float max(vec3 vec) {
     else return vec.y > vec.z ? vec.y : vec.z;
 }
 
-const double PI = 3.1415926535897932384626433832795028;
+constexpr double PI = 3.1415926535897932384626433832795028;
 
 //todo: move into seperate file
 inline float to_radians(float angle) {

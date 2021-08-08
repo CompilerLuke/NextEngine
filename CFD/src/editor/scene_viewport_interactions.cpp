@@ -13,7 +13,7 @@
 vec3 triangle_normal(vec3 v[3]);
 
 vec3 compute_normal(SurfaceTriMesh& surface, tri_handle triangle) {
-	triangle = TRI(triangle);
+	triangle = surface.TRI(triangle);
 
 	vec3 positions[3];
 	for (uint i = 0; i < 3; i++) positions[i] = surface.position(triangle, i);
@@ -54,10 +54,9 @@ void select_edge_loop(const SelectLoopJob& job) {
 	while (i++ < 10000) {
 		selection.append(current_edge);
 
-		tri_handle triangle = TRI(current_edge);
-		uint edge = TRI_EDGE(current_edge);
-		vertex_handle v0 = surface.indices[triangle + edge];
-		vertex_handle v1 = surface.indices[triangle + (edge + 1) % 3];
+		tri_handle triangle = surface.TRI(current_edge);
+		vertex_handle v0 = surface.indices[current_edge];
+		vertex_handle v1 = surface.indices[surface.next_edge(current_edge)];
 
 		vec3 p0 = surface.positions[v0.id];
 		vec3 p1 = surface.positions[v1.id];

@@ -130,13 +130,18 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
         }
         
         size /= count;
-        vec4 face_color = color_map(log2f(size), -5, 5);
+        vec4 cell_color = color_map(log2f(size), -5, 5);
 
         for (uint i = 0; i < desc.num_faces; i++) {
             const ShapeDesc::Face& face = desc.faces[i];
             
             uint triangle_offset = triangle_buffer.vertex_arena.offset;
             vec3 face_normal = cell.faces[i].normal;
+
+            vec4 face_color = cell_color;
+            if (cell.faces[i].pressure_grad != 0.0f) {
+                face_color = RED_DEBUG_COLOR;
+            }
 
             for (uint j = 0; j < face.num_verts; j++) {
                 vertex_handle v0 = cell.vertices[face.verts[j]];

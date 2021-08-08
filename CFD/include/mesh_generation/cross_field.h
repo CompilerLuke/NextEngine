@@ -75,6 +75,8 @@ struct FeatureEdge {
 };
 */
 
+struct stable_edge_handle;
+
 class SurfaceCrossField {
 	SurfaceTriMesh& mesh;
 	CFDDebugRenderer& debug;

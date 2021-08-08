@@ -205,7 +205,7 @@ struct QMorph {
     
     void propagate(QMorphFront&);
 
-    void update_side_edge(QMorphFront& front, front_edge_handle, front_edge_handle, vec3 normal, uint side, bool push);
+    void update_side_edge(QMorphFront& front, front_edge_handle, front_edge_handle, vec3 normal, uint side, bool push, bool delay = true);
 };
 
 
@@ -256,7 +256,7 @@ void draw_front(CFDDebugRenderer& debug, SurfaceTriMesh& mesh, QMorph& qmorph, Q
 #include "geo/predicates.h"
 
 tri_handle QMorph::find_tri(tri_handle start, vec3 pos) {
-    start = TRI(start);
+    start = out.TRI(start);
 
     tri_handle current = start;
     tri_handle last = 0;
@@ -310,7 +310,7 @@ tri_handle QMorph::find_tri(tri_handle start, vec3 pos) {
             //todo: should only need to check one
             if (front.contains(out.get_stable(edge0)) || front.contains(out.get_stable(edge1))) continue;
 
-            tri_handle tri = TRI(edge1);
+            tri_handle tri = out.TRI(edge1);
 
             if (tri == last) continue;
 
@@ -491,11 +491,11 @@ stable_edge_handle QMorph::recover_edge(edge_handle start, edge_handle end) {
     uint count = 0;
     while (true) {
         count++;
-        e1 = TRI_NEXT_EDGE(e1);
+        e1 = out.next_edge(e1);
         assert(e0 != e1);
 
         //todo should be tangent plane to nc, not e1
-        vec3 normal0 = out.triangle_normal(TRI(e1));
+        vec3 normal0 = out.triangle_normal(out.TRI(e1));
         //vec3 normal1 = out.triangle_normal(TRI(out.edges[e1]));
         vec3 normal = normal0;
 
@@ -538,7 +538,7 @@ stable_edge_handle QMorph::recover_edge(edge_handle start, edge_handle end) {
         }
 
         if (e0 && dot(start_normal, normal) > 0.5 && dot(e0_vec, cdt) > 0 && dot(e1_vec, cdt) < 0) {
-            first_flip = TRI(e0) + (3 - TRI_EDGE(e1) - TRI_EDGE(e0)); //diagonal
+            first_flip = out.TRI(e0) + (3 - out.TRI_EDGE(e1) - out.TRI_EDGE(e0)); //diagonal
             
             if (debug_vectors) {
                 draw_edge(debug, out, first_flip, RED_DEBUG_COLOR);
@@ -555,7 +555,7 @@ stable_edge_handle QMorph::recover_edge(edge_handle start, edge_handle end) {
         e1 = e0;
         p0 = p1;
 
-        if (e0 == TRI_NEXT_EDGE(start) && e0) {
+        if (e0 == out.next_edge(start) && e0) {
             debug_vectors = true;
             //printf("Looped back, found no flips!");
         }
@@ -577,9 +577,9 @@ stable_edge_handle QMorph::recover_edge(edge_handle start, edge_handle end) {
 
     while (true) {
         count++;
-        tri_handle t0 = TRI(first_flip);
+        tri_handle t0 = out.TRI(first_flip);
         first_flip = out.edges[first_flip];
-        tri_handle t1 = TRI(first_flip);
+        tri_handle t1 = out.TRI(first_flip);
 
         bool found = false;
         for (uint i = 0; i < 3; i++) {
@@ -598,13 +598,13 @@ stable_edge_handle QMorph::recover_edge(edge_handle start, edge_handle end) {
 
         t0 = t1;
 
-        vec3 n0 = out.position(t0, (TRI_EDGE(first_flip) + 2) % 3);
+        vec3 n0 = out.position(t0, (out.TRI_EDGE(first_flip) + 2) % 3);
         vec3 v = cross(normal, n0 - nc);
 
         vec3 cdt = cd - dot(cd, normal) * normal;
 
-        edge_handle f1 = TRI_NEXT_EDGE(first_flip);
-        edge_handle f2 = TRI(first_flip) + ((first_flip - 1) % 3); //TRI_NEXT_EDGE(f1);
+        edge_handle f1 = out.next_edge(first_flip);
+        edge_handle f2 = out.next_edge(first_flip, -1); //TRI_NEXT_EDGE(f1);
 
         if (debug_vectors) {
             suspend_execution(debug);
@@ -689,8 +689,8 @@ stable_edge_handle QMorph::recover_edge(edge_handle start, edge_handle end) {
             result = out.get_stable(edge);
             
             //Normal
-            vec3 normal0 = out.triangle_normal(TRI(edge));
-            vec3 normal1 = out.triangle_normal(TRI(out.edges[edge]));
+            vec3 normal0 = out.triangle_normal(out.TRI(edge));
+            vec3 normal1 = out.triangle_normal(out.TRI(out.edges[edge]));
             vec3 normal = normalize(normal0 + normal1);
 
             //Intersection
@@ -825,9 +825,9 @@ vector<QMorphFront> QMorph::identify_edge_loops(slice<stable_edge_handle> edges)
             vec3 p0, p1;
             out.edge_verts(edge, &p0, &p1);
 
-            vertex_handle v = out.indices[TRI_NEXT_EDGE(edge)];
+            vertex_handle v = out.indices[out.next_edge(edge)];
             auto& neighbors = feature_edge_graph[v];
-            vec3 normal = out.triangle_normal(TRI(edge));
+            vec3 normal = out.triangle_normal(out.TRI(edge));
 
             vec3 pos = out.positions[v.id];
             draw_line(debug, pos, pos + normal, GREEN_DEBUG_COLOR);            
@@ -845,8 +845,8 @@ vector<QMorphFront> QMorph::identify_edge_loops(slice<stable_edge_handle> edges)
                 if (edge == opp) {
                     continue;
                 }
-                normal1 = out.triangle_normal(TRI(edge));
-                vec3 pos = out.position(TRI_NEXT_EDGE(edge));
+                normal1 = out.triangle_normal(out.TRI(edge));
+                vec3 pos = out.position(out.next_edge(edge));
 
                 float angle = dot(normal, normal1);
 
@@ -861,11 +861,11 @@ vector<QMorphFront> QMorph::identify_edge_loops(slice<stable_edge_handle> edges)
             if (index != -1) {
                 current = neighbors[index];
                 neighbors.data[index] = neighbors.data[--neighbors.length]; //avoid bounds checking as current may be the last element
-                p2 = out.position(TRI_NEXT_EDGE(out.get_edge(current)));
+                p2 = out.position(out.get_edge(current, 1));
             }
             else {
                 current.id = 0;
-                p2 = out.position(TRI_NEXT_EDGE(start));
+                p2 = out.position(out.next_edge(start));
             }
 
             //clear_debug_stack(debug);
@@ -884,8 +884,8 @@ vector<QMorphFront> QMorph::identify_edge_loops(slice<stable_edge_handle> edges)
                 
             //todo more efficient to use pointer
             front.edges[handle].state = right_state;
-            front.edges[handle].tm0 = out.get_tri(handle);
-            front.edges[handle].tm1 = out.get_tri(handle);
+            front.edges[handle].tm0 = in.get_tri(handle);
+            front.edges[handle].tm1 = in.get_tri(handle);
 
             auto connect_last = [](QMorphFront& front, front_edge_handle handle, front_edge_handle prev) {
                 bool left_state = front.edges[prev].state & RIGHT_EDGE;
@@ -948,7 +948,7 @@ vector<QMorphFront> QMorph::identify_edge_loops(slice<stable_edge_handle> edges)
 void get_verts(SurfaceTriMesh& out, front_edge_handle e1, front_edge_handle e0, uint side, vec3* p0, vec3* p1, vec3* p2) {
     if (side == LEFT_EDGE) {
         out.edge_verts(out.get_edge(e1), p0, p1);
-        *p2 = out.position(TRI_NEXT_EDGE(out.get_edge(e0)));
+        *p2 = out.position(out.get_edge(e0, 1));
     } 
     if (side == RIGHT_EDGE) {
         *p0 = out.position(out.get_edge(e0));
@@ -956,8 +956,9 @@ void get_verts(SurfaceTriMesh& out, front_edge_handle e1, front_edge_handle e0, 
     }
 }
 
+constexpr real SEAM_ANGLE = 1.0 / 6.0 * PI;
 
-void QMorph::update_side_edge(QMorphFront& front, front_edge_handle e1, front_edge_handle e0, vec3 normal, uint side, bool push) {
+void QMorph::update_side_edge(QMorphFront& front, front_edge_handle e1, front_edge_handle e0, vec3 normal, uint side, bool push, bool delay) {
     front.remove(e1);
     //draw_front(debug, out, *this, front);
     //suspend_execution(debug);
@@ -987,8 +988,19 @@ void QMorph::update_side_edge(QMorphFront& front, front_edge_handle e1, front_ed
         side_edge.state &= ~LEFT_EDGE;
     }
 
-    real angle = vec_dir_angle(p0 - p1, p2 - p1, normal);
-    if ((angle < 1.0 / 4.0 * PI) || (angle > 0.9*PI && angle < 1.4*PI) ) {
+    real angle = vec_dir_angle(p0 - p1, p2 - p1, normal);        
+    edge_handle dir_edge = side == LEFT_EDGE ? out.get_edge(e0) : out.get_edge(e1);
+    if (fabs(angle - 0.5*PI) > 0.1 * PI && angle < 0.9*PI) {
+        vec3 bitangent = normalize(cross(normal, p2 - p0));
+
+        vec3 new_pos = (p0 + p2)/2.0f - bitangent* length(p2-p0) * 0.5f;
+        draw_point(debug, new_pos, RED_DEBUG_COLOR);
+        suspend_execution(debug);
+        out.move_vert(dir_edge, new_pos*0.5 + p1*0.5);
+        p1 = out.position(dir_edge);
+    }
+
+    else if ((angle < 1.0 / 4.0 * PI) || (angle > 0.9*PI && angle < 1.4*PI) ) {
         float factor = 1.0;
 
         float l0 = length(p0 - p1);
@@ -999,7 +1011,7 @@ void QMorph::update_side_edge(QMorphFront& front, front_edge_handle e1, front_ed
 
         vec3 new_pos = (p0 + p2) / 2.0f;// (p0 * w0 + p2 * w1) / (w0 + w1);
         
-        edge_handle dir_edge = side == LEFT_EDGE ? out.get_edge(e0) : out.get_edge(e1);
+
         out.move_vert(dir_edge, new_pos);
         p1 = out.position(dir_edge);
     }
@@ -1013,17 +1025,19 @@ void QMorph::update_side_edge(QMorphFront& front, front_edge_handle e1, front_ed
     edge.state &= ~SEAM;
     side_edge.state &= ~SEAM;
 
-    if (angle < 1.0 / 6.0 * PI) {
+    if (angle < SEAM_ANGLE) {
         edge.state |= SEAM;
         side_edge.state |= SEAM;
     }
 
+    delay = true;
+    if (!delay) front.push(e1);
     if (push) {
-        edge.state = front.gen(edge.state, true);
+        edge.state = front.gen(edge.state, delay);
         front.push(e0);
     }
     //front.edges[e1].state = front.gen(edge.state, true);
-    front.push(e1);
+    if (delay) front.push(e1);
 
     if (angle == 0.0f) {
         suspend_and_reset_execution(debug);
@@ -1048,15 +1062,15 @@ void remove_enclosed_tris(QMorph& q, slice<edge_handle> cavity_edges) {
     auto& stack = q.stack;
     
     out.dealloc_tri(cavity_edges[0]);
-    stack.append(TRI(cavity_edges[0]));
+    stack.append(out.TRI(cavity_edges[0]));
     while (stack.length > 0) {
         tri_handle current = stack.pop();
         draw_triangle(debug, out, current, RED_DEBUG_COLOR);
-        suspend_execution(debug);
+        //suspend_execution(debug);
 
         for (uint i = 0; i < 3; i++) {
             edge_handle edge = current + i;
-            tri_handle neigh = TRI(out.edges[edge]);
+            tri_handle neigh = out.TRI(out.edges[edge]);
             if (out.is_deallocated(neigh)) continue;
 
             bool inside = true;
@@ -1143,13 +1157,13 @@ void QMorph::seam(front_edge_handle front_edge) {
     cavity_edges[0] = out.get_edge(front_edge);
     if (left) {
         cavity_edges[1] = out.get_edge(edge.left);
-        cavity_edges[2] = TRI_NEXT_EDGE(out.get_opp_edge(top));
+        cavity_edges[2] = out.get_opp_edge(top, 1);
     }
     else {
         cavity_edges[1] = out.get_edge(edge.right);
-        cavity_edges[2] = TRI_NEXT_EDGE(out.get_edge(top));
+        cavity_edges[2] = out.get_edge(top, 1);
     }
-    cavity_edges[3] = TRI_NEXT_EDGE(cavity_edges[2]);
+    cavity_edges[3] = out.next_edge(cavity_edges[2]);
 
     suspend_and_reset_execution(debug);
 
@@ -1165,7 +1179,7 @@ void QMorph::seam(front_edge_handle front_edge) {
     for (uint i = 0; i < 4; i++) {
         cavity_outer_edges[i] = out.edges[cavity_edges[i]];
         stable[i] = out.get_stable(cavity_edges[i]);
-        draw_triangle(debug, out, TRI(cavity_outer_edges[i]), colors[i]);
+        draw_triangle(debug, out, out.TRI(cavity_outer_edges[i]), colors[i]);
         suspend_execution(debug);
     }
 
@@ -1177,7 +1191,7 @@ void QMorph::seam(front_edge_handle front_edge) {
     for (edge_handle edge : ccw) {
         draw_edge(debug, out, edge, RED_DEBUG_COLOR);
         out.indices[edge] = v0;
-        out.indices[TRI_NEXT_EDGE(out.edges[edge])] = v0;
+        out.indices[out.next_edge(out.edges[edge])] = v0;
     };    
 
     out.link_edge(out.edges[cavity_edges[0]], out.edges[cavity_edges[1]]);
@@ -1263,7 +1277,7 @@ stable_edge_handle form_side_edge(QMorph& q, tri_handle tri, edge_handle start, 
         }
     }
 
-    bool forms_triangle = out.indices[TRI_NEXT_EDGE(best_edge)].id == v_edge_other.id;
+    bool forms_triangle = out.indices[out.next_edge(best_edge)].id == v_edge_other.id;
 
     const real threshold = 0.1 * PI;
     
@@ -1278,7 +1292,7 @@ stable_edge_handle form_side_edge(QMorph& q, tri_handle tri, edge_handle start, 
         return out.get_opp(out.get_stable(best_edge)); 
     }
 
-    edge_handle flip_edge = smallest_angle > 0 ? TRI_NEXT_EDGE(best_edge) : TRI_NEXT_EDGE(out.edges[best_edge], 2);
+    edge_handle flip_edge = smallest_angle > 0 ? out.next_edge(best_edge) : out.next_edge(out.edges[best_edge], 2);
     draw_edge(debug, out, flip_edge, RED_DEBUG_COLOR);
 
     bool on_front = out.is_boundary(flip_edge);
@@ -1300,7 +1314,7 @@ stable_edge_handle form_side_edge(QMorph& q, tri_handle tri, edge_handle start, 
     stable_edge_handle result;
 
     if (l > sqrt(2) * mesh_size || angle > threshold || forms_triangle) {
-        vec3 normal = out.triangle_normal(TRI(flip_edge));
+        vec3 normal = out.triangle_normal(out.TRI(flip_edge));
         
         draw_line(debug, p[0], p[2], GREEN_DEBUG_COLOR);
         draw_line(debug, p0, p0 + bitangent, BLUE_DEBUG_COLOR);
@@ -1310,7 +1324,7 @@ stable_edge_handle form_side_edge(QMorph& q, tri_handle tri, edge_handle start, 
         assert(edge_edge_intersect(normal, p[0], p[2], p0, p0 + bitangent, &inter));
 
         result = out.split_edge(flip_edge, inter);
-        result = out.get_stable(TRI_NEXT_EDGE(out.get_edge(result), 2));
+        result = out.get_stable(out.get_edge(result, 2));
         result = out.get_opp(result);
     }
     else {
@@ -1331,7 +1345,8 @@ stable_edge_handle form_side_edge(QMorph& q, tri_handle tri, edge_handle start, 
     return result;
 }
 
-void form_triangle(QMorph& q, stable_edge_handle front_edge, stable_edge_handle top_edge) {
+/*
+void form_triangle(QMorph& q, stable_edge_handle front_edge, stable_edge_handle top_edge, ) {
     SurfaceTriMesh& out = q.out;
     QMorphFront& front = q.front;
 
@@ -1363,6 +1378,7 @@ void form_triangle(QMorph& q, stable_edge_handle front_edge, stable_edge_handle 
 
     front.dealloc(front_edge);
 }
+*/
 
 void form_wedge(QMorph& q, stable_edge_handle edge, stable_edge_handle connect_with_edge, vec3 normal, vec3 bitangent, float l, uint side) {
     SurfaceTriMesh& out = q.out;
@@ -1422,7 +1438,7 @@ void form_wedge(QMorph& q, stable_edge_handle edge, stable_edge_handle connect_w
         q.update_side_edge(front, front_edge.right, top, normal, RIGHT_EDGE, true);
         if (!connect) q.update_side_edge(front, front_edge.left, new_edge, normal, LEFT_EDGE, true);
         
-        mid = (out.position(out.get_edge(top)) + out.position(TRI_NEXT_EDGE(out.get_edge(front_edge.right)))) / 2.0f;
+        mid = (out.position(out.get_edge(top)) + out.position(out.get_edge(front_edge.right, 1))) / 2.0f;
     }
     else {
         top = q.recover_edge(out.get_edge(edge), out.get_edge(new_edge));
@@ -1439,8 +1455,8 @@ void form_wedge(QMorph& q, stable_edge_handle edge, stable_edge_handle connect_w
         q.update_side_edge(front, front_edge.left, top, normal, LEFT_EDGE, true);
         
         if (!connect) q.update_side_edge(front, front_edge.right, new_edge, normal, RIGHT_EDGE, true);
-        
-        mid = (out.position(TRI_NEXT_EDGE(out.get_edge(top))) + out.position(out.get_edge(front_edge.left))) / 2.0f;
+
+        mid = (out.position(out.get_edge(top, 1)) + out.position(out.get_edge(front_edge.left))) / 2.0f;
     }
 
     out.flip_bad_edges(out.get_edge(top));
@@ -1483,6 +1499,390 @@ if (right) {
 }
 */
 
+void advance_front(QMorph& q, stable_edge_handle front_edge) {
+    CFDDebugRenderer& debug = q.debug;
+    QMorphFront& front = q.front;
+    SurfaceTriMesh& out = q.out;
+    SurfaceTriMesh& in = q.in;
+    SurfaceCrossField& cross_field = q.cross_field;
+    real mesh_size = q.mesh_size;
+
+    QMorphFront::Edge& edge = front.edges[front_edge];
+
+    //Check if front forms closed loop
+    front_edge_handle loop_edge;
+    bool loop3, loop4;
+    {
+        loop_edge = front.edges[edge.right].right;
+        loop3 = loop_edge == edge.left;
+        loop4 = edge.left == front.edges[loop_edge].right;
+
+        if (loop3) {
+            front.dealloc(edge.right);
+            front.dealloc(edge.left);
+            return;
+        }
+
+        if (loop4) {
+            front.dealloc(loop_edge);
+            front.dealloc(edge.right);
+            front.dealloc(edge.left);
+            return;
+        }
+    }
+
+    if (edge.state & SEAM) {
+        q.seam(front_edge);
+        return;
+    }
+
+    clear_debug_stack(debug);
+
+    bool left = edge.state & LEFT_EDGE;
+    bool right = edge.state & RIGHT_EDGE;
+
+    edge_handle e0 = out.get_edge(front_edge); //find_edge(edge.tr, edge.edge_center, edge.edge_dir);
+    edge_handle e1 = out.edges[e0]; //find_edge(edge.tr, edge.edge_center, edge.edge_dir);
+    //draw_edge(debug, out, e0, BLUE_DEBUG_COLOR);
+
+    vec3 p0 = out.position(e0);
+    vec3 p1 = out.position(out.next_edge(e0));
+
+    vec3 normal0 = out.triangle_normal(out.TRI(e0));
+    vec3 normal = normal0;
+
+    /*if (normal0.x < 0.9) {
+        suspend_and_reset_execution(debug);
+        draw_mesh(debug, out);
+        draw_front(debug, out, *this, front);
+        draw_triangle(debug, out, out.TRI(e0), RED_DEBUG_COLOR);
+        draw_line(debug, p0, p0 + normal, RED_DEBUG_COLOR);
+        suspend_execution(debug);
+    }*/
+
+    vec3 tangent = p1 - p0;
+    real edge_length = length(tangent);
+    vec3 bitangent_edge = normalize(cross(normal0, tangent));
+
+    auto side_edge_dir = [&](tri_handle tri, front_edge_handle e1, front_edge_handle e2, uint side, vec3* bitangent) {
+        vec3 bitangent_side;
+        vec3 p0, p1, p2;
+        get_verts(out, e1, e2, side, &p0, &p1, &p2);
+
+        real angle = vec_dir_angle(p0 - p1, p2 - p1, normal);
+
+        *bitangent = bitangent_edge;
+        if (angle < PI) *bitangent = normalize(cross(normal, p2 - p0));
+
+        //return *bitangent;
+        return cross_field.cross_vector(tri, p1, *bitangent);
+    };
+
+    vec3 edge_bitangent0, edge_bitangent1;
+
+    vec3 bitangent0 = side_edge_dir(edge.tm0, edge.left, front_edge, LEFT_EDGE, &edge_bitangent0);
+    vec3 bitangent1 = side_edge_dir(edge.tm1, edge.right, front_edge, RIGHT_EDGE, &edge_bitangent1);
+    float l0 = mesh_size; // fminf(mesh_size, edge_length); // / dot(bitangent0, bitangent_edge);
+    float l1 = mesh_size; // fminf(mesh_size, edge_length); /// dot(bitangent1, bitangent_edge); 
+
+    vec3 p2, p3;
+    if (left) p2 = out.position(out.get_edge(edge.left));
+    else p2 = p0 + bitangent0 * l0;
+
+    if (right) p3 = out.position(out.get_opp_edge(edge.right));
+    else p3 = p1 + bitangent1 * l1;
+
+    real size_diff = length(p3 - p2) / mesh_size;
+
+    enum Wedge {
+        None,
+        Triangle,
+        TriangleExisting,
+        Diamond
+    };
+
+    if (size_diff < 0.6) {
+        bitangent0 = edge_bitangent0;
+        bitangent1 = edge_bitangent1;
+    }
+
+    bool wedge = size_diff > 1.8;
+    Wedge left_wedge = Wedge::None;
+    Wedge right_wedge = Wedge::None;
+
+    vec3 bitangent_wedge0, bitangent_wedge1;
+
+    real left_angle = vec_dir_angle(p2 - p0, p1 - p0, normal);
+    real right_angle = vec_dir_angle(p0 - p1, p3 - p1, normal);
+
+
+    constexpr float angle = PI / 8.0f;
+
+    auto would_cause_seam = [angle](real corner_angle) {
+        //return true;
+        return corner_angle - 2 * angle < 1.0 / 3.0f * PI;
+    };
+
+    if (wedge) {
+        if (left_angle > right_angle) {
+            bitangent0 = edge_bitangent0;
+            if (left) {
+                //bitangent0 = glm::rotate(glm::vec3(bitangent0), -angle*0.3f, glm::vec3(normal));
+
+                left_wedge = would_cause_seam(left_angle) ? Wedge::TriangleExisting : Wedge::Diamond;
+                left = false;
+            }
+            else {
+                left_wedge = would_cause_seam(left_angle) ? Wedge::Triangle : Wedge::Diamond;
+                bitangent0 = glm::rotate(glm::vec3(bitangent0), -angle, glm::vec3(normal));
+                bitangent_wedge0 = glm::rotate(glm::vec3(bitangent0), angle, glm::vec3(normal));
+            }
+
+        }
+        else {
+            bitangent1 = edge_bitangent1;
+            if (right) {
+                right = false;
+                right_wedge = would_cause_seam(right_angle) ? Wedge::TriangleExisting : Wedge::Diamond;
+                //bitangent1 = glm::rotate(glm::vec3(bitangent1), angle * 0.3f, glm::vec3(normal));
+            }
+            else {
+                right_wedge = would_cause_seam(right_angle) ? Wedge::Triangle : Wedge::Diamond;
+                bitangent1 = glm::rotate(glm::vec3(bitangent1), angle, glm::vec3(normal));
+                bitangent_wedge1 = glm::rotate(glm::vec3(bitangent1), -angle, glm::vec3(normal));
+            }
+        }
+    }
+
+    float factor = 1.0f;
+
+    tri_handle tr2 = 0, tr3 = 0;
+
+    stable_edge_handle e2, e3;
+
+    tri_handle tri = out.TRI(out.get_edge(front_edge));
+    if (!left) {
+        e2 = form_side_edge(q, tri, out.get_edge(front_edge), right ? out.get_opp_edge(edge.right) : 0, normal, bitangent0, l0);
+        p2 = out.position(out.get_edge(e2));
+        e2 = out.get_opp(e2); //p0 --> p2
+    }
+    else {
+        e2 = edge.left; //  p2 ----> p0
+        e2 = out.get_opp(e2); //  p0 ----> p2
+    }
+
+    if (!right) {
+        e3 = form_side_edge(q, tri, out.get_opp_edge(front_edge), left ? out.get_edge(edge.left) : 0, normal, bitangent1, l1); //p3 --> p1
+        p3 = out.position(out.get_edge(e3)); //p3 --> p1
+        draw_point(debug, p3, BLUE_DEBUG_COLOR);
+    }
+    else {
+        e3 = edge.right; //  x ---> r
+        e3 = out.get_stable(out.edges[out.get_edge(e3)]); //r --> x
+    }
+
+    edge_handle dir_e0 = out.edges[out.get_edge(e2)];
+    edge_handle dir_e1 = out.get_edge(e3);
+
+    bool forms_triangle = out.indices[dir_e0].id == out.indices[dir_e1].id;
+    /*if (forms_triangle) {
+
+        draw_mesh(debug, out);
+        suspend_and_reset_execution(debug);
+        form_triangle(*this, front_edge, left ? e3 : e2);
+        continue;
+    }*/
+
+    if (edge.tm0 == 0 || edge.tm1 == 0) {
+        draw_edge(debug, out, out.get_edge(front_edge), RED_DEBUG_COLOR);
+        suspend_execution(debug);
+    }
+
+    tri_handle tm2, tm3;
+    if (!left) {
+        tm2 = in.project(debug, edge.tm0, &p2, nullptr);
+        if (!tm2) {
+            suspend_execution(debug);
+            printf("BADD!!!!!\n");
+        }
+    }
+    else tm2 = front.edges[edge.left].tm0;
+
+    if (!right) {
+        tm3 = in.project(debug, edge.tm1, &p3, nullptr);
+        if (!tm3) {
+            suspend_execution(debug);
+            printf("BADD!!!!\n");
+        }
+    }
+    else tm3 = front.edges[edge.right].tm1;
+
+    array<6, tri_handle> flip;
+
+    //draw_triangle(debug, out, tr2, BLUE_DEBUG_COLOR);
+    //draw_triangle(debug, out, tr3, BLUE_DEBUG_COLOR);
+    //suspend_execution(debug);
+
+    front_edge_handle top_edge;
+    if (!forms_triangle) {
+        top_edge = q.recover_edge(dir_e0, dir_e1);
+        out.mark_boundary(top_edge);
+        out.mark_boundary(e2);
+        out.mark_boundary(e3);
+        out.flip_bad_edges(out.get_tri(top_edge));
+    }
+
+    if (!left) {
+        QMorphFront::Edge& left_side = front.edges[e2];
+        left_side.tm0 = edge.tm0;
+        left_side.tm1 = tm2;
+
+        out.flip_bad_edges(out.get_tri(e2));
+        out.move_vert(out.get_opp_edge(e2), p0 + l0 * bitangent0);
+        q.update_side_edge(front, edge.left, e2, normal, LEFT_EDGE, true);
+    }
+
+    if (!right) {
+        QMorphFront::Edge& right_side = front.edges[e3];
+        right_side.tm0 = tm3;
+        right_side.tm1 = edge.tm1;
+
+        out.flip_bad_edges(out.get_tri(e3));
+        out.move_vert(out.get_edge(e3), p1 + l1 * bitangent1);
+        q.update_side_edge(front, edge.right, e3, normal, RIGHT_EDGE, true);
+    }
+
+    if (e3.id == 0 || e2.id == 0) {
+        suspend_execution(debug);
+        draw_mesh(debug, out);
+        suspend_execution(debug);
+    }
+
+    //p2 --> p0, p3 --> p1
+    //draw_mesh(debug, out);
+    //suspend_execution(debug);
+
+    bool top_is_front = false;
+    QMorphFront::Edge* top = nullptr;
+
+    if (!forms_triangle) {
+        top_is_front = front.contains(out.get_opp(top_edge));
+        assert(!front.contains(top_edge));
+
+        if (top_is_front) {
+            top_edge = out.get_opp(top_edge);
+            front.remove(top_edge);
+        }
+
+        top = &front.edges[top_edge];
+
+        top->state = 0;
+        top->tm0 = tm2;
+        top->tm1 = tm3;
+    }
+
+    //todo refactor logic
+    if (!left) {
+        if (top_is_front) {
+            q.update_side_edge(front, top->right, e2, normal, RIGHT_EDGE, false);
+        }
+        else if (forms_triangle) {
+            front.edges[e2].right = e3;
+            front.edges[e3].left = e2;
+        }
+        else {
+            top->left = e2;
+            front.edges[e2].right = top_edge;
+        }
+    }
+    else {
+        q.update_side_edge(front, front.edges[edge.left].left, forms_triangle ? e3 : top_edge, normal, LEFT_EDGE, false, !wedge);
+        front.dealloc(edge.left);
+    }
+
+    if (!right) {
+        if (top_is_front) {
+            q.update_side_edge(front, top->left, e3, normal, LEFT_EDGE, false);
+        }
+        else if (forms_triangle) {
+            front.edges[e2].right = e3;
+            front.edges[e3].left = e2;
+        }
+        else {
+            top->right = e3;
+            front.edges[e3].left = top_edge;
+        }
+    }
+    else {
+        QMorphFront::Edge& right = front.edges[edge.right];
+        q.update_side_edge(front, right.right, forms_triangle ? e2 : top_edge, normal, RIGHT_EDGE, false, !wedge);
+        front.dealloc(edge.right);
+    }
+
+    if (!forms_triangle) {
+        bool next_gen = state_to_priority(edge.state) < 2; //delay untill next iteration
+        top->state = front.gen(top->state, next_gen);
+
+        if (!top_is_front) front.push(top_edge);
+        else front.dealloc(top_edge);
+    }
+    else {
+        return;
+    }
+
+    if (false && wedge) {
+        draw_mesh(debug, out);
+        suspend_and_reset_execution(debug);
+        clear_debug_stack(debug);
+        draw_front(debug, out, q, front);
+        suspend_execution(debug);
+    }
+
+    if (left_wedge == Wedge::Triangle || left_wedge == Wedge::TriangleExisting) {
+        form_wedge(q, e2, left_wedge == Wedge::TriangleExisting ? edge.left : stable_edge_handle{}, normal, bitangent_wedge0, l0, LEFT_EDGE);
+    }
+    if (right_wedge == Wedge::Triangle || right_wedge == Wedge::TriangleExisting) {
+        form_wedge(q, e3, right_wedge == Wedge::TriangleExisting ? edge.right : stable_edge_handle{}, normal, bitangent_wedge1, l1, RIGHT_EDGE);
+    }
+    if (left_wedge == Wedge::Diamond) {
+        front.remove(front.edges[e2].left);
+        advance_front(q, front.edges[e2].left);
+    }
+    if (right_wedge == Wedge::Diamond) {
+        front.remove(front.edges[e3].right);
+        advance_front(q, front.edges[e3].right);
+    }
+
+    //form quad
+    if (top_is_front) top_edge = out.get_opp(top_edge);
+
+    //ccw order
+    edge_handle cavity_outer_edges[4] = { out.get_opp_edge(front_edge), out.get_edge(e3), out.get_edge(top_edge), out.get_edge(e2), };
+    edge_handle cavity_inner_edges[4];
+    stable_edge_handle cavity_stable[4];
+    for (uint i = 0; i < 4; i++) {
+        cavity_inner_edges[i] = out.edges[cavity_outer_edges[i]];
+        cavity_stable[i] = out.get_stable(cavity_inner_edges[i]);
+    }
+    remove_enclosed_tris(q, { cavity_inner_edges, 4 });
+
+    tri_handle quad = out.alloc_tri();
+
+    //ccw vert orientation
+    out.edge_verts(out.get_edge(front_edge), &out.indices[quad + 0], &out.indices[quad + 1]);
+    out.edge_verts(out.get_edge(top_edge), &out.indices[quad + 3], &out.indices[quad + 2]);
+
+    out.flags[quad / 4] |= IS_QUAD;
+    for (uint i = 0; i < 4; i++) {
+        //draw_triangle(debug, out, out.TRI(cavity_outer_edges[i]), GREEN_DEBUG_COLOR);
+        //draw_edge(debug, out, quad + i, RED_DEBUG_COLOR);
+        //suspend_execution(debug);
+        out.edges[quad + i] = cavity_outer_edges[i];
+        out.edges[cavity_outer_edges[i]] = quad + i;
+        out.map_stable_edge(quad + i, cavity_stable[i]);
+        out.mark_boundary(cavity_stable[i]);
+    }
+}
 
 void QMorph::propagate(QMorphFront& new_front) {
     front = std::move(new_front);
@@ -1498,286 +1898,8 @@ void QMorph::propagate(QMorphFront& new_front) {
         front_edge_handle front_edge = front.pop();
         if (!front_edge.id) break;
 
-        QMorphFront::Edge& edge = front.edges[front_edge];
+        advance_front(*this, front_edge);
 
-        //Check if front forms closed loop
-        front_edge_handle loop_edge;
-        bool loop3, loop4;
-        {
-            loop_edge = front.edges[edge.right].right;
-            loop3 = loop_edge == edge.left;
-            loop4 = edge.left == front.edges[loop_edge].right;
-
-            if (loop3) {
-                front.dealloc(edge.right);
-                front.dealloc(edge.left);
-                continue;
-            }
-
-            if (loop4) {
-                front.dealloc(loop_edge);
-                front.dealloc(edge.right);
-                front.dealloc(edge.left);
-                continue;
-            }
-        }
-
-        if (edge.state & SEAM) {
-            seam(front_edge);
-            continue;
-        }
-
-        clear_debug_stack(debug);
-
-        bool left = edge.state & LEFT_EDGE;
-        bool right = edge.state & RIGHT_EDGE;
-
-        edge_handle e0 = out.get_edge(front_edge); //find_edge(edge.tr, edge.edge_center, edge.edge_dir);
-        edge_handle e1 = out.edges[e0]; //find_edge(edge.tr, edge.edge_center, edge.edge_dir);
-        //draw_edge(debug, out, e0, BLUE_DEBUG_COLOR);
-
-        vec3 p0 = out.position(e0);
-        vec3 p1 = out.position(TRI_NEXT_EDGE(e0));
-
-        vec3 normal0 = out.triangle_normal(TRI(e0));
-        vec3 normal = normal0;
-
-        /*if (normal0.x < 0.9) {
-            suspend_and_reset_execution(debug);
-            draw_mesh(debug, out);
-            draw_front(debug, out, *this, front);
-            draw_triangle(debug, out, TRI(e0), RED_DEBUG_COLOR);
-            draw_line(debug, p0, p0 + normal, RED_DEBUG_COLOR);
-            suspend_execution(debug);
-        }*/
-
-        vec3 tangent = p1 - p0;   
-        vec3 bitangent_edge = normalize(cross(normal0, tangent));     
-
-        auto side_edge_dir = [&](tri_handle tri, front_edge_handle e1, front_edge_handle e2, uint side) {
-            vec3 bitangent_side;
-            vec3 p0, p1, p2;
-            get_verts(out, e1, e2, side, &p0, &p1, &p2);
-
-            real angle = vec_dir_angle(p0-p1, p2-p1, normal);
-            
-            vec3 bitangent = bitangent_edge;
-            if (angle < PI) bitangent = normalize(cross(normal, p2 - p0));
-
-            return bitangent;
-            return cross_field.cross_vector(tri, p1, bitangent);
-        };
-
-        vec3 bitangent0 = side_edge_dir(edge.tm0, edge.left, front_edge, LEFT_EDGE);
-        vec3 bitangent1 = side_edge_dir(edge.tm1, edge.right, front_edge, RIGHT_EDGE);
-        float l0 = mesh_size; // / dot(bitangent0, bitangent_edge);
-        float l1 = mesh_size; /// dot(bitangent1, bitangent_edge); 
-    
-        vec3 p2, p3;
-        if (left) p2 = out.position(out.get_edge(edge.left));
-        else p2 = p0 + bitangent0 * l0;
-
-        if (right) p3 = out.position(out.get_opp_edge(edge.right));
-        else p3 = p1 + bitangent1 * l1;
-
-        real size_diff = length(p3 - p2) / mesh_size;
-
-        bool wedge = size_diff > 1.8;
-        bool left_wedge = 0, right_wedge = 0, left_wedge_existing = 0, right_wedge_existing = 0;
-
-        vec3 bitangent_wedge0, bitangent_wedge1;
-
-        real left_angle = vec_dir_angle(p2 - p0, p1 - p0, normal);
-        real right_angle = vec_dir_angle(p0 - p1, p3 - p1, normal);
-
-        float angle = PI / 8.0f;
-        if (wedge) {
-            if (left_angle > right_angle) {
-                if (left) {
-                    //bitangent0 = glm::rotate(glm::vec3(bitangent0), -angle*0.3f, glm::vec3(normal));
-                    left_wedge_existing = true;                
-                    left = false;
-                }
-                else {
-                    left_wedge = true;
-                    bitangent0 = glm::rotate(glm::vec3(bitangent0), -angle, glm::vec3(normal));
-                    bitangent_wedge0 = glm::rotate(glm::vec3(bitangent0), angle, glm::vec3(normal));
-                }
-               
-            }
-            else {
-                if (right) {
-                    right = false;
-                    right_wedge_existing = true;
-                    //bitangent1 = glm::rotate(glm::vec3(bitangent1), angle * 0.3f, glm::vec3(normal));
-                }
-                else {
-                    right_wedge = true; 
-                    bitangent1 = glm::rotate(glm::vec3(bitangent1), angle, glm::vec3(normal));
-                    bitangent_wedge1 = glm::rotate(glm::vec3(bitangent1), -angle, glm::vec3(normal));
-                }
-            }
-        }
-
-        float factor = 1.0f;
-
-        tri_handle tr2 = 0, tr3 = 0;
-
-        stable_edge_handle e2, e3;
-
-        tri_handle tri = TRI(out.get_edge(front_edge));
-        if (!left) {
-            e2 = form_side_edge(*this, tri, out.get_edge(front_edge), right ? out.get_opp_edge(edge.right) : 0, normal, bitangent0, l0); 
-            p2 = out.position(out.get_edge(e2));
-            e2 = out.get_opp(e2); //p0 --> p2
-        }
-        else {
-            e2 = edge.left; //  p2 ----> p0
-            e2 = out.get_opp(e2); //  p0 ----> p2
-        }
-
-        if (!right) {
-            e3 = form_side_edge(*this, tri, out.get_opp_edge(front_edge), left ? out.get_edge(edge.left) : 0, normal, bitangent1, l1); //p3 --> p1
-            p3 = out.position(out.get_edge(e3)); //p3 --> p1
-            draw_point(debug, p3, BLUE_DEBUG_COLOR);
-        }
-        else {
-            e3 = edge.right; //  x ---> r
-            e3 = out.get_stable(out.edges[out.get_edge(e3)]); //r --> x
-        }
-
-        edge_handle dir_e0 = out.edges[out.get_edge(e2)];
-        edge_handle dir_e1 = out.get_edge(e3);
-
-        bool forms_triangle = out.indices[dir_e0].id == out.indices[dir_e1].id;
-        if (forms_triangle) {
-            form_triangle(*this, front_edge, left ? e3 : e2);
-            continue;
-        }
-
-        if (edge.tm0 == 0 || edge.tm1 == 0) {
-            draw_edge(debug, out, out.get_edge(front_edge), RED_DEBUG_COLOR);
-            suspend_execution(debug);
-        }
-
-        tri_handle tm2, tm3;
-        if (!left) {
-            tm2 = in.project(debug, edge.tm0, &p2, nullptr);
-            if (!tm2) {                
-                suspend_execution(debug);
-                printf("BADD!!!!!\n");
-            }
-        }
-        else tm2 = front.edges[edge.left].tm0;
-
-        if (!right) {
-            tm3 = in.project(debug, edge.tm1, &p3, nullptr);
-            if (!tm3) {
-                suspend_execution(debug);
-                printf("BADD!!!!\n");
-            }
-        }
-        else tm3 = front.edges[edge.right].tm1;
-
-        array<6, tri_handle> flip;
-
-        //draw_triangle(debug, out, tr2, BLUE_DEBUG_COLOR);
-        //draw_triangle(debug, out, tr3, BLUE_DEBUG_COLOR);
-        //suspend_execution(debug);
-
-        bool top_is_front = false;
-        front_edge_handle top_edge = recover_edge(dir_e0, dir_e1);
-        out.mark_boundary(top_edge);            
-        out.mark_boundary(e2);
-        out.mark_boundary(e3);
-        out.flip_bad_edges(out.get_tri(top_edge));
-
-        if (!left) {
-            QMorphFront::Edge& left_side = front.edges[e2];
-            left_side.tm0 = edge.tm0;
-            left_side.tm1 = tm2;
-
-            out.flip_bad_edges(out.get_tri(e2));
-            out.move_vert(out.get_opp_edge(e2), p0 + l0*bitangent0);
-            update_side_edge(front, edge.left, e2, normal, LEFT_EDGE, true);
-        }
-
-        if (!right) {
-            QMorphFront::Edge& right_side = front.edges[e3];
-            right_side.tm0 = tm3;
-            right_side.tm1 = edge.tm1;
-            
-            out.flip_bad_edges(out.get_tri(e3));
-            out.move_vert(out.get_edge(e3), p1 + l1*bitangent1);
-            update_side_edge(front, edge.right, e3, normal, RIGHT_EDGE, true);
-        }
-
-        if (e3.id == 0 || e2.id == 0) {
-            suspend_execution(debug);
-            draw_mesh(debug, out);
-            suspend_execution(debug);
-        }
-
-        //p2 --> p0, p3 --> p1
-        //draw_mesh(debug, out);
-        //suspend_execution(debug);
-
-        top_is_front = front.contains(out.get_opp(top_edge));
-
-        if (top_is_front) {
-            top_edge = out.get_opp(top_edge);
-            front.remove(top_edge);
-        }
-
-        QMorphFront::Edge& top = front.edges[top_edge];
-
-        top.state = 0;
-        top.tm0 = tm2;
-        top.tm1 = tm3;
-
-        //todo refactor logic
-        if (!left) {
-            if (top_is_front) {
-                update_side_edge(front, top.right, e2, normal, RIGHT_EDGE, false);
-            }
-            else {
-                top.left = e2;
-                front.edges[e2].right = top_edge;
-            }
-        }
-        else {
-            update_side_edge(front, front.edges[edge.left].left, forms_triangle ? e3 : top_edge, normal, LEFT_EDGE, false);
-            front.dealloc(edge.left);
-        }
-
-        if (!right) {
-            if (top_is_front) {
-                update_side_edge(front, top.left, e3, normal, LEFT_EDGE, false);
-            }
-            else {
-                top.right = e3;
-                front.edges[e3].left = top_edge;
-            }
-        }
-        else {
-            QMorphFront::Edge& right = front.edges[edge.right];
-            update_side_edge(front, right.right, forms_triangle ? e2 : top_edge, normal, RIGHT_EDGE, false);
-            front.dealloc(edge.right);
-        }
-
-        bool next_gen = state_to_priority(edge.state) < 2; //delay untill next iteration
-        top.state = front.gen(top.state, next_gen);
-
-        if (!top_is_front) front.push(top_edge); 
-        else front.dealloc(top_edge);
-
-        if (left_wedge || left_wedge_existing) {
-            form_wedge(*this, e2, left_wedge_existing ? edge.left : stable_edge_handle{}, normal, bitangent_wedge0, l0, LEFT_EDGE);
-        }
-        if (right_wedge || right_wedge_existing) {
-            form_wedge(*this, e3, right_wedge_existing ? edge.right : stable_edge_handle{}, normal, bitangent_wedge1, l1, RIGHT_EDGE);
-        }
-        
 #if 0
         //if (count++ % 20 == 0) {
             suspend_execution(debug);
@@ -1794,12 +1916,15 @@ void QMorph::propagate(QMorphFront& new_front) {
     }
 
     clear_debug_stack(debug);
+    memset(out.edge_flags, 0, sizeof(char) * out.stable_to_edge.length);
+    out.smooth_mesh(5);
+    draw_mesh(debug, out);
 
-    for (tri_handle tri : out) {
+    /*for (tri_handle tri : out) {
         vec3 verts[3];
         out.triangle_verts(tri, verts);
         draw_triangle(debug, verts, vec4(1));
-    }
+    }*/
 
     suspend_execution(debug);
 }
@@ -1808,8 +1933,10 @@ void qmorph(SurfaceTriMesh& mesh, CFDDebugRenderer& debug, SurfaceCrossField& cr
     suspend_execution(debug);
     
     QMorph qmorph{
-        mesh, cross_field, debug, {nullptr, nullptr}, mesh
+        mesh, cross_field, debug, {nullptr, nullptr}, {}
     };
+
+    qmorph.out.copy(mesh, true);
 
     qmorph.mesh_size = 0.1;
     qmorph.out.debug = &debug;
