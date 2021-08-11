@@ -5,11 +5,11 @@
 struct DuctOptions {
 	float width = 1.0;
 	float height = 1.0;
-	float depth = 1.0;
+	float depth = 10.0;
 
-	float constrain_start = 0.0;
-	float constrain_end = 2.0;
-	float transition = 1.0;
+	float constrain_start = 0.4;
+    float constrain_end = 0.6;
+    float transition = 0.1;
 	float narrow = 0.6;
 
 	float turn_start = 1.2;
@@ -80,9 +80,9 @@ vec3 duct(const DuctOptions& options, float u, float v, float t) {
 
 DuctOptions options;
 
-int u_div = 4;
-int v_div = 4;
-int t_div = 4;
+int u_div = 10;
+int v_div = 10;
+int t_div = 100;
 
 template<typename T>
 void field(UI& ui, string_view field, T* value, float min = -FLT_MAX, float max = FLT_MAX, float inc_per_pixel = 5.0) {
@@ -154,7 +154,7 @@ CFDVolume generate_parametric_mesh() {
 		return cell_handle{ (int)(i * i_cell_stride + j * j_cell_stride + k * k_cell_stride) };
 	};
 
-	real pressure_top = 200.0;
+	real pressure_top = 600.0;
 	real pressure_bottom = 10.0;
 
 

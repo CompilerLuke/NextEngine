@@ -76,7 +76,7 @@ void draw_boundary(CFDDebugRenderer& debug, SurfaceTriMesh& mesh) {
 tri_handle insert_point(SurfaceDelaunay& d, tri_handle start, vec3 pos, const real min_dist) {
     float min_dist_sq = min_dist * min_dist;
 
-    vertex_handle v = { d.mesh.positions.length }; //todo move into function
+    vertex_handle v = { (int)d.mesh.positions.length }; //todo move into function
     d.mesh.positions.append(pos);
 
     d.mesh.dealloc_tri(start);

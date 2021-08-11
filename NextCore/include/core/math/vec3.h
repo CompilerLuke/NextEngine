@@ -2,6 +2,7 @@
 
 #include "core/core.h"
 #include <math.h>
+#include <float.h>
 #include <glm/vec3.hpp>
 
 #undef min

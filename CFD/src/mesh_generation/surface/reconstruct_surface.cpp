@@ -1,3 +1,4 @@
+/*
 #include "thekla/thekla_atlas.h"
 #include "mesh/surface_tet_mesh.h"
 #include "core/memory/linear_allocator.h"
@@ -79,3 +80,4 @@ void reconstruct_surface(SurfaceTriMesh& surface, CFDDebugRenderer& debug, slice
     suspend_execution(debug);
     atlas_free(output);
 }
+*/

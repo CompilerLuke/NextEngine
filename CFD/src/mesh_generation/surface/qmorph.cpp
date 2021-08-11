@@ -409,7 +409,7 @@ edge_handle QMorph::insert_into_triangle(tri_handle tri, vec3 point, bool flip) 
         return result;
     }
 
-    vertex_handle v = { out.positions.length };
+    vertex_handle v = { (int)out.positions.length };
     out.positions.append(point);
 
     tri_handle t0 = tri;
