@@ -241,7 +241,9 @@ LayedOutUIView& Text::compute_layout(UI& ui, const BoxConstraint& constraint) {
 
 void compute_flex_layout(UI& ui, LayedOutUIContainer& result, LayoutStyle& layout, Size spacing_size, uint axis, uint alignment, const BoxConstraint& constraint, slice<UIView*> children) {
     float spacing = 0.0f;
-    to_size_bounds(&spacing, spacing_size, constraint.max[axis]);
+    
+    bool is_z = axis == StackView::Depth;
+    if (!is_z) to_size_bounds(&spacing, spacing_size, constraint.max[axis]);
     
     float margin[4];
     float padding[4];
@@ -254,19 +256,20 @@ void compute_flex_layout(UI& ui, LayedOutUIContainer& result, LayoutStyle& layou
     
     LayedOutUIView** layout_children = alloc_t<LayedOutUIView*>(*ui.allocator, children.length);
     
-    float max = 0.0f;
+    glm::vec2 max = {};
     
     for (uint i = 0; i < children.length; i++) {
         if (i > 0) offset += spacing;
         
         UIView* child = children[i];
-        float flex = child->layout.flex_factor[axis];
+        float flex;
+        if (!is_z) flex = child->layout.flex_factor[axis];
         if (flex == 0) {
             LayedOutUIView& layout = child->compute_layout(ui, adjusted);
             layout_children[i] = &layout;
             if (is_relative(child->layout.position)) {
                 offset += layout.geo.extent.size[axis];
-                max = glm::max(max, layout.geo.extent.size[!axis]);
+                max = glm::max(max, layout.geo.extent.size);
             }
         }
         
@@ -274,7 +277,8 @@ void compute_flex_layout(UI& ui, LayedOutUIContainer& result, LayoutStyle& layou
     }
     
     
-    float px_per_flex = (adjusted.max[axis] - offset) / flex_total;
+    float px_per_flex;
+    if (!is_z) px_per_flex = (adjusted.max[axis] - offset) / flex_total;
     px_per_flex = px_per_flex < 0 ? 0 : px_per_flex;
     
     offset = 0;
@@ -282,24 +286,29 @@ void compute_flex_layout(UI& ui, LayedOutUIContainer& result, LayoutStyle& layou
         if (i > 0) offset += spacing;
         
         UIView* child = children[i];
-        float flex = child->layout.flex_factor[axis];
+        float flex;
+        if (!is_z) flex = child->layout.flex_factor[axis];
 
         if (flex != 0) {
             float fill = flex * px_per_flex;
             //printf("Fill Height %f\n", fill_height);
             BoxConstraint flex_constraint;
-            flex_constraint.min[axis] = fill;
-            flex_constraint.max[axis] = fill;
-            flex_constraint.max[!axis] = inner.max[!axis];
+            if (is_z) {
+                flex_constraint.max = inner.max;
+            } else {
+                flex_constraint.min[axis] = fill;
+                flex_constraint.max[axis] = fill;
+                flex_constraint.max[!axis] = inner.max[!axis];
+            }
             
             LayedOutUIView& layout = child->compute_layout(ui, flex_constraint);
             layout_children[i] = &layout;
-            max = glm::max(max, layout.geo.extent.size[!axis]);
+            max = glm::max(max, layout.geo.extent.size);
         }
         
         UIElementGeo& geo = layout_children[i]->geo;
         
-        if (is_relative(child->layout.position)) {
+        if (!is_z && is_relative(child->layout.position)) {
             geo.extent.pos[axis] = offset;
             offset += geo.extent.size[axis];
         } else {
@@ -309,8 +318,12 @@ void compute_flex_layout(UI& ui, LayedOutUIContainer& result, LayoutStyle& layou
     
     
     glm::vec2 content;
-    content[axis] = offset;
-    content[!axis] = max;
+    if (is_z) {
+        content = max;
+    } else {
+        content[axis] = offset;
+        content[!axis] = max[!axis];
+    }
     
     UIElementGeo geo = compute_geometry(ui, layout, content, inner, constraint, padding, margin);
     
@@ -318,9 +331,12 @@ void compute_flex_layout(UI& ui, LayedOutUIContainer& result, LayoutStyle& layou
     for (uint i = 0; i < children.length; i++) {
         Position position = children[i]->layout.position;
         UIElementGeo& geo = layout_children[i]->geo;
-        float remaining = max - geo.extent.size[!axis];
-        if (is_relative(position)) geo.extent.pos[!axis] = 0.5f*alignment*remaining;
-
+        
+        if (!is_z) {
+            float remaining = max[!axis] - geo.extent.size[!axis];
+            if (is_relative(position)) geo.extent.pos[!axis] = 0.5f*alignment*remaining;
+        }
+        
         glm::vec2 offset = to_position(position, content);
         layout_children[i]->geo.extent.pos += offset;
     }

@@ -7,9 +7,17 @@ void SurfaceTriMesh::link_edge(edge_handle edge, edge_handle neigh) {
     //edge_handle prev_edge = out.edges[neigh]; //prev_edge -------> neigh
     //stable_edge_handle stable = get_stable(prev_edge);
     //map_stable_edge(edge, get_stable(prev_edge));
+    assert(edge >= 3);
+    assert(neigh >= 3);
     
     edges[edge] = neigh;
     edges[neigh] = edge;
+    
+    stable_edge_handle e_stable = get_stable(edge);
+    stable_edge_handle n_stable = get_stable(neigh);
+    
+    //edge_flags[e_stable.id] |= edge_flags[n_stable.id];
+    //edge_flags[n_stable.id] |= edge_flags[e_stable.id];
 
     vertex_handle v0, v1;
     edge_verts(neigh, &v0, &v1);
@@ -166,19 +174,15 @@ bool SurfaceTriMesh::flip_bad_edge(edge_handle edge0) {
     //draw_line(debug, v0, v1, vec4(0, 0, 1, 1));
     //suspend_execution(debug);
 
-    auto angle = [](SurfaceTriMesh& mesh, edge_handle edge) {
+    auto angle = [](SurfaceTriMesh& mesh, edge_handle edge, vec3 normal) {
         vec3 v0 = mesh.position(mesh.next_edge(edge, 2));
         vec3 v1 = mesh.position(edge);
         vec3 v2 = mesh.position(mesh.next_edge(edge, 1));
-
-        vec3 v01 = v1 - v0;
-        vec3 v02 = v2 - v0;
-
         //draw_line(debug, v0, v1, vec4(1, 0, 0, 1));
         //draw_line(debug, v0, v2, vec4(0, 1, 0, 1));
         //suspend_execution(debug);
 
-        float angle = acosf(dot(v01, v02) / (length(v01) * length(v02)));
+        float angle = vec_angle(v1,v0,v2);
         return angle;
     };
 
@@ -188,11 +192,132 @@ bool SurfaceTriMesh::flip_bad_edge(edge_handle edge0) {
     float dihedral = to_degrees(vec_angle(normal1, normal2));
     if (dihedral > 45) return false;
 
-    float sum = angle(*this, edge0) + angle(*this, edge1);
+    float sum = angle(*this, edge0, normal1) + angle(*this, edge1, normal2);
     bool bad = sum >= PI;
 
     if (bad) bad = flip_edge(edge0) > 0;
     return bad;
+}
+
+#include <algorithm>
+
+array<100, vertex_handle> verts_from_edge(SurfaceTriMesh& surface, slice<edge_handle> edges) {
+    array<100, vertex_handle> result;
+    result.resize(edges.length);
+    
+    for (uint i = 0; i < edges.length; i++) {
+        result[i] = surface.indices[surface.edges[edges[i]]];
+    }
+    
+    std::sort(result.begin(), result.end(), [](vertex_handle a, vertex_handle b) {
+        return a.id < b.id;
+    });
+    
+    return result;
+}
+
+bool SurfaceTriMesh::collapse_edge(edge_handle edge) {
+    edge_handle neigh = edges[edge];
+    
+    auto ccw_edge = ccw(edge);
+    auto ccw_neigh = ccw(neigh);
+    
+    array<100, vertex_handle> v_edge = verts_from_edge(*this, ccw_edge);
+    array<100, vertex_handle> v_neigh = verts_from_edge(*this, ccw_neigh);
+    
+    bool e_boundary = false;
+    bool n_boundary = false;
+    
+    for (edge_handle edge : ccw_edge){
+        if (is_boundary(edge)) {
+            e_boundary = true;
+            break;
+        }
+    }
+    for (edge_handle neigh : ccw_neigh) {
+        if (is_boundary(neigh)) {
+            n_boundary = true;
+            break;
+        }
+    }
+    
+    uint shared = 0;
+    
+    uint i = 0;
+    uint j = 0;
+    while (i < v_edge.length && j < v_neigh.length) {
+        vertex_handle e0 = v_edge[i];
+        vertex_handle e1 = v_neigh[j];
+        
+        if (e1.id > e0.id) i++;
+        else if (e1.id < e0.id) j++;
+        else {
+            shared++;
+            i++;
+            j++;
+        }
+    }
+    
+    if (shared != 2 || (e_boundary && n_boundary)) return false;
+    
+    edge_handle e0 = edges[next_edge(edge,1)];
+    edge_handle e1 = edges[next_edge(edge,2)];
+    edge_handle e2 = edges[next_edge(neigh,1)];
+    edge_handle e3 = edges[next_edge(neigh,2)];
+    
+    
+    bool debug_collapse = false;
+     
+    if (debug_collapse) {
+        draw_triangle(*debug, *this, TRI(neigh), RED_DEBUG_COLOR);
+        draw_triangle(*debug, *this, TRI(edge), RED_DEBUG_COLOR);
+        draw_triangle(*debug, *this, TRI(e0), GREEN_DEBUG_COLOR);
+        draw_triangle(*debug, *this, TRI(e1), GREEN_DEBUG_COLOR);
+        draw_triangle(*debug, *this, TRI(e2), GREEN_DEBUG_COLOR);
+        draw_triangle(*debug, *this, TRI(e3), GREEN_DEBUG_COLOR);
+        suspend_execution(*debug);
+    }
+    
+    vertex_handle v = indices[edge];
+    vec3 p0 = position(edge);
+    vec3 p1 = position(neigh);
+    vec3 p2 = (e_boundary == n_boundary) ? (p0 + p1) / 2 : (e_boundary ? p0 : p1);
+    
+    if (!move_vert(edge, p2, 0.4)) return false;
+    
+    for (edge_handle edge : ccw_neigh) {
+        indices[edge] = v;
+        if (debug_collapse) draw_edge(*debug, *this, edge, BLUE_DEBUG_COLOR);
+    }
+    
+    
+    if (debug_collapse) {
+        draw_point(*debug, p2, GREEN_DEBUG_COLOR);
+        suspend_execution(*debug);
+    }
+    
+    stable_edge_handle s0 = get_stable(e0);
+    stable_edge_handle s1 = get_stable(e1);
+    stable_edge_handle s2 = get_stable(e2);
+    stable_edge_handle s3 = get_stable(e3);
+    
+    edge_flags[s0.id] |= edge_flags[s1.id];
+    edge_flags[s1.id] = edge_flags[s0.id];
+    edge_flags[s1.id] |= edge_flags[s2.id];
+    edge_flags[s2.id] = edge_flags[s1.id];
+    
+    link_edge(e0, e1);
+    link_edge(e2, e3);
+    
+    dealloc_tri(edge);
+    dealloc_tri(neigh);
+    
+    flip_bad_edges(TRI(e0));
+    flip_bad_edge(TRI(e1));
+    flip_bad_edges(TRI(e2));
+    flip_bad_edge(TRI(e3));
+    
+    return true;
 }
 
 #include "visualization/debug_renderer.h"
@@ -245,7 +370,7 @@ void SurfaceTriMesh::smooth_mesh(uint n) {
 }
 
 
-void SurfaceTriMesh::move_vert(edge_handle dir, vec3 new_pos) {
+bool SurfaceTriMesh::move_vert(edge_handle dir, vec3 new_pos, real min) {
     vertex_handle v = indices[dir];
     vec3 orig_pos = positions[v.id];
 
@@ -277,7 +402,7 @@ void SurfaceTriMesh::move_vert(edge_handle dir, vec3 new_pos) {
     }
 
     float factor = 1.0f;
-    while (factor > 0.0f) {
+    while (factor > min) {
         bool flipped_triangle = false;
 
         positions[v.id] = factor * new_pos + (1.0 - factor) * orig_pos;
@@ -302,7 +427,7 @@ void SurfaceTriMesh::move_vert(edge_handle dir, vec3 new_pos) {
             suspend_execution(*debug);
         }
 
-        if (!flipped_triangle) return;
+        if (!flipped_triangle) return true;
 
         //debug_move = true;
 
@@ -310,6 +435,8 @@ void SurfaceTriMesh::move_vert(edge_handle dir, vec3 new_pos) {
     }
 
     positions[v.id] = orig_pos;
+    
+    return false;
 }
 
 void SurfaceTriMesh::flip_bad_edges(tri_handle start, bool smooth) {

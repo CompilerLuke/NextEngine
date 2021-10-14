@@ -486,19 +486,19 @@ CFDVolume generate_mesh(World& world, InputMeshRegistry& registry, CFDMeshError&
         vector<vec3> points;
 		tvector<vec3> shadow_points;
         
-		float mesh_size = 0.5;
+		float mesh_size = 0.2;
 
 		SurfaceTriMesh remeshed = surface;
 		vector<stable_edge_handle> surface_edges;
 		{
 			Profile profile("Remesh tri surface");
-			surface_edges = remesh_surface(remeshed, debug, features, mesh_size);
+			surface_edges = remesh_surface(remeshed, debug, features, mesh_size*0.7);
 
 			profile.log();
 		}
 
 
-		bool quad_meshing = false;
+		bool quad_meshing = true;
 
 		if (quad_meshing) {
 			SurfaceCrossField cross_field(remeshed, debug);
@@ -512,11 +512,11 @@ CFDVolume generate_mesh(World& world, InputMeshRegistry& registry, CFDMeshError&
 
 			{
 				Profile profile("QMorph");
-				qmorph(remeshed, debug, cross_field, surface_edges);
+				qmorph(remeshed, debug, cross_field, surface_edges, mesh_size);
 			}
 		}
 
-		vector<vertex_handle> boundary_verts;
+        vector<vertex_handle> boundary_verts;
 		vector<Boundary> boundary;
 
 		for (int i = 0; i < remeshed.positions.length; i++) {
@@ -561,11 +561,15 @@ CFDVolume generate_mesh(World& world, InputMeshRegistry& registry, CFDMeshError&
 		vec3 last = {};
 		for (uint i = 1; i < boundary_verts.length; i++) {
 			vec3 current = result[boundary_verts[i]].position;
-			assert(sq(current - last) > 0.001);
+            if (sq(current - last) < 0.001) {
+                draw_point(debug, current, RED_DEBUG_COLOR);
+                suspend_execution(debug);
+            }
+			//assert(sq(current - last) > 0.001);
 			last = current;
 		}
 #endif
-#if 1
+#if 0
 		for (CFDVertex& vertex : result.vertices) {
 			vertex.position.x += ((float)rand()) / INT_MAX * 0.2;
 			vertex.position.y += ((float)rand()) / INT_MAX * 0.2;

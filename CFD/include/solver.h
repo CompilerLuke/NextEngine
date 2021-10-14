@@ -13,6 +13,10 @@ enum CFDSolverPhase {
 struct CFDResults {
 	vector<vec3> velocities;
 	vector<real> pressures;
+    vector<real> vof;
+    
+    real max_velocity;
+    real max_pressure;
 };
 
 struct CFDSolver {
@@ -21,5 +25,8 @@ struct CFDSolver {
 	CFDResults results;
 };
 
-CFDResults simulate(CFDVolume& volume, CFDDebugRenderer& debug);
+struct Simulation;
+
+Simulation* make_simulation(CFDVolume& volume, CFDDebugRenderer& debug);
+CFDResults simulate_timestep(Simulation& sim, real dt);
 

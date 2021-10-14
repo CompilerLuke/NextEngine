@@ -14,10 +14,14 @@
 #include "visualization/render_backend.h"
 #include "visualization/color_map.h"
 
+#include "solver.h"
+
 struct CFDVisualization {
     CFDRenderBackend& backend;
     CFDTriangleBuffer triangles[MAX_FRAMES_IN_FLIGHT];
     CFDLineBuffer lines[MAX_FRAMES_IN_FLIGHT];
+    
+    FlowQuantity last_quantity;
     vec4 last_plane;
     uint frame_index;
 };
@@ -30,8 +34,9 @@ CFDVisualization* make_cfd_visualization(CFDRenderBackend& backend) {
 	return visualization;
 }
 
-void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mesh, vec4 plane, bool rebuild) {
-    if (!rebuild && plane == visualization.last_plane) return;
+void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mesh, vec4 plane, FlowQuantity quantity, CFDResults& results, bool rebuild) {
+    
+    if (!rebuild && plane == visualization.last_plane && quantity == visualization.last_quantity) return;
     
     //Identify contour
     uint* visible = TEMPORARY_ZEROED_ARRAY(uint, divceil(mesh.cells.length, 32));
@@ -52,10 +57,12 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
                 break;
             }
         }
-#else
+#elif 1
         vec3 centroid = compute_centroid(mesh, cell.vertices, n);
         bool is_visible = dot(plane, centroid) > plane.w-epsilon;
         //is_visible = is_visible && dot(plane, centroid) < (plane.w+3.0)-epsilon;
+#else
+        bool is_visible = results.vof.length==0 || results.vof[i] > 0.8;
 #endif
         
         //is_visible = true;
@@ -69,6 +76,7 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
 	//}
     
     visualization.last_plane = plane;
+    visualization.last_quantity = quantity;
 
     visualization.frame_index = (visualization.frame_index + 1) % MAX_FRAMES_IN_FLIGHT;
     
@@ -85,6 +93,8 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
     for (CFDVertex vertex : mesh.vertices) {
         line_buffer.append({ vec4(vertex.position,0.0), line_color });
     }
+    
+    bool has_results = results.velocities.length > 0;
     
 	for (uint i = 0; i < mesh.cells.length; i++) {
         if (i % 32 == 0 && visible[i/32] == 0) {
@@ -130,7 +140,16 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
         }
         
         size /= count;
-        vec4 cell_color = color_map(log2f(size), -5, 5);
+        vec4 cell_color;
+        vec3 velocity;
+        if (has_results) {
+            velocity = results.velocities[i];
+            //cell_color = color_map(length(velocity), 0, results.max_velocity);
+            if (quantity == FlowQuantity::Pressure) cell_color = color_map(results.pressures[i], 0, results.max_pressure);
+            if (quantity == FlowQuantity::Velocity) cell_color = color_map(length(results.velocities[i]), 0, results.max_velocity);
+        } else {
+            cell_color = color_map(log2f(size), -5, 5);
+        }
 
         for (uint i = 0; i < desc.num_faces; i++) {
             const ShapeDesc::Face& face = desc.faces[i];
@@ -139,10 +158,14 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
             vec3 face_normal = cell.faces[i].normal;
 
             vec4 face_color = cell_color;
-            if (cell.faces[i].pressure_grad != 0.0f) {
+            if (cell.faces[i].pressure != 0.0f) {
                 face_color = RED_DEBUG_COLOR;
             }
+            if (cell.faces[i].velocity != 0.0f) {
+                face_color = BLUE_DEBUG_COLOR;
+            }
 
+            vec3 centroid;
             for (uint j = 0; j < face.num_verts; j++) {
                 vertex_handle v0 = cell.vertices[face.verts[j]];
                 vertex_handle v1 = cell.vertices[face.verts[(j+1) % face.num_verts]];
@@ -151,6 +174,24 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
                 line_buffer.append(line_offset + v1.id);
                 
                 triangle_buffer.append({vec4(mesh[v0].position,0), vec4(face_normal,1.0), face_color});
+                
+                centroid += mesh[v0].position;
+            }
+            centroid /= face.num_verts;
+            
+            if (has_results) {
+                const real arrow = 0.2;
+                
+                vec3 dir = normalize(velocity) * size * 0.8;
+                vec3 bitangent = normalize(cross(dir, plane)) * size * arrow;
+                
+                centroid += face_normal * size * 0.01;
+                vec3 start = centroid - 0.5*dir;
+                vec3 end = centroid + 0.5*dir;
+                
+                line_buffer.draw_line(start, end, vec4(0,0,0,1));
+                line_buffer.draw_line(end, end + bitangent - dir*arrow, vec4(0,0,0,1));
+                line_buffer.draw_line(end, end - bitangent - dir*arrow, vec4(0,0,0,1));
             }
 
             triangle_buffer.append(triangle_offset);

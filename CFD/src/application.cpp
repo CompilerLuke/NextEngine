@@ -34,6 +34,8 @@
 
 #include "mesh_generation/parametric_shapes.h"
 
+#include "math_ia.h"
+
 struct CFD {
     Modules* modules;
 	CFDSolver solver;
@@ -54,6 +56,10 @@ struct CFD {
     texture_handle mesh;
     texture_handle play;
     texture_handle pause;
+    
+    FlowQuantity flow_quantity;
+    
+    MathIA* math_ia;
 
     CFD(Modules& modules);
 };
@@ -98,12 +104,15 @@ void set_theme(UITheme& theme) {
 void default_scene(Lister& lister, InputMeshRegistry& registry, World& world) {
     Transform model_trans;
     //model_trans.position.x = 4.375;
-    model_trans.scale = glm::vec3(5);
+    model_trans.scale = glm::vec3(1);
     //model_trans.scale = glm::vec3(3);
     model_trans.rotation = glm::angleAxis(to_radians(-90.0f), glm::vec3(1, 0, 0));
     
-    input_model_handle model = registry.load_model("jet_engine.fbx", compute_model_matrix(model_trans));
+    input_model_handle model;
+    //= registry.load_model("part.fbx", compute_model_matrix(model_trans));
 
+    //input_model_handle model;
+    
     if (false) {
         auto [e, trans, mesh] = world.make<Transform, CFDMesh>();
         mesh.model = model;
@@ -118,7 +127,7 @@ void default_scene(Lister& lister, InputMeshRegistry& registry, World& world) {
         domain.contour_initial_thickness = 0.5;
         domain.contour_thickness_expontent = 1.4;
 
-        domain.feature_angle = 45;
+        domain.feature_angle = 35;
         domain.min_feature_quality = 0.6;
         
         register_entity(lister, "Domain", e.id);
@@ -159,6 +168,8 @@ APPLICATION_API CFD* init(void* args, Modules& engine) {
     cfd->pause = load_Texture("pause_icon.png");
     cfd->mesh = load_Texture("mesh_icon.png");
     
+    cfd->math_ia = make_math_ia(cfd->ui, cfd->debug_renderer);
+    
     default_scene(*cfd->lister, cfd->mesh_registry, world);
     
     //todo move out of application init and into engine init
@@ -195,6 +206,7 @@ void generate_mesh_in_background(CFD& cfd) {
     vec4 plane(domain.plane, dot(domain.plane, domain.center));
 
     cfd.solver.phase = SOLVER_PHASE_MESH_GENERATION;
+    cfd.solver.results = {};
     
     CFDMeshError err;
     //cfd.solver.mesh = generate_mesh(*cfd.modules->world, cfd.mesh_registry, err, *cfd.debug_renderer);
@@ -208,9 +220,27 @@ void generate_mesh_in_background(CFD& cfd) {
         cfd.solver.phase = SOLVER_PHASE_FAIL;
     }
 
-    build_vertex_representation(*cfd.visualization, cfd.solver.mesh, plane, true);
+    build_vertex_representation(*cfd.visualization, cfd.solver.mesh,  plane, cfd.flow_quantity, cfd.solver.results, true);
+}
 
-    cfd.solver.results = simulate(cfd.solver.mesh, *cfd.debug_renderer);
+void solve_in_background(CFD& cfd) {
+    auto some_domain = cfd.modules->world->first<Transform, CFDDomain>();
+    if (!some_domain) return;
+    
+    auto [e2, domain_trans, domain] = *some_domain;
+    vec4 plane(domain.plane, dot(domain.plane, domain.center));
+
+    Simulation* solver = make_simulation(cfd.solver.mesh, *cfd.debug_renderer);
+    
+    real dt = 1.0 / 20;
+    uint time_steps = 200.0 / dt;
+    
+    for (uint i = 0; i < time_steps; i++) {
+        cfd.solver.results = simulate_timestep(*solver, dt);
+        build_vertex_representation(*cfd.visualization, cfd.solver.mesh, plane, cfd.flow_quantity, cfd.solver.results, true);
+    }
+    
+    //destroy solver
 }
 
 APPLICATION_API void update(CFD& cfd, Modules& modules) {
@@ -227,7 +257,7 @@ APPLICATION_API void update(CFD& cfd, Modules& modules) {
     if (solver.phase > SOLVER_PHASE_MESH_GENERATION) {
         auto [e2, domain_trans, domain] = *some_domain;
         vec4 plane(domain.plane, dot(domain.plane, domain.center));
-        build_vertex_representation(*cfd.visualization, solver.mesh, plane, false);
+        build_vertex_representation(*cfd.visualization, solver.mesh, plane, cfd.flow_quantity, solver.results, false);
     }
     
 }
@@ -262,6 +292,22 @@ ImageView& icon(UI& ui, texture_handle texture) {
         .flex(glm::vec2(0));
 }
 
+void flow_button(CFD& cfd, string_view name, FlowQuantity quantity) {
+    UI& ui = *cfd.ui;
+    bool& hovered = get_state<bool>(ui);
+    
+    auto& b = button(ui, name)
+    .on_click([&cfd, name, quantity] {
+        printf("Quantity %s\n", name.data);
+        cfd.flow_quantity = quantity;
+    })
+    .on_hover([&](bool hover) {
+        hovered = hover;
+    });
+    
+    if (cfd.flow_quantity == quantity) b.background(blue);
+}
+
 void render_editor_ui(CFD& cfd, Modules& engine) {
     UI& ui = *cfd.ui;
     Lister& lister = *cfd.lister;
@@ -279,6 +325,8 @@ void render_editor_ui(CFD& cfd, Modules& engine) {
     screen_info.fb_height = fb_height;
     screen_info.dpi_h = dpi_h;
     screen_info.dpi_v = dpi_v;
+    
+    //render_math_ia(*cfd.math_ia);
 
     begin_ui_frame(ui, screen_info, *engine.input, CursorShape::Arrow);
     set_theme(get_ui_theme(ui));
@@ -291,16 +339,31 @@ void render_editor_ui(CFD& cfd, Modules& engine) {
 
     begin_vstack(ui, HCenter).background(shade1);
         menu_bar(ui);
-        begin_hstack(ui, 1);
-            icon(ui, cfd.mesh)
-                .background(shade2)
-                .on_click([&] {         
-                    JobDesc job(generate_mesh_in_background, &cfd);
-                    add_jobs(PRIORITY_HIGH, job, nullptr);
-                });
-            icon(ui, cfd.play).background(shade2);
-            icon(ui, cfd.pause).background(shade2);
-        end_hstack(ui);
+        begin_zstack(ui);
+            begin_hstack(ui, 1);
+                spacer(ui);
+                icon(ui, cfd.mesh)
+                    .background(shade2)
+                    .on_click([&] {
+                        JobDesc job(generate_mesh_in_background, &cfd);
+                        add_jobs(PRIORITY_HIGH, job, nullptr);
+                    });
+                icon(ui, cfd.play)
+                    .background(shade2)
+                    .on_click([&] {
+                        JobDesc job(solve_in_background, &cfd);
+                        add_jobs(PRIORITY_HIGH, job, nullptr);
+                    });
+                icon(ui, cfd.pause).background(shade2);
+                spacer(ui);
+            end_hstack(ui);
+            begin_hstack(ui, 1);
+                spacer(ui);
+                flow_button(cfd, "Velocity", FlowQuantity::Velocity);
+                flow_button(cfd, "Pressure", FlowQuantity::Pressure);
+                flow_button(cfd, "Pressure Gradient", FlowQuantity::PressureGradient);
+            end_hstack(ui);
+        end_zstack(ui);
     end_vstack(ui);
 
     begin_hsplitter(ui).width({ Perc,100 }).flex(glm::vec2(0, 1));

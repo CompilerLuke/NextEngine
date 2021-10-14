@@ -125,7 +125,8 @@ struct SurfaceTriMesh {
 	stable_edge_handle split_edge(edge_handle edge0, vec3 pos);
 	stable_edge_handle split_and_flip(edge_handle edge0, vec3 pos);
 	void flip_bad_edges(tri_handle start, bool smooth = true);
-	void move_vert(edge_handle dir_edge, vec3 new_pos);
+	bool move_vert(edge_handle dir_edge, vec3 new_pos, real min = 0.2);
+    bool collapse_edge(edge_handle edge);
 
 	//Smoothing
 	void smooth_mesh(uint n = 1);
@@ -261,7 +262,7 @@ struct SurfaceTriMesh {
 			count++;
 			e1 = next_edge(e1);
 
-			if (count > 30) {
+			if (count > 95) {
 				debug_ccw = true;
 			}
 

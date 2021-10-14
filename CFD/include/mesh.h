@@ -123,8 +123,8 @@ struct CFDCell {
 	struct Face {
 		cell_handle neighbor;
 		vec3 normal;
-		real pressure_grad = 0.0f;
-		real velocity_grad = 0.0f;
+		real pressure = 0.0f;
+		vec3 velocity;
 	};
 
 	Face faces[6];

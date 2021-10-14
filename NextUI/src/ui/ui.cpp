@@ -212,7 +212,7 @@ void end_geo(UI& ui) {
     pop_container(ui);
 }
 
-StackView& begin_stack(UI& ui, Size spacing, bool axis, uint alignment) {
+StackView& begin_stack(UI& ui, Size spacing, StackView::Axis axis, uint alignment) {
     if (spacing.value == -1) spacing = ui.theme.size(ThemeSize::StackSpacing);
     
     StackView& stack = push_container<StackView>(ui);
@@ -226,20 +226,24 @@ StackView& begin_stack(UI& ui, Size spacing, bool axis, uint alignment) {
 }
 
 StackView& begin_vstack(UI& ui, Size spacing, HAlignment alignment) {
-    return begin_stack(ui, spacing, 1, alignment);
+    return begin_stack(ui, spacing, StackView::Vertical, alignment);
 }
 
 StackView& begin_vstack(UI& ui, HAlignment alignment) {
-    return begin_stack(ui, -1, 1, alignment);
+    return begin_stack(ui, -1, StackView::Vertical, alignment);
 }
 
 StackView& begin_hstack(UI& ui, Size spacing, VAlignment alignment) {
-    return begin_stack(ui, spacing, 0, alignment);
+    return begin_stack(ui, spacing, StackView::Horizontal, alignment);
 }
 
 
 StackView& begin_hstack(UI& ui, VAlignment alignment) {
     return begin_hstack(ui, -1, alignment);
+}
+
+StackView& begin_zstack(UI& ui) {
+    return begin_stack(ui, -1, StackView::Depth, 0);
 }
 
 Spacer& spacer(UI& ui, uint flex) {
@@ -322,6 +326,10 @@ void end(UI& ui) {
 }
 
 void end_hstack(UI& ui) {
+    pop_container(ui);
+}
+
+void end_zstack(UI& ui) {
     pop_container(ui);
 }
 
@@ -451,7 +459,7 @@ void begin_ui_frame(UI& ui, const ScreenInfo& info, const Input& window_input, C
     ui.max_font_size = 64; //todo make a parameter
     
     StackView* root = TEMPORARY_ALLOC(StackView);
-    root->axis = 0;
+    root->axis = StackView::Vertical;
     root->layout.valignment = VTop;
     root->alignment = HCenter;
     root->frame(ui.draw_data.width_px, ui.draw_data.height_px);
