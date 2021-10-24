@@ -401,6 +401,21 @@ vec3 quad_normal(vec3 positions[4]) {
 	return normalize((normal1 + normal2) / 2.0f);
 }
 
+real triangle_area(vec3 v[3]) {
+    vec3 v01 = v[1] - v[0];
+    vec3 v02 = v[2] - v[0];
+
+    return length(cross(v01, v02))/2.0f;
+}
+
+real quad_area(vec3 v[4]) {
+    vec3 v0[3] = {v[0], v[1], v[2]};
+    vec3 v1[3] = { v[0], v[2], v[3] };
+
+    return triangle_area(v0) + triangle_area(v1);
+}
+
+
 void compute_normals(slice<CFDVertex> vertices, CFDCell& cell) {
     const ShapeDesc& shape = shapes[cell.type];
     

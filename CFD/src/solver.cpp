@@ -1,4 +1,4 @@
-#if 1
+#if 0
 
 #include "solver.h"
 #include "engine/handle.h"
@@ -93,20 +93,6 @@ struct Simulation {
     real t = 0;
     uint tstep = 0;
 };
-
-real triangle_area(vec3 v[3]) {
-	vec3 v01 = v[1] - v[0];
-	vec3 v02 = v[2] - v[0];
-
-	return length(cross(v01, v02))/2.0f;
-}
-
-real quad_area(vec3 v[4]) {
-	vec3 v0[3] = {v[0], v[1], v[2]};
-	vec3 v1[3] = { v[0], v[2], v[3] };
-
-	return triangle_area(v0) + triangle_area(v1);
-}
 
 void right_angle_corrector(vec3 normal, vec3 to_center, real* parallel, vec3* ortho) {
 	to_center = normalize(to_center);

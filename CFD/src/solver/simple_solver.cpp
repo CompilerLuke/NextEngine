@@ -7,38 +7,48 @@
 
 #if 1
 #include "mesh.h"
-#include "solver/finite_volume.h"
-#include "solver/solver_abstract.h"
-#include "solver/evaluator.h"
+#include "solver/field.h"
+#include "solver/fvm.h"
+#include "solver/interpolator.h"
+#include "solver/fmesh.h"
 
 struct Velocity{};
 struct Pressure{};
 
-struct FV_VP_BFace
-: FV_BFace, FV_Diri_B<Velocity>, FV_Diri_B<Pressure> {
+//auto face = (w_cell.cwiseProduct(cell_values) + w_neigh.cwiseProduct(neigh_values)).cwiseProduct((w_cell + w_neigh).cwiseInverse());
+
+
+struct Simulation {
+    CFDDebugRenderer& debug;
+    FV_Mesh mesh;
     
+    FV_Vector U;
+    FV_Scalar P;
+    
+    Simulation(CFDVolume& volume, CFDDebugRenderer& debug);
+    void timestep(real dt);
 };
 
-void solve() {
-    ScalarUnknown<Velocity> U;
-    vector<real> P = vector<real>();
+Simulation::Simulation(CFDVolume& volume, CFDDebugRenderer& debug) :
+    mesh(build_mesh(volume)), debug(debug), U(*mesh.data), P(*mesh.data) {
     
-    real mu = 1.0;
-    real rho = 1.0;
-    
-    //Momentum Equation
-    FV_Mesh<FV_IFace, FV_VP_BFace> mesh;
-    
-    eval_on_mesh(mesh, laplacian(U));
-    //solve_on_mesh(mesh, laplacian(U), grad(P));
+    ScalarField inlet;
+        
+    P.add(new FaceAverage(mesh.interior));
+    P.add(new FixedGradient(mesh.inlet, std::move(inlet)));
 }
 
-/*void make_simulation(CFDVolume& volume, CFDDebugRenderer& debug) {
-    
+void Simulation::timestep(real dt) {
+    FV_ScalarMatrix eqP = fvm::laplace(P);
+    eqP.solve();
 }
 
-void simulate_timestep(struct Simulation& simulation, real dt) {
-    
-}*/
+Simulation* make_simulation(CFDVolume& volume, CFDDebugRenderer& debug) {
+    return new Simulation(volume, debug);
+}
+
+void simulate_timestep(Simulation& simulation, real dt) {
+    simulation.timestep(dt);
+}
 
 #endif

@@ -236,6 +236,8 @@ constexpr ShapeDesc shapes[4] = {
 
 void compute_normals(slice<CFDVertex> vertices, CFDCell& cell);
 
+real triangle_area(vec3 positions[3]);
+real quad_area(vec3 positions[4]);
 vec3 triangle_normal(vec3 positions[3]);
 vec3 triangle_center(vec3 positions[3]);
 vec3 quad_normal(vec3 positions[4]);

@@ -102,6 +102,10 @@ inline vec3 cross(vec3 a, vec3 b) {
 	};
 }
 
+inline vec3 proj(vec3 vec, vec3 base) {
+    return base*dot(vec, base)/sq(base);
+}
+
 inline vec3 abs(vec3 vec) {
     return vec3(fabs(vec.x), fabs(vec.y), fabs(vec.z));
 }
