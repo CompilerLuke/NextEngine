@@ -494,11 +494,14 @@ CFDVolume generate_mesh(World& world, InputMeshRegistry& registry, CFDMeshError&
 			Profile profile("Remesh tri surface");
 			surface_edges = remesh_surface(remeshed, debug, features, mesh_size);
 
+			reconstruct_surface(surface, debug, features);
+				//remesh_surface(remeshed, debug, features, mesh_size);
+
 			profile.log();
 		}
 
 
-		bool quad_meshing = false;
+		bool quad_meshing = true;
 
 		if (quad_meshing) {
 			SurfaceCrossField cross_field(remeshed, debug);

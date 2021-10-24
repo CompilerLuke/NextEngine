@@ -448,6 +448,7 @@ vector<stable_edge_handle> remesh_surface(SurfaceTriMesh& mesh, CFDDebugRenderer
     }
 
     SurfaceDelaunay d{ debug, mesh };
+    mesh.debug = &debug;
 
     draw_mesh(debug, mesh);
     draw_boundary(debug, mesh);

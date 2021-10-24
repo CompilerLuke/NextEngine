@@ -8,6 +8,10 @@ inline vec4 rgb(float r, float g, float b, float a = 1.0) {
 }
 
 //todo move to math
+inline vec3 lerp(vec3 a, vec3 b, float f) {
+    return a * (1.0f - f) + b * f;
+}
+
 inline vec4 lerp(vec4 a, vec4 b, float f) {
     return a * (1.0f - f) + b * f;
 }

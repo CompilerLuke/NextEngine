@@ -55,7 +55,10 @@ struct Simulation {
 
 	vector<vec3> centers;
 	vector<real> volumes;
-	vec_x vel_and_pressure;
+	
+	vector<vec3> velocities;
+	vector<vec3> next_velocities;
+	vec_x pressures;
 
 	vector<vec3> velocities_numer;
 	vector<vec3> velocities_denom;
@@ -81,9 +84,6 @@ void right_angle_corrector(vec3 normal, vec3 to_center, real* parallel, vec3* or
 	*ortho = normal - to_center*(*parallel);
 }
 
-uint EQ = 4;
-uint VAR = 4;
-
 Simulation make_simulation(CFDVolume& mesh, CFDDebugRenderer& debug) {
 	Simulation result{ debug };
 
@@ -95,8 +95,10 @@ Simulation make_simulation(CFDVolume& mesh, CFDDebugRenderer& debug) {
 	result.velocity_gradients.resize(result.num_cells);
 	result.pressure_gradients.resize(result.num_cells);
 
-	result.vel_and_pressure.resize(VAR * result.num_cells);
-	result.sparse_matrix.resize(EQ * result.num_cells, VAR * result.num_cells);
+	result.velocities.resize(result.num_cells);
+	result.next_velocities.resize(result.num_cells);
+	result.pressures.resize(result.num_cells);
+	result.sparse_matrix.resize(result.num_cells, result.num_cells);
 
 	for (uint i = 0; i < mesh.cells.length; i++) {
 		const CFDCell& cell = mesh.cells[i];
@@ -166,10 +168,8 @@ Simulation make_simulation(CFDVolume& mesh, CFDDebugRenderer& debug) {
 	}
 
 	for (uint i = 0; i < result.num_cells; i++) {
-		result.vel_and_pressure(i*4 + 0) = 0;
-		result.vel_and_pressure(i*4 + 1) = 0;
-		result.vel_and_pressure(i*4 + 2) = 0;
-		result.vel_and_pressure(i*4 + 3) = 1.0;
+		result.velocities[i] = vec3(0);
+		result.pressures[i] = 1.0;
 	}
 
 	suspend_execution(debug);
@@ -178,15 +178,11 @@ Simulation make_simulation(CFDVolume& mesh, CFDDebugRenderer& debug) {
 }
 
 vec3 get_velocity(Simulation& simulation, uint cell) {
-	vec3 result;
-	result.x = simulation.vel_and_pressure(cell * VAR + 0);
-	result.y = simulation.vel_and_pressure(cell * VAR + 1);
-	result.z = simulation.vel_and_pressure(cell * VAR + 2);
-	return result;
+	return simulation.velocities[cell];
 };
 
 real get_pressure(Simulation& simulation, uint cell) {
-	return simulation.vel_and_pressure[cell * VAR + 3];
+	return simulation.pressures(cell);
 };
 
 Eigen::Matrix3d get_velocity_gradient(Simulation& simulation, uint cell) {
@@ -252,175 +248,166 @@ void compute_gradients(Simulation& simulation) {
 	}
 }
 
-void build_coupled_matrix(Simulation& simulation) {
-	vector<T>& coeffs = simulation.coeffs; 
-	vec_x& source = simulation.source_term;	
-	
+real rho = 1;
+real mu = 0.1;
 
+void predictor_step(Simulation& sim, real dt) {
+	auto& next_velocities = sim.next_velocities;
+
+	for (uint i = 0; i < sim.num_cells; i++) {
+		next_velocities[i] = {};
+	}
+
+	auto face_contribution = [&](uint cell, real area, real dx, vec3 normal, vec3 vel_down, vec3 vel_up, real pressure_down, real pressure_up) {
+		vec3 vel_face = (vel_up + vel_down) / 2.0f;
+		vec3 pressure_face = (pressure_up + pressure_down) / 2.0f;
+
+		//vec3 conv_accel = from((to(vel_face) * to(vel_face).transpose()) * to(normal));
+		vec3 conv_accel2 = vel_face * dot(vel_face, normal);
+
+		vec3 flux = 0;
+		//flux -= 0.1*conv_accel2;
+		flux += mu * (vel_up - vel_down) * dx;
+		flux -= pressure_face * normal;
+
+		next_velocities[cell] += area * flux;
+	};
+
+	for (Face face : sim.faces) {
+		real dx = face.dx;
+		vec3 normal = face.normal;
+		vec3 area = face.area;
+
+		vec3 vel_down = get_velocity(sim, face.cell1);
+		vec3 vel_up = get_velocity(sim, face.cell2);
+		real pressure_down = get_pressure(sim, face.cell1);
+		real pressure_up = get_pressure(sim, face.cell2);
+
+		face_contribution(face.cell1, face.area, face.dx, face.normal, vel_down, vel_up, pressure_down, pressure_up);
+		face_contribution(face.cell2, face.area, face.dx, -face.normal, vel_up, vel_down, pressure_up, pressure_down);
+	}
+
+	for (BoundaryFace f : sim.boundary_faces) {
+		vec3 vel = get_velocity(sim, f.cell);
+		real pressure = get_pressure(sim, f.cell);
+		face_contribution(f.cell, f.area, f.dx, f.normal, vel, -vel, pressure, pressure);
+	}
+
+	for (PressureBoundaryFace f : sim.pressure_boundary_faces) {
+		vec3 vel = get_velocity(sim, f.cell);
+		real down_pressure = get_pressure(sim, f.cell);
+		real up_pressure = 2 * f.pressure - down_pressure;
+		face_contribution(f.cell, f.area, f.dx, f.normal, vel, vel, down_pressure, up_pressure);
+	}
+
+	for (uint i = 0; i < sim.num_cells; i++) {
+		vec3 old_velocity = sim.velocities[i];
+		vec3 new_velocity = sim.next_velocities[i] / sim.volumes[i];
+		next_velocities[i] = old_velocity + dt * new_velocity;
+	}
+
+	std::swap(sim.next_velocities, sim.velocities);
+}
+
+void corrector_step(Simulation& sim, real dt) {
+	auto& next_velocities = sim.next_velocities;
+	
+	for (uint i = 0; i < sim.num_cells; i++) {
+		next_velocities[i] = {};
+	}
+	
+	auto face_contribution = [&](uint cell, real area, vec3 normal, real pressure_down, real pressure_up) {
+		real pressure = (pressure_down + pressure_up) / 2.0f;
+		
+		vec3 flux;
+		flux = -1.0/rho * normal * pressure;
+
+		next_velocities[cell] += area * flux;
+	};
+
+	for (Face& f : sim.faces) {
+		real pressure_down = get_pressure(sim, f.cell1);
+		real pressure_up = get_pressure(sim, f.cell2);
+
+		face_contribution(f.cell1, f.area, f.normal, pressure_down, pressure_up);
+		face_contribution(f.cell2, f.area, -f.normal, pressure_up, pressure_down);
+	}
+
+	for (BoundaryFace& f : sim.boundary_faces) {
+		real pressure = get_pressure(sim, f.cell);
+
+		face_contribution(f.cell, f.area, f.normal, pressure, pressure);
+	}
+
+	for (PressureBoundaryFace& f : sim.pressure_boundary_faces) {
+		real pressure = get_pressure(sim, f.cell);
+
+		face_contribution(f.cell, f.area, f.normal, pressure, 2*f.pressure - pressure);
+	}
+
+	for (uint i = 0; i < sim.num_cells; i++) {
+		sim.next_velocities[i] = sim.velocities[i] + dt * next_velocities[i] / sim.volumes[i];
+	}
+
+	std::swap(sim.next_velocities, sim.velocities);
+}
+
+void build_poisson_matrix(Simulation& sim, real dt) {
+	vector<T>& coeffs = sim.coeffs; 
+	vec_x& source = sim.source_term;	
+	
 	coeffs.clear();
-	source.resize(simulation.num_cells * EQ);
+	source.resize(sim.num_cells);
 	source.fill(0);
 
-	//momentum U coefficient
-	auto m_U = [&](uint n, uint m, vec3 coeff) {
-		coeffs.append(T(n*EQ + 0, m*VAR + 0, coeff.x));
-		coeffs.append(T(n*EQ + 1, m*VAR + 1, coeff.y));
-		coeffs.append(T(n*EQ + 2, m*VAR + 2, coeff.z));
-	};
-
-	auto m_U_dot = [&](uint n, uint m, vec3 coeff) {
-		for (uint i = 0; i < 3; i++) {
-			for (uint j = 0; j < 3; j++) {
-				coeffs.append(T(n * EQ + i, m * VAR + j, coeff[j]));
-			}
-		}
-	};
-
-	auto m_S = [&](uint cell, vec3 value) {
-		source[cell * EQ + 0] += value.x;
-		source[cell * EQ + 1] += value.y;
-		source[cell * EQ + 2] += value.z;
-	};
-
-	//momentum P coefficient
-	auto m_P = [&](uint c, uint n, vec3 coeff) {
-		coeffs.append(T(c*EQ + 0, n*VAR + 3, coeff.x));
-		coeffs.append(T(c*EQ + 1, n*VAR + 3, coeff.y));
-		coeffs.append(T(c*EQ + 2, n*VAR + 3, coeff.z));
-	};
-
-	//pressure U coefficient, dot product
-	auto p_U = [&](uint n, uint m, vec3 coeff) {
-		coeffs.append(T(n*EQ + 3, m*VAR + 0, coeff.x));
-		coeffs.append(T(n*EQ + 3, m*VAR + 1, coeff.y));
-		coeffs.append(T(n*EQ + 3, m*VAR + 2, coeff.z));
-	};
-
-	auto p_S = [&](uint c, real value) {
-		source[c*EQ + 3] += value;
-	};
-
-	//pressure 
-	auto p_P = [&](uint n, uint m, real coeff) {
-		coeffs.append(T(n*EQ + 3, m*VAR + 3, coeff));
-	};
-
-	auto& vel_and_pressure = simulation.vel_and_pressure;
-
-	real rho = 1;
-	real mu = 1;
-
-	auto face_contribution = [&](uint cell, uint neigh, vec3 vel_down, vec3 vel_up, vec3 normal, real parallel, vec3 ortho, real area, real dx) {
-		vec3 anormal = normal * area;
+	auto face_contribution = [&](uint cell, uint neigh, real dx, real area, vec3 normal, vec3 vel_down, vec3 vel_up) {
+		vec3 vel_face = (vel_down + vel_up) / 2.0f;
 		
-		vec3 pressure_gradient_down = get_pressure_gradient(simulation, cell);
-		vec3 pressure_gradient_up = get_pressure_gradient(simulation, neigh);
+		real flux;
+		flux = rho/dt * dot(vel_face, normal);
 
-		Eigen::Matrix3d vel_gradient_down = get_velocity_gradient(simulation,cell);
-		Eigen::Matrix3d vel_gradient_up = get_velocity_gradient(simulation, neigh);
+		coeffs.append(T(cell, neigh, area * dx));
+		coeffs.append(T(cell, cell, -area * dx));
 
-		vec3 vel_face = (vel_up + vel_down) / 2.0f;
-		Eigen::Matrix3d vel_gradient_face = (vel_gradient_down + vel_gradient_up) / 2;
-		vec3 pressure_gradient_face = (pressure_gradient_down + pressure_gradient_up) / 2;
-
-		real conv_coeff = rho * dot(vel_face, anormal);
-
-		/*
-		Eigen::Vector3d _anormal = to(anormal);
-		vec3 div_coeff;
-		div_coeff.x = vel_gradient_face.col(0).dot(_anormal);
-		div_coeff.y = vel_gradient_face.col(1).dot(_anormal);
-		div_coeff.z = vel_gradient_face.col(2).dot(_anormal);
-		*/
-		vec3 div_coeff = from(vel_gradient_face.transpose() * to(anormal));
-
-		auto& coef = coeffs;
-
-		p_U(cell, cell, 10*0.5*anormal);
-		p_U(cell, neigh, 10*0.5*anormal);
-
-		//convective acceleration
-		m_U(cell, neigh, 0.5*conv_coeff);
-		m_U(cell, cell, 0.5*conv_coeff);
-
-		//pressure source
-		m_P(cell, neigh, 0.5 * anormal);
-		m_P(cell, cell, 0.5 * anormal);
-
-		//velocity gradient
-		m_U(cell, neigh, -area * mu * dx * parallel);
-		m_U(cell, cell,   area * mu * dx * parallel);
-		//orthogonal corrector
-		m_S(cell, -area * mu * from(vel_gradient_face * to(ortho)));
-
-		//pressure gradient
-		p_P(cell, neigh, area * dx * parallel);
-		p_P(cell, cell, -area * dx * parallel);
-		//orthogonal corrector
-		p_S(cell, -area * dot(pressure_gradient_face, ortho));
-
-		//velocity divergence source
-		p_U(cell, neigh, 0.5 * rho * div_coeff);
-		p_U(cell, cell,  0.5 * rho * div_coeff);
+		source[cell] += -area * flux;
 	};
 
-	bool first = false;
+	for (Face& f : sim.faces) {
+		vec3 vel_down = get_velocity(sim, f.cell1);
+		vec3 vel_up = get_velocity(sim, f.cell2);
 
-	for (const Face& face : simulation.faces) {
-		vec3 vel_down = get_velocity(simulation, face.cell1);
-		vec3 vel_up = get_velocity(simulation, face.cell2);
-
-		face_contribution(face.cell1, face.cell2, vel_down, vel_up, face.normal, face.parallel, face.ortho, face.area, face.dx);
-		face_contribution(face.cell2, face.cell1, vel_up, vel_down, -face.normal, face.parallel, -face.ortho, face.area, face.dx);
+		face_contribution(f.cell1, f.cell2, f.dx, f.area, f.normal, vel_down, vel_up);
+		face_contribution(f.cell2, f.cell1, f.dx, f.area, -f.normal, vel_up, vel_down);
 	}
 
-	for (const BoundaryFace& face : simulation.boundary_faces) {
-		uint cell = face.cell;
-		real area = face.area;
-		real dx = face.dx;
-		vec3 anormal = face.normal * area;
-		vec3 vel = get_velocity(simulation, cell);
-
-		m_P(cell, cell, anormal);
-		m_U(cell, cell, 2 * area * mu * dx);
+	for (PressureBoundaryFace& f : sim.pressure_boundary_faces) {
+		coeffs.append(T(f.cell, f.cell, -2 * f.area * f.dx));
+		source[f.cell] -= 2 * f.area * f.dx * f.pressure;
 	}
 
-	for (const PressureBoundaryFace& face : simulation.pressure_boundary_faces) {
-		uint cell = face.cell;
-		real area = face.area;
-		real dx = face.dx;
-		vec3 anormal = face.normal * area;
-		vec3 vel_face = get_velocity(simulation, cell);
-
-		p_U(cell, cell, 10*anormal);
-
-		m_U(cell, cell, rho * dot(vel_face, anormal));
-		m_S(cell, -face.pressure * anormal);
-
-		p_P(cell, cell, area * -2 * dx);
-		source[cell*4 + 3] -= area * 2 * face.pressure * dx;
-	}
-
-	simulation.sparse_matrix.setFromTriplets(coeffs.begin(), coeffs.end());
+	sim.sparse_matrix.setFromTriplets(coeffs.begin(), coeffs.end());
 }
 
 #include <iostream>
 
-void solve_coupled_matrix(Simulation& simulation, bool first) {
+void solve_poisson_matrix(Simulation& simulation, bool first) {
 	Eigen::BiCGSTAB<Eigen::SparseMatrix<real>> solver;
 	solver.compute(simulation.sparse_matrix);
 
-	std::cout << simulation.sparse_matrix << std::endl;
-	std::cout << simulation.source_term << std::endl;
+	//std::cout << simulation.sparse_matrix << std::endl;
+
+	//std::cout << "Source" << std::endl;
+	//std::cout << simulation.source_term << std::endl;
 
 	if (first) {
-		simulation.vel_and_pressure = solver.solve(simulation.source_term);
+		simulation.pressures = solver.solve(simulation.source_term);
 	}
 	else {
-		simulation.vel_and_pressure = solver.solveWithGuess(simulation.source_term, simulation.vel_and_pressure);
+		simulation.pressures = solver.solveWithGuess(simulation.source_term, simulation.pressures);
 	}
-	std::cout << "Solution" << std::endl;
-	std::cout << simulation.vel_and_pressure << std::endl;
+
+	//std::cout << "Solution" << std::endl;
+	//std::cout << simulation.pressures << std::endl;
 }
 
 void draw_simulation_state(Simulation& simulation, bool show_velocity, bool show_pressure) {
@@ -485,15 +472,27 @@ CFDResults simulate(CFDVolume& volume, CFDDebugRenderer& debug) {
 	
 	CFDResults result;
 
-	uint n = 20;
+	uint n = 100;
 	for (uint i = 0; i < n; i++) {
-		printf("Iteration %i, (%ix%i)\n", i, simulation.num_cells * 4, simulation.num_cells * 4);
-		compute_gradients(simulation);
-		build_coupled_matrix(simulation);
-		solve_coupled_matrix(simulation, i == 0);
+		real dt = i == 0 ? 1 : 1.0 / 1000;
+
+		printf("Iteration %i, (%ix%i), dt %f\n", i, simulation.num_cells * 4, simulation.num_cells * 4, dt);
+		//compute_gradients(simulation);
+		build_poisson_matrix(simulation, dt);
+		solve_poisson_matrix(simulation, false);
+		
+		uint inner = 10;
+		for (uint i = 0; i < inner; i++) {
+			predictor_step(simulation, dt / inner);
+		}
+		
+		/*for (uint i = 0; i < inner; i++) {
+			corrector_step(simulation, dt / inner);
+		}*/
 			
 		draw_simulation_state(simulation, true, false);
 		suspend_execution(debug);
+		
 		draw_simulation_state(simulation, false, true);
 		suspend_execution(debug);
 	}

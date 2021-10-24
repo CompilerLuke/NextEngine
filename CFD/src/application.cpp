@@ -102,9 +102,9 @@ void default_scene(Lister& lister, InputMeshRegistry& registry, World& world) {
     //model_trans.scale = glm::vec3(3);
     model_trans.rotation = glm::angleAxis(to_radians(-90.0f), glm::vec3(1, 0, 0));
     
-    input_model_handle model = registry.load_model("jet_engine.fbx", compute_model_matrix(model_trans));
+    input_model_handle model = registry.load_model("part.fbx", compute_model_matrix(model_trans));
 
-    if (false) {
+    if (true) {
         auto [e, trans, mesh] = world.make<Transform, CFDMesh>();
         mesh.model = model;
         mesh.color = glm::vec4(1,1,0,1);
@@ -118,7 +118,7 @@ void default_scene(Lister& lister, InputMeshRegistry& registry, World& world) {
         domain.contour_initial_thickness = 0.5;
         domain.contour_thickness_expontent = 1.4;
 
-        domain.feature_angle = 45;
+        domain.feature_angle = 70;
         domain.min_feature_quality = 0.6;
         
         register_entity(lister, "Domain", e.id);
@@ -197,8 +197,8 @@ void generate_mesh_in_background(CFD& cfd) {
     cfd.solver.phase = SOLVER_PHASE_MESH_GENERATION;
     
     CFDMeshError err;
-    //cfd.solver.mesh = generate_mesh(*cfd.modules->world, cfd.mesh_registry, err, *cfd.debug_renderer);
-    cfd.solver.mesh = generate_parametric_mesh();
+    cfd.solver.mesh = generate_mesh(*cfd.modules->world, cfd.mesh_registry, err, *cfd.debug_renderer);
+    //cfd.solver.mesh = generate_parametric_mesh();
 
     if (err.type == CFDMeshError::None) {
         cfd.solver.phase = SOLVER_PHASE_SIMULATION;
@@ -315,8 +315,8 @@ void render_editor_ui(CFD& cfd, Modules& engine) {
         
         end_hsplitter(ui);
 
-        parametric_ui(ui);
-        //render_inspector(inspector);
+        //parametric_ui(ui);
+        render_inspector(inspector);
     }
     end_hsplitter(ui);
 

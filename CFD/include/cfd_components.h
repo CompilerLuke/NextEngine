@@ -34,7 +34,7 @@ struct CFDDomain {
 
 	float quad_quality = 0.8;
 
-	float feature_angle = 10.0f;
+	float feature_angle = 30.0f;
 	float min_feature_quality = 0.9f;
 };
 
