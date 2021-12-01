@@ -1,4 +1,4 @@
-#if 0
+#if 1
 
 #include "solver.h"
 #include "engine/handle.h"
@@ -85,20 +85,21 @@ struct Simulation {
     vec_x vof;
     
     real rho1 = 1;
-    real rho2 = 1000;
-    real mu1 = 1e-6;
-    real mu2 = 1e-4;
-    real g = -9.81;
+    real rho2 = 1;
+    real mu1 = 1;
+    real mu2 = 1;
+    real g = 0;
     
     real t = 0;
     uint tstep = 0;
 };
 
-void right_angle_corrector(vec3 normal, vec3 to_center, real* parallel, vec3* ortho) {
+void right_angle_corrector(vec3 normal, vec3 to_center, real* parallel, vec3* ortho);
+/*{
 	to_center = normalize(to_center);
     *parallel = dot(normal, to_center);
 	*ortho = normal - to_center*(*parallel);
-}
+}*/
 
 bool is_boundary(const CFDCell& cell) {
     const ShapeDesc& shape = shapes[cell.type];
@@ -476,8 +477,17 @@ void check_H(Simulation& simulation) {
     auto& V_Matrix = simulation.velocity_matrix;
     auto& inv_A_matrix = simulation.inv_A_matrix;
     
+    //H = A_Diagonal.cwiseProduct(simulation.velocities) - V_Matrix*simulation.velocities + simulation.velocity_extra_source_term;
+    
+    //AU - H
+    //AU - (AU - MU + S)
+    //AU - (AU - P-S + S)
+    //-(-P) = P
+    
     vec_x result = A_Diagonal.cwiseProduct(simulation.velocities) - H;
-    vec_x result_exact = simulation.velocity_matrix*simulation.velocities;
+    vec_x result_exact = simulation.velocity_pressure_source_term; //simulation.velocity_matrix*simulation.velocities;
+    
+    printf("Difference between pressure AU - H%f\n", (result - result_exact).maxCoeff());
     
     Simulation& sim = simulation;
     
@@ -494,7 +504,6 @@ void check_H(Simulation& simulation) {
     
     for (uint i = 0; i < simulation.num_cells; i++) {
         vec3 residual = unpack3(result, i);
-        vec3 residual_exact = unpack3(result, i);
         vec3 gradient = -get_pressure_gradient(simulation, i);
         vec3 extra_source = unpack3(simulation.velocity_extra_source_term, i);
         vec3 pressure_source = unpack3(simulation.velocity_pressure_source_term, i);
@@ -504,9 +513,9 @@ void check_H(Simulation& simulation) {
         
         real r = length(residual - gradient);
         
-        /*if (r > 0.5) {
-            printf("%f\n", r);
-        }*/
+        if (r > 0.5) {
+            printf("difference: %f, residual: %f, LHS: %f, gradient: %f, extra: %f \n", r, length(residual), length(pressure_source), length(gradient), length(extra_source));
+        }
     }
 }
 
@@ -520,7 +529,8 @@ void compute_H(Simulation& simulation) {
     
     auto& source = simulation.velocity_extra_source_term; //simulation.velocity_source_term - simulation.velocity_pressure_source_term;
     
-    H = inv_A_matrix.cwiseProduct(simulation.velocities) - V_Matrix*simulation.velocities + simulation.velocity_source_term;
+    H = A_Diagonal.cwiseProduct(simulation.velocities) - simulation.velocity_pressure_source_term;
+    //V_Matrix*simulation.velocities + simulation.velocity_extra_source_term;
     //simulation.velocity_pressure_source_term; //simulation.velocity_source_term + source;
     
     int row = 0;
@@ -720,7 +730,7 @@ void draw_vector_field(Simulation& simulation, vec_x& vec) {
     CFDDebugRenderer& debug = simulation.debug;
     clear_debug_stack(debug);
     
-    float max_velocity = 1.0f;
+    float max_velocity = 10.0f;
     
     /*for (uint i = 0; i < simulation.num_cells; i++) {
         vec3 u;
@@ -788,11 +798,11 @@ CFDResults simulate_timestep(Simulation& sim, real dt) {
     CFDDebugRenderer& debug = sim.debug;
     real t = sim.t;
     
-    real velocity_relaxation = 0.8;
-    real pressure_relaxation = 0.4;
+    real velocity_relaxation = 1.0;
+    real pressure_relaxation = 0.6;
     
     for (PressureBoundaryFace& face : sim.pressure_boundary_faces) {
-        face.pressure_grad = (face.normal.z > 0 ? 1 : -1) * sin(t) * 1e-2;
+        face.pressure_grad = (face.normal.z > 0 ? 1 : -1) * sin(t) * 100;
     }
     
     //sim.tstep++;
@@ -825,11 +835,11 @@ CFDResults simulate_timestep(Simulation& sim, real dt) {
     for (uint i = 0; i < max_inner_steps; i++) {
         printf("Iteration %i, (%ix%i)\n", i, sim.num_cells * 4, sim.num_cells * 4);
         
-        //compute_gradients(sim, t);
+        compute_gradients(sim, t);
         build_velocity_matrix(sim, t, dt);
 
         real velocity_change = solve_matrix(sim, sim.velocity_matrix, sim.velocities, sim.velocity_source_term, i==0, velocity_relaxation);
-        
+
         //draw_vector_field(sim, sim.velocities);
         
         compute_H(sim);
@@ -838,7 +848,7 @@ CFDResults simulate_timestep(Simulation& sim, real dt) {
         printf("Max H matrix %f\n", sim.H_Matrix.maxCoeff());
         
         //suspend_execution(debug);
-        //continue;
+        //break;
         
         auto pressures = sim.pressures;
         
@@ -905,6 +915,7 @@ CFDResults simulate_timestep(Simulation& sim, real dt) {
         result.max_velocity = fmaxf(result.max_velocity, length(result.velocities[i]));
         result.max_pressure = fmaxf(result.max_pressure, result.pressures[i]);
     }
+    result.max_velocity = 1.0;
 	//result.velocities = std::move(simulation.velocities);
 	//result.pressures = std::move(simulation.pressures);
     

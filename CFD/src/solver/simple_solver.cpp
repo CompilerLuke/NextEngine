@@ -5,7 +5,7 @@
 //  Created by Antonella Calvia on 12/10/2021.
 //
 
-#if 1
+#if 0
 #include "mesh.h"
 #include "solver/field.h"
 #include "solver/fvm.h"
@@ -41,6 +41,8 @@ Simulation::Simulation(CFDVolume& volume, CFDDebugRenderer& debug) :
 void Simulation::timestep(real dt) {
     FV_ScalarMatrix eqP = fvm::laplace(P);
     eqP.solve();
+    
+    FV_VectorMatrix eqU = fvm::laplace(U) == mu*;
 }
 
 Simulation* make_simulation(CFDVolume& volume, CFDDebugRenderer& debug) {

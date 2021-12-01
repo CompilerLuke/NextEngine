@@ -1,4 +1,4 @@
-#pragma once
+#if 0
 
 #include "solver/interpolator.h"
 #include "solver/fmesh.h"
@@ -157,3 +157,5 @@ void Upwind::face_grad_coeffs(FV_VectorMatrix& result, const FV_VectorData& data
     result.add_sources(interior.faces(), grad);
     result.add_coeffs(interior.faces(), dx, -dx);
 }
+
+#endif
