@@ -412,7 +412,7 @@ edge_handle QMorph::insert_into_triangle(tri_handle tri, vec3 point, bool flip) 
         return result;
     }
 
-    vertex_handle v = { out.positions.length };
+    vertex_handle v = { (int)out.positions.length };
     out.positions.append(point);
 
     tri_handle t0 = tri;
@@ -1041,7 +1041,7 @@ void QMorph::update_side_edge(QMorphFront& front, front_edge_handle e1, front_ed
         edge.state = front.gen(edge.state, delay);
         front.push(e0);
     }
-    //front.edges[e1].state = front.gen(edge.state, true);
+    front.edges[e1].state = front.gen(edge.state, true);
     if (delay) front.push(e1);
 
     if (angle == 0.0f) {
@@ -1065,6 +1065,8 @@ void remove_enclosed_tris(QMorph& q, slice<edge_handle> cavity_edges) {
     CFDDebugRenderer& debug = q.debug;
     SurfaceTriMesh& out = q.out;
     auto& stack = q.stack;
+    
+    return;
     
     out.dealloc_tri(cavity_edges[0]);
     stack.append(out.TRI(cavity_edges[0]));
@@ -1551,14 +1553,18 @@ void advance_front(QMorph& q, stable_edge_handle front_edge) {
 
     edge_handle e0 = out.get_edge(front_edge); //find_edge(edge.tr, edge.edge_center, edge.edge_dir);
     edge_handle e1 = out.edges[e0]; //find_edge(edge.tr, edge.edge_center, edge.edge_dir);
-    //draw_edge(debug, out, e0, BLUE_DEBUG_COLOR);
-
+    
+    draw_mesh(debug, out);
+    draw_edge(debug, out, e0, BLUE_DEBUG_COLOR);
+    suspend_execution(debug);
+    
     vec3 p0 = out.position(e0);
     vec3 p1 = out.position(out.next_edge(e0));
 
     vec3 normal0 = out.triangle_normal(out.TRI(e0));
     vec3 normal = normal0;
 
+    
     /*if (normal0.x < 0.9) {
         suspend_and_reset_execution(debug);
         draw_mesh(debug, out);
@@ -1926,8 +1932,8 @@ void QMorph::propagate(QMorphFront& new_front) {
 
         advance_front(*this, front_edge);
 
-#if 1
-        if (count++) { // % 20 == 0) {
+#if 0
+        //if (count++ % 20 == 0) {
             suspend_execution(debug);
             clear_debug_stack(debug);
             draw_mesh(debug, out);
@@ -1940,9 +1946,22 @@ void QMorph::propagate(QMorphFront& new_front) {
 
 
     }
+
+    clear_debug_stack(debug);
+    memset(out.edge_flags, 0, sizeof(char) * out.stable_to_edge.length);
+    out.smooth_mesh(5);
+    draw_mesh(debug, out);
+
+    /*for (tri_handle tri : out) {
+        vec3 verts[3];
+        out.triangle_verts(tri, verts);
+        draw_triangle(debug, verts, vec4(1));
+    }*/
+
+    suspend_execution(debug);
 }
 
-void qmorph(SurfaceTriMesh& mesh, CFDDebugRenderer& debug, SurfaceCrossField& cross_field, slice<stable_edge_handle> edges) {
+void qmorph(SurfaceTriMesh& mesh, CFDDebugRenderer& debug, SurfaceCrossField& cross_field, slice<stable_edge_handle> edges, real mesh_size) {
     suspend_execution(debug);
     
     QMorph qmorph{
@@ -1951,7 +1970,7 @@ void qmorph(SurfaceTriMesh& mesh, CFDDebugRenderer& debug, SurfaceCrossField& cr
 
     qmorph.out.copy(mesh, true);
 
-    qmorph.mesh_size = 0.5;
+    qmorph.mesh_size = 0.1;
     qmorph.out.debug = &debug;
 
     auto fronts = qmorph.identify_edge_loops(edges);

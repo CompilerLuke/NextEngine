@@ -36,4 +36,6 @@ void next_debug_stack(CFDDebugRenderer&);
 
 void render_debug(CFDDebugRenderer&, CommandBuffer& cmd_buffer);
 
+vec3 triangle_normal(vec3 v[3]);
+vec3 quad_normal(vec3 v[4]);
 

@@ -55,10 +55,10 @@ void SurfaceTriMesh::copy(const SurfaceTriMesh& other, bool quad) {
     N = quad ? 4 : 3;
 
 	uint n = tri_capacity * N;
-	edges = new edge_handle[n];
-	indices = new vertex_handle[n];
-	flags = new char[tri_capacity];
-    edge_to_stable = new stable_edge_handle[n];
+	edges = new edge_handle[n]();
+	indices = new vertex_handle[n]();
+	flags = new char[tri_capacity]();
+    edge_to_stable = new stable_edge_handle[n]();
     edge_flags = new char[other.stable_to_edge.length](); // (char*)calloc(1, other.stable_to_edge.length);
 
     if (to_quad) {
@@ -71,6 +71,7 @@ void SurfaceTriMesh::copy(const SurfaceTriMesh& other, bool quad) {
         {
             for (uint j = 0; j < 3; j++) {
                 edges[quad_offset + j] = tri_to_quad_edge(other.edges[tri_offset + j]);
+                edge_flags[quad_offset + j] = other.edge_flags[tri_offset + j];
                 edge_to_stable[quad_offset + j] = other.edge_to_stable[tri_offset + j];
                 indices[quad_offset + j] = other.indices[tri_offset + j];
             }
@@ -84,6 +85,7 @@ void SurfaceTriMesh::copy(const SurfaceTriMesh& other, bool quad) {
     else {
         stable_to_edge = other.stable_to_edge;
         memcpy_t(edges, other.edges, n);
+        memcpy_t(edge_flags, other.edge_flags, n);
         memcpy_t(indices, other.indices, n);
         memcpy_t(edge_to_stable, other.edge_to_stable, n);
     }
@@ -384,7 +386,7 @@ void SurfaceTriMesh::mark_new_edge(edge_handle e0, bool both) {
         edge_handle edge = e[i];
         stable_edge_handle handle;
 
-        if (free_stable_edge.id == 0) {
+        if (true) { //free_stable_edge.id == 0) {
             uint capacity = stable_to_edge.capacity;
             handle = { stable_to_edge.length };
             stable_to_edge.append({ edge });

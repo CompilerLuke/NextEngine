@@ -30,7 +30,7 @@ struct CFDDomain {
     int grid_layers = 0;
     
     glm::vec3 center;
-    glm::vec3 plane = glm::vec3(1,0,0);
+    glm::vec3 plane = glm::vec3(0,-1,0);
 
 	float quad_quality = 0.8;
 

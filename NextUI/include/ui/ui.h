@@ -300,7 +300,9 @@ struct Spacer : UIView {
 struct StackView : UIContainer {
     Size spacing;
     uint alignment;
-    bool axis;
+    enum Axis {
+        Horizontal, Vertical, Depth
+    } axis;
     
     LAYOUT_PROPERTIES(StackView)
     EVENT_PROPERTIES(StackView)
@@ -536,12 +538,15 @@ UI_API GeometryView& begin_geo(UI& ui, std::function<void(glm::vec2 pos, glm::ve
 UI_API void end_geo(UI& ui);
 
 UI_API StackView& begin_vstack(UI& ui, Size spacing = -1.0f, HAlignment alignment = HLeading);
-UI_API StackView& begin_vstack(UI& ui, HAlignment alignment);
+
 UI_API void end_vstack(UI& ui);
 
 UI_API StackView& begin_hstack(UI& ui, Size spacing = -1.0f, VAlignment alignment = VCenter);
 UI_API StackView& begin_hstack(UI& ui, VAlignment alignment);
 UI_API void end_hstack(UI& ui);
+
+UI_API StackView& begin_zstack(UI& ui);
+UI_API void end_zstack(UI& ui);
 
 UI_API PanelView& begin_panel(UI& ui);
 UI_API void end_panel(UI& ui);

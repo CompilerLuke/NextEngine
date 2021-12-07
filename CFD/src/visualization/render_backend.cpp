@@ -8,6 +8,7 @@
 #include "graphics/assets/assets.h"
 #include "core/time.h"
 #include <glm/gtc/matrix_transform.hpp>
+#include "visualization/debug_renderer.h"
 
 struct CFDRenderBackend {
     uint frame_index;
@@ -121,7 +122,7 @@ RenderPass begin_cfd_scene_pass(CFDRenderBackend& backend, Renderer& renderer, F
     memcpy_ubo_buffer(renderer.scene_pass_ubo[frame_index], &frame.pass_ubo);
     memcpy_ubo_buffer(renderer.simulation_ubo[frame_index], &simulation_ubo);
 
-    RenderPass render_pass = begin_render_pass(RenderPass::Scene);
+    RenderPass render_pass = begin_render_pass(RenderPass::Scene, glm::vec4(0));
     next_subpass(render_pass);
 
     backend.frame_descriptor = renderer.scene_pass_descriptor[frame_index];
@@ -178,9 +179,11 @@ void CFDTriangleBuffer::draw_triangle(vec3 v0, vec3 v1, vec3 v2, vec4 color) {
 
 void CFDTriangleBuffer::draw_quad(vec3 v[4], vec4 color) {
     uint offset = vertex_arena.offset;
+    
+    vec3 normal = quad_normal(v);
 
     for (uint i = 0; i < 4; i++) {
-        append({ vec4(v[i],0), vec4(vec3(0),0), color });
+        append({ vec4(v[i],0), vec4(normal,0), color });
     }
 
     append(offset + 0);

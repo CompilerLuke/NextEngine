@@ -2,6 +2,7 @@
 
 #include "core/core.h"
 #include <math.h>
+#include <float.h>
 #include <glm/vec3.hpp>
 
 #undef min
@@ -99,6 +100,10 @@ inline vec3 cross(vec3 a, vec3 b) {
 		a.z*b.x - a.x*b.z,
 		a.x*b.y - a.y*b.x
 	};
+}
+
+inline vec3 proj(vec3 vec, vec3 base) {
+    return base*dot(vec, base)/sq(base);
 }
 
 inline vec3 abs(vec3 vec) {

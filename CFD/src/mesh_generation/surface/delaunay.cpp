@@ -67,7 +67,7 @@ loop: {
 
 void draw_boundary(CFDDebugRenderer& debug, SurfaceTriMesh& mesh) {
     for (uint i = mesh.N; i <= mesh.tri_count * mesh.N; i++) {
-        if (mesh.is_boundary(i)) {
+        if (!mesh.is_deallocated(i) && mesh.is_boundary(i)) {
             draw_edge(debug, mesh, i, RED_DEBUG_COLOR);
         }
     }
@@ -76,7 +76,7 @@ void draw_boundary(CFDDebugRenderer& debug, SurfaceTriMesh& mesh) {
 tri_handle insert_point(SurfaceDelaunay& d, tri_handle start, vec3 pos, const real min_dist) {
     float min_dist_sq = min_dist * min_dist;
 
-    vertex_handle v = { d.mesh.positions.length }; //todo move into function
+    vertex_handle v = { (int)d.mesh.positions.length }; //todo move into function
     d.mesh.positions.append(pos);
 
     d.mesh.dealloc_tri(start);
@@ -137,7 +137,7 @@ tri_handle insert_point(SurfaceDelaunay& d, tri_handle start, vec3 pos, const re
                     uv[i] = vec2(dot(dir, tangent), dot(dir, bitangent));
                 }
 
-                bool edge_vert = acosf(dot(normal, normal1)) > to_radians(20);
+                //bool edge_vert = acosf(dot(normal, normal1)) > to_radians(20);
                 //; d.vert_flags[v0.id] & EDGE_VERT&& d.vert_flags[v1.id] & EDGE_VERT;
 
                 real det = incircle(&uv[0].x, &uv[1].x, &uv[2].x, &uv[3].x);
@@ -180,9 +180,11 @@ tri_handle insert_point(SurfaceDelaunay& d, tri_handle start, vec3 pos, const re
         suspend_execution(d.debug);
     }
 
+    array<100, tri_handle> created;
 
     for (EdgeCavity& cavity : d.cavities) {
         tri_handle tri = d.mesh.alloc_tri();
+        created.append(tri);
         //d.mesh.flags[tri / 3] = cavity.flags;
         d.mesh.indices[tri + 0] = cavity.v0;
         d.mesh.indices[tri + 1] = cavity.v1;
@@ -195,7 +197,7 @@ tri_handle insert_point(SurfaceDelaunay& d, tri_handle start, vec3 pos, const re
         d.mesh.mark_new_edge(tri + 1, false);
         d.mesh.mark_new_edge(tri + 2, false);
 
-        if (debug_delaunay) {
+        if (false && debug_delaunay) {
             vec3 v[3];
             d.mesh.triangle_verts(tri, v);
             if (d.mesh.is_boundary(d.mesh.get_edge(cavity.edge))) {
@@ -226,7 +228,11 @@ tri_handle insert_point(SurfaceDelaunay& d, tri_handle start, vec3 pos, const re
 
         d.last = tri;
     }
-
+    
+    /*for (tri_handle tri : created) {
+        d.mesh.flip_bad_edges(tri);
+    }*/
+    
     return start;
 }
 
@@ -355,7 +361,7 @@ vector<stable_edge_handle> insert_edges(SurfaceDelaunay& d, slice<FeatureCurve> 
     return edges;
 }
 
-real tri_quality(vec3 v[3], real mesh_size) {
+/*real tri_quality(vec3 v[3], real mesh_size) {
     float edge_length = 0;
     float longest_edge = 0;
     float shortest_edge = FLT_MAX;
@@ -372,25 +378,45 @@ real tri_quality(vec3 v[3], real mesh_size) {
     }
     edge_length /= 3.0f;
 
+    if (edge_length < 2.0/3.0 * mesh_size) return -1;
     if (edge_length < mesh_size) return 1.0;
-    if (edge_length > 4 / 3 * mesh_size) return 0;
+    if (edge_length > 4.0/3 * mesh_size) return 0;
 
     //float size_quality = 1.0 - (edge_length - mesh_size) / mesh_size;
     float angle_quality = shortest_edge / longest_edge;
 
     return angle_quality;
-}
+}*/
 
 void flip_bad_edges(SurfaceTriMesh& mesh) {
     for (tri_handle tri : mesh) {
-        mesh.flip_bad_edges(tri, false);
+        if (!mesh.is_deallocated(tri)) mesh.flip_bad_edges(tri, false);
     }
+}
+
+real tri_edge_lenghths(vec3 v[3], real edge_lengths[3], real& longest_edge, real& shortest_edge) {
+    real edge_length = 0.0f;
+    longest_edge = 0;
+    shortest_edge = FLT_MAX;
+    for (uint i = 0; i < 3; i++) {
+        vec3 v0 = v[i];
+        vec3 v1 = v[(i + 1) % 3];
+
+        edge_lengths[i] = length(v1 - v0);
+
+        longest_edge = fmaxf(longest_edge, edge_lengths[i]);
+        shortest_edge = fminf(shortest_edge, edge_lengths[i]);
+        edge_length += edge_lengths[i];
+    }
+    return edge_length /= 3.0f;
 }
 
 void refine(SurfaceDelaunay& d, float mesh_size) {
     CFDDebugRenderer& debug = d.debug;
     SurfaceTriMesh& out = d.mesh;
-
+    
+    real mesh_size_sq = mesh_size*mesh_size;
+    
     flip_bad_edges(out);
 
     clear_debug_stack(debug);
@@ -399,38 +425,86 @@ void refine(SurfaceDelaunay& d, float mesh_size) {
 
     uint N = d.mesh.N;
     uint n = 10;
+    
     for (uint i = 0; i < n; i++) {
         uint n_tri = out.tri_count;
         for (uint tri = N; tri < n_tri * N; tri += N) {
+            if (out.is_deallocated(tri)) continue;
+            
             vec3 v[3];
             out.triangle_verts(tri, v);
+            
+            vec3 ac = v[2] - v[0];
+            vec3 ab = v[1] - v[0];
+            vec3 abXac = cross(ab, ac);
+            
+            // this is the vector from a TO the circumsphere center
+            vec3 to_circum = (cross(abXac, ab) * sq(ac) + cross(ac, abXac) * sq(ab)) / (2.f * sq(abXac));
+            float circum_radius = length(to_circum);
 
-            float quality = tri_quality(v, mesh_size);
+            // The 3 space coords of the circumsphere center then:
+            vec3 ccs = v[0] + to_circum; // now this is the actual 3space location
 
-            if (quality < 0.6) {
-                vec3 ac = v[2] - v[0];
-                vec3 ab = v[1] - v[0];
-                vec3 abXac = cross(ab, ac);
+            tri_handle enclosed = out.project(debug, tri, &ccs, nullptr);
+            if (!enclosed) continue;
 
-                // this is the vector from a TO the circumsphere center
-                vec3 to_circum = (cross(abXac, ab) * sq(ac) + cross(ac, abXac) * sq(ab)) / (2.f * sq(abXac));
-                float circum_radius = length(to_circum);
 
-                // The 3 space coords of the circumsphere center then:
-                vec3 ccs = v[0] + to_circum; // now this is the actual 3space location
 
-                tri_handle enclosed = out.project(debug, tri, &ccs, nullptr);
-                if (!enclosed) continue;
+            out.triangle_verts(enclosed, v);
+            
+            real longest_edge = 0;
+            real shortest_edge = FLT_MAX;
+            real edge_lengths[3];
+            real edge_length = tri_edge_lenghths(v, edge_lengths, longest_edge, shortest_edge);
+        
+            float angle_quality = shortest_edge / longest_edge;
 
-                draw_point(debug, ccs, RED_DEBUG_COLOR);
-
-                debug_delaunay = false;
-                insert_point(d, enclosed, ccs, 0.001);
-
+            //|| angle_quality < 0.6
+            if (edge_length > 4.0/3*mesh_size) {
+                //debug_delaunay = true;
+                //clear_debug_stack(debug);
+                insert_point(d, enclosed, ccs, 0.01);
+                //draw_point(debug, ccs, RED_DEBUG_COLOR);
+                //draw_mesh(debug, out);
+                //suspend_execution(debug);
             }
         }
         
         
+        /*for (uint tri = N; tri < n_tri * N; tri += N) {
+            if (out.is_deallocated(tri)) continue;
+            
+            vec3 v[3];
+            out.triangle_verts(tri, v);
+            
+            real shortest = 2.0/3.0 * mesh_size;
+            edge_handle edge = 0;
+            
+            for (uint i = 0; i < 3; i++) {
+                if (out.is_boundary(tri + i)) continue;
+                real len = length(v[i] - v[(i+1)%3]);
+                
+                if (len < shortest) {
+                    edge = tri + i;
+                    shortest = len;
+                }
+            }
+            
+           if (!edge) continue;
+
+           out.collapse_edge(edge);
+           //clear_debug_stack(debug);
+           //draw_line(debug, v[0], v[0] + 5*triangle_normal(v));
+           //draw_mesh(debug, out);
+           //suspend_execution(debug);
+       
+        }*/
+
+        out.smooth_mesh(1);
+        flip_bad_edges(out);
+        //clear_debug_stack(debug);
+        //draw_mesh(debug, out);
+        //suspend_execution(debug);
     }               
     
     out.smooth_mesh(2);

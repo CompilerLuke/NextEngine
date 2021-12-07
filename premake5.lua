@@ -352,7 +352,8 @@ project "CFD"
 	includedirs { "NextEngine/include", "NextCore/include", "NextUI/include" }
 	sysincludedirs { "CFD/vendor/lapack/LAPACKE/include", "CFD/vendor/lapack/CBLAS/include", "CFD/vendor/thekla_atlas/src"}
 	libdirs { "CFD/vendor/lapack/build/lib/Release" }
-	links { "NextCore", "NextEngine", "NextUI", "blas", "lapack", "lapacke", "libthekla_atlas", "nvcore", "nvimage", "nvmath", "nvmesh" }
+	links { "NextCore", "NextEngine", "NextUI", "blas", "lapack", "lapacke" }
+	-- "libthekla_atlas", "nvcore", "nvimage", "nvmath", "nvmesh"
 	-- defines { "HAVE_LAPACK_CONFIG_H"}
 
 

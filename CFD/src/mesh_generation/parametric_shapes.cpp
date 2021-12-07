@@ -4,16 +4,18 @@
 
 struct DuctOptions {
 	float width = 1.0;
-	float height = 1.0;
-	float depth = 10.0;
+    float height = 1.0;
+	float depth = 1;
 
-	float constrain_start = 2;
-	float constrain_end = 2;
-	float transition = 0.1;
-	float narrow = 0.6;
+    float constrain_start = 1.3;
+    float constrain_end = 1.3;
+    float transition = 0.1;
+	float narrow = 1.5;
 
-	float turn_start = 1.2;
-	float turn_end = 1.2;
+    float turn_start = 1.1;
+	float turn_end = 1.3;
+    
+    float turn_angle = 90.0;
 };
 
 float lerp(float a, float b, float t) {
@@ -21,36 +23,41 @@ float lerp(float a, float b, float t) {
 	return a * (1.0 - t) + b * t;
 }
 
-vec3 curve(const DuctOptions& options, float t) {
-	float turn_start = options.turn_start;
-	float turn_end = options.turn_end;
-	float turn_length = options.turn_end - options.turn_start;
-	
-	float t_straight = clamp(0, turn_start, t);
-	float t_turn = clamp(0, 1, (t - turn_start)/turn_length);
-	float t_end = clamp(0, 1, t - turn_end);
+vec3 curve_tangent(const DuctOptions& options, float t) {
+    real turn_angle = to_radians(options.turn_angle);
+    float turn_length = options.turn_end - options.turn_start;
+    float t_turn = clamp(0, 1, (t - options.turn_start) / turn_length);
 
-	vec3 result;
-	result += t_straight * vec3(0, 0, options.depth);
-	result += t_end * vec3(options.depth, 0, 0);
-	result.x += options.depth * turn_length * PI/4.0f * (1.0-cos(PI * t_turn / 2));
-	result.z += options.depth * turn_length * PI/4.0f * (sin(PI * t_turn / 2));
+    if (t < options.turn_start) return vec3(0, 0, 1);
+    //if (t > options.turn_end) return vec3(1, 0, 0);
 
-	return result;
+    vec3 result;
+    result.x = turn_angle * sin(turn_angle * t_turn);
+    result.z = turn_angle * cos(turn_angle * t_turn);
+
+    return normalize(result);
 }
 
-vec3 curve_tangent(const DuctOptions& options, float t) {
-	float turn_length = options.turn_end - options.turn_start;
-	float t_turn = clamp(0, 1, (t - options.turn_start) / turn_length);
+vec3 curve(const DuctOptions& options, float t) {
+    real turn_angle = to_radians(options.turn_angle);
+    
+    float turn_start = options.turn_start;
+    float turn_end = options.turn_end;
+    float turn_length = options.turn_end - options.turn_start;
+    
+    float t_straight = clamp(0, turn_start, t);
+    float t_turn = clamp(0, 1, (t - turn_start)/turn_length);
+    float t_end = clamp(0, 1, t - turn_end);
+    
+    vec3 tangent = curve_tangent(options, turn_end);
 
-	if (t < options.turn_start) return vec3(0, 0, 1);
-	if (t > options.turn_end) return vec3(1, 0, 0);
+    vec3 result;
+    result += t_straight * vec3(0, 0, options.depth);
+    result += t_end * tangent * options.depth;
+    result.x += options.depth * turn_length / turn_angle * (1.0-cos(turn_angle * t_turn));
+    result.z += options.depth * turn_length / turn_angle * (sin(turn_angle * t_turn));
 
-	vec3 result;
-	result.x = PI/2 * sin(PI * t_turn / 2);
-	result.z = PI/2 * cos(PI * t_turn / 2);
-
-	return normalize(result);
+    return result;
 }
 
 float thickness(const DuctOptions& options, float t) {
@@ -72,7 +79,7 @@ vec3 duct(const DuctOptions& options, float u, float v, float t) {
 	vec3 normal = vec3(0, 1, 0);
 	vec3 bitangent = cross(tangent, normal);
 	
-	result += bitangent * ((u - 0.5) * options.width);
+	result += bitangent * ((u - 0.5) * options.width * thick);
 	result += normal * ((v - 0.5) * options.height * thick);
 
 	return result;
@@ -80,9 +87,9 @@ vec3 duct(const DuctOptions& options, float u, float v, float t) {
 
 DuctOptions options;
 
-int u_div = 5;
-int v_div = 5;
-int t_div = 20;
+int u_div = 4;
+int v_div = 4;
+int t_div = 4;
 
 template<typename T>
 void field(UI& ui, string_view field, T* value, float min = -FLT_MAX, float max = FLT_MAX, float inc_per_pixel = 5.0) {
@@ -105,6 +112,8 @@ void parametric_ui(UI& ui) {
 	field(ui, "transition", &options.transition);
 	field(ui, "turn start", &options.turn_start);
 	field(ui, "turn end", &options.turn_end);
+    field(ui, "turn angle", &options.turn_angle);
+    
 	end_vstack(ui);
 
 	begin_vstack(ui);
@@ -154,8 +163,11 @@ CFDVolume generate_parametric_mesh() {
 		return cell_handle{ (int)(i * i_cell_stride + j * j_cell_stride + k * k_cell_stride) };
 	};
 
-	real pressure_top = 50.0;
-	real pressure_bottom = 10.0;
+    real pressure_grad = 1e-4;
+
+
+
+
 
 	for (uint i = 0; i < t_div; i++) {
 		for (uint j = 0; j < u_div; j++) {
@@ -179,8 +191,10 @@ CFDVolume generate_parametric_mesh() {
 				if (i+1 < t_div) cell.faces[2].neighbor = to_cell(i+1, j, k);  //front
 				if (k+1 < v_div) cell.faces[5].neighbor = to_cell(i, j, k+1);  //top
 
-				if (i == 0) cell.faces[4].pressure_grad = pressure_top;
-				if (i + 1 == t_div) cell.faces[2].pressure_grad = pressure_bottom;
+                compute_normals(result.vertices, cell);
+                
+                if (i == 0) cell.faces[4].pressure = pressure_grad; //velocity * cell.faces[4].normal;
+                if (i + 1 == t_div) cell.faces[2].pressure = -pressure_grad; //-velocity * cell.faces[2].normal;
 
 				result.cells.append(cell);
 			}
@@ -203,6 +217,7 @@ CFDVolume generate_parametric_mesh() {
 			}
 		}
 	}
-
+    
+    
 	return result;
 }

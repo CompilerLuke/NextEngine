@@ -94,6 +94,42 @@
   Two_Sum(a0, b , _i, x0); \
   Two_Sum(a1, _i, x2, x1)
 
+/* Two_Product_2Presplit() is Two_Product() where both of the inputs have    */
+/*   already been split.  Avoids redundant splitting.                        */
+
+#define Two_Product_2Presplit(a, ahi, alo, b, bhi, blo, x, y) \
+  x = (REAL) (a * b); \
+  err1 = x - (ahi * bhi); \
+  err2 = err1 - (alo * bhi); \
+  err3 = err2 - (ahi * blo); \
+  y = (alo * blo) - err3
+
+#define Two_Two_Product(a1, a0, b1, b0, x7, x6, x5, x4, x3, x2, x1, x0) \
+  Split(a0, a0hi, a0lo); \
+  Split(b0, bhi, blo); \
+  Two_Product_2Presplit(a0, a0hi, a0lo, b0, bhi, blo, _i, x0); \
+  Split(a1, a1hi, a1lo); \
+  Two_Product_2Presplit(a1, a1hi, a1lo, b0, bhi, blo, _j, _0); \
+  Two_Sum(_i, _0, _k, _1); \
+  Fast_Two_Sum(_j, _k, _l, _2); \
+  Split(b1, bhi, blo); \
+  Two_Product_2Presplit(a0, a0hi, a0lo, b1, bhi, blo, _i, _0); \
+  Two_Sum(_1, _0, _k, x1); \
+  Two_Sum(_2, _k, _j, _1); \
+  Two_Sum(_l, _j, _m, _2); \
+  Two_Product_2Presplit(a1, a1hi, a1lo, b1, bhi, blo, _j, _0); \
+  Two_Sum(_i, _0, _n, _0); \
+  Two_Sum(_1, _0, _i, x2); \
+  Two_Sum(_2, _i, _k, _1); \
+  Two_Sum(_m, _k, _l, _2); \
+  Two_Sum(_j, _n, _k, _0); \
+  Two_Sum(_1, _0, _j, x3); \
+  Two_Sum(_2, _j, _i, _1); \
+  Two_Sum(_l, _i, _m, _2); \
+  Two_Sum(_1, _k, _i, x4); \
+  Two_Sum(_2, _i, _k, x5); \
+  Two_Sum(_m, _k, x7, x6)
+
 #define Square_Tail(a, x, y) \
   Split(a, ahi, alo); \
   err1 = x - (ahi * ahi); \

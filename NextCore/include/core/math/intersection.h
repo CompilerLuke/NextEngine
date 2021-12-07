@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/math/vec4.h"
 #include "core/math/vec3.h"
 #include "core/math/vec2.h"
 #include "core/math/aabb.h"
@@ -18,6 +19,25 @@ struct Ray {
 		sign[2] = invdir.z < 0;
 	}
 };
+
+inline bool ray_plane_intersect(const Ray& ray, vec4 plane, vec3* inter) {
+    // dot(plane, hit) = 0
+    // dot(plane, orig + dir*t) = 0
+    // dot(plane, orig) + dot(plane, dir*t) = 0
+    // dot(plane, orig) + t dot(plane, dir) = 0
+    // t = -dot(plane, orig) / dot(plane, dir)
+    
+    vec4 dir = vec4(ray.dir, 1.0);
+    real pd = dot(plane, dir);
+    if (fabs(pd) < FLT_EPSILON) return false;
+    
+    real po = dot(plane, ray.orig);
+    real t = -po/pd;
+    
+    *inter = ray.orig + ray.dir*t;
+    return true;
+    
+}
 
 inline bool ray_triangle_intersect(const Ray& ray, vec3 p[3], float* t) {
     vec3 orig = ray.orig;

@@ -19,7 +19,7 @@ inline vec4 lerp(vec4 a, vec4 b, float f) {
 inline vec4 color_map(float value, float min_value = 0.0, float max_value = 1.0) {
     const uint n_colors = 20;
     
-    static vec4 colors[n_colors] = {
+    static vec4 viridis[n_colors] = {
         rgb(63, 19, 80),
         rgb(66, 27, 99),
         rgb(67, 42, 115),
@@ -41,6 +41,8 @@ inline vec4 color_map(float value, float min_value = 0.0, float max_value = 1.0)
         rgb(221, 226, 78),
         rgb(249, 231, 85)
     };
+    
+    static vec4* colors = viridis;
     
     value = (value - min_value) / (max_value - min_value) * n_colors;
     int a = max(0, min(int(value), n_colors - 1));
