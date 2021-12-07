@@ -132,6 +132,9 @@
     <ClInclude Include="include\core\math\aabb.h">
       <Filter>include\core\math</Filter>
     </ClInclude>
+    <ClInclude Include="include\core\math\interpolation.h">
+      <Filter>include\core\math</Filter>
+    </ClInclude>
     <ClInclude Include="include\core\math\intersection.h">
       <Filter>include\core\math</Filter>
     </ClInclude>

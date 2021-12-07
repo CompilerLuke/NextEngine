@@ -44,7 +44,10 @@ inline vec4 color_map(float value, float min_value = 0.0, float max_value = 1.0)
     
     static vec4* colors = viridis;
     
-    value = (value - min_value) / (max_value - min_value) * n_colors;
+    real delta = max_value - min_value;
+    real range = delta > 0 ? fmaxf(delta, 1e-5) : fminf(delta, -1e-5);
+
+    value = (value - min_value) / delta * n_colors;
     int a = max(0, min(int(value), n_colors - 1));
     int b = min(a+1, n_colors - 1);
     return lerp(colors[a], colors[b], value - int(value));

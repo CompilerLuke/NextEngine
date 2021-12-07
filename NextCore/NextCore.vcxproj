@@ -189,6 +189,7 @@
     <ClInclude Include="include\core\job_system\thread.h" />
     <ClInclude Include="include\core\job_system\work_stealing_queue.h" />
     <ClInclude Include="include\core\math\aabb.h" />
+    <ClInclude Include="include\core\math\interpolation.h" />
     <ClInclude Include="include\core\math\intersection.h" />
     <ClInclude Include="include\core\math\vec2.h" />
     <ClInclude Include="include\core\math\vec3.h" />

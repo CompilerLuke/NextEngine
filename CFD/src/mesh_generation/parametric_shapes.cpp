@@ -5,12 +5,12 @@
 struct DuctOptions {
 	float width = 1.0;
     float height = 1.0;
-	float depth = 1;
+	float depth = 4;
 
-    float constrain_start = 1.3;
+    float constrain_start = 1.1;
     float constrain_end = 1.3;
     float transition = 0.1;
-	float narrow = 1.5;
+	float narrow = 1.1;
 
     float turn_start = 1.1;
 	float turn_end = 1.3;
@@ -87,9 +87,9 @@ vec3 duct(const DuctOptions& options, float u, float v, float t) {
 
 DuctOptions options;
 
-int u_div = 4;
-int v_div = 4;
-int t_div = 4;
+int u_div = 8;
+int v_div = 8;
+int t_div = 32;
 
 template<typename T>
 void field(UI& ui, string_view field, T* value, float min = -FLT_MAX, float max = FLT_MAX, float inc_per_pixel = 5.0) {
@@ -131,8 +131,54 @@ void parametric_ui(UI& ui) {
 	end_vstack(ui);
 }
 
-CFDVolume generate_parametric_mesh() {
+#include "mesh_generation/hexcore.h"
+#include "graphics/assets/model.h"
+#include "graphics/assets/assets.h"
+#include "graphics/rhi/primitives.h"
+#include "mesh/surface_tet_mesh.h"
+#include "components/transform.h"
+#include <glm/gtc/matrix_transform.hpp>
+
+SurfaceTriMesh surface_from_mesh(const glm::mat4& mat, Mesh& mesh);
+
+CFDVolume generate_parametric_mesh() {	
 	CFDVolume result;
+#if 1
+
+
+	AABB aabb;
+	aabb.min = vec3(-options.width, -options.height, 0);
+	aabb.max = vec3(options.width, options.height, options.depth);
+
+	Transform trans;
+	trans.scale = vec3(options.width * 0.1, options.height * 0.1, options.depth * 0.1);
+	trans.position = vec3(0, 0, options.depth * 0.6);
+
+	SurfaceTriMesh mesh = surface_from_mesh(compute_model_matrix(trans), get_Model(primitives.cube)->meshes[0]);
+
+	vector<vertex_handle> boundary_verts;
+	vector<Boundary> boundary;
+	build_grid(result, mesh, aabb, boundary_verts, boundary, 1.0/u_div, 100);
+
+	for (CFDCell& cell : result.cells) {
+		compute_normals(result.vertices, cell);
+
+		for (uint i = 0; i < 8; i++) {
+			CFDCell::Face& face = cell.faces[i];
+
+			vec3 pos = result[cell.vertices[hexahedron_shape[i][0]]].position;
+
+			bool front = fabs(pos.z) < FLT_EPSILON;
+			bool back = fabs(pos.z - aabb.max.z) < FLT_EPSILON;
+
+			if (face.neighbor.id == -1 && (front || back)) {
+				face.pressure = 1000 * face.normal.z;
+			}
+		}
+	}
+
+	return result;
+#endif
 
 	float du = 1.0 / u_div;
 	float dv = 1.0 / v_div;
@@ -163,15 +209,23 @@ CFDVolume generate_parametric_mesh() {
 		return cell_handle{ (int)(i * i_cell_stride + j * j_cell_stride + k * k_cell_stride) };
 	};
 
-    real pressure_grad = 1e-4;
+	auto is_empty = [&](uint i, uint j, uint k) {
+		return i > 0.4 * t_div && i < 0.6 * t_div
+			&& j>0.4 * u_div && j < 0.6 * u_div
+			&& k>0.4 * v_div && k < 0.6 * v_div;
+	};
 
+	auto to_neigh = [&](uint i, uint j, uint k) {
+		return is_empty(i,j,k) ? cell_handle{-1} : to_cell(i, j, k);
+	};
 
-
-
+    real pressure_grad = 1000;
 
 	for (uint i = 0; i < t_div; i++) {
 		for (uint j = 0; j < u_div; j++) {
 			for (uint k = 0; k < v_div; k++) {
+				assert(to_cell(i,j,k).id == result.cells.length);
+
 				CFDCell cell{ CFDCell::HEXAHEDRON };
 
 				cell.vertices[0] = to_vert(i, j, k);

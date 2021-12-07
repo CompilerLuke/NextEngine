@@ -119,21 +119,32 @@ void set_parameters(MathIA& ia) {
 
 vec3 flip(-1,1,1);
 
-void draw_prism(CFDDebugRenderer& debug, vec3 p0, vec3 p1, vec3 p2, vec3 p3, real depth, vec4 color) {
+void draw_shaded_quad(CFDDebugRenderer& debug, vec3 p0, vec3 p1, vec3 p2, vec3 p3, vec4 albedo) {
+    vec3 p[4] = { p0,p1,p2,p3 };
+
+    real base = 1.0;
+    vec3 light = normalize(vec3(-1, -1, 0));
+    vec3 normal = quad_normal(p);
+    vec4 color = (1.0-base)*albedo * fmaxf(dot(normal, light),0) + albedo*base;
+    color.w = 1.0;
+    draw_quad(debug, p, color);
+}
+
+void draw_prism(CFDDebugRenderer& debug, vec3 p0, vec3 p1, vec3 p2, vec3 p3, real depth, vec4 color, bool start) {
     vec3 d(0,0,depth*0.99);
     
     real width = fmaxf(fmaxf(p0.x, p1.x), fmaxf(p2.x, p3.x));
     if (width == 0) return;
 
-    draw_quad(debug, p0, p1, p2, p3, color);
-    draw_quad(debug, p0 + d, p1 + d,  p1, p0, color);
-    draw_quad(debug, p2, p3, p3 + d, p2 + d, color);
-    draw_quad(debug, p1, p2, p2 + d, p1 + d, color);
-    draw_quad(debug, p0 + d, p1 + d, p2 + d, p3 + d, color);
+    draw_shaded_quad(debug, p0, p1, p2, p3, color);
+    draw_shaded_quad(debug, p0 + d, p1 + d,  p1, p0, color);
+    draw_shaded_quad(debug, p2, p3, p3 + d, p2 + d, color);
+    draw_shaded_quad(debug, p1, p2, p2 + d, p1 + d, color);
+    draw_shaded_quad(debug, p0 + d, p1 + d, p2 + d, p3 + d, color);
 }
 
-void draw_trap_prism(CFDDebugRenderer& debug, vec3 p0, vec3 p1, real depth, vec4 color) {
-    draw_prism(debug, p0, p1, p1*flip, p0*flip, depth, color);
+void draw_trap_prism(CFDDebugRenderer& debug, vec3 p0, vec3 p1, real depth, vec4 color, bool start) {
+    draw_prism(debug, p0, p1, p1*flip, p0*flip, depth, color, start);
 }
 
 void draw_grid(CFDDebugRenderer& debug, real ax1, real ax2, vec3 offset) {
@@ -150,7 +161,7 @@ void draw_grid(CFDDebugRenderer& debug, real ax1, real ax2, vec3 offset) {
     vec3 c = offset * dim;
     
     for (int i = -n; i <= n; i++) {
-        vec4 color = i==0 ? RED_DEBUG_COLOR : vec4(0);
+        vec4 color = i==0 ? RED_DEBUG_COLOR : vec4(0,0,0,1);
         
         draw_line(debug, u*dim + v*i*dt + c, -u*dim + v*i*dt + c, color);
         draw_line(debug, v*dim + u*i*dt + c, -v*dim + u*i*dt + c, color);
@@ -161,34 +172,35 @@ void render_math_ia(MathIA& ia) {
     CFDDebugRenderer& debug = *ia.debug;
     clear_debug_stack(debug);
     
-    
     set_parameters(ia);
     
-#if 0
-    real n = 1000;
+#if 1
+    real n = 100;
     real dt = ia.L / n;
     vec3 explode = vec3(1,1,1.0);
     
     //draw_grid(debug, 0, 2, vec3(0,0,0.5));
-    draw_grid(debug, 1, 2, vec3(0,0,0));
+    draw_grid(debug, 1, 2, vec4(0,0,0,1));
     
-    for (uint i = 0; i < n; i++) {
+    uint start = 0;
+    for (uint i = start; i < n; i++) {
         real t = i*dt;
         
         vec3 p[6];
-        for (uint j = 1; j < 5; j++) {
+        for (uint j = 0; j < 5; j++) {
             p[j] = ia.p[j].at_t(t) * explode;
         }
         
-        
-        vec4 color = {1,0,0,1};
-        draw_trap_prism(debug, p[1], p[2], dt, color);
-        draw_trap_prism(debug, p[2], p[3], dt, color); //color_map(2,0,4));
-        draw_trap_prism(debug, p[3], p[4], dt, color); //color_map(3,0,4));
+        vec4 white = vec4(1);
+        bool is_start = i == start;
+        draw_trap_prism(debug, p[0], p[1], dt, color_map(1, 0, 4), is_start);
+        draw_trap_prism(debug, p[1], p[2], dt, color_map(2, 0, 4), is_start);
+        draw_trap_prism(debug, p[2], p[3], dt, color_map(3, 0, 4), is_start);
+        draw_trap_prism(debug, p[3], p[4], dt, color_map(4, 0, 4), is_start);
     }
 #endif
     
-#if 1
+#if 0
     real n = 100;
     real dt = 1.0 / n;
     

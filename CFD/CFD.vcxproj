@@ -1,8 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup>
-    <EnableUnitySupport>true</EnableUnitySupport>
-  </PropertyGroup>
+  <PropertyGroup><EnableUnitySupport>true</EnableUnitySupport></PropertyGroup>
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
@@ -98,7 +96,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>blas.lib;lapack.lib;lapacke.lib;libthekla_atlas.lib;nvcore.lib;nvimage.lib;nvmath.lib;nvmesh.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>blas.lib;lapack.lib;lapacke.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\Program Files (x86)\Intel\oneAPI\compiler\2021.2.0\windows\compiler\lib\intel64_win;vendor\thekla_atlas\build\Release;vendor\thekla_atlas\build\src\nvcore\Release;vendor\thekla_atlas\build\src\nvimage\Release;vendor\thekla_atlas\build\src\nvmath\Release;vendor\thekla_atlas\build\src\nvmesh\Release;vendor\lapack\build\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImportLibrary>..\bin\Debug-windows-x86_64\CFD\CFD.lib</ImportLibrary>
     </Link>
@@ -132,7 +130,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>blas.lib;lapack.lib;lapacke.lib;libthekla_atlas.lib;nvcore.lib;nvimage.lib;nvmath.lib;nvmesh.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>blas.lib;lapack.lib;lapacke.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\Program Files (x86)\Intel\oneAPI\compiler\2021.2.0\windows\compiler\lib\intel64_win;vendor\thekla_atlas\build\Release;vendor\thekla_atlas\build\src\nvcore\Release;vendor\thekla_atlas\build\src\nvimage\Release;vendor\thekla_atlas\build\src\nvmath\Release;vendor\thekla_atlas\build\src\nvmesh\Release;vendor\lapack\build\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImportLibrary>..\bin\Release-windows-x86_64\CFD\CFD.lib</ImportLibrary>
     </Link>
@@ -164,7 +162,7 @@
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>blas.lib;lapack.lib;lapacke.lib;libthekla_atlas.lib;nvcore.lib;nvimage.lib;nvmath.lib;nvmesh.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>blas.lib;lapack.lib;lapacke.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\Program Files (x86)\Intel\oneAPI\compiler\2021.2.0\windows\compiler\lib\intel64_win;vendor\thekla_atlas\build\Release;vendor\thekla_atlas\build\src\nvcore\Release;vendor\thekla_atlas\build\src\nvimage\Release;vendor\thekla_atlas\build\src\nvmath\Release;vendor\thekla_atlas\build\src\nvmesh\Release;vendor\lapack\build\lib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImportLibrary>..\bin\Dist-windows-x86_64\CFD\CFD.lib</ImportLibrary>
     </Link>
@@ -185,9 +183,11 @@
     <ClInclude Include="include\editor\selection.h" />
     <ClInclude Include="include\editor\viewport.h" />
     <ClInclude Include="include\editor\viewport_interaction.h" />
+    <ClInclude Include="include\fvc.h" />
     <ClInclude Include="include\generated.h" />
     <ClInclude Include="include\geo\predicates.h" />
     <ClInclude Include="include\lapacke_config.h" />
+    <ClInclude Include="include\math_ia.h" />
     <ClInclude Include="include\mesh.h" />
     <ClInclude Include="include\mesh\edge_graph.h" />
     <ClInclude Include="include\mesh\feature_edges.h" />
@@ -213,6 +213,13 @@
     <ClInclude Include="include\numerical\vector.h" />
     <ClInclude Include="include\scene.h" />
     <ClInclude Include="include\solver.h" />
+    <ClInclude Include="include\solver\field.h" />
+    <ClInclude Include="include\solver\fmesh.h" />
+    <ClInclude Include="include\solver\fvm.h" />
+    <ClInclude Include="include\solver\interpolator.h" />
+    <ClInclude Include="include\solver\matrix.h" />
+    <ClInclude Include="include\solver\patches.h" />
+    <ClInclude Include="include\solver\solver_abstract.h" />
     <ClInclude Include="include\visualization\color_map.h" />
     <ClInclude Include="include\visualization\debug_renderer.h" />
     <ClInclude Include="include\visualization\input_mesh_viewer.h" />
@@ -221,7 +228,6 @@
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="include\solver\explicit.cpp" />
     <ClCompile Include="src\application.cpp" />
     <ClCompile Include="src\editor\inspector.cpp" />
     <ClCompile Include="src\editor\lister.cpp" />
@@ -255,6 +261,11 @@
     <ClCompile Include="src\mesh_generation\surface\reconstruct_surface.cpp" />
     <ClCompile Include="src\mesh_generation\surface\surface_point_placement.cpp" />
     <ClCompile Include="src\solver.cpp" />
+    <ClCompile Include="src\solver\interpolator.cpp" />
+    <ClCompile Include="src\solver\matrix.cpp" />
+    <ClCompile Include="src\solver\mesh.cpp" />
+    <ClCompile Include="src\solver\simple_solver.cpp" />
+    <ClCompile Include="src\visual.cpp" />
     <ClCompile Include="src\visualization\debug_renderer.cpp" />
     <ClCompile Include="src\visualization\input_mesh_viewer.cpp" />
     <ClCompile Include="src\visualization\render_backend.cpp" />

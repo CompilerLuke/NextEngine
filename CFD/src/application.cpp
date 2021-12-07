@@ -133,7 +133,7 @@ void default_scene(Lister& lister, InputMeshRegistry& registry, World& world) {
     {
         auto [e, trans, camera, flyover] = world.make<Transform, Camera, Flyover>();
         flyover.mouse_sensitivity = 0.1f;
-        flyover.movement_speed *= 1;
+        //flyover.movement_speed *= 0.1;
         trans.position.z = 15.0;
     }
 }
@@ -207,8 +207,8 @@ void generate_mesh_in_background(CFD& cfd) {
     cfd.solver.results = {};
     
     CFDMeshError err;
-    cfd.solver.mesh = generate_mesh(*cfd.modules->world, cfd.mesh_registry, err, *cfd.debug_renderer);
-    //cfd.solver.mesh = generate_parametric_mesh();
+    //cfd.solver.mesh = generate_mesh(*cfd.modules->world, cfd.mesh_registry, err, *cfd.debug_renderer);
+    cfd.solver.mesh = generate_parametric_mesh();
 
     if (err.type == CFDMeshError::None) {
         cfd.solver.phase = SOLVER_PHASE_SIMULATION;
@@ -230,12 +230,14 @@ void solve_in_background(CFD& cfd) {
 
     Simulation* solver = make_simulation(cfd.solver.mesh, *cfd.debug_renderer);
     
-    real dt = 1.0 / 20;
-    uint time_steps = 200.0 / dt;
+    real dt = 1.0 / 1000;
+    uint time_steps = 1000.0 / dt;
     
     for (uint i = 0; i < time_steps; i++) {
         cfd.solver.results = simulate_timestep(*solver, dt);
         build_vertex_representation(*cfd.visualization, cfd.solver.mesh, plane, cfd.flow_quantity, cfd.solver.results, true);
+        //break;
+        suspend_execution(*cfd.debug_renderer);
     }
     
     //destroy solver
@@ -376,8 +378,8 @@ void render_editor_ui(CFD& cfd, Modules& engine) {
         
         end_hsplitter(ui);
 
-        //parametric_ui(ui);
-        render_inspector(inspector);
+        parametric_ui(ui);
+        //render_inspector(inspector);
     }
     end_hsplitter(ui);
 
@@ -444,7 +446,10 @@ APPLICATION_API void render(CFD& cfd, Modules& engine, GPUSubmission& _gpu_submi
         CommandBuffer& cmd_buffer = render_pass.cmd_buffer;
         descriptor_set_handle frame_descriptor = get_frame_descriptor(*cfd.backend);
         
-        cfd.input_mesh_viewer.render(cmd_buffer, frame_descriptor);
+        //cfd.input_mesh_viewer.render(cmd_buffer, frame_descriptor);
+
+        //clear_debug_stack(*cfd.debug_renderer);
+        //render_math_ia(*cfd.math_ia);
         render_debug(*cfd.debug_renderer, cmd_buffer);
 
         if (solver.phase > SOLVER_PHASE_MESH_GENERATION) {

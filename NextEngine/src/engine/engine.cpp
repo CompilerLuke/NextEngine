@@ -71,10 +71,10 @@ Modules::Modules(const char* app_name, const char* level_path, const char* engin
 	make_AssetManager(level_path, engine_asset_path);
 
 	RenderSettings settings = {};
-    settings.display_resolution_width = window->width/2;
-	settings.display_resolution_height = window->height/2;
+    settings.display_resolution_width = window->width;
+	settings.display_resolution_height = window->height;
 	settings.shadow.shadow_resolution = 1024;
-    //settings.msaa = 4;
+    settings.msaa = 4;
 
 	renderer = make_Renderer(settings, *world);
 }

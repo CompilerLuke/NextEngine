@@ -143,10 +143,16 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
         vec4 cell_color;
         vec3 velocity;
         if (has_results) {
-            velocity = results.velocities[i];
+            velocity = results.velocities[i] / results.max_velocity;
             //cell_color = color_map(length(velocity), 0, results.max_velocity);
-            if (quantity == FlowQuantity::Pressure) cell_color = color_map(results.pressures[i], 0, results.max_pressure);
+            if (quantity == FlowQuantity::Pressure) {
+                cell_color = color_map(results.pressures[i], results.min_pressure, results.max_pressure);
+            }
             if (quantity == FlowQuantity::Velocity) cell_color = color_map(length(results.velocities[i]), 0, results.max_velocity);
+            if (quantity == FlowQuantity::PressureGradient) {
+                cell_color = color_map(length(results.pressure_grad[i]), 0, results.max_pressure_grad);
+                velocity = results.pressure_grad[i] / results.max_pressure_grad;
+            }
         } else {
             cell_color = color_map(log2f(size), -5, 5);
         }
@@ -180,10 +186,10 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
             centroid /= face.num_verts;
             
             if (has_results) {
-                const real arrow = 0.2;
+                const real arrow = 0.2; // *length(velocity);
                 
-                vec3 dir = normalize(velocity) * size * 0.8;
-                vec3 bitangent = normalize(cross(dir, plane)) * size * arrow;
+                vec3 dir = normalize(velocity) * size * 0.8 * length(velocity);
+                vec3 bitangent = normalize(cross(dir, plane)) * size * arrow * length(velocity);
                 
                 centroid += face_normal * size * 0.01;
                 vec3 start = centroid - 0.5*dir;
