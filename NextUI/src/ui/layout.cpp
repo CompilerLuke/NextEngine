@@ -256,19 +256,20 @@ void compute_flex_layout(UI& ui, LayedOutUIContainer& result, LayoutStyle& layou
     
     LayedOutUIView** layout_children = alloc_t<LayedOutUIView*>(*ui.allocator, children.length);
     
+
     glm::vec2 max = {};
     
     for (uint i = 0; i < children.length; i++) {
         if (i > 0) offset += spacing;
         
         UIView* child = children[i];
-        float flex;
+        float flex = 0.0f;
         if (!is_z) flex = child->layout.flex_factor[axis];
         if (flex == 0) {
             LayedOutUIView& layout = child->compute_layout(ui, adjusted);
             layout_children[i] = &layout;
-            if (is_relative(child->layout.position)) {
-                offset += layout.geo.extent.size[axis];
+            if (is_relative(child->layout.position)) { //todo implement z-case
+                if (!is_z) offset += layout.geo.extent.size[axis];
                 max = glm::max(max, layout.geo.extent.size);
             }
         }
@@ -286,7 +287,7 @@ void compute_flex_layout(UI& ui, LayedOutUIContainer& result, LayoutStyle& layou
         if (i > 0) offset += spacing;
         
         UIView* child = children[i];
-        float flex;
+        float flex = 0.0f;
         if (!is_z) flex = child->layout.flex_factor[axis];
 
         if (flex != 0) {

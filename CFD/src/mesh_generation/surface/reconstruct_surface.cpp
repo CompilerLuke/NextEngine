@@ -4,10 +4,11 @@
 #include "core/memory/linear_allocator.h"
 #include "core/math/vec2.h"
 #include "visualization/debug_renderer.h"
+#include "mesh/feature_edges.h"
 
 using namespace Thekla;
 
-void reconstruct_surface(SurfaceTriMesh& surface, CFDDebugRenderer& debug, slice<vec3> points, slice<tri_handle> tris) {
+void reconstruct_surface(SurfaceTriMesh& surface, CFDDebugRenderer& debug, slice<FeatureCurve> features) {
     Atlas_Input_Vertex* vertex_array = TEMPORARY_ZEROED_ARRAY(Atlas_Input_Vertex, surface.tri_count*surface.N);
     Atlas_Input_Face* face_array = TEMPORARY_ZEROED_ARRAY(Atlas_Input_Face, surface.tri_count);
     
@@ -49,6 +50,10 @@ void reconstruct_surface(SurfaceTriMesh& surface, CFDDebugRenderer& debug, slice
 
     Atlas_Options options;
     atlas_set_default_options(&options);
+    options.mapper_options.preserve_uvs = false;
+    options.mapper_options.preserve_boundary = false;
+    options.charter_options.witness.straightness_metric_weight = 0.2;
+    options.charter_options.witness.normal_seam_metric_weight = 0.7;
 
     Atlas_Error error = {};
     Atlas_Output_Mesh* output = atlas_generate(&mesh, &options, &error);

@@ -22,6 +22,9 @@
     <Filter Include="include\numerical">
       <UniqueIdentifier>{18022998-8418-272E-CD8F-B24F39E5F7B5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="include\solver">
+      <UniqueIdentifier>{73FF7E6B-5FCD-7271-4861-E39734CE4ED6}</UniqueIdentifier>
+    </Filter>
     <Filter Include="include\visualization">
       <UniqueIdentifier>{CA481C4B-36B5-D745-FFA8-6FA36BD4F9AD}</UniqueIdentifier>
     </Filter>
@@ -48,6 +51,9 @@
     </Filter>
     <Filter Include="src\mesh_generation\surface">
       <UniqueIdentifier>{8CC442AE-F8D1-7094-81B8-6C7FEDC43C4B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\solver">
+      <UniqueIdentifier>{97FA9479-83B2-D6C6-ECB9-AF22D89071B7}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\visualization">
       <UniqueIdentifier>{6ED38BD4-DAE9-896A-2361-158C8FB65AF2}</UniqueIdentifier>
@@ -81,6 +87,9 @@
     <ClInclude Include="include\editor\viewport_interaction.h">
       <Filter>include\editor</Filter>
     </ClInclude>
+    <ClInclude Include="include\fvc.h">
+      <Filter>include</Filter>
+    </ClInclude>
     <ClInclude Include="include\generated.h">
       <Filter>include</Filter>
     </ClInclude>
@@ -88,6 +97,9 @@
       <Filter>include\geo</Filter>
     </ClInclude>
     <ClInclude Include="include\lapacke_config.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\math_ia.h">
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="include\mesh.h">
@@ -129,6 +141,9 @@
     <ClInclude Include="include\mesh_generation\hexcore.h">
       <Filter>include\mesh_generation</Filter>
     </ClInclude>
+    <ClInclude Include="include\mesh_generation\parametric_shapes.h">
+      <Filter>include\mesh_generation</Filter>
+    </ClInclude>
     <ClInclude Include="include\mesh_generation\point_octotree.h">
       <Filter>include\mesh_generation</Filter>
     </ClInclude>
@@ -162,6 +177,27 @@
     <ClInclude Include="include\solver.h">
       <Filter>include</Filter>
     </ClInclude>
+    <ClInclude Include="include\solver\field.h">
+      <Filter>include\solver</Filter>
+    </ClInclude>
+    <ClInclude Include="include\solver\fmesh.h">
+      <Filter>include\solver</Filter>
+    </ClInclude>
+    <ClInclude Include="include\solver\fvm.h">
+      <Filter>include\solver</Filter>
+    </ClInclude>
+    <ClInclude Include="include\solver\interpolator.h">
+      <Filter>include\solver</Filter>
+    </ClInclude>
+    <ClInclude Include="include\solver\matrix.h">
+      <Filter>include\solver</Filter>
+    </ClInclude>
+    <ClInclude Include="include\solver\patches.h">
+      <Filter>include\solver</Filter>
+    </ClInclude>
+    <ClInclude Include="include\solver\solver_abstract.h">
+      <Filter>include\solver</Filter>
+    </ClInclude>
     <ClInclude Include="include\visualization\color_map.h">
       <Filter>include\visualization</Filter>
     </ClInclude>
@@ -178,7 +214,6 @@
       <Filter>include\visualization</Filter>
     </ClInclude>
     <ClInclude Include="stdafx.h" />
-    <ClInclude Include="include\mesh_generation\parametric_shapes.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\application.cpp">
@@ -253,6 +288,9 @@
     <ClCompile Include="src\mesh_generation\mesh_generation.cpp">
       <Filter>src\mesh_generation</Filter>
     </ClCompile>
+    <ClCompile Include="src\mesh_generation\parametric_shapes.cpp">
+      <Filter>src\mesh_generation</Filter>
+    </ClCompile>
     <ClCompile Include="src\mesh_generation\point_octotree.cpp">
       <Filter>src\mesh_generation</Filter>
     </ClCompile>
@@ -271,6 +309,21 @@
     <ClCompile Include="src\solver.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\solver\interpolator.cpp">
+      <Filter>src\solver</Filter>
+    </ClCompile>
+    <ClCompile Include="src\solver\matrix.cpp">
+      <Filter>src\solver</Filter>
+    </ClCompile>
+    <ClCompile Include="src\solver\mesh.cpp">
+      <Filter>src\solver</Filter>
+    </ClCompile>
+    <ClCompile Include="src\solver\simple_solver.cpp">
+      <Filter>src\solver</Filter>
+    </ClCompile>
+    <ClCompile Include="src\visual.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
     <ClCompile Include="src\visualization\debug_renderer.cpp">
       <Filter>src\visualization</Filter>
     </ClCompile>
@@ -284,7 +337,5 @@
       <Filter>src\visualization</Filter>
     </ClCompile>
     <ClCompile Include="stdafx.cpp" />
-    <ClCompile Include="src\mesh_generation\parametric_shapes.cpp" />
-    <ClCompile Include="include\solver\explicit.cpp" />
   </ItemGroup>
 </Project>

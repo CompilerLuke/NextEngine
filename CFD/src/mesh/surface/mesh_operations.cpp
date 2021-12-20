@@ -322,6 +322,7 @@ bool SurfaceTriMesh::collapse_edge(edge_handle edge) {
 
 #include "visualization/debug_renderer.h"
 #include "core/memory/linear_allocator.h"
+#include "visualization/color_map.h"
 
 void SurfaceTriMesh::smooth_mesh(uint n) {
     LinearRegion region(get_temporary_allocator());
@@ -331,40 +332,57 @@ void SurfaceTriMesh::smooth_mesh(uint n) {
     for (uint it = 0; it < n; it++) {
         memset(vert_smoothed, 0, sizeof(uint) * tri_count / 32);
         
-        for (uint i = N; i < tri_count * N; i++) {
-            if (is_deallocated(i)) continue;            
-            if (mixed_mesh && TRI_EDGE(i) == 3 && !is_quad(i)) continue;
-                        
-            uint mask = 1 << (i % 32);
-            if (vert_smoothed[i / 32] & mask) continue;
+        for (uint tri = N; tri < tri_count * N; tri += N) {
+            if (is_deallocated(tri)) continue;              
+            bool quad = is_quad(tri);    
 
-            vertex_handle v = indices[i];
+            vec3 verts[4];
 
-            vec3 new_pos;
-            float total_weight = 0.0f;
+            uint edges = quad ? 4 : 3;
 
-            vec3 orig_pos = positions[v.id];
+            for (uint j = 0; j < edges; j++) {
+                uint i = tri + j;
 
-            bool boundary = false;
-            for (edge_handle edge : ccw(i)) {
-                if (is_boundary(edge)) {
-                    boundary = true;
-                    break;
+                uint mask = 1 << (i % 32);
+                
+                vertex_handle v = indices[i];
+
+                vec3 new_pos;
+                float total_weight = 0.0f;
+
+                vec3 orig_pos = positions[v.id]; 
+                verts[j] = orig_pos;
+                
+                if (vert_smoothed[i / 32] & mask) continue;
+
+                bool boundary = false;
+                for (edge_handle edge : ccw(i)) {
+                    if (is_boundary(edge)) {
+                        boundary = true;
+                        break;
+                    }
+
+                    if (quad) draw_edge(*debug, *this, edge, RED_DEBUG_COLOR);
+
+                    vec3 pos = position(next_edge(edge));
+
+                    float weight = 1.0; // length(pos - orig_pos);
+                    new_pos += weight * pos;
+                    total_weight += weight;
                 }
 
-                vec3 pos = position(next_edge(edge));
+                if (!boundary) {
+                    new_pos /= total_weight;
 
-                float weight = 1.0; // length(pos - orig_pos);
-                new_pos += weight * pos;
-                total_weight += weight;
+                    verts[j] = lerp(orig_pos, new_pos, 0.1);
+                }
+
+                vert_smoothed[i / 32] |= mask;
             }
 
-            if (!boundary) {
-                new_pos /= total_weight;
-
-                positions[v.id] = new_pos;
+            for (uint j = 0; j < edges; j++) {
+                positions[indices[tri + j].id] = verts[j];
             }
-            vert_smoothed[i / 32] |= mask;
         }
     }
 }

@@ -179,7 +179,7 @@ void Application::run() {
 			update();
 		}
 		
-		{
+        if (!engine.headless) {
 			Profile profile("Render");
             
             FrameData frame = {};

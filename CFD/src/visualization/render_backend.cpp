@@ -74,7 +74,7 @@ CFDRenderBackend* make_cfd_render_backend(const CFDRenderBackendOptions& options
     backend->pipeline_triangle = query_Pipeline(pipeline_desc);
 
     pipeline_desc.shader = line_shader;
-    pipeline_desc.state = Cull_None | PrimitiveType_LineList | (5 << WireframeLineWidth_Offset);
+    pipeline_desc.state = Cull_None | PrimitiveType_LineList | (2 << WireframeLineWidth_Offset);
     pipeline_desc.vertex_layout = backend->line_vertex_layout;
     backend->pipeline_line = query_Pipeline(pipeline_desc);
     
@@ -122,7 +122,7 @@ RenderPass begin_cfd_scene_pass(CFDRenderBackend& backend, Renderer& renderer, F
     memcpy_ubo_buffer(renderer.scene_pass_ubo[frame_index], &frame.pass_ubo);
     memcpy_ubo_buffer(renderer.simulation_ubo[frame_index], &simulation_ubo);
 
-    RenderPass render_pass = begin_render_pass(RenderPass::Scene, glm::vec4(0));
+    RenderPass render_pass = begin_render_pass(RenderPass::Scene, glm::vec4(0.1,0.1,0.1,1));
     next_subpass(render_pass);
 
     backend.frame_descriptor = renderer.scene_pass_descriptor[frame_index];

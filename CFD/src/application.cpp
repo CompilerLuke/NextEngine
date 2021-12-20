@@ -36,6 +36,8 @@
 
 #include "math_ia.h"
 
+#include "solver/testing.h"
+
 struct CFD {
     Modules* modules;
 	CFDSolver solver;
@@ -43,6 +45,8 @@ struct CFD {
     Inspector* inspector;
     CFDRenderBackend* backend;
     CFDDebugRenderer* debug_renderer;
+    
+    Simulation* simulation = nullptr;
 	
     InputMeshRegistry mesh_registry;
     CFDVisualization* visualization;
@@ -58,6 +62,8 @@ struct CFD {
     texture_handle pause;
     
     FlowQuantity flow_quantity;
+    
+    atomic_counter solver_job = 0;
     
     MathIA* math_ia;
 
@@ -111,8 +117,6 @@ void default_scene(Lister& lister, InputMeshRegistry& registry, World& world) {
     input_model_handle model;
     //= registry.load_model("part.fbx", compute_model_matrix(model_trans));
 
-    //input_model_handle model;
-    
     if (false) {
         auto [e, trans, mesh] = world.make<Transform, CFDMesh>();
         mesh.model = model;
@@ -127,7 +131,7 @@ void default_scene(Lister& lister, InputMeshRegistry& registry, World& world) {
         domain.contour_initial_thickness = 0.5;
         domain.contour_thickness_expontent = 1.4;
 
-        domain.feature_angle = 35;
+        domain.feature_angle = 45;
         domain.min_feature_quality = 0.6;
         
         register_entity(lister, "Domain", e.id);
@@ -135,7 +139,7 @@ void default_scene(Lister& lister, InputMeshRegistry& registry, World& world) {
     {
         auto [e, trans, camera, flyover] = world.make<Transform, Camera, Flyover>();
         flyover.mouse_sensitivity = 0.1f;
-        flyover.movement_speed *= 1;
+        //flyover.movement_speed *= 0.1;
         trans.position.z = 15.0;
     }
 }
@@ -145,6 +149,14 @@ void insphere_test();
 
 APPLICATION_API CFD* init(void* args, Modules& engine) {
     //insphere_test();
+    
+    if (engine.headless) {
+        CFDDebugRenderer* debug = nullptr;
+        
+        Testing test(*debug);
+        test_solver(test);
+        return nullptr;
+    }
     
     World& world = *engine.world;
 
@@ -224,24 +236,49 @@ void generate_mesh_in_background(CFD& cfd) {
 }
 
 void solve_in_background(CFD& cfd) {
+    printf("Wait counter value %i\n", cfd.solver_job.load());
+    wait_for_counter(&cfd.solver_job, 1);
+    
+    cfd.solver.phase = SOLVER_PHASE_SIMULATION;
+    
     auto some_domain = cfd.modules->world->first<Transform, CFDDomain>();
     if (!some_domain) return;
     
     auto [e2, domain_trans, domain] = *some_domain;
     vec4 plane(domain.plane, dot(domain.plane, domain.center));
 
-    Simulation* solver = make_simulation(cfd.solver.mesh, *cfd.debug_renderer);
+    if (!cfd.simulation) cfd.simulation = make_simulation(cfd.solver.mesh, *cfd.debug_renderer);
     
-    real dt = 1.0 / 20;
-    uint time_steps = 200.0 / dt;
+    real dt = 1.0 / 100;
+    uint time_steps = 1000.0 / dt;
     
     for (uint i = 0; i < time_steps; i++) {
-        cfd.solver.results = simulate_timestep(*solver, dt);
+        if (cfd.solver.phase == SOLVER_PHASE_PAUSE_SIMULATION) {
+            break;
+        }
+        if (cfd.solver.phase != SOLVER_PHASE_SIMULATION) {
+            printf("QUIT SIMULATION!\n");
+            break;
+        }
+        
+        cfd.solver.results = simulate_timestep(*cfd.simulation, dt);
         build_vertex_representation(*cfd.visualization, cfd.solver.mesh, plane, cfd.flow_quantity, cfd.solver.results, true);
+        //break;
+        suspend_execution(*cfd.debug_renderer);
     }
     
-    //destroy solver
+    destroy_simulation(cfd.simulation);
+    cfd.simulation = nullptr;
 }
+
+/*APPLICATION_API void reload(CFD& cfd, Modules& modules) {
+    if (cfd.solver.phase == SOLVER_PHASE_SIMULATION) {
+        cfd.solver.phase = SOLVER_PHASE_COMPLETE;
+        
+        JobDesc job(solve_in_background, &cfd);
+        add_jobs(PRIORITY_HIGH, job, &cfd.solver_job);
+    }
+}*/
 
 APPLICATION_API void update(CFD& cfd, Modules& modules) {
 	World& world = *modules.world;
@@ -352,7 +389,7 @@ void render_editor_ui(CFD& cfd, Modules& engine) {
                     .background(shade2)
                     .on_click([&] {
                         JobDesc job(solve_in_background, &cfd);
-                        add_jobs(PRIORITY_HIGH, job, nullptr);
+                        add_jobs(PRIORITY_HIGH, job, &cfd.solver_job);
                     });
                 icon(ui, cfd.pause).background(shade2);
                 spacer(ui);
@@ -446,7 +483,10 @@ APPLICATION_API void render(CFD& cfd, Modules& engine, GPUSubmission& _gpu_submi
         CommandBuffer& cmd_buffer = render_pass.cmd_buffer;
         descriptor_set_handle frame_descriptor = get_frame_descriptor(*cfd.backend);
         
-        cfd.input_mesh_viewer.render(cmd_buffer, frame_descriptor);
+        //cfd.input_mesh_viewer.render(cmd_buffer, frame_descriptor);
+
+        //clear_debug_stack(*cfd.debug_renderer);
+        //render_math_ia(*cfd.math_ia);
         render_debug(*cfd.debug_renderer, cmd_buffer);
 
         if (solver.phase > SOLVER_PHASE_MESH_GENERATION) {
@@ -463,6 +503,7 @@ APPLICATION_API void render(CFD& cfd, Modules& engine, GPUSubmission& _gpu_submi
 }
 
 APPLICATION_API void deinit(CFD* cfd, Modules& engine) {
+    if (!cfd) return;
     destroy_UI(cfd->ui);
 	delete cfd;
 }

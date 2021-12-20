@@ -109,8 +109,13 @@ void fiber_main(void* data) {
 	const char* app_name = "CFD";
     
     printf("Initializing on worker %i\n", get_worker_id());
+    
+    bool run_tests = false;
 
 	Modules modules(app_name, level, engine_asset_path);
+    
+    if (run_tests) modules.init_headless();
+    else modules.init_graphics();
 
 #ifdef NE_PLATFORM_MACOSX
     const char* game_dll_path = "bin/" NE_BUILD_DIR "/CFD/libCFD.dylib";
@@ -121,6 +126,7 @@ void fiber_main(void* data) {
 #endif
     //convert_thread_to_fiber();
     
+    
     {
         Context& context = get_context();
         context.temporary_allocator = &get_thread_local_temporary_allocator();
@@ -130,6 +136,9 @@ void fiber_main(void* data) {
 #ifdef BUILD_STANDALONE
 	Application game(modules, game_dll_path);
 	game.init();
+    
+    if (run_tests) return;
+    
 	game.run();
 #else
 	Application editor(modules, editor_dll_path);

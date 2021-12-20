@@ -120,6 +120,9 @@ front_edge_handle QMorphFront::pop() {
             edges[result].next = {};
             edges[result].prev = {};
 
+            //out->edge_flags[result.id] &= ~BOUNDARY_EDGE;
+            //out->edge_flags[out->get_opp(result).id] &= ~BOUNDARY_EDGE;
+
             return result;
         }
             
@@ -211,7 +214,7 @@ struct QMorph {
 
 void draw_front(CFDDebugRenderer& debug, SurfaceTriMesh& mesh, QMorph& qmorph, QMorphFront& front) {
     //clear_debug_stack(debug);
-    printf("========== FRONT ===========\n");
+    //printf("========== FRONT ===========\n");
     for (uint gen = 0; gen < 2; gen++) {
         uint current_gen = front.current_gen ^ gen;
 
@@ -224,9 +227,9 @@ void draw_front(CFDDebugRenderer& debug, SurfaceTriMesh& mesh, QMorph& qmorph, Q
 
         for (uint p = 0; p < 4; p++) {
             stable_edge_handle edge = front.priority[current_gen][p];
-            printf("====== PRIORITY %i\n", p);
+            //printf("====== PRIORITY %i\n", p);
             while (edge.id) {
-                printf("---> %i\n", edge.id);
+                //printf("---> %i\n", edge.id);
                 bool next_gen = gen == 1;
 
                 vec4 color = colors[front.edges[edge].state & 3];
@@ -608,6 +611,8 @@ stable_edge_handle QMorph::recover_edge(edge_handle start, edge_handle end) {
 
         if (debug_vectors) {
             suspend_execution(debug);
+            clear_debug_stack(debug);
+            draw_mesh(debug, out);
             draw_triangle(debug, out, t1, vec4(1, 1, 0.5, 1));
             draw_edge(debug, out, first_flip, RED_DEBUG_COLOR);
             draw_line(debug, nc, nd, RED_DEBUG_COLOR);
@@ -759,8 +764,8 @@ vector<QMorphFront> QMorph::identify_edge_loops(slice<stable_edge_handle> edges)
     }
     
     //suspend_execution(debug);
-    draw_mesh(debug, out);
-    suspend_execution(debug);
+    //draw_mesh(debug, out);
+    //suspend_execution(debug);
 
     stable_edge_handle* edges_graph = new stable_edge_handle[offset];
 
@@ -994,8 +999,8 @@ void QMorph::update_side_edge(QMorphFront& front, front_edge_handle e1, front_ed
         vec3 bitangent = normalize(cross(normal, p2 - p0));
 
         vec3 new_pos = (p0 + p2)/2.0f - bitangent* length(p2-p0) * 0.5f;
-        draw_point(debug, new_pos, RED_DEBUG_COLOR);
-        suspend_execution(debug);
+        //draw_point(debug, new_pos, RED_DEBUG_COLOR);
+        //suspend_execution(debug);
         out.move_vert(dir_edge, new_pos*0.5 + p1*0.5);
         p1 = out.position(dir_edge);
     }
@@ -1030,7 +1035,7 @@ void QMorph::update_side_edge(QMorphFront& front, front_edge_handle e1, front_ed
         side_edge.state |= SEAM;
     }
 
-    delay = true;
+    //delay = true;
     if (!delay) front.push(e1);
     if (push) {
         edge.state = front.gen(edge.state, delay);
@@ -1067,8 +1072,8 @@ void remove_enclosed_tris(QMorph& q, slice<edge_handle> cavity_edges) {
     stack.append(out.TRI(cavity_edges[0]));
     while (stack.length > 0) {
         tri_handle current = stack.pop();
-        draw_triangle(debug, out, current, RED_DEBUG_COLOR);
-        suspend_execution(debug);
+        //draw_triangle(debug, out, current, RED_DEBUG_COLOR);
+        //suspend_execution(debug);
 
         for (uint i = 0; i < 3; i++) {
             edge_handle edge = current + i;
@@ -1389,9 +1394,9 @@ void form_wedge(QMorph& q, stable_edge_handle edge, stable_edge_handle connect_w
 
     QMorphFront::Edge& front_edge = front.edges[edge];
 
-    clear_debug_stack(debug);
-    draw_front(debug, out, q, front);
-    suspend_execution(debug);
+    //clear_debug_stack(debug);
+    //draw_front(debug, out, q, front);
+    //suspend_execution(debug);
     
     bool left = side == LEFT_EDGE;
 
@@ -1407,10 +1412,10 @@ void form_wedge(QMorph& q, stable_edge_handle edge, stable_edge_handle connect_w
     
     stable_edge_handle top;
 
-    draw_mesh(debug, out);
+    /*draw_mesh(debug, out);
     draw_line(debug, p0, p0 + bitangent, RED_DEBUG_COLOR);
     draw_edge(debug, out, out.get_edge(new_edge), BLUE_DEBUG_COLOR);
-    suspend_execution(debug);
+    suspend_execution(debug);*/
 
     vec3 p1 = out.position(out.get_edge(new_edge));
     vec3 dummy = p1;
@@ -1466,8 +1471,11 @@ void form_wedge(QMorph& q, stable_edge_handle edge, stable_edge_handle connect_w
     
     if (connect) front.dealloc(connect_with_edge);
     front.dealloc(edge);
+
+    edge_handle edges[3] = {out.get_edge(edge), out.get_edge(top), out.get_edge(new_edge)};
+    //remove_enclosed_tris(q, { edges,3 });
     
-    suspend_execution(debug);
+    /*suspend_execution(debug);
     clear_debug_stack(debug);
     draw_mesh(debug, out);
     draw_point(debug, p0, RED_DEBUG_COLOR);
@@ -1475,7 +1483,7 @@ void form_wedge(QMorph& q, stable_edge_handle edge, stable_edge_handle connect_w
     suspend_execution(debug);
     clear_debug_stack(debug);
     draw_front(debug, out, q, front);
-    suspend_execution(debug);
+    suspend_execution(debug);*/
 }
 
 /*
@@ -1568,6 +1576,7 @@ void advance_front(QMorph& q, stable_edge_handle front_edge) {
 
     vec3 tangent = p1 - p0;
     real edge_length = length(tangent);
+    tangent /= edge_length;
     vec3 bitangent_edge = normalize(cross(normal0, tangent));
 
     auto side_edge_dir = [&](tri_handle tri, front_edge_handle e1, front_edge_handle e2, uint side, vec3* bitangent) {
@@ -1581,15 +1590,18 @@ void advance_front(QMorph& q, stable_edge_handle front_edge) {
         if (angle < PI) *bitangent = normalize(cross(normal, p2 - p0));
 
         //return *bitangent;
-        return cross_field.cross_vector(tri, p1, *bitangent);
+        vec3 cross_vec = cross_field.cross_vector(tri, p1, *bitangent);
+        return normalize(lerp(*bitangent, cross_vec, 0.7));
     };
 
     vec3 edge_bitangent0, edge_bitangent1;
 
+    real growth = 1.4;
+
     vec3 bitangent0 = side_edge_dir(edge.tm0, edge.left, front_edge, LEFT_EDGE, &edge_bitangent0);
     vec3 bitangent1 = side_edge_dir(edge.tm1, edge.right, front_edge, RIGHT_EDGE, &edge_bitangent1);
-    float l0 = mesh_size; // fminf(mesh_size, edge_length); // / dot(bitangent0, bitangent_edge);
-    float l1 = mesh_size; // fminf(mesh_size, edge_length); /// dot(bitangent1, bitangent_edge); 
+    float l0 = fminf(mesh_size, edge_length * growth) / dot(bitangent0, bitangent_edge);
+    float l1 = fminf(mesh_size, edge_length * growth) / dot(bitangent1, bitangent_edge);
 
     vec3 p2, p3;
     if (left) p2 = out.position(out.get_edge(edge.left));
@@ -1607,12 +1619,13 @@ void advance_front(QMorph& q, stable_edge_handle front_edge) {
         Diamond
     };
 
-    if (size_diff < 0.6) {
+    /*if (size_diff < 0.6) {
         bitangent0 = edge_bitangent0;
         bitangent1 = edge_bitangent1;
-    }
+    }*/
 
-    bool wedge = size_diff > 1.8;
+    bool wedge = size_diff > 2.0;
+    bool tuck = size_diff < 0.7;
     Wedge left_wedge = Wedge::None;
     Wedge right_wedge = Wedge::None;
 
@@ -1629,9 +1642,16 @@ void advance_front(QMorph& q, stable_edge_handle front_edge) {
         return corner_angle - 2 * angle < 1.0 / 3.0f * PI;
     };
 
+    /*if (tuck) {
+        left = false;
+        right = true;
+    }*/
+
     if (wedge) {
         if (left_angle > right_angle) {
             bitangent0 = edge_bitangent0;
+            l0 = fminf(mesh_size, edge_length * growth) / dot(bitangent0, bitangent_edge);
+
             if (left) {
                 //bitangent0 = glm::rotate(glm::vec3(bitangent0), -angle*0.3f, glm::vec3(normal));
 
@@ -1647,6 +1667,8 @@ void advance_front(QMorph& q, stable_edge_handle front_edge) {
         }
         else {
             bitangent1 = edge_bitangent1;
+            l1 = fminf(mesh_size, edge_length * growth) / dot(bitangent1, bitangent_edge);
+
             if (right) {
                 right = false;
                 right_wedge = would_cause_seam(right_angle) ? Wedge::TriangleExisting : Wedge::Diamond;
@@ -1851,12 +1873,12 @@ void advance_front(QMorph& q, stable_edge_handle front_edge) {
         form_wedge(q, e3, right_wedge == Wedge::TriangleExisting ? edge.right : stable_edge_handle{}, normal, bitangent_wedge1, l1, RIGHT_EDGE);
     }
     if (left_wedge == Wedge::Diamond) {
-        front.remove(front.edges[e2].left);
-        advance_front(q, front.edges[e2].left);
+        //front.remove(front.edges[e2].left);
+        //advance_front(q, front.edges[e2].left);
     }
     if (right_wedge == Wedge::Diamond) {
-        front.remove(front.edges[e3].right);
-        advance_front(q, front.edges[e3].right);
+        //front.remove(front.edges[e3].right);
+        //advance_front(q, front.edges[e3].right);
     }
 
     //form quad
@@ -1886,7 +1908,8 @@ void advance_front(QMorph& q, stable_edge_handle front_edge) {
         out.edges[quad + i] = cavity_outer_edges[i];
         out.edges[cavity_outer_edges[i]] = quad + i;
         out.map_stable_edge(quad + i, cavity_stable[i]);
-        out.mark_boundary(cavity_stable[i]);
+        //out.mark_boundary(cavity_stable[i]);
+        //out.edge_flags[cavity_stable[i].id] &= ~BOUNDARY_EDGE;
     }
 }
 
@@ -1904,9 +1927,12 @@ void QMorph::propagate(QMorphFront& new_front) {
         front_edge_handle front_edge = front.pop();
         if (!front_edge.id) break;
 
+        count++;
+        if (count > 5000) break;
+
         advance_front(*this, front_edge);
 
-#if 1
+#if 0
         //if (count++ % 20 == 0) {
             suspend_execution(debug);
             clear_debug_stack(debug);
@@ -1915,15 +1941,15 @@ void QMorph::propagate(QMorphFront& new_front) {
             clear_debug_stack(debug);
             draw_front(debug, out, *this, front);
             suspend_execution(debug);
-        //}
+        }
 #endif
-        
+
 
     }
 
     clear_debug_stack(debug);
     memset(out.edge_flags, 0, sizeof(char) * out.stable_to_edge.length);
-    //out.smooth_mesh(5);
+    out.smooth_mesh(5);
     draw_mesh(debug, out);
 
     /*for (tri_handle tri : out) {
@@ -1944,7 +1970,7 @@ void qmorph(SurfaceTriMesh& mesh, CFDDebugRenderer& debug, SurfaceCrossField& cr
 
     qmorph.out.copy(mesh, true);
 
-    qmorph.mesh_size = mesh_size;
+    qmorph.mesh_size = 0.1;
     qmorph.out.debug = &debug;
 
     auto fronts = qmorph.identify_edge_loops(edges);
@@ -1954,5 +1980,25 @@ void qmorph(SurfaceTriMesh& mesh, CFDDebugRenderer& debug, SurfaceCrossField& cr
     for (uint i = 0; i < fronts.length; i++) {
         auto& front = fronts[i];
         qmorph.propagate(front);
+
+        memset(qmorph.out.edge_flags, 0, sizeof(char) * qmorph.out.stable_to_edge.length);
+        for (stable_edge_handle stable : edges) {
+            qmorph.out.mark_boundary(stable);
+        }
+
+        for (uint i = 0; i < 100; i++) {
+            qmorph.out.smooth_mesh(1);
+            clear_debug_stack(debug);
+            draw_mesh(debug, qmorph.out);
+            suspend_execution(debug);
+        }
+
+        /*for (tri_handle tri : out) {
+            vec3 verts[3];
+            out.triangle_verts(tri, verts);
+            draw_triangle(debug, verts, vec4(1));
+        }*/
+
+        suspend_execution(debug);
     }
 }

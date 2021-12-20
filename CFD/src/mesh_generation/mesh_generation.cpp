@@ -509,6 +509,9 @@ CFDVolume generate_mesh(World& world, InputMeshRegistry& registry, CFDMeshError&
 			Profile profile("Remesh tri surface");
 			surface_edges = remesh_surface(remeshed, debug, features, mesh_size*0.7);
 
+			//reconstruct_surface(surface, debug, features);
+			remesh_surface(remeshed, debug, features, mesh_size);
+
 			profile.log();
 		}
 
