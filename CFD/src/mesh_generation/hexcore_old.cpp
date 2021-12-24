@@ -403,7 +403,7 @@ void build_grid(CFDVolume& mesh, SurfaceTriMesh& surface, const AABB& domain_bou
 		aabb.update(surface.positions[i]);
 	}
 
-	glm::vec3 spacing = glm::vec3(2.0f * resolution);
+    glm::vec3 spacing = glm::vec3(0); //glm::vec3(2.0f * resolution);
 
 	aabb.min -= spacing;
 	aabb.max += spacing;

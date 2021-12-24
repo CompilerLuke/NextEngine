@@ -3,8 +3,8 @@
 #include "ui/ui.h"
 
 struct DuctOptions {
-	float width = 1.0;
-    float height = 1.0;
+	float width = 2.0;
+    float height = 2.0;
 	float depth = 4;
 
     float constrain_start = 1.1;
@@ -87,9 +87,9 @@ vec3 duct(const DuctOptions& options, float u, float v, float t) {
 
 DuctOptions options;
 
-int u_div = 8;
-int v_div = 8;
-int t_div = 32;
+int u_div = 2;
+int v_div = 2;
+int t_div = 2;
 
 template<typename T>
 void field(UI& ui, string_view field, T* value, float min = -FLT_MAX, float max = FLT_MAX, float inc_per_pixel = 5.0) {
@@ -143,18 +143,17 @@ SurfaceTriMesh surface_from_mesh(const glm::mat4& mat, Mesh& mesh);
 
 CFDVolume generate_parametric_mesh() {	
 	CFDVolume result;
-#if 1
-
-
+#if 0
 	AABB aabb;
 	aabb.min = vec3(-options.width, -options.height, 0);
 	aabb.max = vec3(options.width, options.height, options.depth);
 
 	Transform trans;
-	trans.scale = vec3(options.width * 0.1, options.height * 0.1, options.depth * 0.1);
+    trans.scale = vec3(0.6,0.6,0.6);
+    //vec3(options.width * 0.7, options.height * 0.7, options.depth * 0.4);
 	trans.position = vec3(0, 0, options.depth * 0.6);
 
-	SurfaceTriMesh mesh = surface_from_mesh(compute_model_matrix(trans), get_Model(primitives.cube)->meshes[0]);
+	SurfaceTriMesh mesh = surface_from_mesh(compute_model_matrix(trans), get_Model(primitives.sphere)->meshes[0]);
 
 	vector<vertex_handle> boundary_verts;
 	vector<Boundary> boundary;
@@ -247,8 +246,8 @@ CFDVolume generate_parametric_mesh() {
 
                 compute_normals(result.vertices, cell);
                 
-                if (i == 0) cell.faces[4].pressure = pressure_grad; //velocity * cell.faces[4].normal;
-                if (i + 1 == t_div) cell.faces[2].pressure = -pressure_grad; //-velocity * cell.faces[2].normal;
+                //if (i == 0) cell.faces[4].pressure = pressure_grad; //velocity * cell.faces[4].normal;
+                //if (i + 1 == t_div) cell.faces[2].pressure = -pressure_grad; //-velocity * cell.faces[2].normal;
 
 				result.cells.append(cell);
 			}

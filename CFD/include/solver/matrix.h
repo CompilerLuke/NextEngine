@@ -16,6 +16,7 @@ using SparseMatrix = Eigen::SparseMatrix<real, Eigen::RowMajor>;
 
 template<typename Data, uint D>
 class FV_Matrix {
+public:
     using Field = Eigen::Array<real, D, Eigen::Dynamic>;
     using Matrix = FV_Matrix<Data, D>;
     using Triplet = Eigen::Triplet<real>;
@@ -38,7 +39,6 @@ class FV_Matrix {
         return should_rebuild;
     }
 
-public:
     const FV_Mesh_Data& mesh;
 
     Field source;
@@ -95,7 +95,6 @@ public:
         dirty();
         face_sources(Eigen::all, seq) += source;
 
-        assert(source.maxCoeff() < 1e5);
         assert(source.allFinite());
     }
 
@@ -193,6 +192,8 @@ public:
             coeffs[i].resize(mesh.face_count*2 + mesh.cell_count);
             sparse[i].resize(mesh.cell_count, mesh.cell_count);
         }
+        
+        source = Field::Zero(D, mesh.cell_count);
 
         //todo factor into function
         for (uint i = 0; i < mesh.face_count; i++) {
@@ -206,7 +207,7 @@ public:
             
             for (uint axis = 0; axis < D; axis++) {
                 coeffs[axis].append(Triplet(cell, cell, cell_coeff(axis)));
-                coeffs[axis].append(Triplet(neigh, cell, neigh_coeff(axis)));
+                coeffs[axis].append(Triplet(cell, neigh, neigh_coeff(axis)));
             }
             
             source(Eigen::all, cell) += -face_source;
@@ -227,22 +228,31 @@ public:
             sparse[axis].setFromTriplets(coeffs[axis].begin(), coeffs[axis].end());
         }
 
-        if (ref_cell != -1) {
-            /*for (SparseMatrix::InnerIterator it(sparse, cell); it; ++it) {
-                it.valueRef() = 0.0;
-            }*/
-            //sparse.row(cell) = Eigen::Cons 0.0f;
-            for(uint i = 0; i<D; i++) sparse[i].diagonal()(ref_cell) = 1.0;
-            source.col(ref_cell) = ref_value;
-        }
-
         if (under_relax_coeff != 1.0) {
             real factor = (1 - under_relax_coeff) / under_relax_coeff;
 
             for (uint i = 0; i < D; i++) {
+                auto sum =
                 source.row(i) += sparse[i].diagonal().cwiseProduct(target.values.row(i).transpose().matrix()).array() * factor;
-                sparse[i].diagonal() += sparse[i].diagonal() * factor;
+                //(factor * mesh.inv_volume * target.values.row(i));
+                //
+                sparse[i].diagonal() *= 1 + factor;
+                (factor * mesh.inv_volume).transpose().matrix();
+                //sparse[i].diagonal() * factor;
             }
+        }
+        
+        if (ref_cell != -1) {
+            /*for (SparseMatrix::InnerIterator it(sparse, ref_cell); it; ++it) {
+                it.valueRef() = 0.0;
+            }*/
+            for(uint i = 0; i<D; i++) {
+                for (SparseMatrix::InnerIterator it(sparse[i], ref_cell); it; ++it) {
+                    it.valueRef() = 0.0;
+                }
+                sparse[i].diagonal()(ref_cell) = 1.0;
+            }
+            source.col(ref_cell) = ref_value;
         }
     }
 
@@ -258,11 +268,13 @@ public:
         Eigen::Array<real, 1, Eigen::Dynamic> new_value;
 
         real change = 0.0f;
+        
+        //std::cout << "=============" << std::endl;
 
         for (uint axis = 0; axis < D; axis++) {
             //std::cout << "=======" << std::endl;
-            //std::cout << sparse << std::endl;
-            //std::cout << source << std::endl;
+            //std::cout << sparse[axis] << std::endl;
+            //std::cout << source.row(axis) << std::endl;
 
             solver.compute(sparse[axis]);
             new_value = solver.solveWithGuess(source.row(axis).transpose().matrix(), target.values.row(axis).transpose().matrix()).transpose();
@@ -286,13 +298,13 @@ public:
 using FV_ScalarMatrix = FV_Matrix<FV_Scalar_Data, 1>;
 using FV_VectorMatrix = FV_Matrix<FV_Vector_Data, 3>;
 
-#define MATRIX_OP(Type, Dim, Op) inline FV_##Type##Matrix operator##Op##(real value, FV_##Type##Matrix&& matrix) { \
+#define MATRIX_OP(Type, Dim, Op) inline FV_##Type##Matrix operator Op (real value, FV_##Type##Matrix&& matrix) { \
     uint face_count = matrix.mesh.face_count; \
     FV_##Type##Matrix result = std::move(matrix); \
     result Op##= Type##Field::Constant(Dim, face_count, value); \
     return result; \
 } \
-inline FV_##Type##Matrix operator##Op##(const Type##Field& value, FV_##Type##Matrix&& matrix) { \
+inline FV_##Type##Matrix operator Op (const Type##Field& value, FV_##Type##Matrix&& matrix) { \
     FV_##Type##Matrix result = std::move(matrix); \
     result Op##= value; \
     return result; \

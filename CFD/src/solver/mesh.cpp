@@ -21,7 +21,7 @@ FV_Mesh build_mesh(CFDVolume& mesh, CFDDebugRenderer& debug) {
     uint wall_count = 0;
     uint inlet_count = 0;
 
-    clear_debug_stack(debug);
+    //clear_debug_stack(debug);
     
     for (uint i = 0; i < mesh.cells.length; i++) {
         const CFDCell& cell = mesh.cells[i];
@@ -64,14 +64,15 @@ FV_Mesh build_mesh(CFDVolume& mesh, CFDDebugRenderer& debug) {
     data->face_count = face_count;
 
     data->inv_volume.resize(Eigen::NoChange, cell_count);
+    data->center_pos.resize(Eigen::NoChange, cell_count);
 
-    data->ortho.resize(Eigen::NoChange, offset);
-    data->normal.resize(Eigen::NoChange, offset);
-    data->cell_ids.resize(Eigen::NoChange, offset);
-    data->center_to_face.resize(Eigen::NoChange, offset);
-    data->neigh_ids.resize(Eigen::NoChange, offset);
-    data->inv_dx.resize(Eigen::NoChange, offset);
-    data->area.resize(Eigen::NoChange, offset);
+    data->ortho.resize(Eigen::NoChange, face_count);
+    data->normal.resize(Eigen::NoChange, face_count);
+    data->cell_ids.resize(Eigen::NoChange, face_count);
+    data->center_to_face.resize(Eigen::NoChange, face_count);
+    data->neigh_ids.resize(Eigen::NoChange, face_count);
+    data->inv_dx.resize(Eigen::NoChange, face_count);
+    data->area.resize(Eigen::NoChange, face_count);
     
     result.interior.dx_cell_weight.resize(interior_count);
     result.interior.dx_neigh_weight.resize(interior_count);
@@ -137,7 +138,7 @@ FV_Mesh build_mesh(CFDVolume& mesh, CFDDebugRenderer& debug) {
                 
                 vec3 neigh_center = compute_centroid(mesh, neigh_cell.vertices, shapes[neigh_cell.type].num_verts);
                 
-                draw_line(debug, center, neigh_center, dot(neigh_center-center,normal) > 0 ? RED_DEBUG_COLOR : GREEN_DEBUG_COLOR);
+                //draw_line(debug, center, neigh_center, dot(neigh_center-center,normal) > 0 ? RED_DEBUG_COLOR : GREEN_DEBUG_COLOR);
 
                 cell_to_neigh = neigh_center - center;
                 
@@ -176,9 +177,10 @@ FV_Mesh build_mesh(CFDVolume& mesh, CFDDebugRenderer& debug) {
             assert(std::isfinite(data->inv_dx(0,face_id)));
         }
 
+        data->center_pos(Eigen::all,cell_id) = Eigen::Vector3d(center.x, center.y, center.z);
         data->inv_volume(cell_id) = 3.0/volume;
 
-        suspend_execution(debug);
+        //suspend_execution(debug);
     }
 
     //suspend_execution(debug);

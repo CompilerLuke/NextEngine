@@ -3,6 +3,7 @@
 #include "core/math/vec3.h"
 #include "vendor/eigen/Eigen/Eigen"
 
+using MaskField = Eigen::Array<bool, 1, Eigen::Dynamic>;
 using IndexField = Eigen::Array<uint, 1, Eigen::Dynamic>;
 using ScalarField = Eigen::Array<real, 1, Eigen::Dynamic>;
 using VectorField = Eigen::Array<real, 3, Eigen::Dynamic>;

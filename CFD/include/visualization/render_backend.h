@@ -39,8 +39,8 @@ struct CFDTriangleBuffer {
     CFDTriangleVertex* vertices = nullptr;
     uint* indices = nullptr;
 
-    inline void append(CFDTriangleVertex v) { vertices[vertex_arena.offset++] = v; }
-    inline void append(uint i) { indices[index_arena.offset++] = i;}
+    inline uint append(CFDTriangleVertex v) { vertices[vertex_arena.offset] = v; return vertex_arena.offset++; }
+    inline uint append(uint i) { indices[index_arena.offset] = i; return index_arena.offset++; }
     inline void clear() { vertex_arena.offset = 0; index_arena.offset = 0; }
 
     void draw_triangle(vec3 v[3], vec3 normal, vec4 color);

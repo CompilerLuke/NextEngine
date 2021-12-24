@@ -4,6 +4,11 @@
 #include "core/container/string_view.h"
 
 struct ENGINE_API Modules {
+    const char* app_name;
+    const char* level_path;
+    const char* engine_asset_path;
+    
+    bool headless = false;
 	struct Window* window = nullptr;
 	struct Time* time = nullptr;
 	struct World* world = nullptr;
@@ -14,7 +19,9 @@ struct ENGINE_API Modules {
 
     Modules();
 	Modules(const char* app_name, const char* level_path, const char* engine_asset_path);
-	void begin_frame();
+    void init_graphics();
+    void init_headless();
+    void begin_frame();
 	void end_frame();
 	~Modules();
 };

@@ -26,9 +26,10 @@ using ScalarInterpolator = Interpolator<ScalarField, FV_ScalarMatrix, FV_Scalar_
 using VectorInterpolator = Interpolator<VectorField, FV_VectorMatrix, FV_Vector_Data>;
 
 struct NoSlip : VectorInterpolator {
-    FV_Wall_Patch& boundary;
+    FV_Patch& boundary;
+    VectorField values;
     
-    NoSlip(FV_Wall_Patch&);
+    NoSlip(FV_Patch&);
     void face_values(VectorField& result, const FV_Vector_Data& data) const override;
     void face_coeffs(FV_VectorMatrix& result, const FV_Vector_Data& data) const override;
     void face_grad(VectorField& result, const FV_Vector_Data& data) const override;
@@ -69,6 +70,7 @@ struct FaceVecAverage : VectorInterpolator {
 
 struct ZeroVecGradient : VectorInterpolator {
     FV_Patch& boundary;
+    VectorField grads;
 
     ZeroVecGradient(FV_Patch&);
     void face_values(VectorField& result, const FV_Vector_Data& data) const override;

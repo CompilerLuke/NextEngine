@@ -6,6 +6,7 @@ enum CFDSolverPhase {
 	SOLVER_PHASE_NONE,
 	SOLVER_PHASE_MESH_GENERATION,
 	SOLVER_PHASE_SIMULATION,
+    SOLVER_PHASE_PAUSE_SIMULATION,
 	SOLVER_PHASE_COMPLETE,
 	SOLVER_PHASE_FAIL,
 };
@@ -31,5 +32,6 @@ struct CFDSolver {
 struct Simulation;
 
 Simulation* make_simulation(CFDVolume& volume, CFDDebugRenderer& debug);
+void destroy_simulation(Simulation*);
 CFDResults simulate_timestep(Simulation& sim, real dt);
 
