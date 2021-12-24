@@ -27,6 +27,7 @@ using VectorInterpolator = Interpolator<VectorField, FV_VectorMatrix, FV_Vector_
 
 struct NoSlip : VectorInterpolator {
     FV_Patch& boundary;
+    VectorField values;
     
     NoSlip(FV_Patch&);
     void face_values(VectorField& result, const FV_Vector_Data& data) const override;

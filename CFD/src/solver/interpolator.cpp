@@ -7,19 +7,23 @@
 using Eigen::all;
 
 //Boundary Conditions
-NoSlip::NoSlip(FV_Patch& wall) : boundary(wall) {}
-void NoSlip::face_values(VectorField& result, const FV_Vector_Data& data) const {}
-void NoSlip::face_coeffs(FV_VectorMatrix& result, const FV_Vector_Data& data) const {}
+NoSlip::NoSlip(FV_Patch& wall) : boundary(wall), values(VectorField::Zero(3, wall.patch_count)) {}
+void NoSlip::face_values(VectorField& result, const FV_Vector_Data& data) const {
+    result(Eigen::all, boundary.faces()) += values;
+}
+void NoSlip::face_coeffs(FV_VectorMatrix& result, const FV_Vector_Data& data) const {
+    result.add_fsources(boundary.faces(), values);
+}
 void NoSlip::face_grad(VectorField& result, const FV_Vector_Data& data) const {
     auto cells = boundary.cells();
     
-    auto delta = data.values(Eigen::all, cells);
+    auto delta = values - data.values(Eigen::all, cells);
     result(Eigen::all, boundary.faces()) += delta.cwiseProduct(boundary.dx().replicate<3,1>());
 }
 
 void NoSlip::face_grad_coeffs(FV_VectorMatrix& result, const FV_Vector_Data& data) const {
     uint count = boundary.patch_count;
-    result.add_fcoeffs(boundary.faces(), VectorField::Zero(3,count), -boundary.dx().replicate<3, 1>());
+    result.add_fcoeffs(boundary.faces(), values, -boundary.dx().replicate<3, 1>());
 }
 
 void NoSlip::fix_boundary(FV_Vector_Data& data) const {
@@ -189,9 +193,8 @@ void Upwind::face_values(VectorField& result, const FV_Vector_Data& data) const 
     
     auto flux = vec_dot(normal, upwind + downwind);
     
-    VectorField value = 0.5 * (upwind + downwind);
-    //(flux > -1e-5).replicate<3,1>().select(downwind, upwind);
-    result(Eigen::all, interior.faces()) += value;
+    VectorField value = (flux >= 0).replicate<3,1>().select(downwind, upwind);
+    result(Eigen::all, interior.faces()) += 0.5*(downwind + upwind);
 }
 
 void Upwind::face_coeffs(FV_VectorMatrix& result, const FV_Vector_Data& data) const {
@@ -206,7 +209,7 @@ void Upwind::face_coeffs(FV_VectorMatrix& result, const FV_Vector_Data& data) co
     auto flux = vec_dot(normal, upwind+downwind);
     //auto upwind_flux = vec_dot(normal, downwind);
     
-    auto mask = flux.array() > -1e-5; // upwind_flux.array();
+    auto mask = flux.array() >= 0; // upwind_flux.array();
     
     auto dx = VectorField::Constant(3,interior.patch_count,1.0);
     

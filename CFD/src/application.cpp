@@ -249,7 +249,7 @@ void solve_in_background(CFD& cfd) {
 
     if (!cfd.simulation) cfd.simulation = make_simulation(cfd.solver.mesh, *cfd.debug_renderer);
     
-    real dt = 1.0 / 100;
+    real dt = 1.0 / 10000;
     uint time_steps = 1000.0 / dt;
     
     for (uint i = 0; i < time_steps; i++) {

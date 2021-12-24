@@ -4,7 +4,7 @@
 
 struct DuctOptions {
 	float width = 2.0;
-    float height = 1.0;
+    float height = 2.0;
 	float depth = 4;
 
     float constrain_start = 1.1;
@@ -89,7 +89,7 @@ DuctOptions options;
 
 int u_div = 2;
 int v_div = 2;
-int t_div = 8;
+int t_div = 2;
 
 template<typename T>
 void field(UI& ui, string_view field, T* value, float min = -FLT_MAX, float max = FLT_MAX, float inc_per_pixel = 5.0) {
@@ -143,7 +143,7 @@ SurfaceTriMesh surface_from_mesh(const glm::mat4& mat, Mesh& mesh);
 
 CFDVolume generate_parametric_mesh() {	
 	CFDVolume result;
-#if 1
+#if 0
 	AABB aabb;
 	aabb.min = vec3(-options.width, -options.height, 0);
 	aabb.max = vec3(options.width, options.height, options.depth);
@@ -246,8 +246,8 @@ CFDVolume generate_parametric_mesh() {
 
                 compute_normals(result.vertices, cell);
                 
-                if (i == 0) cell.faces[4].pressure = pressure_grad; //velocity * cell.faces[4].normal;
-                if (i + 1 == t_div) cell.faces[2].pressure = -pressure_grad; //-velocity * cell.faces[2].normal;
+                //if (i == 0) cell.faces[4].pressure = pressure_grad; //velocity * cell.faces[4].normal;
+                //if (i + 1 == t_div) cell.faces[2].pressure = -pressure_grad; //-velocity * cell.faces[2].normal;
 
 				result.cells.append(cell);
 			}

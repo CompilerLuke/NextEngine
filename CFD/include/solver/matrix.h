@@ -16,6 +16,7 @@ using SparseMatrix = Eigen::SparseMatrix<real, Eigen::RowMajor>;
 
 template<typename Data, uint D>
 class FV_Matrix {
+public:
     using Field = Eigen::Array<real, D, Eigen::Dynamic>;
     using Matrix = FV_Matrix<Data, D>;
     using Triplet = Eigen::Triplet<real>;
@@ -38,7 +39,6 @@ class FV_Matrix {
         return should_rebuild;
     }
 
-public:
     const FV_Mesh_Data& mesh;
 
     Field source;
@@ -95,7 +95,6 @@ public:
         dirty();
         face_sources(Eigen::all, seq) += source;
 
-        assert(source.maxCoeff() < 1e5);
         assert(source.allFinite());
     }
 
@@ -193,6 +192,8 @@ public:
             coeffs[i].resize(mesh.face_count*2 + mesh.cell_count);
             sparse[i].resize(mesh.cell_count, mesh.cell_count);
         }
+        
+        source = Field::Zero(D, mesh.cell_count);
 
         //todo factor into function
         for (uint i = 0; i < mesh.face_count; i++) {
@@ -206,7 +207,7 @@ public:
             
             for (uint axis = 0; axis < D; axis++) {
                 coeffs[axis].append(Triplet(cell, cell, cell_coeff(axis)));
-                coeffs[axis].append(Triplet(neigh, cell, neigh_coeff(axis)));
+                coeffs[axis].append(Triplet(cell, neigh, neigh_coeff(axis)));
             }
             
             source(Eigen::all, cell) += -face_source;

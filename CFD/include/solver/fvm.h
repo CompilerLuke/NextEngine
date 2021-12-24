@@ -13,11 +13,22 @@ namespace fvm {
         return result;
     }*/
 
-    inline FV_ScalarMatrix laplace(const ScalarField& a, FV_Scalar& scalar) {
+    inline FV_ScalarMatrix laplace(ScalarField& f, FV_Scalar& scalar) {
         const ScalarField& fa = scalar.mesh.fa();
         FV_ScalarMatrix result = scalar.face_grad_coeffs();
-        result *= a;
+        result.face_cell_coeffs *= f(scalar.mesh.cells());
+        result.face_neigh_coeffs *= f(scalar.mesh.neighs());
+        result.face_sources *= f(scalar.mesh.cells());
         result *= fa;
+        
+        //\(fg) = f \g + g \f
+        
+        /*const ScalarField& fa = f.mesh.fa();
+        FV_ScalarMatrix result = g.face_grad_coeffs();
+        result *= f.face_values();
+        //FV_ScalarMatrix result = f.face_values() * g.face_grad_coeffs();
+        //result += f.face_grad() * g.face_coeffs();
+        result *= fa;*/
         return result;
     }
 
@@ -28,10 +39,30 @@ namespace fvm {
         return result;
     }
 
+    inline FV_ScalarMatrix ddt(FV_Scalar& vec, ScalarField& last, real dt) {
+        const FV_Mesh_Data& mesh = vec.mesh;
+        FV_ScalarMatrix result(mesh, vec.data);
+
+        auto seq = Eigen::seqN(0, mesh.cell_count);
+
+        result.add_ccoeffs(seq, ScalarField::Constant(1,mesh.cell_count,1.0/dt));
+        result.add_csources(seq, last / dt);
+
+        return result;
+    }
+
     inline FV_VectorMatrix laplace(FV_Vector& vector) {
         const ScalarField& fa = vector.mesh.fa();
         FV_VectorMatrix result = vector.face_grad_coeffs();
         result *= fa.replicate<3,1>();
+        return result;
+    }
+
+    inline FV_ScalarMatrix conv(const VectorField& a, FV_Scalar& scalar) {
+        const FV_Mesh_Data& mesh = scalar.mesh;
+        FV_ScalarMatrix result = scalar.face_coeffs();
+        result *= vec_dot(mesh.sf(), a(Eigen::all,mesh.cells()));
+        
         return result;
     }
 
@@ -95,15 +126,31 @@ namespace fvc {
         return cells;
     }
 
-    inline VectorField conv(const VectorField& a, const FV_Vector& vec) {
+    inline VectorField laplace(FV_Vector& vec) {
         const FV_Mesh_Data& mesh = vec.mesh;
-        VectorField faces = (mesh.fa() * vec_dot(a, mesh.normal)).replicate<3, 1>();
+        VectorField faces = mesh.fa().replicate<3,1>() * vec.face_grad();
         
         VectorField cells(VectorField::Zero(3, mesh.cell_count));
         cells(Eigen::all, mesh.cells()) += faces;
-        cells *= vec.values() * mesh.inv_volume.replicate<3,1>().array();
+        cells *= mesh.inv_volume.replicate<3,1>().array();
         
         return cells;
+    }
+
+
+    inline VectorField conv(const VectorField& a, const FV_Vector& vec) {
+        const FV_Mesh_Data& mesh = vec.mesh;
+        VectorField faces = (mesh.fa() * vec_dot(vec.face_values(), mesh.normal)).replicate<3, 1>();
+        
+        VectorField cells(VectorField::Zero(3, mesh.cell_count));
+        cells(Eigen::all, mesh.cells()) += faces;
+        cells *= a * mesh.inv_volume.replicate<3,1>().array();
+        
+        return cells;
+    }
+
+    inline ScalarField conv(const VectorField& a, const FV_Scalar& scalar) {
+        return vec_dot(a, grad(scalar));
     }
 
     inline ScalarField div(const FV_Vector& vec) {
@@ -144,7 +191,7 @@ namespace fvc {
         VectorField faces = vec.face_values();
         faces *= a.replicate<3,1>();
 
-        ScalarField dot = vec_dot(faces, mesh.normal);
+        ScalarField dot = vec_dot(faces, mesh.sf());
 
         ScalarField cells(ScalarField::Zero(1, mesh.cell_count));
         cells(Eigen::all, mesh.cells()) += dot;

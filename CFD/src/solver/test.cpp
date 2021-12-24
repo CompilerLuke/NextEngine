@@ -165,11 +165,32 @@ void test_scalar_fvc(SolverTesting& test) {
     {
         UnitTest unit(test, "Laplace");
         
+        ScalarField mul(1, mesh.cell_count);
+        for (uint i = 0; i < mesh.cell_count; i++) {
+            mul(i) = i+1;
+        }
+        
         FV_ScalarMatrix mat = fvm::laplace(U);
+    
+        
+        mat *= mul; //(all, mesh.cell_ids);
+        mat.build();
+        //mat *= mat.A().cwiseInverse();
+        
         mat.set_ref(0, pos(2,0));
+        
         mat.solve();
         
+        std::cout << "=======" << std::endl;
+        std::cout << mat.sparse[0] << std::endl;
+        std::cout << mat.source.row(0) << std::endl;
+        
         test.assert_almost_eq(U.values(), pos(2,all));
+        VectorField ref_grad(3,1);
+        ref_grad(0) = 0;
+        ref_grad(1) = 0;
+        ref_grad(2) = 1;
+        test.assert_almost_eq(fvc::grad(U), ref_grad.replicate(1,mesh.cell_count));
     }
 }
 
@@ -204,14 +225,14 @@ void test_vector_fvc(SolverTesting& test) {
         
         VectorField conv_ref = VectorField::Zero(3, cell_count);
         conv_ref(2,all) = U.values()(2,all);
-        test.assert_almost_eq(fvc::conv(U.face_values(), U), conv_ref);
+        test.assert_almost_eq(fvc::conv(U.values(), U), conv_ref);
     }
     
     {
         UnitTest unit(test, "Laplace");
         
         FV_VectorMatrix eq = fvm::laplace(U);
-        //eq.set_ref(0, vec3(0,0,pos(0,2)));
+        eq.set_ref(0, vec3(0,0,pos(0,2)));
         eq.solve();
         
         U.values()(2,all) += pos(2,0)-U.values()(2,all).minCoeff();

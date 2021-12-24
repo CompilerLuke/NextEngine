@@ -53,7 +53,7 @@ void draw_streamlines(CFDTriangleBuffer& triangle, CFDLineBuffer& line, CFDVolum
         
         for (uint i = 0; i < num_faces; i++) {
             if (cell.faces[i].neighbor.id == -1
-                && cell.faces[i].pressure != 0
+                //&& cell.faces[i].pressure != 0
                 && dot(results.velocities[id.id], cell.faces[i].normal) < 0
                 && fabs(center.x) < 0.8
                 && fabs(center.y) < 0.5
@@ -190,9 +190,10 @@ void build_vertex_representation(CFDVisualization& visualization, CFDVolume& mes
                 break;
             }
         }
-#elif 0
+#elif 1
         vec3 centroid = compute_centroid(mesh, cell.vertices, n);
         bool is_visible = dot(plane, centroid) > plane.w-epsilon;
+        //if (quantity == FlowQuantity::Velocity) is_visible = centroid.y>0;
         //is_visible = is_visible && dot(plane, centroid) < (plane.w+3.0)-epsilon;
 #else
         bool is_visible = results.vof.length==0 || results.vof[i] > 0.8;
