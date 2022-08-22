@@ -1,22 +1,7 @@
 #include "mesh.h"
 #include "mesh/volume_tet_mesh.h"
 #include "ui/ui.h"
-
-struct DuctOptions {
-	float width = 2.0;
-    float height = 2.0;
-	float depth = 4;
-
-    float constrain_start = 1.1;
-    float constrain_end = 1.3;
-    float transition = 0.1;
-	float narrow = 1.1;
-
-    float turn_start = 1.1;
-	float turn_end = 1.3;
-    
-    float turn_angle = 90.0;
-};
+#include "mesh_generation/parametric_shapes.h"
 
 float lerp(float a, float b, float t) {
 	t = clamp(0, 1, t);
@@ -87,10 +72,6 @@ vec3 duct(const DuctOptions& options, float u, float v, float t) {
 
 DuctOptions options;
 
-int u_div = 2;
-int v_div = 2;
-int t_div = 2;
-
 template<typename T>
 void field(UI& ui, string_view field, T* value, float min = -FLT_MAX, float max = FLT_MAX, float inc_per_pixel = 5.0) {
 	begin_hstack(ui);
@@ -122,9 +103,9 @@ void parametric_ui(UI& ui) {
 	begin_hstack(ui);
 	text(ui, "u, v, t");
 	spacer(ui);
-	input(ui, &u_div);
-	input(ui, &v_div);
-	input(ui, &t_div);
+	input(ui, &options.u_div);
+	input(ui, &options.v_div);
+	input(ui, &options.t_div);
 	end_hstack(ui);
 
 	end_vstack(ui);
@@ -141,7 +122,7 @@ void parametric_ui(UI& ui) {
 
 SurfaceTriMesh surface_from_mesh(const glm::mat4& mat, Mesh& mesh);
 
-CFDVolume generate_parametric_mesh() {	
+CFDVolume generate_duct(const DuctOptions& options) {	
 	CFDVolume result;
 #if 0
 	AABB aabb;
@@ -178,6 +159,10 @@ CFDVolume generate_parametric_mesh() {
 
 	return result;
 #endif
+
+	real u_div = options.u_div;
+	real v_div = options.v_div;
+	real t_div = options.t_div;
 
 	float du = 1.0 / u_div;
 	float dv = 1.0 / v_div;
@@ -246,8 +231,10 @@ CFDVolume generate_parametric_mesh() {
 
                 compute_normals(result.vertices, cell);
                 
-                //if (i == 0) cell.faces[4].pressure = pressure_grad; //velocity * cell.faces[4].normal;
-                //if (i + 1 == t_div) cell.faces[2].pressure = -pressure_grad; //-velocity * cell.faces[2].normal;
+				if (options.pressure_differential) {
+					if (i == 0) cell.faces[4].pressure = pressure_grad; //velocity * cell.faces[4].normal;
+					if (i + 1 == t_div) cell.faces[2].pressure = -pressure_grad; //-velocity * cell.faces[2].normal;
+				}
 
 				result.cells.append(cell);
 			}
@@ -273,4 +260,8 @@ CFDVolume generate_parametric_mesh() {
     
     
 	return result;
+}
+
+CFDVolume generate_parametric_mesh() {
+	return generate_duct(options);
 }

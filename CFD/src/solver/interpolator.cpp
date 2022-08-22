@@ -23,7 +23,8 @@ void NoSlip::face_grad(VectorField& result, const FV_Vector_Data& data) const {
 
 void NoSlip::face_grad_coeffs(FV_VectorMatrix& result, const FV_Vector_Data& data) const {
     uint count = boundary.patch_count;
-    result.add_fcoeffs(boundary.faces(), values, -boundary.dx().replicate<3, 1>());
+    result.add_fsources(boundary.faces(), values * boundary.dx().replicate<3, 1>());
+    result.add_fcoeffs(boundary.faces(), 0*values, -boundary.dx().replicate<3, 1>());
 }
 
 void NoSlip::fix_boundary(FV_Vector_Data& data) const {

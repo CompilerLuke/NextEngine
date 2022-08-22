@@ -1,11 +1,12 @@
 #include "generated.h"
 #include "engine/types.h"
 #include "./bowWeapon.h"
-#include "./fpsController.h"
-#include "./player.h"
-#include "./generated.h"
-#include "./playerInput.h"
 #include "./component_ids.h"
+#include "./fpsController.h"
+#include "./generated.h"
+#include "./player.h"
+#include "./playerInput.h"
+#include "./stdafx.h"
 
 refl::Enum init_Bow_State() {
 	refl::Enum type("State", sizeof(Bow::State));
@@ -147,20 +148,22 @@ refl::Struct* get_PlayerInput_type() {
 
 
 APPLICATION_API void register_components(World& world) {
-    world.component_type[25] = get_Bow_type();
-    world.component_size[25] = sizeof(Bow);
-    world.component_lifetime_funcs[25].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((Bow*)data + i) Bow(); };
-    world.component_type[26] = get_Arrow_type();
-    world.component_size[26] = sizeof(Arrow);
-    world.component_lifetime_funcs[26].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((Arrow*)data + i) Arrow(); };
-    world.component_type[27] = get_FPSController_type();
-    world.component_size[27] = sizeof(FPSController);
-    world.component_lifetime_funcs[27].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((FPSController*)data + i) FPSController(); };
-    world.component_type[28] = get_Player_type();
-    world.component_size[28] = sizeof(Player);
-    world.component_lifetime_funcs[28].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((Player*)data + i) Player(); };
-    world.component_type[29] = get_PlayerInput_type();
-    world.component_size[29] = sizeof(PlayerInput);
-    world.component_lifetime_funcs[29].constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((PlayerInput*)data + i) PlayerInput(); };
+    RegisterComponent components[5] = {};
+    components[0].component_id = 30;
+    components[0].type = get_Bow_type();
+    components[0].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((Bow*)data + i) Bow(); };
+    components[1].component_id = 31;
+    components[1].type = get_Arrow_type();
+    components[1].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((Arrow*)data + i) Arrow(); };
+    components[2].component_id = 32;
+    components[2].type = get_FPSController_type();
+    components[2].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((FPSController*)data + i) FPSController(); };
+    components[3].component_id = 33;
+    components[3].type = get_Player_type();
+    components[3].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((Player*)data + i) Player(); };
+    components[4].component_id = 34;
+    components[4].type = get_PlayerInput_type();
+    components[4].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((PlayerInput*)data + i) PlayerInput(); };
+    world.register_components({components, 5});
 
 };

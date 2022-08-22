@@ -2,6 +2,7 @@
 
 #include "ecs/id.h"
 
+
 COMP
 struct Bow {
 	ID attached;

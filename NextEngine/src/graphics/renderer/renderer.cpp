@@ -76,7 +76,7 @@ Renderer* make_Renderer(const RenderSettings& settings, World& world) {
 
 	make_scene_pass(*renderer, width, height, settings.msaa);
     
-	return renderer;
+	//return renderer;
 
 	ID skybox = make_default_Skybox(world, "engine/Tropical_Beach_3k.hdr");
 	SkyLight* skylight = world.m_by_id<SkyLight>(skybox);
@@ -232,7 +232,7 @@ GPUSubmission build_command_buffers(Renderer& renderer, const FrameData& frame) 
 	
 	render_meshes(renderer.mesh_buckets, frame.culled_mesh_bucket[RenderPass::Scene], main_pass);
 	render_grass(frame.grass_data, main_pass);
-	//render_skybox(frame.skybox_data, main_pass);
+	render_skybox(frame.skybox_data, main_pass);
 
 	//Post-Processing
 	render_volumetric_pass(renderer.volumetric_resources, frame.volumetric_ubo);

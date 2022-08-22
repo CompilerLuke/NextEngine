@@ -3,7 +3,7 @@
 //  CFD
 //
 
-#if 0
+#if 1
 #include "mesh.h"
 #include "solver/field.h"
 #include "solver/fvm.h"
@@ -56,6 +56,53 @@ auto lerp(const A& a, const B& b, const T& t) {
     return (t-1)*a + t*b;
 }
 
+struct InterfaceVelocity : VectorInterpolator {
+    FV_Patch& patch;
+    FaceVecAverage average;
+    FV_Scalar& VOF;
+    real P0;
+
+    InterfaceVelocity(FaceVecAverage&& average, FV_Scalar& VOF, real P0) : average(std::move(average)), patch(average.interior), VOF(VOF), P0(P0) {
+
+    }
+
+    auto interp() const {
+        auto a = 6;
+
+        auto cells = VOF.values()(patch.cells());
+        auto neighs = VOF.values()(patch.neighs());
+        //auto x = grad.square().colwise().sum().sqrt();
+        return (10 * (0.5 * cells + 0.5 * neighs)).max(1);
+    }
+
+    void face_values(VectorField& result, const FV_Vector_Data& data) const override {
+        average.face_values(result, data);
+        auto cell_values = data.values(all, patch.cells());
+        auto neigh_values = data.values(all, patch.neighs());
+
+        auto mask = VOF.values()(patch.neighs()) > VOF.values()(patch.cells());
+        result(patch.faces()) = lerp(result(all, patch.faces()), mask.select(neigh_values, cell_values), interp());
+    }
+
+    void face_coeffs(FV_VectorMatrix& result, const FV_Vector_Data& data) const override {
+        average.face_coeffs(result, data);
+        auto mask = VOF.values()(patch.neighs()) > VOF.values()(patch.cells());
+        auto alpha = interp();
+        result.face_cell_coeffs(patch.faces()) *= 1.0-alpha;
+        result.face_cell_coeffs(patch.faces()) *= 1.0-alpha;
+        result.face_cell_coeffs(patch.faces()) *= 1.0-alpha;
+        //(patch.faces()) = lerp(result(all, patch.faces()), mask.select(neigh_values, cell_values), interp());
+    }
+
+    void face_grad(VectorField& result, const FV_Vector_Data& data) const override {
+        
+    }
+
+    void face_grad_coeffs(FV_VectorMatrix& result, const FV_Vector_Data& data) const override {
+        
+    }
+};
+
 struct InterfacePressure : ScalarInterpolator {
     FV_Patch& patch;
     FaceAverage average;
@@ -71,9 +118,10 @@ struct InterfacePressure : ScalarInterpolator {
         
         auto cells = VOF.values()(patch.cells());
         auto neighs = VOF.values()(patch.neighs());
-        auto x = (neighs - cells).cwiseAbs()*patch.dx();
-        //auto x = grad.square().colwise().sum().sqrt();
-        return (10*x).max(1); //(a*x).logistic();
+        auto grad = (neighs - cells).cwiseAbs()*patch.dx();
+        auto x = grad.square().colwise().sum().sqrt();
+        //return (10*(1.0 - 0.5*cells - 0.5*neighs)).max(1); 
+        return (10 * x).max(1); //(a*x).logistic();
     }
     
     void face_values(ScalarField& result, const FV_Scalar_Data& data) const override {
@@ -211,7 +259,7 @@ void Simulation::timestep(real dt) {
         return;
     }
     
-    uint n = 10;
+    uint n = 1;
     for (uint i = 0; i < n; i++) {
         //*inlet_pressure_grad = 10*mesh.inlet.normal()(2,all);
         
@@ -225,13 +273,13 @@ void Simulation::timestep(real dt) {
                 U_P.values() = U.values();
                 pressure_bc();
         
-                FV_VectorMatrix eq_U = rho*fvm::ddt(U, prev_U, dt) + rho*fvm::conv(U.face_values(), U) - mu*fvm::laplace(U) == -P.grads() + rho_eff*G.replicate(1, cell_count);
+                FV_VectorMatrix eq_U = rho*fvm::ddt(U, prev_U, dt) + rho*fvm::conv(U.face_values(), U) - rho*mu*fvm::laplace(U) == -P.grads() + rho_eff*G.replicate(1, cell_count);
                 real U_conv = eq_U.solve();
         
                 //2. Solve Pressure Corrector
                 //H.values() = eq_U. //-rho*fvc::conv(U_P.values(), U_P);
-                U_P.values() = U.values() * eq_U.A();
-                FV_ScalarMatrix eq_P_corr = fvm::laplace(P_P) == fvc::div(U_P); //rho(0,all)/dt*fvc::div(U_P);
+                U_P.values() = U.values(); // *eq_U.A();
+                FV_ScalarMatrix eq_P_corr = fvm::laplace(P_P) == eq_U.A()(0,all)*fvc::div(U_P); //rho(0,all)/dt*fvc::div(U_P);
                 P_P.values() = 0;
                 //eq_P_corr.set_ref(0, 0)
                 eq_P_corr.under_relax(P_relax);
@@ -287,7 +335,7 @@ void Simulation::fill_results(CFDResults& result) {
     for (uint i = 0; i < num_cells; i++) {
         result.velocities[i] = from(U_values(Eigen::all, i));
         result.pressures[i] = P_values(i);
-        result.pressure_grad[i] = vec3(0,0,div(i)); //from(P_grad_values(all,i));
+        result.pressure_grad[i] = vec3(0, 0, P_P.values()(i)); //from(P_grad_values(all,i));
         result.vof[i] = VOF.values()(i);
         // length(from(sim.pressure_gradients[i]));
         //sim.pressures[i];

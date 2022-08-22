@@ -11,7 +11,7 @@
 #include "solver/patches.h"
 #include "core/container/string_view.h"
 #include "core/time.h"
-#include "parametric_shapes.h"
+#include "mesh_generation/parametric_shapes.h"
 #include "mesh.h"
 #include "solver/fmesh.h"
 #include "solver/testing.h"
@@ -181,9 +181,9 @@ void test_scalar_fvc(SolverTesting& test) {
         
         mat.solve();
         
-        std::cout << "=======" << std::endl;
-        std::cout << mat.sparse[0] << std::endl;
-        std::cout << mat.source.row(0) << std::endl;
+        //std::cout << "=======" << std::endl;
+        //std::cout << mat.sparse[0] << std::endl;
+        //std::cout << mat.source.row(0) << std::endl;
         
         test.assert_almost_eq(U.values(), pos(2,all));
         VectorField ref_grad(3,1);
@@ -242,6 +242,23 @@ void test_vector_fvc(SolverTesting& test) {
         
         test.assert_almost_eq(U.values(), laplace_ref);
     }
+
+    {
+        FV_Vector U(mesh);
+
+        auto* fixed = new NoSlip(test.mesh.inlet);
+
+        U.add(new Upwind(test.mesh.interior));
+        U.add(new NoSlip(test.mesh.wall));
+        U.add(new ZeroVecGradient(test.mesh.inlet));
+
+        FV_VectorMatrix eq = fvm::laplace(U) == VectorField::Constant(3,mesh.cell_count,-5);
+        eq.solve();
+
+        //std::cout << eq.sparse[0] << std::endl;
+
+        printf("Max coeff %f\n", U.values().maxCoeff());
+    }
 }
 
 void test_scalar_fvm(SolverTesting& test) {
@@ -254,7 +271,16 @@ void test_vector_fvm(SolverTesting& test) {
 
 UNIT_TEST
 void test_solver(Testing& test) {
-    CFDVolume volume = generate_parametric_mesh();
+    DuctOptions options;
+    options.u_div = 100;
+    options.v_div = 100;
+    options.t_div = 1;
+    options.width = 2.0;
+    options.height = 2.0;
+    options.depth = 1.0;
+    options.pressure_differential = true;
+
+    CFDVolume volume = generate_duct(options);
     FV_Mesh mesh = build_mesh(volume, test.debug);
     
     SolverTesting solver(test, mesh);

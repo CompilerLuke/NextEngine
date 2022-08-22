@@ -207,7 +207,7 @@ refl::Struct init_Flyover() {
 	type.fields.append({"movement_speed", offsetof(Flyover, movement_speed), get_float_type()});
 	type.fields.append({"yaw", offsetof(Flyover, yaw), get_float_type()});
 	type.fields.append({"pitch", offsetof(Flyover, pitch), get_float_type()});
-	type.fields.append({"past_movement_speed", offsetof(Flyover, past_movement_speed), make_array_type(3, sizeof(array<3, glm::vec2>), get_vec2_type())});
+	type.fields.append({"past_movement_speed", offsetof(Flyover, past_movement_speed), make_array_type(3, sizeof(array<3, struct glm::vec2>), get_vec2_type())});
 	return type;
 }
 
@@ -1127,13 +1127,13 @@ refl::Struct* get_ArchetypeStore_type() {
 	return &type;
 }
 
-#include "ecs/component_ids.h"
+#include "./include/ecs/component_ids.h"
 #include "ecs/ecs.h"
 #include "engine/application.h"
 
 
 void register_default_components(World& world) {
-    struct RegisterComponent components[25] = {};
+    RegisterComponent components[25] = {};
     components[0].component_id = 1;
     components[0].type = get_Transform_type();
     components[0].funcs.constructor = [](void* data, uint count) { for (uint i=0; i<count; i++) new ((Transform*)data + i) Transform(); };

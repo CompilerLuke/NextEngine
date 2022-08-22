@@ -198,6 +198,9 @@
     <ClInclude Include="include\solver\solver_abstract.h">
       <Filter>include\solver</Filter>
     </ClInclude>
+    <ClInclude Include="include\solver\testing.h">
+      <Filter>include\solver</Filter>
+    </ClInclude>
     <ClInclude Include="include\visualization\color_map.h">
       <Filter>include\visualization</Filter>
     </ClInclude>
@@ -319,6 +322,9 @@
       <Filter>src\solver</Filter>
     </ClCompile>
     <ClCompile Include="src\solver\simple_solver.cpp">
+      <Filter>src\solver</Filter>
+    </ClCompile>
+    <ClCompile Include="src\solver\test.cpp">
       <Filter>src\solver</Filter>
     </ClCompile>
     <ClCompile Include="src\visual.cpp">

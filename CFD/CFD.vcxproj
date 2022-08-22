@@ -1,6 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup><EnableUnitySupport>true</EnableUnitySupport></PropertyGroup>
+  <PropertyGroup>
+    <EnableUnitySupport>true</EnableUnitySupport>
+  </PropertyGroup>
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
@@ -27,19 +29,19 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -220,6 +222,7 @@
     <ClInclude Include="include\solver\matrix.h" />
     <ClInclude Include="include\solver\patches.h" />
     <ClInclude Include="include\solver\solver_abstract.h" />
+    <ClInclude Include="include\solver\testing.h" />
     <ClInclude Include="include\visualization\color_map.h" />
     <ClInclude Include="include\visualization\debug_renderer.h" />
     <ClInclude Include="include\visualization\input_mesh_viewer.h" />
@@ -265,6 +268,7 @@
     <ClCompile Include="src\solver\matrix.cpp" />
     <ClCompile Include="src\solver\mesh.cpp" />
     <ClCompile Include="src\solver\simple_solver.cpp" />
+    <ClCompile Include="src\solver\test.cpp" />
     <ClCompile Include="src\visual.cpp" />
     <ClCompile Include="src\visualization\debug_renderer.cpp" />
     <ClCompile Include="src\visualization\input_mesh_viewer.cpp" />

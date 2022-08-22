@@ -79,7 +79,7 @@ void job_system_test_main() {
 	destroy_job_system(); 
 }
 
-#define BUILD_STANDALONE
+//#define BUILD_STANDALONE
 
 void init_workers(void*) {
     printf("Initialized worker %i\n", get_worker_id());
@@ -104,7 +104,7 @@ void fiber_main(void* data) {
 	context.temporary_allocator = &get_thread_local_temporary_allocator();
 	context.allocator = &default_allocator;
 
-	const char* level = "CFD/data/test1/";
+	const char* level = "TheUnpluggingGame/data/level1/";
     const char* engine_asset_path = "NextEngine/data/";
 	const char* app_name = "CFD";
     
@@ -118,10 +118,10 @@ void fiber_main(void* data) {
     else modules.init_graphics();
 
 #ifdef NE_PLATFORM_MACOSX
-    const char* game_dll_path = "bin/" NE_BUILD_DIR "/CFD/libCFD.dylib";
+    const char* game_dll_path = "bin/" NE_BUILD_DIR "/CFD/libTheUnpluggingGame.dylib";
     const char* editor_dll_path = "bin/" NE_BUILD_DIR "/TheUnpluggingRunner/libNextEngineEditor.dylib";
 #elif NE_PLATFORM_WINDOWS
-	const char* game_dll_path = "bin/" NE_BUILD_DIR "/CFD/CFD.dll";
+	const char* game_dll_path = "bin/" NE_BUILD_DIR "/TheUnpluggingGame/TheUnpluggingGame.dll";
 	const char* editor_dll_path = "bin/" NE_BUILD_DIR "/TheUnpluggingRunner/NextEngineEditor.dll";
 #endif
     //convert_thread_to_fiber();
@@ -152,7 +152,7 @@ void fiber_main(void* data) {
 }
 
 int main() {
-	uint num_workers = 2;
+	uint num_workers = 1;
 	make_job_system(20, num_workers);
 
 	JobDesc init_jobs[MAX_THREADS];

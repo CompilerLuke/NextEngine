@@ -59,7 +59,7 @@ void Modules::init_graphics() {
     vk_desc.validation_layers = validation_layers;
     
 #ifdef NE_DEBUG
-    vk_desc.num_validation_layers = 0;
+    vk_desc.num_validation_layers = 1;
 #else
     vk_desc.num_validation_layers = 0;
 #endif
@@ -80,7 +80,7 @@ void Modules::init_graphics() {
     settings.display_resolution_width = window->width;
     settings.display_resolution_height = window->height;
     settings.shadow.shadow_resolution = 1024;
-    settings.msaa = 4;
+    settings.msaa = 1;
 
     renderer = make_Renderer(settings, *world);
 }
