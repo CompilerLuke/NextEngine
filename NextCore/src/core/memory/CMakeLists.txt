@@ -1,0 +1,1 @@
+target_sources(next_core PUBLIC allocator.cpp)

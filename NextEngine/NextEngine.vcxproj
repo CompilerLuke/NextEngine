@@ -1,0 +1,415 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <EnableUnitySupport>true</EnableUnitySupport>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Dist|x64">
+      <Configuration>Dist</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{BAC032AF-A678-74FC-0F80-4D58FB560FED}</ProjectGuid>
+    <IgnoreWarnCompileDuplicatedFilename>true</IgnoreWarnCompileDuplicatedFilename>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>NextEngine</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>..\bin\Debug-windows-x86_64\NextEngine\</OutDir>
+    <IntDir>..\bin-int\Debug-windows-x86_64\NextEngine\</IntDir>
+    <TargetName>NextEngine</TargetName>
+    <TargetExt>.dll</TargetExt>
+    <IncludePath>C:\VulkanSDK\1.2.154.1\Include;vendor;vendor\glfw\include;vendor\assimp\include;vendor\bullet3\src;..\vendor\glm;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>..\bin\Release-windows-x86_64\NextEngine\</OutDir>
+    <IntDir>..\bin-int\Release-windows-x86_64\NextEngine\</IntDir>
+    <TargetName>NextEngine</TargetName>
+    <TargetExt>.dll</TargetExt>
+    <IncludePath>C:\VulkanSDK\1.2.154.1\Include;vendor;vendor\glfw\include;vendor\assimp\include;vendor\bullet3\src;..\vendor\glm;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>..\bin\Dist-windows-x86_64\NextEngine\</OutDir>
+    <IntDir>..\bin-int\Dist-windows-x86_64\NextEngine\</IntDir>
+    <TargetName>NextEngine</TargetName>
+    <TargetExt>.dll</TargetExt>
+    <IncludePath>C:\VulkanSDK\1.2.154.1\Include;vendor;vendor\glfw\include;vendor\assimp\include;vendor\bullet3\src;..\vendor\glm;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;RENDER_API_VULKAN;NE_PLATFORM_WINDOWS;NE_DEBUG;NEXTENGINE_DLL;NEXTENGINE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <Optimization>Disabled</Optimization>
+      <MinimalRebuild>false</MinimalRebuild>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <IncludeInUnityFile>true</IncludeInUnityFile>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>C:\VulkanSDK\1.2.154.1\lib\shaderc_combined.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ImportLibrary>..\bin\Debug-windows-x86_64\NextEngine\NextEngine.lib</ImportLibrary>
+    </Link>
+    <PreBuildEvent>
+      <Command>"../bin/Debug-windows-x86_64/ReflectionTool/ReflectionTool.exe" -b "." -i "include" -d graphics/assets -d ecs components/transform.h components/camera.h components/flyover.h components/skybox.h components/terrain.h components/lights.h components/grass.h graphics/rhi/forward.h engine/handle.h physics/physics.h graphics/pass/volumetric.h -h engine/types -c ecs/component_ids.h -o src/generated -l ENGINE_API</Command>
+    </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>IF EXIST ..\bin\Debug-windows-x86_64\NextEngine\NextEngine.dll\ (xcopy /Q /E /Y /I ..\bin\Debug-windows-x86_64\NextEngine\NextEngine.dll ..\bin\Debug-windows-x86_64\TheUnpluggingRunner &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Debug-windows-x86_64\NextEngine\NextEngine.dll ..\bin\Debug-windows-x86_64\TheUnpluggingRunner &gt; nul)</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;RENDER_API_VULKAN;NE_PLATFORM_WINDOWS;NE_RELEASE;NEXTENGINE_DLL;NEXTENGINE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <Optimization>Full</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <IncludeInUnityFile>true</IncludeInUnityFile>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>C:\VulkanSDK\1.2.154.1\lib\shaderc_combined.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ImportLibrary>..\bin\Release-windows-x86_64\NextEngine\NextEngine.lib</ImportLibrary>
+    </Link>
+    <PreBuildEvent>
+      <Command>"../bin/Release-windows-x86_64/ReflectionTool/ReflectionTool.exe" -b "." -i "include" -d graphics/assets -d ecs components/transform.h components/camera.h components/flyover.h components/skybox.h components/terrain.h components/lights.h components/grass.h graphics/rhi/forward.h engine/handle.h physics/physics.h graphics/pass/volumetric.h -h engine/types -c ecs/component_ids.h -o src/generated -l ENGINE_API</Command>
+    </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>IF EXIST ..\bin\Release-windows-x86_64\NextEngine\NextEngine.dll\ (xcopy /Q /E /Y /I ..\bin\Release-windows-x86_64\NextEngine\NextEngine.dll ..\bin\Release-windows-x86_64\TheUnpluggingRunner &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Release-windows-x86_64\NextEngine\NextEngine.dll ..\bin\Release-windows-x86_64\TheUnpluggingRunner &gt; nul)</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;RENDER_API_VULKAN;NE_PLATFORM_WINDOWS;NE_DIST;NEXTENGINE_DLL;NEXTENGINE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <Optimization>Full</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <IncludeInUnityFile>true</IncludeInUnityFile>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>C:\VulkanSDK\1.2.154.1\lib\shaderc_combined.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ImportLibrary>..\bin\Dist-windows-x86_64\NextEngine\NextEngine.lib</ImportLibrary>
+    </Link>
+    <PreBuildEvent>
+      <Command>"../bin/Dist-windows-x86_64/ReflectionTool/ReflectionTool.exe" -b "." -i "include" -d graphics/assets -d ecs components/transform.h components/camera.h components/flyover.h components/skybox.h components/terrain.h components/lights.h components/grass.h graphics/rhi/forward.h engine/handle.h physics/physics.h graphics/pass/volumetric.h -h engine/types -c ecs/component_ids.h -o src/generated -l ENGINE_API</Command>
+    </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>IF EXIST ..\bin\Dist-windows-x86_64\NextEngine\NextEngine.dll\ (xcopy /Q /E /Y /I ..\bin\Dist-windows-x86_64\NextEngine\NextEngine.dll ..\bin\Dist-windows-x86_64\TheUnpluggingRunner &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Dist-windows-x86_64\NextEngine\NextEngine.dll ..\bin\Dist-windows-x86_64\TheUnpluggingRunner &gt; nul)</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="include\component_ids.h" />
+    <ClInclude Include="include\components\camera.h" />
+    <ClInclude Include="include\components\flyover.h" />
+    <ClInclude Include="include\components\grass.h" />
+    <ClInclude Include="include\components\lights.h" />
+    <ClInclude Include="include\components\skybox.h" />
+    <ClInclude Include="include\components\terrain.h" />
+    <ClInclude Include="include\components\transform.h" />
+    <ClInclude Include="include\ecs\component_ids.h" />
+    <ClInclude Include="include\ecs\ecs.h" />
+    <ClInclude Include="include\ecs\flags.h" />
+    <ClInclude Include="include\ecs\id.h" />
+    <ClInclude Include="include\ecs\system.h" />
+    <ClInclude Include="include\engine\application.h" />
+    <ClInclude Include="include\engine\core.h" />
+    <ClInclude Include="include\engine\engine.h" />
+    <ClInclude Include="include\engine\handle.h" />
+    <ClInclude Include="include\engine\input.h" />
+    <ClInclude Include="include\engine\types.h" />
+    <ClInclude Include="include\engine\vfs.h" />
+    <ClInclude Include="include\graphics\assets\assets.h" />
+    <ClInclude Include="include\graphics\assets\assets_store.h" />
+    <ClInclude Include="include\graphics\assets\material.h" />
+    <ClInclude Include="include\graphics\assets\model.h" />
+    <ClInclude Include="include\graphics\assets\shader.h" />
+    <ClInclude Include="include\graphics\assets\texture.h" />
+    <ClInclude Include="include\graphics\culling\build_bvh.h" />
+    <ClInclude Include="include\graphics\culling\culling.h" />
+    <ClInclude Include="include\graphics\culling\scene_partition.h" />
+    <ClInclude Include="include\graphics\pass\composite.h" />
+    <ClInclude Include="include\graphics\pass\pass.h" />
+    <ClInclude Include="include\graphics\pass\shadow.h" />
+    <ClInclude Include="include\graphics\pass\volumetric.h" />
+    <ClInclude Include="include\graphics\renderer\frame.h" />
+    <ClInclude Include="include\graphics\renderer\grass.h" />
+    <ClInclude Include="include\graphics\renderer\ibl.h" />
+    <ClInclude Include="include\graphics\renderer\lighting_system.h" />
+    <ClInclude Include="include\graphics\renderer\model_rendering.h" />
+    <ClInclude Include="include\graphics\renderer\render_feature.h" />
+    <ClInclude Include="include\graphics\renderer\renderer.h" />
+    <ClInclude Include="include\graphics\renderer\terrain.h" />
+    <ClInclude Include="include\graphics\renderer\transforms.h" />
+    <ClInclude Include="include\graphics\rhi\async_cpu_copy.h" />
+    <ClInclude Include="include\graphics\rhi\buffer.h" />
+    <ClInclude Include="include\graphics\rhi\compute.h" />
+    <ClInclude Include="include\graphics\rhi\device.h" />
+    <ClInclude Include="include\graphics\rhi\draw.h" />
+    <ClInclude Include="include\graphics\rhi\forward.h" />
+    <ClInclude Include="include\graphics\rhi\frame_buffer.h" />
+    <ClInclude Include="include\graphics\rhi\pipeline.h" />
+    <ClInclude Include="include\graphics\rhi\primitives.h" />
+    <ClInclude Include="include\graphics\rhi\render_passh.h" />
+    <ClInclude Include="include\graphics\rhi\rhi.h" />
+    <ClInclude Include="include\graphics\rhi\shader_access.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\buffer.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\command_buffer.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\core.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\device.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\draw.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\frame_buffer.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\frame_graph.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\material.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\pipeline.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\shader.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\shader_access.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\swapchain.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\texture.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\volk.h" />
+    <ClInclude Include="include\graphics\rhi\vulkan\vulkan.h" />
+    <ClInclude Include="include\graphics\rhi\window.h" />
+    <ClInclude Include="include\physics\physics.h" />
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="vendor\imgui\imconfig.h" />
+    <ClInclude Include="vendor\imgui\imgui.h" />
+    <ClInclude Include="vendor\imgui\imgui_impl_glfw.h" />
+    <ClInclude Include="vendor\imgui\imgui_impl_opengl3.h" />
+    <ClInclude Include="vendor\imgui\imgui_impl_vulkan.h" />
+    <ClInclude Include="vendor\imgui\imgui_internal.h" />
+    <ClInclude Include="vendor\imgui\imstb_rectpack.h" />
+    <ClInclude Include="vendor\imgui\imstb_textedit.h" />
+    <ClInclude Include="vendor\imgui\imstb_truetype.h" />
+    <ClInclude Include="vendor\spirv-reflect\spirv_reflect.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\benchmark\benchmark.cpp" />
+    <ClCompile Include="src\components\camera.cpp" />
+    <ClCompile Include="src\components\flyover.cpp" />
+    <ClCompile Include="src\components\grass_components.cpp" />
+    <ClCompile Include="src\components\lights.cpp" />
+    <ClCompile Include="src\components\terrain_components.cpp" />
+    <ClCompile Include="src\components\transforms_components.cpp" />
+    <ClCompile Include="src\ecs\ecs.cpp" />
+    <ClCompile Include="src\ecs\system.cpp" />
+    <ClCompile Include="src\ecs\update_params.cpp" />
+    <ClCompile Include="src\engine\application.cpp" />
+    <ClCompile Include="src\engine\engine.cpp" />
+    <ClCompile Include="src\engine\input.cpp" />
+    <ClCompile Include="src\engine\vfs.cpp" />
+    <ClCompile Include="src\generated.cpp" />
+    <ClCompile Include="src\graphics\assets\GL\gl_model.cpp" />
+    <ClCompile Include="src\graphics\assets\GL\gl_shader.cpp" />
+    <ClCompile Include="src\graphics\assets\GL\gl_texture.cpp" />
+    <ClCompile Include="src\graphics\assets\VULKAN\vk_async_cpu_copy.cpp" />
+    <ClCompile Include="src\graphics\assets\VULKAN\vk_material.cpp" />
+    <ClCompile Include="src\graphics\assets\VULKAN\vk_model.cpp" />
+    <ClCompile Include="src\graphics\assets\VULKAN\vk_shader.cpp" />
+    <ClCompile Include="src\graphics\assets\VULKAN\vk_texture.cpp" />
+    <ClCompile Include="src\graphics\assets\assets.cpp" />
+    <ClCompile Include="src\graphics\assets\assimp_model_loader.cpp" />
+    <ClCompile Include="src\graphics\culling\culling.cpp" />
+    <ClCompile Include="src\graphics\pass\composite.cpp" />
+    <ClCompile Include="src\graphics\pass\render_pass.cpp" />
+    <ClCompile Include="src\graphics\pass\shadow.cpp" />
+    <ClCompile Include="src\graphics\pass\volumetric.cpp" />
+    <ClCompile Include="src\graphics\renderer\grass_rendering.cpp" />
+    <ClCompile Include="src\graphics\renderer\ibl.cpp" />
+    <ClCompile Include="src\graphics\renderer\lighting_system.cpp" />
+    <ClCompile Include="src\graphics\renderer\material_system.cpp" />
+    <ClCompile Include="src\graphics\renderer\model_rendering.cpp" />
+    <ClCompile Include="src\graphics\renderer\renderer.cpp" />
+    <ClCompile Include="src\graphics\renderer\terrain.cpp" />
+    <ClCompile Include="src\graphics\renderer\transforms.cpp" />
+    <ClCompile Include="src\graphics\rhi\GL\gl_buffer.cpp" />
+    <ClCompile Include="src\graphics\rhi\GL\gl_device.cpp" />
+    <ClCompile Include="src\graphics\rhi\GL\gl_draw.cpp" />
+    <ClCompile Include="src\graphics\rhi\GL\gl_framebuffer.cpp" />
+    <ClCompile Include="src\graphics\rhi\primitives.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_buffer.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_cmd_buffer.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_device.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_draw.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_framebuffer.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_framegraph.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_pipeline.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_rhi.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_shader_access.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_swapchain.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vk_ubo.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\volk.cpp" />
+    <ClCompile Include="src\graphics\rhi\vulkan\vulkan.cpp" />
+    <ClCompile Include="src\graphics\rhi\window.cpp" />
+    <ClCompile Include="src\physics\btWrapper.cpp" />
+    <ClCompile Include="src\physics\physics.cpp" />
+    <ClCompile Include="stdafx.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\imgui.cpp">
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>Full</Optimization>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\imgui_draw.cpp">
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>Full</Optimization>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\imgui_impl_glfw.cpp">
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>Full</Optimization>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\imgui_impl_opengl3.cpp">
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>Full</Optimization>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\imgui_impl_vulkan.cpp">
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>Full</Optimization>
+    </ClCompile>
+    <ClCompile Include="vendor\imgui\imgui_widgets.cpp">
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>Full</Optimization>
+    </ClCompile>
+    <ClCompile Include="vendor\spirv-reflect\spirv_reflect.cpp">
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>Full</Optimization>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NextCore\NextCore.vcxproj">
+      <Project>{4DE9C0F6-39B6-1B02-62CF-09AA4EFB5090}</Project>
+    </ProjectReference>
+    <ProjectReference Include="vendor\assimp\assimp.vcxproj">
+      <Project>{724885F2-5EEA-AFC8-47A5-C31C33E63619}</Project>
+    </ProjectReference>
+    <ProjectReference Include="vendor\glfw\GLFW.vcxproj">
+      <Project>{154B857C-0182-860D-AA6E-6C109684020F}</Project>
+    </ProjectReference>
+    <ProjectReference Include="vendor\bullet3\src\BulletInverseDynamics\BulletInverseDynamics.vcxproj">
+      <Project>{C1A79F57-2D14-5B52-F607-F3AF62337DBA}</Project>
+    </ProjectReference>
+    <ProjectReference Include="vendor\bullet3\src\BulletSoftBody\BulletSoftBody.vcxproj">
+      <Project>{D73DDAD3-C30B-CED9-AC9F-3E00980CAA3E}</Project>
+    </ProjectReference>
+    <ProjectReference Include="vendor\bullet3\src\BulletDynamics\BulletDynamics.vcxproj">
+      <Project>{45122E0F-31E0-2115-1A74-923B06E1FD79}</Project>
+    </ProjectReference>
+    <ProjectReference Include="vendor\bullet3\src\BulletCollision\BulletCollision.vcxproj">
+      <Project>{B91153C5-259D-C089-2EAE-437E9AB81C8A}</Project>
+    </ProjectReference>
+    <ProjectReference Include="vendor\bullet3\src\LinearMath\LinearMath.vcxproj">
+      <Project>{EAF25DFD-D6AA-9F4A-3FB2-78A62B893A3B}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

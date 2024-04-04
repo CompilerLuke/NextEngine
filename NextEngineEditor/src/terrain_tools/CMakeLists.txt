@@ -1,0 +1,1 @@
+target_sources(next_editor PUBLIC gpu_generation.cpp kriging.cpp terrain.cpp)

@@ -1,0 +1,5 @@
+add_subdirectory(assets)
+add_subdirectory(culling)
+add_subdirectory(pass)
+add_subdirectory(renderer)
+add_subdirectory(rhi)

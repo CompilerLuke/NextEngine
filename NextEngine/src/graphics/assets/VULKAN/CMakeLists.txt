@@ -1,0 +1,1 @@
+target_sources(next_engine PUBLIC vk_async_cpu_copy.cpp vk_material.cpp vk_model.cpp vk_shader.cpp vk_texture.cpp)

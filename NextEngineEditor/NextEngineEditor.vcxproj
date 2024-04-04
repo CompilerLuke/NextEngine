@@ -1,0 +1,272 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <EnableUnitySupport>true</EnableUnitySupport>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Dist|x64">
+      <Configuration>Dist</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{01FA5310-EDF2-7262-1625-58E7027D526E}</ProjectGuid>
+    <IgnoreWarnCompileDuplicatedFilename>true</IgnoreWarnCompileDuplicatedFilename>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>NextEngineEditor</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>..\bin\Debug-windows-x86_64\NextEngineEditor\</OutDir>
+    <IntDir>..\bin-int\Debug-windows-x86_64\NextEngineEditor\</IntDir>
+    <TargetName>NextEngineEditor</TargetName>
+    <TargetExt>.dll</TargetExt>
+    <IncludePath>..\NextEngine\vendor;vendor;C:\VulkanSDK\1.2.154.1\Include;..\vendor\glm;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>..\bin\Release-windows-x86_64\NextEngineEditor\</OutDir>
+    <IntDir>..\bin-int\Release-windows-x86_64\NextEngineEditor\</IntDir>
+    <TargetName>NextEngineEditor</TargetName>
+    <TargetExt>.dll</TargetExt>
+    <IncludePath>..\NextEngine\vendor;vendor;C:\VulkanSDK\1.2.154.1\Include;..\vendor\glm;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>..\bin\Dist-windows-x86_64\NextEngineEditor\</OutDir>
+    <IntDir>..\bin-int\Dist-windows-x86_64\NextEngineEditor\</IntDir>
+    <TargetName>NextEngineEditor</TargetName>
+    <TargetExt>.dll</TargetExt>
+    <IncludePath>..\NextEngine\vendor;vendor;C:\VulkanSDK\1.2.154.1\Include;..\vendor\glm;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;RENDER_API_VULKAN;NE_PLATFORM_WINDOWS;NE_DEBUG;NEXTENGINEEDITOR_DLL;NEXTENGINEEDITOR_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <Optimization>Disabled</Optimization>
+      <MinimalRebuild>false</MinimalRebuild>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <IncludeInUnityFile>true</IncludeInUnityFile>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ImportLibrary>..\bin\Debug-windows-x86_64\NextEngineEditor\NextEngineEditor.lib</ImportLibrary>
+    </Link>
+    <PostBuildEvent>
+      <Command>IF EXIST ..\bin\Debug-windows-x86_64\NextEngineEditor\NextEngineEditor.dll\ (xcopy /Q /E /Y /I ..\bin\Debug-windows-x86_64\NextEngineEditor\NextEngineEditor.dll ..\bin\Debug-windows-x86_64\TheUnpluggingRunner &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Debug-windows-x86_64\NextEngineEditor\NextEngineEditor.dll ..\bin\Debug-windows-x86_64\TheUnpluggingRunner &gt; nul)</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;RENDER_API_VULKAN;NE_PLATFORM_WINDOWS;NE_RELEASE;NEXTENGINEEDITOR_DLL;NEXTENGINEEDITOR_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <Optimization>Full</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <IncludeInUnityFile>true</IncludeInUnityFile>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <ImportLibrary>..\bin\Release-windows-x86_64\NextEngineEditor\NextEngineEditor.lib</ImportLibrary>
+    </Link>
+    <PostBuildEvent>
+      <Command>IF EXIST ..\bin\Release-windows-x86_64\NextEngineEditor\NextEngineEditor.dll\ (xcopy /Q /E /Y /I ..\bin\Release-windows-x86_64\NextEngineEditor\NextEngineEditor.dll ..\bin\Release-windows-x86_64\TheUnpluggingRunner &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Release-windows-x86_64\NextEngineEditor\NextEngineEditor.dll ..\bin\Release-windows-x86_64\TheUnpluggingRunner &gt; nul)</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;RENDER_API_VULKAN;NE_PLATFORM_WINDOWS;NE_DIST;NEXTENGINEEDITOR_DLL;NEXTENGINEEDITOR_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\NextEngine\include;..\NextCore\include;include;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <Optimization>Full</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <IncludeInUnityFile>true</IncludeInUnityFile>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <ImportLibrary>..\bin\Dist-windows-x86_64\NextEngineEditor\NextEngineEditor.lib</ImportLibrary>
+    </Link>
+    <PostBuildEvent>
+      <Command>IF EXIST ..\bin\Dist-windows-x86_64\NextEngineEditor\NextEngineEditor.dll\ (xcopy /Q /E /Y /I ..\bin\Dist-windows-x86_64\NextEngineEditor\NextEngineEditor.dll ..\bin\Dist-windows-x86_64\TheUnpluggingRunner &gt; nul) ELSE (xcopy /Q /Y /I ..\bin\Dist-windows-x86_64\NextEngineEditor\NextEngineEditor.dll ..\bin\Dist-windows-x86_64\TheUnpluggingRunner &gt; nul)</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="include\assets\dialog.h" />
+    <ClInclude Include="include\assets\explorer.h" />
+    <ClInclude Include="include\assets\handle.h" />
+    <ClInclude Include="include\assets\importer.h" />
+    <ClInclude Include="include\assets\info.h" />
+    <ClInclude Include="include\assets\inspect.h" />
+    <ClInclude Include="include\assets\node.h" />
+    <ClInclude Include="include\assets\preview.h" />
+    <ClInclude Include="include\component_ids.h" />
+    <ClInclude Include="include\custom_inspect.h" />
+    <ClInclude Include="include\diffUtil.h" />
+    <ClInclude Include="include\displayComponents.h" />
+    <ClInclude Include="include\editor.h" />
+    <ClInclude Include="include\editor_viewport.h" />
+    <ClInclude Include="include\generated.h" />
+    <ClInclude Include="include\gizmo.h" />
+    <ClInclude Include="include\grass.h" />
+    <ClInclude Include="include\lister.h" />
+    <ClInclude Include="include\objectGizmo.h" />
+    <ClInclude Include="include\picking.h" />
+    <ClInclude Include="include\shaderGraph.h" />
+    <ClInclude Include="include\terrain_tools\gpu_generation.h" />
+    <ClInclude Include="include\terrain_tools\kriging.h" />
+    <ClInclude Include="include\terrain_tools\terrain.h" />
+    <ClInclude Include="include\visualize_physics.h" />
+    <ClInclude Include="include\visualize_profiler.h" />
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="vendor\ImGuizmo\ImCurveEdit.h" />
+    <ClInclude Include="vendor\ImGuizmo\ImGradient.h" />
+    <ClInclude Include="vendor\ImGuizmo\ImGuizmo.h" />
+    <ClInclude Include="vendor\ImGuizmo\ImSequencer.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\assets\actions.cpp" />
+    <ClCompile Include="src\assets\dialog.cpp" />
+    <ClCompile Include="src\assets\explorer.cpp" />
+    <ClCompile Include="src\assets\importer.cpp" />
+    <ClCompile Include="src\assets\info.cpp" />
+    <ClCompile Include="src\assets\inspect.cpp" />
+    <ClCompile Include="src\assets\preview.cpp" />
+    <ClCompile Include="src\assets\shader_graph\shaderGraph.cpp" />
+    <ClCompile Include="src\assets\shader_graph\shaderGraphNodes.cpp" />
+    <ClCompile Include="src\custom_inspect.cpp" />
+    <ClCompile Include="src\diffUtil.cpp" />
+    <ClCompile Include="src\displayComponents.cpp" />
+    <ClCompile Include="src\editor.cpp" />
+    <ClCompile Include="src\generated.cpp" />
+    <ClCompile Include="src\gizmo.cpp" />
+    <ClCompile Include="src\grass_placement.cpp" />
+    <ClCompile Include="src\lister.cpp" />
+    <ClCompile Include="src\objectGizmo.cpp" />
+    <ClCompile Include="src\picking.cpp" />
+    <ClCompile Include="src\terrain_tools\gpu_generation.cpp" />
+    <ClCompile Include="src\terrain_tools\kriging.cpp" />
+    <ClCompile Include="src\terrain_tools\terrain.cpp" />
+    <ClCompile Include="src\visualize_physics.cpp" />
+    <ClCompile Include="src\visualize_profiler.cpp" />
+    <ClCompile Include="stdafx.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="vendor\ImGuizmo\ImCurveEdit.cpp">
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>Full</Optimization>
+    </ClCompile>
+    <ClCompile Include="vendor\ImGuizmo\ImGradient.cpp">
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>Full</Optimization>
+    </ClCompile>
+    <ClCompile Include="vendor\ImGuizmo\ImGuizmo.cpp">
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>Full</Optimization>
+    </ClCompile>
+    <ClCompile Include="vendor\ImGuizmo\ImSequencer.cpp">
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>Full</Optimization>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NextCore\NextCore.vcxproj">
+      <Project>{4DE9C0F6-39B6-1B02-62CF-09AA4EFB5090}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\NextEngine\NextEngine.vcxproj">
+      <Project>{BAC032AF-A678-74FC-0F80-4D58FB560FED}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

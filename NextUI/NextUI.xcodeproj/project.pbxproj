@@ -1,0 +1,493 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0BFD11822DC8BEB46A7DE7C2 /* ui.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6B7E62CA6C315FBCE013310A /* ui.cpp */; };
+		45F90EE2935C0514097B0522 /* draw.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0CB3F82AF7A01E1C3F85E66A /* draw.cpp */; };
+		6CDA30C20250EFF470ED4702 /* layout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E5512A0A14E2F8FCEFF0384A /* layout.cpp */; };
+		70DE36363F0189E8C60FDC76 /* backend.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7B96193ED6D76CB0AA31B77E /* backend.cpp */; };
+		8A4E2DB6E58F8128B8E9CBF6 /* stdafx.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D9568A7EF06925B0E08520BE /* stdafx.cpp */; };
+		A127E05D62E071CF09FB3E9D /* libNextEngine.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = C9A7CEC57DA3E7F75F562505 /* libNextEngine.dylib */; };
+		C8E5D3B41648C9E68C67C9F4 /* font.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D9ED22DCC4D948CE0CBF111C /* font.cpp */; };
+		DC33A656EC808A48EA6D5496 /* libNextCore.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5C3C975E03B23310AC773D9E /* libNextCore.dylib */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		17CEA890399A55C2764F7ED0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0ACBDCD97EB4548BA1020319 /* ../NextEngine/NextEngine.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = CAD8A43D21660EAFF9DF227D;
+			remoteInfo = libNextEngine.dylib;
+		};
+		3DEF2F8A6629E83C4DC575CA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 06E2AB32E5FFC564C2092172 /* ../NextCore/NextCore.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = FDEFFF2A4660E35C8AFFB56A;
+			remoteInfo = libNextCore.dylib;
+		};
+		9029A223B8645AD59FFFE863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 06E2AB32E5FFC564C2092172 /* ../NextCore/NextCore.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = CBBF99D0B6ABBFC2FE918810;
+			remoteInfo = libNextCore.dylib;
+		};
+		C59435F7E75FE32924150C37 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0ACBDCD97EB4548BA1020319 /* ../NextEngine/NextEngine.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = E02A573708650FE9F0009D77;
+			remoteInfo = libNextEngine.dylib;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		024FAD22ED3BD31435219B62 /* font.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = font.h; path = include/ui/font.h; sourceTree = "<group>"; };
+		06E2AB32E5FFC564C2092172 /* libNextCore.dylib */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = "NextCore.xcodeproj"; path = ../NextCore/NextCore.xcodeproj; sourceTree = SOURCE_ROOT; };
+		0ACBDCD97EB4548BA1020319 /* libNextEngine.dylib */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = "NextEngine.xcodeproj"; path = ../NextEngine/NextEngine.xcodeproj; sourceTree = SOURCE_ROOT; };
+		0CB3F82AF7A01E1C3F85E66A /* draw.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = draw.cpp; path = src/ui/draw.cpp; sourceTree = "<group>"; };
+		1AF240B005DE66A24DC42EF0 /* draw.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = draw.h; path = include/ui/draw.h; sourceTree = "<group>"; };
+		282AF2AE590EEAA06C2720EE /* internal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = internal.h; path = include/ui/internal.h; sourceTree = "<group>"; };
+		363A91588CC7FBCA65410F98 /* event.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = event.h; path = include/ui/event.h; sourceTree = "<group>"; };
+		63273AD092B909C26DC64910 /* layout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = layout.h; path = include/ui/layout.h; sourceTree = "<group>"; };
+		6B7E62CA6C315FBCE013310A /* ui.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ui.cpp; path = src/ui/ui.cpp; sourceTree = "<group>"; };
+		6F8B06065A772BF8A25CF446 /* core.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = core.h; path = include/ui/core.h; sourceTree = "<group>"; };
+		79DDC15FA003F111070AE79F /* libNextUI.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; name = libNextUI.dylib; path = libNextUI.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
+		7B96193ED6D76CB0AA31B77E /* backend.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = backend.cpp; path = src/ui/backend.cpp; sourceTree = "<group>"; };
+		D9568A7EF06925B0E08520BE /* stdafx.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = stdafx.cpp; path = stdafx.cpp; sourceTree = "<group>"; };
+		D9ED22DCC4D948CE0CBF111C /* font.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = font.cpp; path = src/ui/font.cpp; sourceTree = "<group>"; };
+		DFFCC308E36D953A64DA3948 /* stdafx.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = stdafx.h; path = stdafx.h; sourceTree = "<group>"; };
+		E5512A0A14E2F8FCEFF0384A /* layout.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = layout.cpp; path = src/ui/layout.cpp; sourceTree = "<group>"; };
+		F78C6310F83F60026C213150 /* ui.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ui.h; path = include/ui/ui.h; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		1F7FDF4FC26E06015193E58F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DC33A656EC808A48EA6D5496 /* libNextCore.dylib in Frameworks */,
+				A127E05D62E071CF09FB3E9D /* libNextEngine.dylib in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		2113EABBCD76AAED8BFF20FB /* ui */ = {
+			isa = PBXGroup;
+			children = (
+				7B96193ED6D76CB0AA31B77E /* backend.cpp */,
+				0CB3F82AF7A01E1C3F85E66A /* draw.cpp */,
+				D9ED22DCC4D948CE0CBF111C /* font.cpp */,
+				E5512A0A14E2F8FCEFF0384A /* layout.cpp */,
+				6B7E62CA6C315FBCE013310A /* ui.cpp */,
+			);
+			name = ui;
+			sourceTree = "<group>";
+		};
+		2631F38A7CBF5DFC553871CA /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				5C3C975E03B23310AC773D9E /* libNextCore.dylib */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		5775D4184366DFCA959E7A58 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				2113EABBCD76AAED8BFF20FB /* ui */,
+			);
+			name = src;
+			sourceTree = "<group>";
+		};
+		5E8C725002DF100215175890 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				A469541747B4DD496285AA57 /* ui */,
+			);
+			name = include;
+			sourceTree = "<group>";
+		};
+		96E96057C67B2F49A1886E97 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C9A7CEC57DA3E7F75F562505 /* libNextEngine.dylib */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		9D968EAA920D05DCE0E0A4EA /* Projects */ = {
+			isa = PBXGroup;
+			children = (
+				06E2AB32E5FFC564C2092172 /* NextCore.xcodeproj */,
+				0ACBDCD97EB4548BA1020319 /* NextEngine.xcodeproj */,
+			);
+			name = Projects;
+			sourceTree = "<group>";
+		};
+		A469541747B4DD496285AA57 /* ui */ = {
+			isa = PBXGroup;
+			children = (
+				6F8B06065A772BF8A25CF446 /* core.h */,
+				1AF240B005DE66A24DC42EF0 /* draw.h */,
+				363A91588CC7FBCA65410F98 /* event.h */,
+				024FAD22ED3BD31435219B62 /* font.h */,
+				282AF2AE590EEAA06C2720EE /* internal.h */,
+				63273AD092B909C26DC64910 /* layout.h */,
+				F78C6310F83F60026C213150 /* ui.h */,
+			);
+			name = ui;
+			sourceTree = "<group>";
+		};
+		A6C936B49B3FADE6EA134CF4 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				79DDC15FA003F111070AE79F /* libNextUI.dylib */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		B97275FD971D78AF6AC1FC3D /* NextUI */ = {
+			isa = PBXGroup;
+			children = (
+				5E8C725002DF100215175890 /* include */,
+				5775D4184366DFCA959E7A58 /* src */,
+				D9568A7EF06925B0E08520BE /* stdafx.cpp */,
+				DFFCC308E36D953A64DA3948 /* stdafx.h */,
+				A6C936B49B3FADE6EA134CF4 /* Products */,
+				9D968EAA920D05DCE0E0A4EA /* Projects */,
+			);
+			name = NextUI;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		9933696592996AD78634C7A5 /* NextUI */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0DBB27AEB0A94E603FCF2DEE /* Build configuration list for PBXNativeTarget "NextUI" */;
+			buildPhases = (
+				8F675FEF325586A1C17B662F /* Resources */,
+				F91479469C029FF82B287F86 /* Sources */,
+				1F7FDF4FC26E06015193E58F /* Frameworks */,
+				9607AE3710C85E8F00CD1376 /* Postbuild */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				13EA30936A779B0542F0AED3 /* PBXTargetDependency */,
+				84A19D60B4336C528F40ABA0 /* PBXTargetDependency */,
+			);
+			name = NextUI;
+			productName = NextUI;
+			productReference = 79DDC15FA003F111070AE79F /* libNextUI.dylib */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		08FB7793FE84155DC02AAC07 /* Project object */ = {
+			isa = PBXProject;
+			buildConfigurationList = 1DEB928908733DD80010E9CD /* Build configuration list for PBXProject "NextUI" */;
+			compatibilityVersion = "Xcode 3.2";
+			hasScannedForEncodings = 1;
+			mainGroup = B97275FD971D78AF6AC1FC3D /* NextUI */;
+			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = 2631F38A7CBF5DFC553871CA /* Products */;
+					ProjectRef = 06E2AB32E5FFC564C2092172 /* NextCore.xcodeproj */;
+				},
+				{
+					ProductGroup = 96E96057C67B2F49A1886E97 /* Products */;
+					ProjectRef = 0ACBDCD97EB4548BA1020319 /* NextEngine.xcodeproj */;
+				},
+			);
+			projectRoot = "";
+			targets = (
+				9933696592996AD78634C7A5 /* libNextUI.dylib */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		5C3C975E03B23310AC773D9E /* libNextCore.dylib */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.dylib";
+			path = libNextCore.dylib;
+			remoteRef = 3DEF2F8A6629E83C4DC575CA /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		C9A7CEC57DA3E7F75F562505 /* libNextEngine.dylib */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.dylib";
+			path = libNextEngine.dylib;
+			remoteRef = C59435F7E75FE32924150C37 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
+
+/* Begin PBXResourcesBuildPhase section */
+		8F675FEF325586A1C17B662F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		9607AE3710C85E8F00CD1376 /* Postbuild */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = Postbuild;
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nif [ \"${CONFIGURATION}\" = \"Debug\" ]; then\ncp -rf ../bin/Debug-macosx-x86_64/NextUI/libNextUI.dylib ../bin/Debug-macosx-x86_64/TheUnpluggingRunner\nfi\nif [ \"${CONFIGURATION}\" = \"Release\" ]; then\ncp -rf ../bin/Release-macosx-x86_64/NextUI/libNextUI.dylib ../bin/Release-macosx-x86_64/TheUnpluggingRunner\nfi\nif [ \"${CONFIGURATION}\" = \"Dist\" ]; then\ncp -rf ../bin/Dist-macosx-x86_64/NextUI/libNextUI.dylib ../bin/Dist-macosx-x86_64/TheUnpluggingRunner\nfi";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		F91479469C029FF82B287F86 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				70DE36363F0189E8C60FDC76 /* backend.cpp in Sources */,
+				45F90EE2935C0514097B0522 /* draw.cpp in Sources */,
+				C8E5D3B41648C9E68C67C9F4 /* font.cpp in Sources */,
+				6CDA30C20250EFF470ED4702 /* layout.cpp in Sources */,
+				0BFD11822DC8BEB46A7DE7C2 /* ui.cpp in Sources */,
+				8A4E2DB6E58F8128B8E9CBF6 /* stdafx.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		13EA30936A779B0542F0AED3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = libNextCore.dylib;
+			targetProxy = 9029A223B8645AD59FFFE863 /* PBXContainerItemProxy */;
+		};
+		84A19D60B4336C528F40ABA0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = libNextEngine.dylib;
+			targetProxy = 17CEA890399A55C2764F7ED0 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		0394F32C561B1E1E285F816C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(NATIVE_ARCH_ACTUAL)";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++1z";
+				CONFIGURATION_BUILD_DIR = "$(SYMROOT)";
+				CONFIGURATION_TEMP_DIR = "$(OBJROOT)";
+				COPY_PHASE_STRIP = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = stdafx.h;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					_CRT_SECURE_NO_WARNINGS,
+					NE_PLATFORM_MACOSX,
+					NE_DEBUG,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					/usr/local/Cellar/freetype/2.10.4/include/freetype2,
+					../vendor/glm,
+					"$(inherited)",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					/usr/local/Cellar/freetype/2.10.4/lib,
+				);
+				OBJROOT = "../bin-int/Debug-macosx-x86_64/NextUI";
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_LDFLAGS = (
+					"-lfreetype",
+				);
+				SYMROOT = "../bin/Debug-macosx-x86_64/NextUI";
+				USER_HEADER_SEARCH_PATHS = (
+					../NextEngine/include,
+					../NextCore/include,
+					include,
+					.,
+				);
+			};
+			name = Debug;
+		};
+		1F8AB4417ACC07B34E265281 /* Dist */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = "../bin/Dist-macosx-x86_64/NextUI";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				EXECUTABLE_PREFIX = lib;
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/lib;
+				MACOSX_DEPLOYMENT_TARGET = 10.15.5;
+				PRODUCT_NAME = NextUI;
+			};
+			name = Dist;
+		};
+		310648663DC2F7D8B2AD66A6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(NATIVE_ARCH_ACTUAL)";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++1z";
+				CONFIGURATION_BUILD_DIR = "$(SYMROOT)";
+				CONFIGURATION_TEMP_DIR = "$(OBJROOT)";
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = stdafx.h;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					_CRT_SECURE_NO_WARNINGS,
+					NE_PLATFORM_MACOSX,
+					NE_RELEASE,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					/usr/local/Cellar/freetype/2.10.4/include/freetype2,
+					../vendor/glm,
+					"$(inherited)",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					/usr/local/Cellar/freetype/2.10.4/lib,
+				);
+				OBJROOT = "../bin-int/Release-macosx-x86_64/NextUI";
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_LDFLAGS = (
+					"-lfreetype",
+				);
+				SYMROOT = "../bin/Release-macosx-x86_64/NextUI";
+				USER_HEADER_SEARCH_PATHS = (
+					../NextEngine/include,
+					../NextCore/include,
+					include,
+					.,
+				);
+			};
+			name = Release;
+		};
+		330A3174F675F326351997B4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = "../bin/Debug-macosx-x86_64/NextUI";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				EXECUTABLE_PREFIX = lib;
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/lib;
+				MACOSX_DEPLOYMENT_TARGET = 10.15.5;
+				PRODUCT_NAME = NextUI;
+			};
+			name = Debug;
+		};
+		651F796EB2826FA028A16FAE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = "../bin/Release-macosx-x86_64/NextUI";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				EXECUTABLE_PREFIX = lib;
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/lib;
+				MACOSX_DEPLOYMENT_TARGET = 10.15.5;
+				PRODUCT_NAME = NextUI;
+			};
+			name = Release;
+		};
+		72BEB4D9C2D2498B45507B19 /* Dist */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(NATIVE_ARCH_ACTUAL)";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++1z";
+				CONFIGURATION_BUILD_DIR = "$(SYMROOT)";
+				CONFIGURATION_TEMP_DIR = "$(OBJROOT)";
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = stdafx.h;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					_CRT_SECURE_NO_WARNINGS,
+					NE_PLATFORM_MACOSX,
+					NE_DIST,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					/usr/local/Cellar/freetype/2.10.4/include/freetype2,
+					../vendor/glm,
+					"$(inherited)",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					/usr/local/Cellar/freetype/2.10.4/lib,
+				);
+				OBJROOT = "../bin-int/Dist-macosx-x86_64/NextUI";
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_LDFLAGS = (
+					"-lfreetype",
+				);
+				SYMROOT = "../bin/Dist-macosx-x86_64/NextUI";
+				USER_HEADER_SEARCH_PATHS = (
+					../NextEngine/include,
+					../NextCore/include,
+					include,
+					.,
+				);
+			};
+			name = Dist;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0DBB27AEB0A94E603FCF2DEE /* Build configuration list for PBXNativeTarget "libNextUI.dylib" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				330A3174F675F326351997B4 /* Debug */,
+				651F796EB2826FA028A16FAE /* Release */,
+				1F8AB4417ACC07B34E265281 /* Dist */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		1DEB928908733DD80010E9CD /* Build configuration list for PBXProject "NextUI" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0394F32C561B1E1E285F816C /* Debug */,
+				310648663DC2F7D8B2AD66A6 /* Release */,
+				72BEB4D9C2D2498B45507B19 /* Dist */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+};
+rootObject = 08FB7793FE84155DC02AAC07 /* Project object */;
+}

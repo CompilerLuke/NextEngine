@@ -1,0 +1,1 @@
+target_sources(next_engine PUBLIC ecs.cpp system.cpp update_params.cpp)

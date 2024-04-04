@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="include">
+      <UniqueIdentifier>{89AF369E-F58E-B539-FEA6-40106A051C9B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\core">
+      <UniqueIdentifier>{A17DD969-8DE0-680E-3666-A1C422A83491}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\core\container">
+      <UniqueIdentifier>{D3A2B6D4-BF9C-DF26-A809-763794A24593}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\core\io">
+      <UniqueIdentifier>{E87B1D0C-5407-8BD0-5D18-0EC5C922E7D0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\core\job_system">
+      <UniqueIdentifier>{8F5E594F-FB95-A1E6-04A0-050A7056C8DF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\core\math">
+      <UniqueIdentifier>{3A1B6E89-A631-6C1F-EFA8-F7405BFE3CA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\core\memory">
+      <UniqueIdentifier>{098AA69D-75EB-83AB-FE58-CA5D6AB9BA6A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{2DAB880B-99B4-887C-2230-9F7C8E38947C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\core">
+      <UniqueIdentifier>{C55F2ECF-B12C-89DA-DA45-7782C671BE68}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\core\container">
+      <UniqueIdentifier>{F781178C-E365-D8E1-4CC6-D23438C9C263}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\core\io">
+      <UniqueIdentifier>{8CDBF2DC-F890-6BD2-8185-65A9ED3962D6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\core\job_system">
+      <UniqueIdentifier>{3322D6F2-9F83-B300-28F1-F9B29451EABF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\core\memory">
+      <UniqueIdentifier>{AD1BAB93-19A7-1858-22B8-9B4C8EC27458}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\core\algorithm.h">
+      <Filter>include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\atomic.h">
+      <Filter>include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\container.h">
+      <Filter>include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\container\array.h">
+      <Filter>include\core\container</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\container\bitset.h">
+      <Filter>include\core\container</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\container\event_dispatcher.h">
+      <Filter>include\core\container</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\container\handle_manager.h">
+      <Filter>include\core\container</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\container\hash_map.h">
+      <Filter>include\core\container</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\container\offset_slice.h">
+      <Filter>include\core\container</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\container\pool.h">
+      <Filter>include\core\container</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\container\queue.h">
+      <Filter>include\core\container</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\container\slice.h">
+      <Filter>include\core\container</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\container\sort.h">
+      <Filter>include\core\container</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\container\sstring.h">
+      <Filter>include\core\container</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\container\stack.h">
+      <Filter>include\core\container</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\container\string.h">
+      <Filter>include\core\container</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\container\string_buffer.h">
+      <Filter>include\core\container</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\container\string_view.h">
+      <Filter>include\core\container</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\container\tuple.h">
+      <Filter>include\core\container</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\container\tvector.h">
+      <Filter>include\core\container</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\container\vector.h">
+      <Filter>include\core\container</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\context.h">
+      <Filter>include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\core.h">
+      <Filter>include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\event.h">
+      <Filter>include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\io\logger.h">
+      <Filter>include\core\io</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\job_system\fiber.h">
+      <Filter>include\core\job_system</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\job_system\job.h">
+      <Filter>include\core\job_system</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\job_system\thread.h">
+      <Filter>include\core\job_system</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\job_system\work_stealing_queue.h">
+      <Filter>include\core\job_system</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\math\aabb.h">
+      <Filter>include\core\math</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\math\interpolation.h">
+      <Filter>include\core\math</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\math\intersection.h">
+      <Filter>include\core\math</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\math\vec2.h">
+      <Filter>include\core\math</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\math\vec3.h">
+      <Filter>include\core\math</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\math\vec4.h">
+      <Filter>include\core\math</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\memory\allocator.h">
+      <Filter>include\core\memory</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\memory\linear_allocator.h">
+      <Filter>include\core\memory</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\profiler.h">
+      <Filter>include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\reflection.h">
+      <Filter>include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\serializer.h">
+      <Filter>include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\time.h">
+      <Filter>include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\types.h">
+      <Filter>include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\core\container\string_view.cpp">
+      <Filter>src\core\container</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\io\logger.cpp">
+      <Filter>src\core\io</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\job_system\job.cpp">
+      <Filter>src\core\job_system</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\job_system\linux_fiber.cpp">
+      <Filter>src\core\job_system</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\job_system\win_fiber.cpp">
+      <Filter>src\core\job_system</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\memory\allocator.cpp">
+      <Filter>src\core\memory</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\profiler.cpp">
+      <Filter>src\core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\reflection.cpp">
+      <Filter>src\core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\serializer.cpp">
+      <Filter>src\core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\time.cpp">
+      <Filter>src\core</Filter>
+    </ClCompile>
+    <ClCompile Include="stdafx.cpp" />
+  </ItemGroup>
+</Project>

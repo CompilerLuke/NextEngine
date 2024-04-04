@@ -1,0 +1,1 @@
+target_sources(next_engine PUBLIC application.cpp engine.cpp input.cpp vfs.cpp)

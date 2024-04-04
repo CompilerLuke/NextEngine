@@ -1,0 +1,1 @@
+target_sources(next_engine PUBLIC btWrapper.cpp physics.cpp)

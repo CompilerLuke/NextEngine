@@ -1,0 +1,1 @@
+target_sources(next_editor PUBLIC shaderGraph.cpp shaderGraphNodes.cpp)

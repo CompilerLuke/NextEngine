@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="include">
+      <UniqueIdentifier>{89AF369E-F58E-B539-FEA6-40106A051C9B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\assets">
+      <UniqueIdentifier>{6B16CE41-57E4-C147-4078-326E2CE59DAC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\terrain_tools">
+      <UniqueIdentifier>{9DEC8BD5-0959-47D0-D24C-DF2D3E786938}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{2DAB880B-99B4-887C-2230-9F7C8E38947C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\assets">
+      <UniqueIdentifier>{8F11E44F-7BC9-259D-E4D0-FEF8D0A7C08D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\assets\shader_graph">
+      <UniqueIdentifier>{8680AE87-F2B7-F61E-FBC1-5A4267781D18}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\terrain_tools">
+      <UniqueIdentifier>{4177FB5E-AD8D-F9F4-F604-8516625ACA7C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="vendor">
+      <UniqueIdentifier>{B3738122-9F15-ACF8-88D0-BF4C74113349}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="vendor\ImGuizmo">
+      <UniqueIdentifier>{73BF7F4C-DF4A-ED10-E85B-700554664911}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\assets\dialog.h">
+      <Filter>include\assets</Filter>
+    </ClInclude>
+    <ClInclude Include="include\assets\explorer.h">
+      <Filter>include\assets</Filter>
+    </ClInclude>
+    <ClInclude Include="include\assets\handle.h">
+      <Filter>include\assets</Filter>
+    </ClInclude>
+    <ClInclude Include="include\assets\importer.h">
+      <Filter>include\assets</Filter>
+    </ClInclude>
+    <ClInclude Include="include\assets\info.h">
+      <Filter>include\assets</Filter>
+    </ClInclude>
+    <ClInclude Include="include\assets\inspect.h">
+      <Filter>include\assets</Filter>
+    </ClInclude>
+    <ClInclude Include="include\assets\node.h">
+      <Filter>include\assets</Filter>
+    </ClInclude>
+    <ClInclude Include="include\assets\preview.h">
+      <Filter>include\assets</Filter>
+    </ClInclude>
+    <ClInclude Include="include\component_ids.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\custom_inspect.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\diffUtil.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\displayComponents.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\editor.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\editor_viewport.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\generated.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\gizmo.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\grass.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\lister.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\objectGizmo.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\picking.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\shaderGraph.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\terrain_tools\gpu_generation.h">
+      <Filter>include\terrain_tools</Filter>
+    </ClInclude>
+    <ClInclude Include="include\terrain_tools\kriging.h">
+      <Filter>include\terrain_tools</Filter>
+    </ClInclude>
+    <ClInclude Include="include\terrain_tools\terrain.h">
+      <Filter>include\terrain_tools</Filter>
+    </ClInclude>
+    <ClInclude Include="include\visualize_physics.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\visualize_profiler.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="vendor\ImGuizmo\ImCurveEdit.h">
+      <Filter>vendor\ImGuizmo</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\ImGuizmo\ImGradient.h">
+      <Filter>vendor\ImGuizmo</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\ImGuizmo\ImGuizmo.h">
+      <Filter>vendor\ImGuizmo</Filter>
+    </ClInclude>
+    <ClInclude Include="vendor\ImGuizmo\ImSequencer.h">
+      <Filter>vendor\ImGuizmo</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\assets\actions.cpp">
+      <Filter>src\assets</Filter>
+    </ClCompile>
+    <ClCompile Include="src\assets\dialog.cpp">
+      <Filter>src\assets</Filter>
+    </ClCompile>
+    <ClCompile Include="src\assets\explorer.cpp">
+      <Filter>src\assets</Filter>
+    </ClCompile>
+    <ClCompile Include="src\assets\importer.cpp">
+      <Filter>src\assets</Filter>
+    </ClCompile>
+    <ClCompile Include="src\assets\info.cpp">
+      <Filter>src\assets</Filter>
+    </ClCompile>
+    <ClCompile Include="src\assets\inspect.cpp">
+      <Filter>src\assets</Filter>
+    </ClCompile>
+    <ClCompile Include="src\assets\preview.cpp">
+      <Filter>src\assets</Filter>
+    </ClCompile>
+    <ClCompile Include="src\assets\shader_graph\shaderGraph.cpp">
+      <Filter>src\assets\shader_graph</Filter>
+    </ClCompile>
+    <ClCompile Include="src\assets\shader_graph\shaderGraphNodes.cpp">
+      <Filter>src\assets\shader_graph</Filter>
+    </ClCompile>
+    <ClCompile Include="src\custom_inspect.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\diffUtil.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\displayComponents.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\editor.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\generated.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\gizmo.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\grass_placement.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\lister.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\objectGizmo.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\picking.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\terrain_tools\gpu_generation.cpp">
+      <Filter>src\terrain_tools</Filter>
+    </ClCompile>
+    <ClCompile Include="src\terrain_tools\kriging.cpp">
+      <Filter>src\terrain_tools</Filter>
+    </ClCompile>
+    <ClCompile Include="src\terrain_tools\terrain.cpp">
+      <Filter>src\terrain_tools</Filter>
+    </ClCompile>
+    <ClCompile Include="src\visualize_physics.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\visualize_profiler.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="stdafx.cpp" />
+    <ClCompile Include="vendor\ImGuizmo\ImCurveEdit.cpp">
+      <Filter>vendor\ImGuizmo</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\ImGuizmo\ImGradient.cpp">
+      <Filter>vendor\ImGuizmo</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\ImGuizmo\ImGuizmo.cpp">
+      <Filter>vendor\ImGuizmo</Filter>
+    </ClCompile>
+    <ClCompile Include="vendor\ImGuizmo\ImSequencer.cpp">
+      <Filter>vendor\ImGuizmo</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

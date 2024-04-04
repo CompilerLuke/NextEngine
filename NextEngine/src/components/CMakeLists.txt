@@ -1,0 +1,1 @@
+target_sources(next_engine PUBLIC camera.cpp flyover.cpp grass_components.cpp lights.cpp terrain_components.cpp transforms_components.cpp)
