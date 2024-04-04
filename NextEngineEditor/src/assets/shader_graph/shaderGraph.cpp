@@ -965,9 +965,6 @@ void load_Shader_for_graph(ShaderAsset& asset) {
 	}
 	else {
 		static BackgroundCompilation compilation;
-		const uint background_memory_size = kb(256);
-		static char* background_memory = (char*)malloc(background_memory_size);
-
 		MaterialDesc previous_mat_desc = graph.preview_mat_desc;
 		graph.preview_mat_desc = mat_desc_for_shader_graph(asset);
 
@@ -977,8 +974,6 @@ void load_Shader_for_graph(ShaderAsset& asset) {
 		input.mat_handle = asset.graph->preview_mat_handle;
 		input.previous_mat_desc = previous_mat_desc;
 		input.current_mat_desc = graph.preview_mat_desc;
-		input.memory = background_memory;
-		input.memory_size = background_memory_size;
 
 		send_background_compilation(compilation, std::move(input));
 		
