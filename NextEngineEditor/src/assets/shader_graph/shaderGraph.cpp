@@ -858,7 +858,7 @@ struct BackgroundCompilationInput {
 	material_handle mat_handle;
 	MaterialDesc previous_mat_desc;
 	MaterialDesc current_mat_desc;
-	char* memory;
+	LinearAllocator allocator;
 	u64 memory_size;
 };
 
@@ -935,10 +935,7 @@ void compile_in_background(BackgroundCompilation& compilation) {
 
 	{
 
-		LinearAllocator linear_allocator;
-		linear_allocator.head = (LinearAllocator::BlockHeader*)input.memory;
-        linear_allocator.head->size = input.memory_size;
-
+		LinearAllocator& linear_allocator = input.allocator;
 		Context context = {};
 		context.temporary_allocator = &linear_allocator;
 
