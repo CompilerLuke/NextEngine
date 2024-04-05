@@ -59,7 +59,7 @@ void Modules::init_graphics() {
 #ifdef NE_DEBUG
     vk_desc.num_validation_layers = 1;
 #else
-    vk_desc.num_validation_layers = 1;
+    vk_desc.num_validation_layers = 0;
 #endif
 
     //todo move into hardware layer

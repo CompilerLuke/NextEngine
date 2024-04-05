@@ -692,7 +692,7 @@ cubemap_handle load_HDR(string_view filename) {
     image.num_channels = 4;
 	image.format = TextureFormat::HDR;
 
-	assert(image.data);
+    if(!image.data) throw string_buffer("Could not load HDR ") + real_filename.c_str();
 
 	Texture texture = make_TextureImage(rhi.texture_allocator, image);
 	texture_handle env_map = assets.textures.assign_handle(std::move(texture));

@@ -530,8 +530,7 @@ Texture make_TextureImage(TextureAllocator& allocator, const Image& image) {
 	u64 texel_alignment = texel_sizes[(uint)image.format] * image.num_channels;
 	VkDeviceSize image_size = image.width * image.height * image.num_channels * texel_sizes[(uint)image.format];
 
-	if (!pixels) throw "Failed to load texture image!";
-
+	if (!pixels) throw "Failed to load texture image";
 
 	int32_t offset = aligned_incr(&allocator.staging_buffer_offset, image_size, texel_alignment);
 	memcpy((char*)allocator.staging.mapped + offset, pixels, image_size);

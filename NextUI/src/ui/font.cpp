@@ -120,7 +120,7 @@ Font& query_font(FontCache& cache, const FontDesc& desc) {
 font_handle load_font(UI& ui, string_view path) {
     font_handle font = load_font(ui.font_cache, path);
     if (font.id == INVALID_HANDLE) {
-        throw "Could not load font ";
+        throw string_buffer("Could not load font ") + path;
     }
     if (ui.default_font.id == INVALID_HANDLE) {
         ui.default_font = font;
