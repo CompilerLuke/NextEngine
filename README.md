@@ -146,7 +146,7 @@ LOD Grass Rendering
 Terrain texture splatting + Editor Icons
 
 # Latest Addition - Volumetric lighting + CSM + Fog
-![Volumetric Lighting + Shadows + Fog](https://media.discordapp.net/attachments/490868844760530944/683654920368554017/TreesAnime.PNG)
+![Volumetric Lighting + Shadows + Fog](https://drive.google.com/file/d/1-2YhVJldXRB6F_iyLvILafOgeruSSNlK/view?usp=drive_link)
 Volumetric Lighting + Shadows + Fog
 
 ![Scene created using mega-scanned assets](https://media.discordapp.net/attachments/582610879808274442/648229569949728788/Screenshot_206.png?width=2400&height=1350)
