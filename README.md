@@ -1,5 +1,4 @@
 # NextEngine
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/56322335a66b4e599ea0ad0ba46a2bc9)](https://app.codacy.com/manual/CompilerLuke/NextEngine?utm_source=github.com&utm_medium=referral&utm_content=CompilerLuke/NextEngine&utm_campaign=Badge_Grade_Settings)
 
 NextEngine is designed with rapid iteration and high-end desktop graphics in mind. The engine has been fundamentally redesigned in a data-oriented fashion, with efforts to parallize the engine under-way. The engine, ported from OpenGL is vulkan-first and is cross-platform, with the capability of running on Windows, MacOSX and theoretically Linux, though this functionality has not been tested. 
 
